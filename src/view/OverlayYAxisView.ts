@@ -81,23 +81,16 @@ export default class OverlayYAxisView<C extends Axis = YAxis> extends OverlayVie
     ) {
       let topY = Number.MAX_SAFE_INTEGER
       let bottomY = Number.MIN_SAFE_INTEGER
-      const isFromZero = yAxis?.isFromZero() ?? false
-      let textAlign: CanvasTextAlign
-      let x: number
-      if (isFromZero) {
-        textAlign = 'left'
-        x = 0
-      } else {
-        textAlign = 'right'
-        x = bounding.width
-      }
+
+      const isAlignLeft = yAxis?.isAlignLeft() ?? false
+      const align = isAlignLeft ? 'left' : 'right'
       coordinates.forEach((coordinate, index) => {
         const point = overlay.points[index]
         if (isNumber(point.value)) {
           topY = Math.min(topY, coordinate.y)
           bottomY = Math.max(bottomY, coordinate.y)
           const text = formatFoldDecimal(formatThousands(formatPrecision(point.value, precision.price), thousandsSeparator), decimalFoldThreshold)
-          figures.push({ type: 'text', attrs: { x, y: coordinate.y, text, align: textAlign, baseline: 'middle' }, ignoreEvent: true })
+          figures.push({ type: 'text', attrs: { x: bounding.width * (1 - +isAlignLeft), y: coordinate.y, text, align, baseline: 'middle' }, ignoreEvent: true })
         }
       })
       if (coordinates.length > 1) {

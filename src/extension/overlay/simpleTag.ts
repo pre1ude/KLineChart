@@ -39,16 +39,8 @@ const simpleTag: OverlayTemplate = {
     }
   },
   createYAxisFigures: ({ overlay, coordinates, bounding, yAxis, precision }) => {
-    const isFromZero = yAxis?.isFromZero() ?? false
-    let textAlign: CanvasTextAlign
-    let x: number
-    if (isFromZero) {
-      textAlign = 'left'
-      x = 0
-    } else {
-      textAlign = 'right'
-      x = bounding.width
-    }
+    const isAlignLeft = yAxis?.isAlignLeft() ?? false
+    const align = isAlignLeft ? 'left' : 'right'
     let text
     if (isValid(overlay.extendData)) {
       if (!isFunction(overlay.extendData)) {
@@ -60,7 +52,7 @@ const simpleTag: OverlayTemplate = {
     if (!isValid(text) && isNumber(overlay.points[0].value)) {
       text = formatPrecision(overlay.points[0].value, precision.price)
     }
-    return { type: 'text', attrs: { x, y: coordinates[0].y, text: text ?? '', align: textAlign, baseline: 'middle' } }
+    return { type: 'text', attrs: { x: bounding.width * (1 - +isAlignLeft), y: coordinates[0].y, text: text ?? '', align, baseline: 'middle' } }
   }
 }
 

@@ -33,7 +33,7 @@ interface FiguresResult {
 }
 
 export interface YAxis extends Axis {
-  isFromZero: () => boolean
+  isAlignLeft: () => boolean
   isInCandle: () => boolean
 }
 
@@ -235,10 +235,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   }
 
   /**
-   * 是否从y轴0开始
+   * 是否左对齐
    * @return {boolean}
    */
-  isFromZero (): boolean {
+  isAlignLeft (): boolean {
     const yAxisStyles = this.getParent().getChart().getStyles().yAxis
     const inside = yAxisStyles.inside
     return (

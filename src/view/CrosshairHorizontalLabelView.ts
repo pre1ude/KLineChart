@@ -93,16 +93,9 @@ export default class CrosshairHorizontalLabelView<C extends Axis = YAxis> extend
 
   protected getTextAttrs (text: string, _textWidth: number, crosshair: Crosshair, bounding: Bounding, axis: Axis, _styles: StateTextStyle): TextAttrs {
     const yAxis = axis as unknown as YAxis
-    let x: number
-    let textAlign: CanvasTextAlign
-    if (yAxis.isFromZero()) {
-      x = 0
-      textAlign = 'left'
-    } else {
-      x = bounding.width
-      textAlign = 'right'
-    }
+    const isAlignLeft = yAxis?.isAlignLeft()
+    const align = isAlignLeft ? 'left' : 'right'
 
-    return { x, y: crosshair.y!, text, align: textAlign, baseline: 'middle' }
+    return { x: bounding.width * (1 - +isAlignLeft), y: crosshair.y!, text, align, baseline: 'middle' }
   }
 }

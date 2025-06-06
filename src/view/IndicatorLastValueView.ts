@@ -52,23 +52,16 @@ export default class IndicatorLastValueView extends View<YAxis> {
                 text = customApi.formatBigNumber(text)
               }
               text = formatFoldDecimal(formatThousands(text, thousandsSeparator), decimalFoldThreshold)
-              let x: number
-              let textAlign: CanvasTextAlign
-              if (yAxis.isFromZero()) {
-                x = 0
-                textAlign = 'left'
-              } else {
-                x = bounding.width
-                textAlign = 'right'
-              }
 
+              const isAlignLeft = yAxis?.isAlignLeft()
+              const align = isAlignLeft ? 'left' : 'right'
               this.createFigure({
                 name: 'text',
                 attrs: {
-                  x,
+                  x: bounding.width * (1 - +isAlignLeft),
                   y,
                   text,
-                  align: textAlign,
+                  align,
                   baseline: 'middle'
                 },
                 styles: {

@@ -46,6 +46,7 @@ export enum LineType {
 
 export interface LineStyle {
   style: LineType
+  /** 线粗细 */
   size: number
   color: string
   dashedValue: number[]

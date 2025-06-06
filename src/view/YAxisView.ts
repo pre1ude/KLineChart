@@ -32,7 +32,7 @@ export default class YAxisView extends AxisView<YAxis> {
     const yAxis = this.getWidget().getPane().getAxisComponent()
     const size = styles.axisLine.size
     let x: number
-    if (yAxis.isFromZero()) {
+    if (yAxis.isAlignLeft()) {
       x = 0
     } else {
       x = bounding.width - size
@@ -52,7 +52,7 @@ export default class YAxisView extends AxisView<YAxis> {
 
     let startX = 0
     let endX = 0
-    if (yAxis.isFromZero()) {
+    if (yAxis.isAlignLeft()) {
       startX = 0
       if (axisLineStyles.show) {
         startX += axisLineStyles.size
@@ -80,7 +80,7 @@ export default class YAxisView extends AxisView<YAxis> {
     const tickTextStyles = styles.tickText
 
     let x = 0
-    if (yAxis.isFromZero()) {
+    if (yAxis.isAlignLeft()) {
       x = tickTextStyles.marginStart
       if (axisLineStyles.show) {
         x += axisLineStyles.size
@@ -97,12 +97,13 @@ export default class YAxisView extends AxisView<YAxis> {
         x -= tickLineStyles.length
       }
     }
-    const textAlign = this.getWidget().getPane().getAxisComponent().isFromZero() ? 'left' : 'right'
+
+    const align = this.getWidget().getPane().getAxisComponent().isAlignLeft() ? 'left' : 'right'
     return ticks.map(tick => ({
       x,
       y: tick.coord,
       text: tick.text,
-      align: textAlign,
+      align,
       baseline: 'middle'
     }))
   }
