@@ -54,22 +54,16 @@ export default class CandleLastPriceLabelView extends View {
           text = formatPrecision(close, precision.price)
         }
         text = formatFoldDecimal(formatThousands(text, chartStore.getThousandsSeparator()), chartStore.getDecimalFoldThreshold())
-        let x: number
-        let textAlgin: CanvasTextAlign
-        if (yAxis.isFromZero()) {
-          x = 0
-          textAlgin = 'left'
-        } else {
-          x = bounding.width
-          textAlgin = 'right'
-        }
+
+        const isAlignLeft = yAxis?.isAlignLeft()
+        const align = isAlignLeft ? 'left' : 'right'
         this.createFigure({
           name: 'text',
           attrs: {
-            x,
+            x: bounding.width * (1 - +isAlignLeft),
             y: priceY,
             text,
-            align: textAlgin,
+            align,
             baseline: 'middle'
           },
           styles: {
