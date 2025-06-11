@@ -38,8 +38,7 @@ const simpleTag: OverlayTemplate = {
       ignoreEvent: true
     }
   },
-  createYAxisFigures: ({ overlay, coordinates, bounding, yAxis, precision }) => {
-    const isAlignLeft = yAxis?.isAlignLeft() ?? false
+  createYAxisFigures: ({ overlay, coordinates, bounding, isAlignLeft = false, precision }) => {
     const align = isAlignLeft ? 'left' : 'right'
     let text
     if (isValid(overlay.extendData)) {

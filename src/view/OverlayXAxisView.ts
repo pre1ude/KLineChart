@@ -32,7 +32,7 @@ import type OverlayStore from '../store/OverlayStore'
 
 import OverlayYAxisView from './OverlayYAxisView'
 
-export default class OverlayXAxisView extends OverlayYAxisView<XAxis> {
+export default class OverlayXAxisView extends OverlayYAxisView {
   override coordinateToPointTimestampDataIndexFlag (): boolean {
     return true
   }

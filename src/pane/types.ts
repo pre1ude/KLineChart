@@ -12,14 +12,26 @@
  * limitations under the License.
  */
 
+import { YAxisPosition, YAxisType } from "../common/Styles"
+import CandlePane from "./CandlePane"
+import IndicatorPane from "./IndicatorPane"
+import XAxisPane from "./XAxisPane"
+
 export interface PaneGap {
   top?: number
   bottom?: number
 }
 
-export interface PaneAxisOptions {
+export interface PaneAxisOptionItem {
+  type?: YAxisType
+}
+
+export type PaneAxisOptions = {
   name?: string
   scrollZoomEnabled?: boolean
+  YAxis?: {
+    [key in Exclude<YAxisPosition, 'both'>]: PaneAxisOptionItem
+  }
 }
 
 export const enum PanePosition {
@@ -46,3 +58,5 @@ export const PaneIdConstants = {
   INDICATOR: 'indicator_pane_',
   X_AXIS: 'x_axis_pane'
 }
+
+export type DrawPane = CandlePane | IndicatorPane | XAxisPane

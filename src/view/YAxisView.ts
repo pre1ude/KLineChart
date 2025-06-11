@@ -14,25 +14,23 @@
 
 import type Bounding from '../common/Bounding'
 import { type AxisStyle, type Styles } from '../common/Styles'
-
 import { type LineAttrs } from '../extension/figure/line'
 import { type TextAttrs } from '../extension/figure/text'
-
 import { type AxisTick } from '../component/Axis'
-import type YAxis from '../component/YAxis'
-
 import AxisView from './AxisView'
+import YAxisWidget from '../widget/YAxisWidget'
 
-export default class YAxisView extends AxisView<YAxis> {
+export default class YAxisView extends AxisView {
   override getAxisStyles (styles: Styles): AxisStyle {
     return styles.yAxis
   }
 
   override createAxisLine (bounding: Bounding, styles: AxisStyle): LineAttrs {
-    const yAxis = this.getWidget().getPane().getAxisComponent()
+    const widget = this.getWidget() as unknown as YAxisWidget
+    const isAlignLeft = widget.isAlignLeft()
     const size = styles.axisLine.size
     let x: number
-    if (yAxis.isAlignLeft()) {
+    if (isAlignLeft) {
       x = 0
     } else {
       x = bounding.width - size
@@ -46,13 +44,14 @@ export default class YAxisView extends AxisView<YAxis> {
   }
 
   override createTickLines (ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): LineAttrs[] {
-    const yAxis = this.getWidget().getPane().getAxisComponent()
+    const widget = this.getWidget() as unknown as YAxisWidget
+    const isAlignLeft = widget.isAlignLeft()
     const axisLineStyles = styles.axisLine
     const tickLineStyles = styles.tickLine
 
     let startX = 0
     let endX = 0
-    if (yAxis.isAlignLeft()) {
+    if (isAlignLeft) {
       startX = 0
       if (axisLineStyles.show) {
         startX += axisLineStyles.size
@@ -74,13 +73,14 @@ export default class YAxisView extends AxisView<YAxis> {
   }
 
   override createTickTexts (ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): TextAttrs[] {
-    const yAxis = this.getWidget().getPane().getAxisComponent()
+    const widget = this.getWidget() as unknown as YAxisWidget
+    const isAlignLeft = widget.isAlignLeft()
     const axisLineStyles = styles.axisLine
     const tickLineStyles = styles.tickLine
     const tickTextStyles = styles.tickText
 
     let x = 0
-    if (yAxis.isAlignLeft()) {
+    if (isAlignLeft) {
       x = tickTextStyles.marginStart
       if (axisLineStyles.show) {
         x += axisLineStyles.size
@@ -98,7 +98,7 @@ export default class YAxisView extends AxisView<YAxis> {
       }
     }
 
-    const align = this.getWidget().getPane().getAxisComponent().isAlignLeft() ? 'left' : 'right'
+    const align = isAlignLeft ? 'left' : 'right'
     return ticks.map(tick => ({
       x,
       y: tick.coord,

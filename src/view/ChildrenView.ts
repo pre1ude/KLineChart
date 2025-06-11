@@ -15,7 +15,6 @@
 import View from './View'
 import type VisibleData from '../common/VisibleData'
 import type BarSpace from '../common/BarSpace'
-import type YAxis from '../component/YAxis'
 
 export type EachChildCallback = (
   data: VisibleData,
@@ -23,7 +22,7 @@ export type EachChildCallback = (
   index: number
 ) => void
 
-export default abstract class ChildrenView extends View<YAxis> {
+export default abstract class ChildrenView extends View {
   protected eachChildren (childCallback: EachChildCallback): void {
     const pane = this.getWidget().getPane()
     const chartStore = pane.getChart().getChartStore()

@@ -87,6 +87,7 @@ export interface OverlayCreateFiguresCallbackParams {
   defaultStyles: OverlayStyle
   xAxis: Nullable<XAxis>
   yAxis: Nullable<YAxis>
+  isAlignLeft?: boolean
 }
 
 export interface OverlayEvent extends Partial<MouseTouchEvent> {

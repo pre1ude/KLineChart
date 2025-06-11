@@ -20,30 +20,25 @@ import type BarSpace from '../common/BarSpace'
 import { type OverlayStyle } from '../common/Styles'
 import { type EventHandler, type EventName, type MouseTouchEvent, type MouseTouchEventCallback } from '../common/SyntheticEvent'
 import { isBoolean, isNumber, isValid } from '../common/utils/typeChecks'
-
 import { type CustomApi } from '../Options'
-
-import type Axis from '../component/Axis'
 import type XAxis from '../component/XAxis'
 import type YAxis from '../component/YAxis'
 import { type OverlayPrecision, type OverlayFigure, type OverlayFigureIgnoreEventType } from '../component/Overlay'
 import type Overlay from '../component/Overlay'
 import { OVERLAY_FIGURE_KEY_PREFIX, OverlayMode, getAllOverlayFigureIgnoreEventTypes } from '../component/Overlay'
-
 import { type ProgressOverlayInfo, type EventOverlayInfo } from '../store/OverlayStore'
 import type OverlayStore from '../store/OverlayStore'
 import { EventOverlayInfoFigureType } from '../store/OverlayStore'
 import type TimeScaleStore from '../store/TimeScaleStore'
-
 import { PaneIdConstants } from '../pane/types'
-
 import type DrawWidget from '../widget/DrawWidget'
-import type DrawPane from '../pane/DrawPane'
-
+import type Pane from '../pane/Pane'
 import View from './View'
+import XAxisWidget from '../widget/XAxisWidget'
+import YAxisWidget from '../widget/YAxisWidget'
 
-export default class OverlayView<C extends Axis = YAxis> extends View<C> {
-  constructor (widget: DrawWidget<DrawPane<C>>) {
+export default class OverlayView extends View {
+  constructor (widget: DrawWidget<Pane>) {
     super(widget)
     this._initEvent()
   }
@@ -286,19 +281,20 @@ export default class OverlayView<C extends Axis = YAxis> extends View<C> {
 
   private _coordinateToPoint (overlay: Overlay, coordinate: Coordinate): Partial<Point> {
     const point: Partial<Point> = {}
-    const pane = this.getWidget().getPane()
+    const widget = this.getWidget()
+    const pane = widget.getPane()
     const chart = pane.getChart()
     const paneId = pane.getId()
     const timeScaleStore = chart.getChartStore().getTimeScaleStore()
     if (this.coordinateToPointTimestampDataIndexFlag()) {
-      const xAxis = chart.getXAxisPane().getAxisComponent()
+      const xAxis = (widget as XAxisWidget).getAxisComponent()
       const dataIndex = xAxis.convertFromPixel(coordinate.x)
       const timestamp = timeScaleStore.dataIndexToTimestamp(dataIndex) ?? undefined
       point.dataIndex = dataIndex
       point.timestamp = timestamp
     }
     if (this.coordinateToPointValueFlag()) {
-      const yAxis = pane.getAxisComponent()
+      const yAxis = (widget as YAxisWidget).getAxisComponent()
       let value = yAxis.convertFromPixel(coordinate.y)
       if (overlay.mode !== OverlayMode.Normal && paneId === PaneIdConstants.CANDLE && isNumber(point.dataIndex)) {
         const kLineData = timeScaleStore.getDataByDataIndex(point.dataIndex)
@@ -372,12 +368,13 @@ export default class OverlayView<C extends Axis = YAxis> extends View<C> {
   }
 
   override drawImp (ctx: CanvasRenderingContext2D): void {
-    const widget = this.getWidget()
+    const widget = this.getWidget() as YAxisWidget
     const pane = widget.getPane()
     const paneId = pane.getId()
     const chart = pane.getChart()
-    const yAxis = pane.getAxisComponent() as unknown as Nullable<YAxis>
-    const xAxis = chart.getXAxisPane().getAxisComponent()
+    const yAxis = widget.getAxisComponent()
+    const xAxisWidget = chart.getXAxisPane().getMainWidget() as XAxisWidget
+    const xAxis = xAxisWidget.getAxisComponent()
     const bounding = widget.getBounding()
     const chartStore = chart.getChartStore()
     const customApi = chartStore.getCustomApi()

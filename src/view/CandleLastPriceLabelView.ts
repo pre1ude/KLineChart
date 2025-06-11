@@ -19,10 +19,11 @@ import { isValid } from '../common/utils/typeChecks'
 import View from './View'
 
 import type YAxis from '../component/YAxis'
+import YAxisWidget from '../widget/YAxisWidget'
 
 export default class CandleLastPriceLabelView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {
-    const widget = this.getWidget()
+    const widget = this.getWidget() as unknown as YAxisWidget
     const pane = widget.getPane()
     const bounding = widget.getBounding()
     const chartStore = pane.getChart().getChartStore()
@@ -46,7 +47,8 @@ export default class CandleLastPriceLabelView extends View {
           backgroundColor = lastPriceMarkStyles.noChangeColor
         }
         let text: string
-        if (yAxis.getType() === YAxisType.Percentage) {
+
+        if (widget.getAxisType() === YAxisType.Percentage) {
           const fromData = chartStore.getVisibleFirstData()
           const fromClose = fromData!.close
           text = `${((close - fromClose) / fromClose * 100).toFixed(2)}%`
@@ -55,7 +57,7 @@ export default class CandleLastPriceLabelView extends View {
         }
         text = formatFoldDecimal(formatThousands(text, chartStore.getThousandsSeparator()), chartStore.getDecimalFoldThreshold())
 
-        const isAlignLeft = yAxis?.isAlignLeft()
+        const isAlignLeft = widget.isAlignLeft()
         const align = isAlignLeft ? 'left' : 'right'
         this.createFigure({
           name: 'text',

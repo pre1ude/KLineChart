@@ -14,16 +14,13 @@
 
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { isNumber, isValid } from '../common/utils/typeChecks'
-
 import { eachFigures, type IndicatorFigure, type IndicatorFigureStyle } from '../component/Indicator'
-
 import View from './View'
+import YAxisWidget from '../widget/YAxisWidget'
 
-import type YAxis from '../component/YAxis'
-
-export default class IndicatorLastValueView extends View<YAxis> {
+export default class IndicatorLastValueView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {
-    const widget = this.getWidget()
+    const widget = this.getWidget() as unknown as YAxisWidget
     const pane = widget.getPane()
     const bounding = widget.getBounding()
     const chartStore = pane.getChart().getChartStore()
@@ -32,7 +29,7 @@ export default class IndicatorLastValueView extends View<YAxis> {
     const lastValueMarkStyles = defaultStyles.lastValueMark
     const lastValueMarkTextStyles = lastValueMarkStyles.text
     if (lastValueMarkStyles.show) {
-      const yAxis = pane.getAxisComponent()
+      const yAxis = widget.getAxisComponent()
       const dataList = chartStore.getDataList()
       const dataIndex = dataList.length - 1
       const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
@@ -53,7 +50,7 @@ export default class IndicatorLastValueView extends View<YAxis> {
               }
               text = formatFoldDecimal(formatThousands(text, thousandsSeparator), decimalFoldThreshold)
 
-              const isAlignLeft = yAxis?.isAlignLeft()
+              const isAlignLeft = widget.isAlignLeft()
               const align = isAlignLeft ? 'left' : 'right'
               this.createFigure({
                 name: 'text',

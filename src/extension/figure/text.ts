@@ -24,7 +24,7 @@ import { type RectAttrs, drawRect } from './rect'
 export function getTextRect (attrs: TextAttrs, styles: Partial<TextStyle>): RectAttrs {
   const { size = 12, paddingLeft = 0, paddingTop = 0, paddingRight = 0, paddingBottom = 0, weight = 'normal', family } = styles
   const { x, y, text, align = 'left', baseline = 'top', width: w, height: h } = attrs
-  const width = w ?? (paddingLeft + calcTextWidth(text, size, weight, family) + paddingRight)
+  const width = w ?? (paddingLeft + calcTextWidth(text, createFont(size, weight, family)) + paddingRight)
   const height = h ?? (paddingTop + size + paddingBottom)
   let startX: number
   switch (align) {

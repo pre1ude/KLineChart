@@ -33,6 +33,7 @@ export default class GridView extends View {
       const horizontalShow = horizontalStyles.show
       if (horizontalShow) {
         const yAxis = pane.getAxisComponent()
+        // todo check
         const attrs: LineAttrs[] = yAxis.getTicks().map(tick => ({
           coordinates: [
             { x: 0, y: tick.coord },

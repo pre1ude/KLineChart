@@ -19,15 +19,12 @@ import { isValid } from '../common/utils/typeChecks'
 
 import { FormatDateType } from '../Options'
 
-import type Axis from '../component/Axis'
-import type XAxis from '../component/XAxis'
-
 import type ChartStore from '../store/ChartStore'
 
 import CrosshairHorizontalLabelView from './CrosshairHorizontalLabelView'
 import { type TextAttrs } from '../extension/figure/text'
 
-export default class CrosshairVerticalLabelView extends CrosshairHorizontalLabelView<XAxis> {
+export default class CrosshairVerticalLabelView extends CrosshairHorizontalLabelView {
   override compare (crosshair: Crosshair): boolean {
     return isValid(crosshair.kLineData) && crosshair.dataIndex === crosshair.realDataIndex
   }
@@ -41,7 +38,7 @@ export default class CrosshairVerticalLabelView extends CrosshairHorizontalLabel
     return chartStore.getCustomApi().formatDate(chartStore.getTimeScaleStore().getDateTimeFormat(), timestamp!, 'YYYY-MM-DD HH:mm', FormatDateType.Crosshair)
   }
 
-  override getTextAttrs (text: string, textWidth: number, crosshair: Crosshair, bounding: Bounding, _axis: Axis, styles: StateTextStyle): TextAttrs {
+  override getTextAttrs (text: string, textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs {
     const x = crosshair.realX!
     let optimalX: number
     let align: CanvasTextAlign = 'center'

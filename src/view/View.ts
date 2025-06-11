@@ -16,28 +16,24 @@ import type Nullable from '../common/Nullable'
 import { type EventHandler, type EventName } from '../common/SyntheticEvent'
 import Eventful from '../common/Eventful'
 import { isValid } from '../common/utils/typeChecks'
-
 import type Figure from '../component/Figure'
-import type Axis from '../component/Axis'
 import { type FigureCreate } from '../component/Figure'
-
 import { getInnerFigureClass } from '../extension/figure/index'
-
 import type DrawWidget from '../widget/DrawWidget'
-import type DrawPane from '../pane/DrawPane'
+import type Pane from '../pane/Pane'
 
-export default abstract class View<C extends Axis = Axis> extends Eventful {
+export default abstract class View extends Eventful {
   /**
    * Parent widget
    */
-  private readonly _widget: DrawWidget<DrawPane<C>>
+  private readonly _widget: DrawWidget<Pane>
 
-  constructor (widget: DrawWidget<DrawPane<C>>) {
+  constructor (widget: DrawWidget<Pane>) {
     super()
     this._widget = widget
   }
 
-  getWidget (): DrawWidget<DrawPane<C>> { return this._widget }
+  getWidget (): DrawWidget<Pane> { return this._widget }
 
   protected createFigure (figure: FigureCreate, eventHandler?: EventHandler): Nullable<Figure> {
     const FigureClazz = getInnerFigureClass(figure.name)
