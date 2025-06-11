@@ -21,12 +21,12 @@ import { requestAnimationFrame, cancelAnimationFrame } from './common/utils/comp
 import { type AxisRange } from './component/Axis'
 import type Chart from './Chart'
 import type Pane from './pane/Pane'
-import { DrawPane, PaneIdConstants } from './pane/types'
+import { type DrawPane, PaneIdConstants } from './pane/types'
 import type Widget from './widget/Widget'
 import { WidgetNameConstants, REAL_SEPARATOR_HEIGHT } from './widget/types'
 import type DualYPane from './pane/DualYPane'
-import YAxisWidget from './widget/YAxisWidget'
-import XAxisWidget from './widget/XAxisWidget'
+import type YAxisWidget from './widget/YAxisWidget'
+import type XAxisWidget from './widget/XAxisWidget'
 
 interface EventTriggerWidgetInfo {
   pane: Nullable<Pane>

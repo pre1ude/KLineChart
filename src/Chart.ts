@@ -41,14 +41,14 @@ import CandlePane from './pane/CandlePane'
 import IndicatorPane from './pane/IndicatorPane'
 import XAxisPane from './pane/XAxisPane'
 import SeparatorPane from './pane/SeparatorPane'
-import { type PaneOptions, PanePosition, PANE_DEFAULT_HEIGHT, PaneIdConstants, DrawPane } from './pane/types'
+import { type PaneOptions, PanePosition, PANE_DEFAULT_HEIGHT, PaneIdConstants, type DrawPane } from './pane/types'
 import { type Indicator, type IndicatorCreate } from './component/Indicator'
 import { type Overlay, type OverlayCreate, type OverlayRemove } from './component/Overlay'
 import { getIndicatorClass } from './extension/indicator/index'
 // import { getStyles as getExtensionStyles } from './extension/styles/index'
 import Event from './Event'
-import XAxisWidget from './widget/XAxisWidget'
-import DualYPane from './pane/DualYPane'
+import type XAxisWidget from './widget/XAxisWidget'
+import type DualYPane from './pane/DualYPane'
 
 export enum DomPosition {
   Root = 'root',
@@ -589,8 +589,8 @@ export default class ChartImp implements Chart {
     } */
     // todo check
     // if (isValid(realStyles?.yAxis?.type)) {
-      this._candlePane?.getYLeftAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
-      this._candlePane?.getYRightAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
+    this._candlePane?.getYLeftAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
+    this._candlePane?.getYRightAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
     // }
     this.adjustPaneViewport(true, true, true, true, true)
   }

@@ -12,8 +12,7 @@
  * limitations under the License.
  */
 
-import type YAxis from '../component/YAxis'
-
+import type DualYPane from '../pane/DualYPane'
 import View from './View'
 
 export default class CandleLastPriceView extends View {
@@ -26,7 +25,7 @@ export default class CandleLastPriceView extends View {
     const lastPriceMarkStyles = priceMarkStyles.last
     const lastPriceMarkLineStyles = lastPriceMarkStyles.line
     if (priceMarkStyles.show && lastPriceMarkStyles.show && lastPriceMarkLineStyles.show) {
-      const yAxis = pane.getAxisComponent() as YAxis
+      const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
       const dataList = chartStore.getDataList()
       const data = dataList[dataList.length - 1]
       if (data != null) {
