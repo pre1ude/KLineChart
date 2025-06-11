@@ -15,10 +15,7 @@
 import { YAxisType } from '../common/Styles'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { isValid } from '../common/utils/typeChecks'
-
 import View from './View'
-
-import type YAxis from '../component/YAxis'
 import type YAxisWidget from '../widget/YAxisWidget'
 
 export default class CandleLastPriceLabelView extends View {
@@ -32,7 +29,7 @@ export default class CandleLastPriceLabelView extends View {
     const lastPriceMarkTextStyles = lastPriceMarkStyles.text
     if (priceMarkStyles.show && lastPriceMarkStyles.show && lastPriceMarkTextStyles.show) {
       const precision = chartStore.getPrecision()
-      const yAxis = pane.getAxisComponent() as YAxis
+      const yAxis = widget.getAxisComponent()
       const dataList = chartStore.getDataList()
       const data = dataList[dataList.length - 1]
       if (isValid(data)) {

@@ -13,6 +13,8 @@
  */
 
 import { type LineAttrs } from '../extension/figure/line'
+import type DualYPane from '../pane/DualYPane'
+import type XAxisWidget from '../widget/XAxisWidget'
 
 import View from './View'
 
@@ -32,8 +34,7 @@ export default class GridView extends View {
       const horizontalStyles = gridStyles.horizontal
       const horizontalShow = horizontalStyles.show
       if (horizontalShow) {
-        const yAxis = pane.getAxisComponent()
-        // todo check
+        const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
         const attrs: LineAttrs[] = yAxis.getTicks().map(tick => ({
           coordinates: [
             { x: 0, y: tick.coord },
@@ -49,7 +50,7 @@ export default class GridView extends View {
       const verticalStyles = gridStyles.vertical
       const verticalShow = verticalStyles.show
       if (verticalShow) {
-        const xAxis = chart.getXAxisPane().getAxisComponent()
+        const xAxis = (chart.getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
         const attrs: LineAttrs[] = xAxis.getTicks().map(tick => ({
           coordinates: [
             { x: tick.coord, y: 0 },
