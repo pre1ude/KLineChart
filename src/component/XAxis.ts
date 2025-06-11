@@ -18,7 +18,7 @@ import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { isValid } from '../common/utils/typeChecks'
 import { type FormatDate, FormatDateType } from '../Options'
 import AxisImp, { type AxisTemplate, type Axis, type AxisRange, type AxisTick, type AxisCreateTicksParams } from './Axis'
-import XAxisWidget from '../widget/XAxisWidget'
+import type XAxisWidget from '../widget/XAxisWidget'
 
 export type XAxis = Axis
 

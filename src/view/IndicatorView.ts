@@ -25,11 +25,13 @@ import type ChartStore from '../store/ChartStore'
 import { eachFigures, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
 
 import CandleBarView, { type CandleBarOptions } from './CandleBarView'
+import type DualYPane from '../pane/DualYPane'
+import type XAxisWidget from '../widget/XAxisWidget'
 
 export default class IndicatorView extends CandleBarView {
   override getCandleBarOptions (chartStore: ChartStore): Nullable<CandleBarOptions> {
     const pane = this.getWidget().getPane()
-    const yAxis = pane.getAxisComponent()
+    const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
     if (!yAxis.isInCandle()) {
       const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
       for (const indicator of indicators) {
@@ -65,8 +67,8 @@ export default class IndicatorView extends CandleBarView {
     const pane = widget.getPane()
     const chart = pane.getChart()
     const bounding = widget.getBounding()
-    const xAxis = chart.getXAxisPane().getAxisComponent()
-    const yAxis = pane.getAxisComponent()
+    const xAxis = (chart.getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
+    const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
     const chartStore = chart.getChartStore()
     const dataList = chartStore.getDataList()
     const timeScaleStore = chartStore.getTimeScaleStore()

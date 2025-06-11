@@ -14,8 +14,8 @@
 import type VisibleRange from '../common/VisibleRange'
 import { getPrecision, nice, round } from '../common/utils/number'
 import type Bounding from '../common/Bounding'
-import XAxisWidget from '../widget/XAxisWidget'
-import YAxisWidget from '../widget/YAxisWidget'
+import type XAxisWidget from '../widget/XAxisWidget'
+import type YAxisWidget from '../widget/YAxisWidget'
 
 export interface AxisTick {
   coord: number

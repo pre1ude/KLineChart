@@ -29,29 +29,33 @@ export default abstract class SingleWidgetPane extends Pane {
   private readonly _mainWidget: DrawWidget<SingleWidgetPane>
 
   private readonly _options: PickPartial<DeepRequired<Omit<PaneOptions, 'id' | 'height'>>, 'position'> = {
-    minHeight: PANE_MIN_HEIGHT, dragEnabled: true, gap: { top: 0.2, bottom: 0.1 }, axisOptions: {
+    minHeight: PANE_MIN_HEIGHT,
+    dragEnabled: true,
+    gap: { top: 0.2, bottom: 0.1 },
+    axisOptions: {
       name: 'default', scrollZoomEnabled: true
     }
   }
 
-  constructor(rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string, options: Omit<PaneOptions, 'id' | 'height'>) {
+  constructor (rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string, options: Omit<PaneOptions, 'id' | 'height'>) {
     super(rootContainer, afterElement, chart, id)
     const container = this.getContainer()
     this._mainWidget = this.createMainWidget(container, options)
     this.setOptions(options)
   }
 
-  setOptions(options: Omit<PaneOptions, 'id' | 'height'>) {
+  setOptions (options: Omit<PaneOptions, 'id' | 'height'>): this {
     merge(this._options, options)
     if (this.getId() === PaneIdConstants.X_AXIS) {
       const container = this.getMainWidget().getContainer()
       container.style.cursor = (options.axisOptions?.scrollZoomEnabled ?? true) ? 'ew-resize' : 'default'
     }
+    return this
   }
 
-  getOptions(): PickPartial<DeepRequired<Omit<PaneOptions, 'id' | 'height'>>, 'position'> { return this._options }
+  getOptions (): PickPartial<DeepRequired<Omit<PaneOptions, 'id' | 'height'>>, 'position'> { return this._options }
 
-  override setBounding(rootBounding: Partial<Bounding>, mainBounding?: Partial<Bounding>): this {
+  override setBounding (rootBounding: Partial<Bounding>, mainBounding?: Partial<Bounding>): this {
     merge(this.getBounding(), rootBounding)
     const contentBounding: Partial<Bounding> = {}
     if (isValid(rootBounding.height)) {
@@ -67,18 +71,18 @@ export default abstract class SingleWidgetPane extends Pane {
     return this
   }
 
-  getMainWidget(): DrawWidget<SingleWidgetPane> { return this._mainWidget }
+  getMainWidget (): DrawWidget<SingleWidgetPane> { return this._mainWidget }
 
-  override updateImp(level: UpdateLevel): void {
+  override updateImp (level: UpdateLevel): void {
     this._mainWidget.update(level)
   }
 
-  destroy(): void {
+  destroy (): void {
     super.destroy()
     this._mainWidget.destroy()
   }
 
-  override getImage(includeOverlay: boolean): HTMLCanvasElement {
+  override getImage (includeOverlay: boolean): HTMLCanvasElement {
     const { width, height } = this.getBounding()
     const canvas = createDom('canvas', {
       width: `${width}px`,
@@ -100,5 +104,5 @@ export default abstract class SingleWidgetPane extends Pane {
     return canvas
   }
 
-  protected abstract createMainWidget(container: HTMLElement, options: PaneOptions): DrawWidget<SingleWidgetPane>
+  protected abstract createMainWidget (container: HTMLElement, options: PaneOptions): DrawWidget<SingleWidgetPane>
 }

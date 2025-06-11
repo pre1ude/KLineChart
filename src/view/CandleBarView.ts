@@ -28,7 +28,7 @@ import ChildrenView from './ChildrenView'
 
 import { PaneIdConstants } from '../pane/types'
 import { isValid } from '../common/utils/typeChecks'
-import DualYPane from '../pane/DualYPane'
+import type DualYPane from '../pane/DualYPane'
 
 export interface CandleBarOptions {
   type: Exclude<CandleType, CandleType.Area>

@@ -21,8 +21,8 @@ import { type TextAttrs } from '../extension/figure/text'
 import { type AxisTick } from '../component/Axis'
 
 import View from './View'
-import XAxisWidget from '../widget/XAxisWidget'
-import YAxisWidget from '../widget/YAxisWidget'
+import type XAxisWidget from '../widget/XAxisWidget'
+import type YAxisWidget from '../widget/YAxisWidget'
 
 export default abstract class AxisView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {

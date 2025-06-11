@@ -24,7 +24,7 @@ import { type TextAttrs } from '../extension/figure/text'
 import type ChartStore from '../store/ChartStore'
 
 import View from './View'
-import YAxisWidget from '../widget/YAxisWidget'
+import type YAxisWidget from '../widget/YAxisWidget'
 
 export default class CrosshairHorizontalLabelView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {

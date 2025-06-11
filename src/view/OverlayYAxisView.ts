@@ -26,7 +26,7 @@ import { type OverlayPrecision, type OverlayFigure } from '../component/Overlay'
 import type Overlay from '../component/Overlay'
 import { type EventOverlayInfo } from '../store/OverlayStore'
 import OverlayView from './OverlayView'
-import YAxisWidget from '../widget/YAxisWidget'
+import type YAxisWidget from '../widget/YAxisWidget'
 
 export default class OverlayYAxisView extends OverlayView {
   override coordinateToPointTimestampDataIndexFlag (): boolean {

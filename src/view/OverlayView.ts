@@ -34,8 +34,8 @@ import { PaneIdConstants } from '../pane/types'
 import type DrawWidget from '../widget/DrawWidget'
 import type Pane from '../pane/Pane'
 import View from './View'
-import XAxisWidget from '../widget/XAxisWidget'
-import YAxisWidget from '../widget/YAxisWidget'
+import type XAxisWidget from '../widget/XAxisWidget'
+import type YAxisWidget from '../widget/YAxisWidget'
 
 export default class OverlayView extends View {
   constructor (widget: DrawWidget<Pane>) {

@@ -23,6 +23,7 @@ import ChildrenView from './ChildrenView'
 
 import { lineTo } from '../extension/figure/line'
 import type Nullable from '../common/Nullable'
+import type DualYPane from '../pane/DualYPane'
 
 export default class CandleAreaView extends ChildrenView {
   private readonly _ripplePoint = this.createFigure({
@@ -52,7 +53,7 @@ export default class CandleAreaView extends ChildrenView {
     const dataList = chart.getDataList()
     const lastDataIndex = dataList.length - 1
     const bounding = widget.getBounding()
-    const yAxis = pane.getAxisComponent()
+    const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
     const styles = chart.getStyles().candle.area
     const coordinates: Coordinate[] = []
     let minY = Number.MAX_SAFE_INTEGER
