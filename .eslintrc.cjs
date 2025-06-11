@@ -5,6 +5,7 @@ module.exports = {
   },
   extends: 'love',
   rules: {
+    '@typescript-eslint/strict-boolean-expressions': 'off',
     "@typescript-eslint/no-non-null-assertion": "off"
   }
 }

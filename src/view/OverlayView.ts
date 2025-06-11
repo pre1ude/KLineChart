@@ -36,6 +36,7 @@ import type Pane from '../pane/Pane'
 import View from './View'
 import type XAxisWidget from '../widget/XAxisWidget'
 import type YAxisWidget from '../widget/YAxisWidget'
+import { WidgetNameConstants } from '../widget/types'
 
 export default class OverlayView extends View {
   constructor (widget: DrawWidget<Pane>) {
@@ -372,7 +373,15 @@ export default class OverlayView extends View {
     const pane = widget.getPane()
     const paneId = pane.getId()
     const chart = pane.getChart()
-    const yAxis = widget.getAxisComponent()
+    const widgetName = widget.getName()
+    let yAxis: Nullable<YAxis>
+    if (widgetName === WidgetNameConstants.MAIN) {
+      yAxis = pane.getYLeftAxisWidget().getAxisComponent()
+    } else if (widgetName === WidgetNameConstants.Y_AXIS) {
+      yAxis = widget.getAxisComponent()
+    } else {
+      yAxis = null
+    }
     const xAxisWidget = chart.getXAxisPane().getMainWidget() as XAxisWidget
     const xAxis = xAxisWidget.getAxisComponent()
     const bounding = widget.getBounding()

@@ -366,19 +366,21 @@ export default class ChartImp implements Chart {
       yRightAxisWidth = totalWidth
     }
     if (isOutside) {
-      mainWidth = totalWidth - yLeftAxisWidth - yRightAxisWidth
       if (yAxisStyles.position === YAxisPosition.Left) {
         yLeftAxisLeft = 0
         mainLeft = yLeftAxisWidth
+        yRightAxisWidth = 0
       } else if (yAxisStyles.position === YAxisPosition.Right) {
         yRightAxisLeft = totalWidth - yRightAxisWidth
         mainLeft = 0
+        yLeftAxisWidth = 0
       } else {
         // both
         yLeftAxisLeft = 0
         mainLeft = yLeftAxisWidth
         yRightAxisLeft = totalWidth - yRightAxisWidth
       }
+      mainWidth = totalWidth - yLeftAxisWidth - yRightAxisWidth
     } else {
       mainWidth = totalWidth
       mainLeft = 0
@@ -466,11 +468,17 @@ export default class ChartImp implements Chart {
     const forceAdjustYAxis = shouldForceAdjustYAxis ?? false
     if (adjustYAxis || forceAdjustYAxis) {
       this._drawPanes.forEach(pane => {
-        const leftAdjust = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent().buildTicks(forceAdjustYAxis)
-        const rightAdjust = (pane as DualYPane).getYRightAxisWidget().getAxisComponent().buildTicks(forceAdjustYAxis)
+        let adjust = false
+        if (pane.getId() === PaneIdConstants.X_AXIS) {
+          adjust = (pane.getMainWidget() as XAxisWidget).getAxisComponent().buildTicks(forceAdjustYAxis)
+        } else {
+          const leftAdjust = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent().buildTicks(forceAdjustYAxis)
+          const rightAdjust = (pane as DualYPane).getYRightAxisWidget().getAxisComponent().buildTicks(forceAdjustYAxis)
+          adjust = leftAdjust || rightAdjust
+        }
 
         if (!forceMeasureWidth) {
-          forceMeasureWidth = leftAdjust || rightAdjust
+          forceMeasureWidth = adjust
         }
       })
     }
@@ -571,9 +579,7 @@ export default class ChartImp implements Chart {
         width: Math.floor(this._chartContainer.clientWidth),
         height: Math.floor(this._chartContainer.clientHeight),
         left: 0,
-        top: 0,
-        right: 0,
-        bottom: 0
+        top: 0
       }
     }
     return null

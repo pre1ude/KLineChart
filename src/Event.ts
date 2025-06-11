@@ -21,12 +21,13 @@ import { requestAnimationFrame, cancelAnimationFrame } from './common/utils/comp
 import { type AxisRange } from './component/Axis'
 import type Chart from './Chart'
 import type Pane from './pane/Pane'
-import { type DrawPane, PaneIdConstants } from './pane/types'
+import { PaneIdConstants } from './pane/types'
 import type Widget from './widget/Widget'
 import { WidgetNameConstants, REAL_SEPARATOR_HEIGHT } from './widget/types'
 import type DualYPane from './pane/DualYPane'
 import type YAxisWidget from './widget/YAxisWidget'
 import type XAxisWidget from './widget/XAxisWidget'
+import { isPointInBounding } from './common/Bounding'
 
 interface EventTriggerWidgetInfo {
   pane: Nullable<Pane>
@@ -594,72 +595,50 @@ export default class Event implements EventHandler {
     return false
   }
 
-  private _findWidgetByEvent (event: MouseTouchEvent): EventTriggerWidgetInfo {
-    const { x, y } = event
+  private _findWidgetByEvent (e: MouseTouchEvent): EventTriggerWidgetInfo {
     const separatorPanes = this._chart.getAllSeparatorPanes()
     const separatorSize = this._chart.getChartStore().getStyles().separator.size
     for (const [, pane] of separatorPanes) {
       const bounding = pane.getBounding()
-      const top = bounding.top - Math.round((REAL_SEPARATOR_HEIGHT - separatorSize) / 2)
+      const separatorBounding = {
+        left: bounding.left,
+        top: bounding.top - Math.round((REAL_SEPARATOR_HEIGHT - separatorSize) / 2),
+        width: bounding.width,
+        height: REAL_SEPARATOR_HEIGHT
+      }
       if (
-        x >= bounding.left && x <= bounding.left + bounding.width &&
-        y >= top && y <= top + REAL_SEPARATOR_HEIGHT
+        isPointInBounding(separatorBounding, e)
       ) {
         return { pane, widget: pane.getWidget() }
       }
     }
 
     const drawPanes = this._chart.getAllDrawPanes()
+    const targetPane = drawPanes.find(pane => isPointInBounding(pane.getBounding(), e))
 
-    let pane: Nullable<DrawPane> = null
-    for (const p of drawPanes) {
-      const bounding = p.getBounding()
-      if (
-        x >= bounding.left && x <= bounding.left + bounding.width &&
-        y >= bounding.top && y <= bounding.top + bounding.height
-      ) {
-        pane = p
-        break
+    if (!targetPane) {
+      return { pane: null, widget: null }
+    }
+    const mainWidget = targetPane.getMainWidget()
+    if (isPointInBounding(mainWidget.getBounding(), e)) {
+      return { pane: targetPane, widget: mainWidget }
+    }
+
+    if (targetPane.getId() !== PaneIdConstants.X_AXIS) {
+      const dualPane = targetPane as DualYPane
+
+      const yLeftAxisWidget = dualPane.getYLeftAxisWidget()
+      if (yLeftAxisWidget && isPointInBounding(yLeftAxisWidget.getBounding(), e)) {
+        return { pane: targetPane, widget: yLeftAxisWidget }
+      }
+
+      const yRightAxisWidget = dualPane.getYRightAxisWidget()
+      if (yRightAxisWidget && isPointInBounding(yRightAxisWidget.getBounding(), e)) {
+        return { pane: targetPane, widget: yRightAxisWidget }
       }
     }
-    let widget: Nullable<Widget> = null
-    if (pane !== null) {
-      if (widget === null) {
-        const mainWidget = pane.getMainWidget()
-        const mainBounding = mainWidget.getBounding()
-        if (
-          x >= mainBounding.left && x <= mainBounding.left + mainBounding.width &&
-          y >= mainBounding.top && y <= mainBounding.top + mainBounding.height
-        ) {
-          widget = mainWidget
-        }
-      }
-      if (widget === null) {
-        const yAxisWidget = (pane as DualYPane).getYLeftAxisWidget()
-        if (yAxisWidget !== null) {
-          const yAxisBounding = yAxisWidget.getBounding()
-          if (
-            x >= yAxisBounding.left && x <= yAxisBounding.left + yAxisBounding.width &&
-            y >= yAxisBounding.top && y <= yAxisBounding.top + yAxisBounding.height
-          ) {
-            widget = yAxisWidget
-          }
-        }
-      }
-      if (widget === null) {
-        const yAxisWidget = (pane as DualYPane).getYRightAxisWidget()
-        if (yAxisWidget !== null) {
-          const yAxisBounding = yAxisWidget.getBounding()
-          if (
-            x >= yAxisBounding.left && x <= yAxisBounding.left + yAxisBounding.width &&
-            y >= yAxisBounding.top && y <= yAxisBounding.top + yAxisBounding.height
-          ) {
-            widget = yAxisWidget
-          }
-        }
-      }
-    }
-    return { pane, widget }
+
+    return { pane: targetPane, widget: null }
   }
 
   private _makeWidgetEvent (event: MouseTouchEvent, widget: Nullable<Widget>): MouseTouchEvent {

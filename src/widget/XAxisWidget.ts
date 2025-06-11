@@ -26,7 +26,11 @@ import type { PaneAxisOptions, PaneOptions } from '../pane/types'
 // ? XAxisWidget can only be used in SingleWidgetPane
 export default class XAxisWidget extends DrawWidget<SingleWidgetPane> {
   private _axis: XAxis
-  private _axisOptions: PaneAxisOptions
+  private _axisOptions: PaneAxisOptions = {
+    name: 'default',
+    scrollZoomEnabled: true
+  }
+
   private readonly _xAxisView = new XAxisView(this)
   private readonly _overlayXAxisView = new OverlayXAxisView(this)
   private readonly _crosshairVerticalLabelView = new CrosshairVerticalLabelView(this)
