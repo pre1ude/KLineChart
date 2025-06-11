@@ -35,7 +35,13 @@ interface YAxisOptions {
 
 export default class YAxisWidget extends DrawWidget<DualYPane> {
   private _axis: YAxis
-  private _axisOptions: YAxisOptions
+  private _axisOptions: YAxisOptions = {
+    name: 'default',
+    scrollZoomEnabled: true,
+    position: YAxisPosition.Right,
+    type: YAxisType.Normal
+  }
+
   private readonly _yAxisView = new YAxisView(this)
   private readonly _candleLastPriceLabelView = new CandleLastPriceLabelView(this)
   private readonly _indicatorLastValueView = new IndicatorLastValueView(this)

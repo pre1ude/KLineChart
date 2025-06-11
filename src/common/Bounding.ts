@@ -18,9 +18,7 @@ export default interface Bounding {
   width: number
   height: number
   left: number
-  right: number
   top: number
-  bottom: number
 }
 
 export function createDefaultBounding (bounding?: Partial<Bounding>): Bounding {
@@ -28,12 +26,17 @@ export function createDefaultBounding (bounding?: Partial<Bounding>): Bounding {
     width: 0,
     height: 0,
     left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0
+    top: 0
   }
   if (isValid(bounding)) {
     merge(defaultBounding, bounding)
   }
   return defaultBounding
+}
+
+export function isPointInBounding (bounding: Bounding, { x, y }: { x: number, y: number }): boolean {
+  return x >= bounding.left &&
+           x <= bounding.left + bounding.width &&
+           y >= bounding.top &&
+           y <= bounding.top + bounding.height
 }
