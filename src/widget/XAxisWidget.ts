@@ -38,11 +38,11 @@ export default class XAxisWidget extends DrawWidget<SingleWidgetPane> {
     this.setOptions(options.axisOptions ?? { name: 'default', scrollZoomEnabled: true })
   }
 
-  getOptions() {
+  getOptions (): PaneAxisOptions {
     return this._axisOptions
   }
 
-  setOptions(options: PaneAxisOptions) {
+  setOptions (options: PaneAxisOptions): void {
     const name = options?.name
     if (
       (this._axisOptions.name !== name && isString(name)) ||

@@ -12,10 +12,10 @@
  * limitations under the License.
  */
 
-import { YAxisPosition, YAxisType } from "../common/Styles"
-import CandlePane from "./CandlePane"
-import IndicatorPane from "./IndicatorPane"
-import XAxisPane from "./XAxisPane"
+import { type YAxisPosition, type YAxisType } from '../common/Styles'
+import type CandlePane from './CandlePane'
+import type IndicatorPane from './IndicatorPane'
+import type XAxisPane from './XAxisPane'
 
 export interface PaneGap {
   top?: number
@@ -26,7 +26,7 @@ export interface PaneAxisOptionItem {
   type?: YAxisType
 }
 
-export type PaneAxisOptions = {
+export interface PaneAxisOptions {
   name?: string
   scrollZoomEnabled?: boolean
   YAxis?: {

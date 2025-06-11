@@ -16,7 +16,7 @@ import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/u
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import { eachFigures, type IndicatorFigure, type IndicatorFigureStyle } from '../component/Indicator'
 import View from './View'
-import YAxisWidget from '../widget/YAxisWidget'
+import type YAxisWidget from '../widget/YAxisWidget'
 
 export default class IndicatorLastValueView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {

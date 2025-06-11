@@ -20,7 +20,7 @@ import Widget from './Widget'
 
 import { createDom } from '../common/utils/dom'
 import { getPixelRatio } from '../common/utils/canvas'
-import Pane from '../pane/Pane'
+import type Pane from '../pane/Pane'
 
 export default abstract class DrawWidget<P extends Pane> extends Widget<P> {
   private readonly _mainCanvas: Canvas

@@ -36,7 +36,7 @@ import IndicatorTooltipView from './IndicatorTooltipView'
 import { type TooltipIcon } from '../store/TooltipStore'
 
 import { i18n } from '../extension/i18n/index'
-import DualYPane from '../pane/DualYPane'
+import type DualYPane from '../pane/DualYPane'
 
 export default class CandleTooltipView extends IndicatorTooltipView {
   override drawImp (ctx: CanvasRenderingContext2D): void {

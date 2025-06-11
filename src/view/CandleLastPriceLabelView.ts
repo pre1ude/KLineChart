@@ -19,7 +19,7 @@ import { isValid } from '../common/utils/typeChecks'
 import View from './View'
 
 import type YAxis from '../component/YAxis'
-import YAxisWidget from '../widget/YAxisWidget'
+import type YAxisWidget from '../widget/YAxisWidget'
 
 export default class CandleLastPriceLabelView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {

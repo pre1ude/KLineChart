@@ -27,8 +27,8 @@ import type IndicatorImp from '../component/Indicator'
 import { eachFigures } from '../component/Indicator'
 import { type TooltipIcon } from '../store/TooltipStore'
 import View from './View'
-import DualYPane from '../pane/DualYPane'
-import XAxisWidget from '../widget/XAxisWidget'
+import type DualYPane from '../pane/DualYPane'
+import type XAxisWidget from '../widget/XAxisWidget'
 
 export default class IndicatorTooltipView extends View {
   private readonly _boundIconClickEvent = (currentIcon: TooltipIcon) => () => {

@@ -24,7 +24,7 @@ import { WidgetNameConstants, REAL_SEPARATOR_HEIGHT } from './types'
 
 import type SeparatorPane from '../pane/SeparatorPane'
 
-import type AxisPane from '../pane/DualYPane'
+import type DualYPane from '../pane/DualYPane'
 
 export default class SeparatorWidget extends Widget<SeparatorPane> {
   private _dragFlag = false
@@ -81,15 +81,15 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
   private _pressedTouchMouseMoveEvent (event: MouseTouchEvent): boolean {
     const dragDistance = event.pageY - this._dragStartY
     const currentPane = this.getPane()
-    const topPane = currentPane.getTopPane()
-    const bottomPane = currentPane.getBottomPane()
+    const topPane = currentPane.getTopPane() as DualYPane
+    const bottomPane = currentPane.getBottomPane() as DualYPane
     const isUpDrag = dragDistance < 0
     if (
       topPane !== null &&
       bottomPane?.getOptions().dragEnabled
     ) {
-      let reducedPane: AxisPane
-      let increasedPane: AxisPane
+      let reducedPane: DualYPane
+      let increasedPane: DualYPane
       let startDragReducedPaneHeight: number
       let startDragIncreasedPaneHeight: number
       if (isUpDrag) {
@@ -119,7 +119,7 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
 
   private _mouseEnterEvent (): boolean {
     const pane = this.getPane()
-    const bottomPane = pane.getBottomPane()
+    const bottomPane = pane.getBottomPane() as DualYPane
     if (bottomPane?.getOptions().dragEnabled ?? false) {
       const chart = pane.getChart()
       const styles = chart.getStyles().separator

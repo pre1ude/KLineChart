@@ -22,14 +22,14 @@ import IndicatorLastValueView from '../view/IndicatorLastValueView'
 import OverlayYAxisView from '../view/OverlayYAxisView'
 import CrosshairHorizontalLabelView from '../view/CrosshairHorizontalLabelView'
 import { YAxisPosition, YAxisType } from '../common/Styles'
-import { PaneIdConstants, PaneOptions } from '../pane/types'
+import { PaneIdConstants, type PaneOptions } from '../pane/types'
 import { isString, isValid } from '../common/utils/typeChecks'
 import { getYAxisClass } from '../extension/y-axis'
 
 interface YAxisOptions {
   name?: string
   scrollZoomEnabled?: boolean
-  position: Exclude<YAxisPosition, 'both'>,
+  position: Exclude<YAxisPosition, 'both'>
   type: YAxisType
 }
 
@@ -56,11 +56,11 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     })
   }
 
-  getOptions() {
+  getOptions (): YAxisOptions {
     return this._axisOptions
   }
 
-  setOptions(options: YAxisOptions) {
+  setOptions (options: YAxisOptions): void {
     const name = options?.name
     if (
       (this._axisOptions.name !== name && isString(name)) ||
