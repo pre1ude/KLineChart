@@ -19,16 +19,14 @@ import { isString } from '../common/utils/typeChecks'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { createFont } from '../common/utils/canvas'
 
-import type Axis from '../component/Axis'
-import type YAxis from '../component/YAxis'
-
 import { type TextAttrs } from '../extension/figure/text'
 
 import type ChartStore from '../store/ChartStore'
 
 import View from './View'
+import YAxisWidget from '../widget/YAxisWidget'
 
-export default class CrosshairHorizontalLabelView<C extends Axis = YAxis> extends View<C> {
+export default class CrosshairHorizontalLabelView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
@@ -41,12 +39,11 @@ export default class CrosshairHorizontalLabelView<C extends Axis = YAxis> extend
         const directionStyles = this.getDirectionStyles(styles)
         const textStyles = directionStyles.text
         if (directionStyles.show && textStyles.show) {
-          const axis = pane.getAxisComponent()
-          const text = this.getText(crosshair, chartStore, axis)
+          const text = this.getText(crosshair, chartStore)
           ctx.font = createFont(textStyles.size, textStyles.weight, textStyles.family)
           this.createFigure({
             name: 'text',
-            attrs: this.getTextAttrs(text, ctx.measureText(text).width, crosshair, bounding, axis, textStyles),
+            attrs: this.getTextAttrs(text, ctx.measureText(text).width, crosshair, bounding, textStyles),
             styles: textStyles
           })?.draw(ctx)
         }
@@ -62,11 +59,13 @@ export default class CrosshairHorizontalLabelView<C extends Axis = YAxis> extend
     return styles.horizontal
   }
 
-  protected getText (crosshair: Crosshair, chartStore: ChartStore, axis: Axis): string {
-    const yAxis = axis as unknown as YAxis
-    const value = axis.convertFromPixel(crosshair.y!)
+  protected getText (crosshair: Crosshair, chartStore: ChartStore): string {
+    const widget = this.getWidget() as unknown as YAxisWidget
+    const axisType = widget.getAxisType()
+    const yAxis = widget.getAxisComponent()
+    const value = yAxis.convertFromPixel(crosshair.y!)
     let text: string
-    if (yAxis.getType() === YAxisType.Percentage) {
+    if (axisType === YAxisType.Percentage) {
       const fromData = chartStore.getVisibleFirstData()
       text = `${((value - fromData!.close) / fromData!.close * 100).toFixed(2)}%`
     } else {
@@ -91,9 +90,9 @@ export default class CrosshairHorizontalLabelView<C extends Axis = YAxis> extend
     return formatFoldDecimal(formatThousands(text, chartStore.getThousandsSeparator()), chartStore.getDecimalFoldThreshold())
   }
 
-  protected getTextAttrs (text: string, _textWidth: number, crosshair: Crosshair, bounding: Bounding, axis: Axis, _styles: StateTextStyle): TextAttrs {
-    const yAxis = axis as unknown as YAxis
-    const isAlignLeft = yAxis?.isAlignLeft()
+  protected getTextAttrs (text: string, _textWidth: number, crosshair: Crosshair, bounding: Bounding, _styles: StateTextStyle): TextAttrs {
+    const widget = this.getWidget() as unknown as YAxisWidget
+    const isAlignLeft = widget.isAlignLeft()
     const align = isAlignLeft ? 'left' : 'right'
 
     return { x: bounding.width * (1 - +isAlignLeft), y: crosshair.y!, text, align, baseline: 'middle' }

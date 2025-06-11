@@ -28,35 +28,27 @@ import type Precision from './common/Precision'
 import type VisibleRange from './common/VisibleRange'
 import { type CustomApi, LayoutChildType, type Options } from './Options'
 import Animation from './common/Animation'
-
 import { createId } from './common/utils/id'
 import { createDom } from './common/utils/dom'
 import { getPixelRatio } from './common/utils/canvas'
-import { isString, isArray, isValid, merge, isNumber } from './common/utils/typeChecks'
+import { isString, isArray, isValid, isNumber } from './common/utils/typeChecks'
 import { logWarn } from './common/utils/logger'
 import { binarySearchNearest } from './common/utils/number'
 import { LoadDataType } from './common/LoadDataCallback'
-
 import ChartStore from './store/ChartStore'
 import { SCALE_MULTIPLIER } from './store/TimeScaleStore'
-
 import CandlePane from './pane/CandlePane'
 import IndicatorPane from './pane/IndicatorPane'
 import XAxisPane from './pane/XAxisPane'
-import type DrawPane from './pane/DrawPane'
 import SeparatorPane from './pane/SeparatorPane'
-
-import { type PaneOptions, PanePosition, PANE_DEFAULT_HEIGHT, PaneIdConstants } from './pane/types'
-
-import type Axis from './component/Axis'
-
+import { type PaneOptions, PanePosition, PANE_DEFAULT_HEIGHT, PaneIdConstants, DrawPane } from './pane/types'
 import { type Indicator, type IndicatorCreate } from './component/Indicator'
 import { type Overlay, type OverlayCreate, type OverlayRemove } from './component/Overlay'
-
 import { getIndicatorClass } from './extension/indicator/index'
-import { getStyles as getExtensionStyles } from './extension/styles/index'
-
+// import { getStyles as getExtensionStyles } from './extension/styles/index'
 import Event from './Event'
+import XAxisWidget from './widget/XAxisWidget'
+import DualYPane from './pane/DualYPane'
 
 export enum DomPosition {
   Root = 'root',
@@ -142,7 +134,7 @@ export default class ChartImp implements Chart {
   private _chartContainer: HTMLElement
   private readonly _chartEvent: Event
   private readonly _chartStore: ChartStore
-  private _drawPanes: DrawPane[] = []
+  private _drawPanes: (DrawPane)[] = []
   private _candlePane: Nullable<CandlePane>
   private _xAxisPane: XAxisPane
   private readonly _separatorPanes = new Map<DrawPane, SeparatorPane>()
@@ -193,8 +185,11 @@ export default class ChartImp implements Chart {
       switch (child.type) {
         case LayoutChildType.Candle: {
           if (!candlePaneInitialized) {
-            const paneOptions = child.options ?? {}
-            merge(paneOptions, { id: PaneIdConstants.CANDLE })
+            const opts = child.options ?? {}
+            const paneOptions = {
+              ...opts,
+              id: PaneIdConstants.CANDLE
+            }
             this._candlePane = this._createPane<CandlePane>(CandlePane, PaneIdConstants.CANDLE, paneOptions)
             const content = child.content ?? []
             content.forEach(v => {
@@ -263,6 +258,7 @@ export default class ChartImp implements Chart {
     if (!isValid(pane)) {
       pane = new DrawPaneClass(this._chartContainer, null, this, id, options ?? {})
     }
+    // insert pane and auto add SeparatorPane
     let newIndex: number
     if (isNumber(index)) {
       this._drawPanes.splice(index, 0, pane)
@@ -304,7 +300,8 @@ export default class ChartImp implements Chart {
   private _measurePaneHeight (): void {
     const totalHeight = Math.floor(this._container.clientHeight)
     const separatorSize = this._chartStore.getStyles().separator.size
-    const xAxisHeight = this._xAxisPane.getAxisComponent().getAutoSize()
+    const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
+    const xAxisHeight = xAxisWidget.getAxisComponent().getAutoSize()
     let paneExcludeXAxisHeight = totalHeight - xAxisHeight - this._separatorPanes.size * separatorSize
     if (paneExcludeXAxisHeight < 0) {
       paneExcludeXAxisHeight = 0
@@ -343,48 +340,58 @@ export default class ChartImp implements Chart {
     })
   }
 
+  // todo read the pane axisOptions
+  // todo deprecated partial of yAxis style
   private _measurePaneWidth (): void {
     const totalWidth = Math.floor(this._container.clientWidth)
     const styles = this._chartStore.getStyles()
     const yAxisStyles = styles.yAxis
-    const isYAxisLeft = yAxisStyles.position === YAxisPosition.Left
     const isOutside = !yAxisStyles.inside
     let mainWidth = 0
-    let yAxisWidth = 0
-    let yAxisLeft = 0
+    let yLeftAxisWidth = 0
+    let yRightAxisWidth = 0
+    let yLeftAxisLeft = 0
+    let yRightAxisLeft = 0
     let mainLeft = 0
     this._drawPanes.forEach(pane => {
       if (pane.getId() !== PaneIdConstants.X_AXIS) {
-        yAxisWidth = Math.max(yAxisWidth, pane.getAxisComponent().getAutoSize())
+        yLeftAxisWidth = Math.max(yLeftAxisWidth, (pane as DualYPane).getYLeftAxisWidget()?.getAxisComponent().getAutoSize() ?? 0)
+        yRightAxisWidth = Math.max(yRightAxisWidth, (pane as DualYPane).getYRightAxisWidget()?.getAxisComponent().getAutoSize() ?? 0)
       }
     })
-    if (yAxisWidth > totalWidth) {
-      yAxisWidth = totalWidth
+    if (yLeftAxisWidth > totalWidth) {
+      yLeftAxisWidth = totalWidth
+    }
+    if (yRightAxisWidth > totalWidth) {
+      yRightAxisWidth = totalWidth
     }
     if (isOutside) {
-      mainWidth = totalWidth - yAxisWidth
-      if (isYAxisLeft) {
-        yAxisLeft = 0
-        mainLeft = yAxisWidth
-      } else {
-        yAxisLeft = totalWidth - yAxisWidth
+      mainWidth = totalWidth - yLeftAxisWidth - yRightAxisWidth
+      if (yAxisStyles.position === YAxisPosition.Left) {
+        yLeftAxisLeft = 0
+        mainLeft = yLeftAxisWidth
+      } else if (yAxisStyles.position === YAxisPosition.Right) {
+        yRightAxisLeft = totalWidth - yRightAxisWidth
         mainLeft = 0
+      } else {
+        // both
+        yLeftAxisLeft = 0
+        mainLeft = yLeftAxisWidth
+        yRightAxisLeft = totalWidth - yRightAxisWidth
       }
     } else {
       mainWidth = totalWidth
       mainLeft = 0
-      if (isYAxisLeft) {
-        yAxisLeft = 0
-      } else {
-        yAxisLeft = totalWidth - yAxisWidth
-      }
+      yLeftAxisLeft = 0
+      yRightAxisLeft = totalWidth - yRightAxisWidth
     }
 
     this._chartStore.getTimeScaleStore().setTotalBarSpace(mainWidth)
 
     const paneBounding = { width: totalWidth }
     const mainBounding = { width: mainWidth, left: mainLeft }
-    const yAxisBounding = { width: yAxisWidth, left: yAxisLeft }
+    const yLeftAxisBounding = { width: yLeftAxisWidth, left: yLeftAxisLeft }
+    const yRightAxisBounding = { width: yRightAxisWidth, left: yRightAxisLeft }
     const separatorFill = styles.separator.fill
     let separatorBounding: Partial<Bounding>
     if (isOutside && !separatorFill) {
@@ -394,7 +401,7 @@ export default class ChartImp implements Chart {
     }
     this._drawPanes.forEach((pane) => {
       this._separatorPanes.get(pane)?.setBounding(separatorBounding)
-      pane.setBounding(paneBounding, mainBounding, yAxisBounding)
+      pane.setBounding(paneBounding, mainBounding, yLeftAxisBounding, yRightAxisBounding)
     })
   }
 
@@ -411,6 +418,7 @@ export default class ChartImp implements Chart {
           shouldAdjust = true
           shouldMeasureHeight = true
         }
+        // todo check this
         if (isString(options.axisOptions?.name) || isValid(options.gap)) {
           shouldAdjust = true
         }
@@ -422,7 +430,7 @@ export default class ChartImp implements Chart {
     }
   }
 
-  getDrawPaneById (paneId: string): Nullable<DrawPane<Axis>> {
+  getDrawPaneById (paneId: string): Nullable<DrawPane> {
     if (paneId === PaneIdConstants.CANDLE) {
       return this._candlePane
     }
@@ -458,9 +466,11 @@ export default class ChartImp implements Chart {
     const forceAdjustYAxis = shouldForceAdjustYAxis ?? false
     if (adjustYAxis || forceAdjustYAxis) {
       this._drawPanes.forEach(pane => {
-        const adjust = pane.getAxisComponent().buildTicks(forceAdjustYAxis)
+        const leftAdjust = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent().buildTicks(forceAdjustYAxis)
+        const rightAdjust = (pane as DualYPane).getYRightAxisWidget().getAxisComponent().buildTicks(forceAdjustYAxis)
+
         if (!forceMeasureWidth) {
-          forceMeasureWidth = adjust
+          forceMeasureWidth = leftAdjust || rightAdjust
         }
       })
     }
@@ -468,7 +478,9 @@ export default class ChartImp implements Chart {
       this._measurePaneWidth()
     }
     if (shouldUpdate ?? false) {
-      this._xAxisPane.getAxisComponent().buildTicks(true)
+      const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
+      const xAxis = xAxisWidget.getAxisComponent()
+      xAxis.buildTicks(true)
       this.updatePane(UpdateLevel.All)
     }
   }
@@ -523,7 +535,9 @@ export default class ChartImp implements Chart {
             return pane.getMainWidget().getContainer()
           }
           case DomPosition.YAxis: {
-            return pane.getYAxisWidget()?.getContainer() ?? null
+            // todo TBD
+            return null
+            // return pane.getYAxisWidget()?.getContainer() ?? null
           }
         }
       }
@@ -546,7 +560,9 @@ export default class ChartImp implements Chart {
             return pane.getMainWidget().getBounding()
           }
           case DomPosition.YAxis: {
-            return pane.getYAxisWidget()?.getBounding() ?? null
+            // todo TBD
+            return null
+            // return pane.getYAxisWidget()?.getBounding() ?? null
           }
         }
       }
@@ -565,15 +581,17 @@ export default class ChartImp implements Chart {
 
   setStyles (styles: string | DeepPartial<Styles>): void {
     this._chartStore.setOptions({ styles })
-    let realStyles: Nullable<DeepPartial<Styles>>
+    /* let realStyles: Nullable<DeepPartial<Styles>>
     if (isString(styles)) {
       realStyles = getExtensionStyles(styles)
     } else {
       realStyles = styles
-    }
-    if (isValid(realStyles?.yAxis?.type)) {
-      this._candlePane?.getAxisComponent().setAutoCalcTickFlag(true)
-    }
+    } */
+    // todo check
+    // if (isValid(realStyles?.yAxis?.type)) {
+      this._candlePane?.getYLeftAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
+      this._candlePane?.getYRightAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
+    // }
     this.adjustPaneViewport(true, true, true, true, true)
   }
 
@@ -605,7 +623,8 @@ export default class ChartImp implements Chart {
 
   setTimezone (timezone: string): void {
     this._chartStore.setOptions({ timezone })
-    this._xAxisPane.getAxisComponent().buildTicks(true)
+    const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
+    xAxisWidget.getAxisComponent().buildTicks(true)
     this._xAxisPane.update(UpdateLevel.Drawer)
   }
 
@@ -717,10 +736,14 @@ export default class ChartImp implements Chart {
     }
 
     let paneId = paneOptions?.id
-    const currentPane = this.getDrawPaneById(paneId ?? '')
+    const currentPane = this.getDrawPaneById(paneId ?? '') as DualYPane
     if (currentPane !== null) {
       this._chartStore.getIndicatorStore().addInstance(indicator, paneId ?? '', isStack ?? false).then(_ => {
-        this._setPaneOptions(paneOptions ?? {}, currentPane.getAxisComponent().buildTicks(true) ?? false)
+        const forceShouldAdjustLeft = currentPane.getYLeftAxisWidget()?.getAxisComponent().buildTicks(true)
+        const forceShouldAdjustRight = currentPane.getYRightAxisWidget()?.getAxisComponent().buildTicks(true)
+        const forceShouldAdjust = forceShouldAdjustLeft || forceShouldAdjustRight
+
+        this._setPaneOptions(paneOptions ?? {}, forceShouldAdjust ?? false)
       }).catch(_ => {})
     } else {
       paneId ??= createId(PaneIdConstants.INDICATOR)
@@ -935,8 +958,10 @@ export default class ChartImp implements Chart {
         const timeScaleStore = this._chartStore.getTimeScaleStore()
         const bounding = pane.getBounding()
         const ps = new Array<Partial<Point>>().concat(points)
-        const xAxis = this._xAxisPane.getAxisComponent()
-        const yAxis = pane.getAxisComponent()
+        const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
+        const xAxis = xAxisWidget.getAxisComponent()
+        // todo take left
+        const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
         coordinates = ps.map(point => {
           const coordinate: Partial<Coordinate> = {}
           let dataIndex = point.dataIndex
@@ -966,8 +991,10 @@ export default class ChartImp implements Chart {
         const timeScaleStore = this._chartStore.getTimeScaleStore()
         const bounding = pane.getBounding()
         const cs = new Array<Partial<Coordinate>>().concat(coordinates)
-        const xAxis = this._xAxisPane.getAxisComponent()
-        const yAxis = pane.getAxisComponent()
+        const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
+        const xAxis = xAxisWidget.getAxisComponent()
+        // todo take left
+        const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
         points = cs.map(coordinate => {
           const point: Partial<Point> = {}
           if (isNumber(coordinate.x)) {

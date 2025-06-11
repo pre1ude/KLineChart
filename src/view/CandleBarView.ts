@@ -28,6 +28,7 @@ import ChildrenView from './ChildrenView'
 
 import { PaneIdConstants } from '../pane/types'
 import { isValid } from '../common/utils/typeChecks'
+import DualYPane from '../pane/DualYPane'
 
 export interface CandleBarOptions {
   type: Exclude<CandleType, CandleType.Area>
@@ -56,7 +57,9 @@ export default class CandleBarView extends ChildrenView {
         }
         halfOhlcSize = Math.floor(halfOhlcSize / 2)
       }
-      const yAxis = pane.getAxisComponent()
+      // todo use left
+      const widget = (pane as DualYPane).getYLeftAxisWidget()
+      const yAxis = widget.getAxisComponent()
       this.eachChildren((data, barSpace) => {
         const { data: kLineData, x } = data
         if (isValid(kLineData)) {

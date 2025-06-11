@@ -21,20 +21,16 @@ import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/u
 import { isValid, isObject, isString, isNumber } from '../common/utils/typeChecks'
 import { createFont } from '../common/utils/canvas'
 import type Coordinate from '../common/Coordinate'
-
 import { type CustomApi } from '../Options'
-
-import type YAxis from '../component/YAxis'
-
 import { type Indicator, type IndicatorFigure, type IndicatorFigureStyle, type IndicatorTooltipData } from '../component/Indicator'
 import type IndicatorImp from '../component/Indicator'
 import { eachFigures } from '../component/Indicator'
-
 import { type TooltipIcon } from '../store/TooltipStore'
-
 import View from './View'
+import DualYPane from '../pane/DualYPane'
+import XAxisWidget from '../widget/XAxisWidget'
 
-export default class IndicatorTooltipView extends View<YAxis> {
+export default class IndicatorTooltipView extends View {
   private readonly _boundIconClickEvent = (currentIcon: TooltipIcon) => () => {
     const pane = this.getWidget().getPane()
     pane.getChart().getChartStore().getActionStore().execute(ActionType.OnTooltipIconClick, { ...currentIcon })
@@ -305,6 +301,8 @@ export default class IndicatorTooltipView extends View<YAxis> {
       const widget = this.getWidget()
       const pane = widget.getPane()
       const chartStore = pane.getChart().getChartStore()
+      const xAxis = (pane.getChart().getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
+      const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
       const { name: customName, calcParamsText: customCalcParamsText, values: customLegends, icons: customIcons } = indicator.createTooltipDataSource({
         kLineDataList: dataList,
         indicator,
@@ -312,8 +310,8 @@ export default class IndicatorTooltipView extends View<YAxis> {
         bounding: widget.getBounding(),
         crosshair,
         defaultStyles: styles,
-        xAxis: pane.getChart().getXAxisPane().getAxisComponent(),
-        yAxis: pane.getAxisComponent()
+        xAxis,
+        yAxis
       })
       if (isString(customName) && tooltipStyles.showName) {
         tooltipData.name = customName

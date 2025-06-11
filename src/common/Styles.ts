@@ -323,7 +323,8 @@ export type XAxisStyle = AxisStyle
 
 export enum YAxisPosition {
   Left = 'left',
-  Right = 'right'
+  Right = 'right',
+  Both = 'both'
 }
 
 export enum YAxisType {
@@ -333,7 +334,7 @@ export enum YAxisType {
 }
 
 export interface YAxisStyle extends AxisStyle {
-  type: YAxisType
+  // type: YAxisType
   position: YAxisPosition
   inside: boolean
   reverse: boolean
@@ -666,7 +667,7 @@ function getDefaultXAxisStyle (): XAxisStyle {
 
 function getDefaultYAxisStyle (): YAxisStyle {
   const style = getDefaultXAxisStyle() as YAxisStyle
-  style.type = YAxisType.Normal
+  // style.type = YAxisType.Normal
   style.position = YAxisPosition.Right
   style.inside = false
   style.reverse = false

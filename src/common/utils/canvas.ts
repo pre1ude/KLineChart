@@ -47,13 +47,13 @@ export function createFont (size?: number, weight?: string | number, family?: st
  * @param text
  * @returns {number}
  */
-export function calcTextWidth (text: string, size?: number, weight?: string | number, family?: string): number {
+export function calcTextWidth (text: string, font: string): number {
   if (!isValid(measureCtx)) {
     const canvas = document.createElement('canvas')
     const pixelRatio = getPixelRatio(canvas)
     measureCtx = canvas.getContext('2d')!
     measureCtx.scale(pixelRatio, pixelRatio)
   }
-  measureCtx.font = createFont(size, weight, family)
+  measureCtx.font = font
   return Math.round(measureCtx.measureText(text).width)
 }

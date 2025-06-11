@@ -12,20 +12,16 @@
  * limitations under the License.
  */
 
-import { YAxisType, YAxisPosition, CandleType } from '../common/Styles'
+import { YAxisType, CandleType } from '../common/Styles'
 import type Bounding from '../common/Bounding'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import { index10, log10 } from '../common/utils/number'
-import { calcTextWidth } from '../common/utils/canvas'
+import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
-
 import AxisImp, { type AxisTemplate, type Axis, type AxisRange, type AxisTick, type AxisCreateTicksParams } from './Axis'
-
 import { type IndicatorFigure } from './Indicator'
-
-import type DrawPane from '../pane/DrawPane'
-
 import { PaneIdConstants } from '../pane/types'
+import YAxisWidget from '../widget/YAxisWidget'
 
 interface FiguresResult {
   figures: IndicatorFigure[]
@@ -33,23 +29,22 @@ interface FiguresResult {
 }
 
 export interface YAxis extends Axis {
-  isAlignLeft: () => boolean
   isInCandle: () => boolean
 }
 
-export type YAxisConstructor = new (parent: DrawPane<AxisImp>) => YAxisImp
+export type YAxisConstructor = new (parent: YAxisWidget) => YAxisImp
 
 export default abstract class YAxisImp extends AxisImp implements YAxis {
   protected calcRange (): AxisRange {
-    const parent = this.getParent()
+    const parent = this.getParent().getPane()
     const chart = parent.getChart()
     const chartStore = chart.getChartStore()
     let min = Number.MAX_SAFE_INTEGER
     let max = Number.MIN_SAFE_INTEGER
     const figuresResultList: FiguresResult[] = []
     let shouldOhlc = false
-    let specifyMin = Number.MAX_SAFE_INTEGER
-    let specifyMax = Number.MIN_SAFE_INTEGER
+    let indicatorMin = Number.MAX_SAFE_INTEGER
+    let indicatorMax = Number.MIN_SAFE_INTEGER
     let indicatorPrecision = Number.MAX_SAFE_INTEGER
     const indicators = chartStore.getIndicatorStore().getInstances(parent.getId())
     indicators.forEach(indicator => {
@@ -58,10 +53,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       }
       indicatorPrecision = Math.min(indicatorPrecision, indicator.precision)
       if (isNumber(indicator.minValue)) {
-        specifyMin = Math.min(specifyMin, indicator.minValue)
+        indicatorMin = Math.min(indicatorMin, indicator.minValue)
       }
       if (isNumber(indicator.maxValue)) {
-        specifyMax = Math.max(specifyMax, indicator.maxValue)
+        indicatorMax = Math.max(indicatorMax, indicator.maxValue)
       }
       figuresResultList.push({
         figures: indicator.figures ?? [],
@@ -87,6 +82,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const candleStyles = chart.getStyles().candle
     const isArea = candleStyles.type === CandleType.Area
     const areaValueKey = candleStyles.area.value
+    // 用于蜡烛图数据
     const shouldCompareHighLow = (inCandle && !isArea) || (!inCandle && shouldOhlc)
     visibleDataList.forEach(({ dataIndex, data }) => {
       if (isValid(data)) {
@@ -115,8 +111,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     })
 
     if (min !== Number.MAX_SAFE_INTEGER && max !== Number.MIN_SAFE_INTEGER) {
-      min = Math.min(specifyMin, min)
-      max = Math.max(specifyMax, max)
+      min = Math.min(indicatorMin, min)
+      max = Math.max(indicatorMax, max)
     } else {
       min = 0
       max = 10
@@ -148,13 +144,13 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       min === max ||
       Math.abs(min - max) < dif
     ) {
-      const minCheck = specifyMin === min
-      const maxCheck = specifyMax === max
+      const minCheck = indicatorMin === min
+      const maxCheck = indicatorMax === max
       min = minCheck ? min : (maxCheck ? min - 8 * dif : min - 4 * dif)
       max = maxCheck ? max : (minCheck ? max + 8 * dif : max + 4 * dif)
     }
 
-    const height = this.getParent().getYAxisWidget()?.getBounding().height ?? 0
+    const height = this.getParent()?.getBounding().height ?? 0
     const { gap: paneGap } = parent.getOptions()
     let topRate = paneGap?.top ?? 0.2
     if (topRate >= 1) {
@@ -194,7 +190,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
    * @private
    */
   _innerConvertToPixel (value: number): number {
-    const height = this.getParent().getYAxisWidget()?.getBounding().height ?? 0
+    // todo should get the pane height
+    const height = this.getParent()?.getBounding().height ?? 0
     const { from, range } = this.getRange()
     const rate = (value - from) / range
     return this.isReverse() ? Math.round(rate * height) : Math.round((1 - rate) * height)
@@ -205,7 +202,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
    * @return {boolean}
    */
   isInCandle (): boolean {
-    return this.getParent().getId() === PaneIdConstants.CANDLE
+    const pane = this.getParent().getPane()
+    return pane.getId() === PaneIdConstants.CANDLE
   }
 
   /**
@@ -213,14 +211,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
    * @return {YAxisType}
    */
   getType (): YAxisType {
-    if (this.isInCandle()) {
-      return this.getParent().getChart().getStyles().yAxis.type
-    }
-    return YAxisType.Normal
-  }
-
-  getPosition (): string {
-    return this.getParent().getChart().getStyles().yAxis.position
+    const yAxisWidget = this.getParent() as YAxisWidget
+    return yAxisWidget.getOptions().type
   }
 
   /**
@@ -229,27 +221,16 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
    */
   isReverse (): boolean {
     if (this.isInCandle()) {
-      return this.getParent().getChart().getStyles().yAxis.reverse
+      const chart = this.getParent().getPane().getChart()
+      return chart.getStyles().yAxis.reverse
     }
     return false
   }
 
-  /**
-   * 是否左对齐
-   * @return {boolean}
-   */
-  isAlignLeft (): boolean {
-    const yAxisStyles = this.getParent().getChart().getStyles().yAxis
-    const inside = yAxisStyles.inside
-    return (
-      (yAxisStyles.position === YAxisPosition.Left && inside) ||
-      (yAxisStyles.position === YAxisPosition.Right && !inside)
-    )
-  }
-
   protected optimalTicks (ticks: AxisTick[]): AxisTick[] {
-    const pane = this.getParent()
-    const height = pane.getYAxisWidget()?.getBounding().height ?? 0
+    const widget = this.getParent()
+    const pane = widget.getPane()
+    const height = widget?.getBounding().height ?? 0
     const chartStore = pane.getChart().getChartStore()
     const customApi = chartStore.getCustomApi()
     const optimalTicks: AxisTick[] = []
@@ -306,7 +287,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   }
 
   override getAutoSize (): number {
-    const pane = this.getParent()
+    const pane = this.getParent().getPane()
     const chart = pane.getChart()
     const styles = chart.getStyles()
     const yAxisStyles = styles.yAxis
@@ -326,8 +307,9 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       }
       if (yAxisStyles.tickText.show) {
         let textWidth = 0
+        // todo check
         this.getTicks().forEach(tick => {
-          textWidth = Math.max(textWidth, calcTextWidth(tick.text, yAxisStyles.tickText.size, yAxisStyles.tickText.weight, yAxisStyles.tickText.family))
+          textWidth = Math.max(textWidth, calcTextWidth(tick.text, createFont(yAxisStyles.tickText.size, yAxisStyles.tickText.weight, yAxisStyles.tickText.family)))
         })
         yAxisWidth += (yAxisStyles.tickText.marginStart + yAxisStyles.tickText.marginEnd + textWidth)
       }
@@ -373,9 +355,11 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         crosshairStyles.horizontal.text.borderSize * 2 +
         calcTextWidth(
           valueText,
-          crosshairStyles.horizontal.text.size,
-          crosshairStyles.horizontal.text.weight,
-          crosshairStyles.horizontal.text.family
+          createFont(
+            crosshairStyles.horizontal.text.size,
+            crosshairStyles.horizontal.text.weight,
+            crosshairStyles.horizontal.text.family
+          )
         )
       )
     }
@@ -383,17 +367,17 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   }
 
   getSelfBounding (): Bounding {
-    return this.getParent().getYAxisWidget()!.getBounding()
+    return this.getParent().getBounding()
   }
 
   convertFromPixel (pixel: number): number {
-    const height = this.getParent().getYAxisWidget()?.getBounding().height ?? 0
+    const height = this.getParent().getBounding().height ?? 0
     const { from, range } = this.getRange()
     const rate = this.isReverse() ? pixel / height : 1 - pixel / height
     const value = rate * range + from
     switch (this.getType()) {
       case YAxisType.Percentage: {
-        const fromData = this.getParent().getChart().getChartStore().getVisibleFirstData()
+        const fromData = this.getParent().getPane().getChart().getChartStore().getVisibleFirstData()
         if (isValid(fromData) && isNumber(fromData.close)) {
           return fromData.close * value / 100 + fromData.close
         }
@@ -420,7 +404,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     let v = value
     switch (this.getType()) {
       case YAxisType.Percentage: {
-        const fromData = this.getParent().getChart().getChartStore().getVisibleFirstData()
+        const fromData = this.getParent().getPane().getChart().getChartStore().getVisibleFirstData()
         if (isValid(fromData) && isNumber(fromData.close)) {
           v = (value - fromData.close) / fromData.close * 100
         }
@@ -438,7 +422,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   }
 
   convertToNicePixel (value: number): number {
-    const height = this.getParent().getYAxisWidget()?.getBounding().height ?? 0
+    const height = this.getParent()?.getBounding().height ?? 0
     const pixel = this.convertToPixel(value)
     return Math.round(Math.max(height * 0.05, Math.min(pixel, height * 0.98)))
   }

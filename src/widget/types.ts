@@ -12,6 +12,7 @@
  * limitations under the License.
  */
 
+// todo it is infact widgetType not widgetName
 export const WidgetNameConstants = {
   MAIN: 'main',
   X_AXIS: 'xAxis',

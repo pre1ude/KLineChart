@@ -21,18 +21,17 @@ import { getPixelRatio } from '../common/utils/canvas'
 
 import type Chart from '../Chart'
 
-import type DrawPane from './DrawPane'
 import Pane from './Pane'
 
 import SeparatorWidget from '../widget/SeparatorWidget'
 
 export default class SeparatorPane extends Pane {
-  private _topPane: DrawPane
-  private _bottomPane: DrawPane
+  private _topPane: Pane
+  private _bottomPane: Pane
 
   private readonly _separatorWidget: SeparatorWidget
 
-  constructor (rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string, topPane: DrawPane, bottomPane: DrawPane) {
+  constructor (rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string, topPane: Pane, bottomPane: Pane) {
     super(rootContainer, afterElement, chart, id)
     this.getContainer().style.overflow = ''
     this._topPane = topPane
@@ -45,20 +44,20 @@ export default class SeparatorPane extends Pane {
     return this
   }
 
-  getTopPane (): DrawPane {
+  getTopPane (): Pane {
     return this._topPane
   }
 
-  setTopPane (pane: DrawPane): Pane {
+  setTopPane (pane: Pane): Pane {
     this._topPane = pane
     return this
   }
 
-  getBottomPane (): DrawPane {
+  getBottomPane (): Pane {
     return this._bottomPane
   }
 
-  setBottomPane (pane: DrawPane): Pane {
+  setBottomPane (pane: Pane): Pane {
     this._bottomPane = pane
     return this
   }

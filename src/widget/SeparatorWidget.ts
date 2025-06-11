@@ -24,7 +24,7 @@ import { WidgetNameConstants, REAL_SEPARATOR_HEIGHT } from './types'
 
 import type SeparatorPane from '../pane/SeparatorPane'
 
-import type AxisPane from '../pane/DrawPane'
+import type AxisPane from '../pane/DualYPane'
 
 export default class SeparatorWidget extends Widget<SeparatorPane> {
   private _dragFlag = false

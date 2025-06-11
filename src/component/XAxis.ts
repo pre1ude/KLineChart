@@ -14,22 +14,19 @@
 
 import type Nullable from '../common/Nullable'
 import type Bounding from '../common/Bounding'
-import { calcTextWidth } from '../common/utils/canvas'
+import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { isValid } from '../common/utils/typeChecks'
-
 import { type FormatDate, FormatDateType } from '../Options'
-
 import AxisImp, { type AxisTemplate, type Axis, type AxisRange, type AxisTick, type AxisCreateTicksParams } from './Axis'
-
-import type DrawPane from '../pane/DrawPane'
+import XAxisWidget from '../widget/XAxisWidget'
 
 export type XAxis = Axis
 
-export type XAxisConstructor = new (parent: DrawPane<AxisImp>) => XAxisImp
+export type XAxisConstructor = new (parent: XAxisWidget) => XAxisImp
 
 export default abstract class XAxisImp extends AxisImp {
   protected calcRange (): AxisRange {
-    const chartStore = this.getParent().getChart().getChartStore()
+    const chartStore = this.getParent().getPane().getChart().getChartStore()
     const { from, to } = chartStore.getTimeScaleStore().getVisibleRange()
     const af = from
     const at = to - 1
@@ -40,7 +37,7 @@ export default abstract class XAxisImp extends AxisImp {
   }
 
   protected optimalTicks (ticks: AxisTick[]): AxisTick[] {
-    const chart = this.getParent().getChart()
+    const chart = this.getParent().getPane().getChart()
     const chartStore = chart.getChartStore()
     const formatDate = chartStore.getCustomApi().formatDate
     const optimalTicks: AxisTick[] = []
@@ -49,7 +46,7 @@ export default abstract class XAxisImp extends AxisImp {
     if (tickLength > 0) {
       const dateTimeFormat = chartStore.getTimeScaleStore().getDateTimeFormat()
       const tickTextStyles = chart.getStyles().xAxis.tickText
-      const defaultLabelWidth = calcTextWidth('00-00 00:00', tickTextStyles.size, tickTextStyles.weight, tickTextStyles.family)
+      const defaultLabelWidth = calcTextWidth('00-00 00:00', createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.family))
       const pos = parseInt(ticks[0].value as string, 10)
       const x = this.convertToPixel(pos)
       let tickCountDif = 1
@@ -113,7 +110,7 @@ export default abstract class XAxisImp extends AxisImp {
   }
 
   override getAutoSize (): number {
-    const styles = this.getParent().getChart().getStyles()
+    const styles = this.getParent().getPane().getChart().getStyles()
     const xAxisStyles = styles.xAxis
     const height = xAxisStyles.size
     if (height !== 'auto') {
@@ -149,27 +146,27 @@ export default abstract class XAxisImp extends AxisImp {
   }
 
   getSelfBounding (): Bounding {
-    return this.getParent().getMainWidget().getBounding()
+    return this.getParent().getBounding()
   }
 
   convertTimestampFromPixel (pixel: number): Nullable<number> {
-    const timeScaleStore = this.getParent().getChart().getChartStore().getTimeScaleStore()
+    const timeScaleStore = this.getParent().getPane().getChart().getChartStore().getTimeScaleStore()
     const dataIndex = timeScaleStore.coordinateToDataIndex(pixel)
     return timeScaleStore.dataIndexToTimestamp(dataIndex)
   }
 
   convertTimestampToPixel (timestamp: number): number {
-    const timeScaleStore = this.getParent().getChart().getChartStore().getTimeScaleStore()
+    const timeScaleStore = this.getParent().getPane().getChart().getChartStore().getTimeScaleStore()
     const dataIndex = timeScaleStore.timestampToDataIndex(timestamp)
     return timeScaleStore.dataIndexToCoordinate(dataIndex)
   }
 
   convertFromPixel (pixel: number): number {
-    return this.getParent().getChart().getChartStore().getTimeScaleStore().coordinateToDataIndex(pixel)
+    return this.getParent().getPane().getChart().getChartStore().getTimeScaleStore().coordinateToDataIndex(pixel)
   }
 
   convertToPixel (value: number): number {
-    return this.getParent().getChart().getChartStore().getTimeScaleStore().dataIndexToCoordinate(value)
+    return this.getParent().getPane().getChart().getChartStore().getTimeScaleStore().dataIndexToCoordinate(value)
   }
 
   static extend (template: AxisTemplate): XAxisConstructor {

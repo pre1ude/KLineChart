@@ -16,14 +16,13 @@ import type Bounding from '../common/Bounding'
 import { UpdateLevel } from '../common/Updater'
 import Canvas from '../common/Canvas'
 
-import type DrawPane from '../pane/DrawPane'
-
 import Widget from './Widget'
 
 import { createDom } from '../common/utils/dom'
 import { getPixelRatio } from '../common/utils/canvas'
+import Pane from '../pane/Pane'
 
-export default abstract class DrawWidget<P extends DrawPane = DrawPane> extends Widget<P> {
+export default abstract class DrawWidget<P extends Pane> extends Widget<P> {
   private readonly _mainCanvas: Canvas
   private readonly _overlayCanvas: Canvas
 

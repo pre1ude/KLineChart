@@ -20,18 +20,15 @@ import { type OverlayStyle } from '../common/Styles'
 import { type CustomApi } from '../Options'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { isNumber } from '../common/utils/typeChecks'
-
-import type Axis from '../component/Axis'
 import type XAxis from '../component/XAxis'
 import type YAxis from '../component/YAxis'
 import { type OverlayPrecision, type OverlayFigure } from '../component/Overlay'
 import type Overlay from '../component/Overlay'
-
 import { type EventOverlayInfo } from '../store/OverlayStore'
-
 import OverlayView from './OverlayView'
+import YAxisWidget from '../widget/YAxisWidget'
 
-export default class OverlayYAxisView<C extends Axis = YAxis> extends OverlayView<C> {
+export default class OverlayYAxisView extends OverlayView {
   override coordinateToPointTimestampDataIndexFlag (): boolean {
     return false
   }
@@ -70,10 +67,12 @@ export default class OverlayYAxisView<C extends Axis = YAxis> extends OverlayVie
     thousandsSeparator: string,
     decimalFoldThreshold: number,
     _xAxis: Nullable<XAxis>,
-    yAxis: Nullable<YAxis>,
+    _yAxis: Nullable<YAxis>,
     clickInstanceInfo: EventOverlayInfo
   ): OverlayFigure[] {
     const figures: OverlayFigure[] = []
+    const widget = this.getWidget() as unknown as YAxisWidget
+
     if (
       overlay.needDefaultYAxisFigure &&
       overlay.id === clickInstanceInfo.instance?.id &&
@@ -82,7 +81,7 @@ export default class OverlayYAxisView<C extends Axis = YAxis> extends OverlayVie
       let topY = Number.MAX_SAFE_INTEGER
       let bottomY = Number.MIN_SAFE_INTEGER
 
-      const isAlignLeft = yAxis?.isAlignLeft() ?? false
+      const isAlignLeft = widget.isAlignLeft() ?? false
       const align = isAlignLeft ? 'left' : 'right'
       coordinates.forEach((coordinate, index) => {
         const point = overlay.points[index]
@@ -113,6 +112,8 @@ export default class OverlayYAxisView<C extends Axis = YAxis> extends OverlayVie
     xAxis: Nullable<XAxis>,
     yAxis: Nullable<YAxis>
   ): OverlayFigure | OverlayFigure[] {
-    return overlay.createYAxisFigures?.({ overlay, coordinates, bounding, barSpace, precision, thousandsSeparator, decimalFoldThreshold, dateTimeFormat, defaultStyles, xAxis, yAxis }) ?? []
+    const widget = this.getWidget() as unknown as YAxisWidget
+    const isAlignLeft = widget.isAlignLeft()
+    return overlay.createYAxisFigures?.({ overlay, coordinates, bounding, barSpace, precision, thousandsSeparator, decimalFoldThreshold, dateTimeFormat, defaultStyles, xAxis, yAxis, isAlignLeft }) ?? []
   }
 }

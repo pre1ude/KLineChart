@@ -19,16 +19,17 @@ import { type LineAttrs } from '../extension/figure/line'
 import { type TextAttrs } from '../extension/figure/text'
 
 import { type AxisTick } from '../component/Axis'
-import type Axis from '../component/Axis'
 
 import View from './View'
+import XAxisWidget from '../widget/XAxisWidget'
+import YAxisWidget from '../widget/YAxisWidget'
 
-export default abstract class AxisView<C extends Axis = Axis> extends View<C> {
+export default abstract class AxisView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {
-    const widget = this.getWidget()
+    const widget = this.getWidget() as XAxisWidget | YAxisWidget
     const pane = widget.getPane()
     const bounding = widget.getBounding()
-    const axis = pane.getAxisComponent()
+    const axis = widget.getAxisComponent()
     const styles: AxisStyle = this.getAxisStyles(pane.getChart().getStyles())
     if (styles.show) {
       if (styles.axisLine.show) {
@@ -38,6 +39,8 @@ export default abstract class AxisView<C extends Axis = Axis> extends View<C> {
           styles: styles.axisLine
         })?.draw(ctx)
       }
+      // todo should know if it is in indicator pane
+      // todo the ticks need generate accord the axisOptions
       const ticks = axis.getTicks()
       if (styles.tickLine.show) {
         const lines = this.createTickLines(ticks, bounding, styles)

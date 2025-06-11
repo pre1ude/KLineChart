@@ -12,11 +12,10 @@
  * limitations under the License.
  */
 import type VisibleRange from '../common/VisibleRange'
-
-import type DrawPane from '../pane/DrawPane'
-
 import { getPrecision, nice, round } from '../common/utils/number'
 import type Bounding from '../common/Bounding'
+import XAxisWidget from '../widget/XAxisWidget'
+import YAxisWidget from '../widget/YAxisWidget'
 
 export interface AxisTick {
   coord: number
@@ -48,7 +47,7 @@ export interface AxisTemplate {
 }
 
 export default abstract class AxisImp implements Pick<AxisTemplate, 'createTicks'>, Axis {
-  private readonly _parent: DrawPane<AxisImp>
+  private readonly _parent: XAxisWidget | YAxisWidget
 
   private _range: AxisRange = { from: 0, to: 0, range: 0, realFrom: 0, realTo: 0, realRange: 0 }
   private _prevRange: AxisRange = { from: 0, to: 0, range: 0, realFrom: 0, realTo: 0, realRange: 0 }
@@ -56,11 +55,12 @@ export default abstract class AxisImp implements Pick<AxisTemplate, 'createTicks
 
   private _autoCalcTickFlag = true
 
-  constructor (parent: DrawPane<AxisImp>) {
+  // todo parent should be the axisWidget
+  constructor (parent: XAxisWidget | YAxisWidget) {
     this._parent = parent
   }
 
-  getParent (): DrawPane<AxisImp> { return this._parent }
+  getParent (): XAxisWidget | YAxisWidget { return this._parent }
 
   buildTicks (force: boolean): boolean {
     if (this._autoCalcTickFlag) {
@@ -84,7 +84,7 @@ export default abstract class AxisImp implements Pick<AxisTemplate, 'createTicks
   }
 
   getScrollZoomEnabled (): boolean {
-    return this.getParent().getOptions().axisOptions.scrollZoomEnabled ?? true
+    return this.getParent().getOptions().scrollZoomEnabled ?? true
   }
 
   setRange (range: AxisRange): void {

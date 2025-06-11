@@ -19,7 +19,7 @@ import type Precision from '../common/Precision'
 import type Crosshair from '../common/Crosshair'
 import {
   type Styles, type CandleStyle, type TooltipLegend, type TooltipLegendChild, TooltipShowType, CandleTooltipRectPosition,
-  type CandleTooltipCustomCallbackData, YAxisPosition, PolygonType
+  type CandleTooltipCustomCallbackData, PolygonType
 } from '../common/Styles'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { createFont } from '../common/utils/canvas'
@@ -36,6 +36,7 @@ import IndicatorTooltipView from './IndicatorTooltipView'
 import { type TooltipIcon } from '../store/TooltipStore'
 
 import { i18n } from '../extension/i18n/index'
+import DualYPane from '../pane/DualYPane'
 
 export default class CandleTooltipView extends IndicatorTooltipView {
   override drawImp (ctx: CanvasRenderingContext2D): void {
@@ -46,7 +47,10 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     const crosshair = chartStore.getTooltipStore().getCrosshair()
     if (isValid(crosshair.kLineData)) {
       const bounding = widget.getBounding()
-      const yAxisBounding = pane.getYAxisWidget()!.getBounding()
+      // todo check
+      const yLeftAxisBounding = (pane as DualYPane).getYLeftAxisWidget().getBounding()
+      const yRightAxisBounding = (pane as DualYPane).getYRightAxisWidget().getBounding()
+      // const yAxisBounding = pane.getYAxisWidget()!.getBounding()
       const dataList = chartStore.getDataList()
       const precision = chartStore.getPrecision()
       const locale = chartStore.getLocale()
@@ -67,7 +71,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
         const isDrawIndicatorTooltip = this.isDrawTooltip(crosshair, indicatorStyles.tooltip)
         this._drawRectTooltip(
           ctx, dataList, indicators,
-          bounding, yAxisBounding,
+          bounding, yLeftAxisBounding, yRightAxisBounding,
           crosshair, precision,
           dateTimeFormat, locale, customApi, thousandsSeparator, decimalFoldThreshold,
           isDrawCandleTooltip, isDrawIndicatorTooltip,
@@ -105,7 +109,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
         const isDrawCandleTooltip = this.isDrawTooltip(crosshair, candleStyles.tooltip)
         this._drawRectTooltip(
           ctx, dataList, indicators,
-          bounding, yAxisBounding,
+          bounding, yLeftAxisBounding, yRightAxisBounding,
           crosshair, precision, dateTimeFormat,
           locale, customApi, thousandsSeparator, decimalFoldThreshold,
           isDrawCandleTooltip, false, top, styles
@@ -121,7 +125,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
         const isDrawIndicatorTooltip = this.isDrawTooltip(crosshair, indicatorStyles.tooltip)
         this._drawRectTooltip(
           ctx, dataList, indicators,
-          bounding, yAxisBounding,
+          bounding, yLeftAxisBounding, yRightAxisBounding,
           crosshair, precision, dateTimeFormat,
           locale, customApi, thousandsSeparator, decimalFoldThreshold,
           false, isDrawIndicatorTooltip, top, styles
@@ -190,7 +194,8 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     dataList: KLineData[],
     indicators: Indicator[],
     bounding: Bounding,
-    yAxisBounding: Bounding,
+    // yAxisBounding: Bounding,
+    yLeftAxisBounding: Bounding, yRightAxisBounding: Bounding,
     crosshair: Crosshair,
     precision: Precision,
     dateTimeFormat: Intl.DateTimeFormat,
@@ -300,13 +305,13 @@ export default class CandleTooltipView extends IndicatorTooltipView {
         } else {
           if (isLeft) {
             rectX = rectOffsetLeft + offsetLeft
-            if (styles.yAxis.inside && styles.yAxis.position === YAxisPosition.Left) {
-              rectX += yAxisBounding.width
+            if (styles.yAxis.inside) {
+              rectX += yLeftAxisBounding.width
             }
           } else {
             rectX = bounding.width - rectOffsetRight - rectWidth - offsetRight
-            if (styles.yAxis.inside && styles.yAxis.position === YAxisPosition.Right) {
-              rectX -= yAxisBounding.width
+            if (styles.yAxis.inside) {
+              rectX -= yRightAxisBounding.width
             }
           }
         }
