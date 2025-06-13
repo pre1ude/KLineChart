@@ -7,7 +7,7 @@ import terser from '@rollup/plugin-terser'
 import fileSize from 'rollup-plugin-filesize'
 import progress from 'rollup-plugin-progress'
 
-import { resolvePath, getVersion } from './utils.js' 
+import { resolvePath, getVersion } from './utils.js'
 
 const version = getVersion()
 
@@ -23,7 +23,7 @@ function createInputConfig ({ input, replaceValues }) {
   return {
     input,
     plugins: [
-      typescript(),
+      typescript(isDev ? { compilerOptions: {target: "es2018"}} : undefined),
       eslint({
         throwOnError: true
       }),
@@ -65,14 +65,14 @@ function createOutputConfig ({
      * Licensed under Apache License 2.0 https://www.apache.org/licenses/LICENSE-2.0
      */`.trim(),
   }
-  
+
   if (!!name) {
     config.name = name
   }
   return config
 }
 
-export { 
+export {
   createInputConfig,
   createOutputConfig,
   version,
