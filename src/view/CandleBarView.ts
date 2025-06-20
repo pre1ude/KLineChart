@@ -20,7 +20,7 @@ import { CandleType, type CandleBarColor, type RectStyle, PolygonType } from '..
 import type ChartStore from '../store/ChartStore'
 import { type FigureCreate } from '../component/Figure'
 import { type RectAttrs } from '../extension/figure/rect'
-import ChildrenView from './ChildrenView'
+import View from './View'
 import { PaneIdConstants } from '../pane/types'
 import { isValid } from '../common/utils/typeChecks'
 import type DualYPane from '../pane/DualYPane'
@@ -31,7 +31,7 @@ export interface CandleBarOptions {
   styles: CandleBarColor
 }
 
-export default class CandleBarView extends ChildrenView {
+export default class CandleBarView extends View {
   private readonly _boundCandleBarClickEvent = (data: VisibleData) => () => {
     this.getWidget().getPane().getChart().getChartStore().getActionStore().execute(ActionType.OnCandleBarClick, data)
     return false
@@ -56,7 +56,10 @@ export default class CandleBarView extends ChildrenView {
       // todo use left
       const widget = (pane as DualYPane).getYLeftAxisWidget()
       const yAxis = widget.getAxisComponent()
-      this.eachChildren((data, barSpace) => {
+      const visibleDataList = chartStore.getVisibleDataList()
+      const barSpace = chartStore.getTimeScaleStore().getBarSpace()
+
+      visibleDataList.forEach((data) => {
         const { data: kLineData, x } = data
         if (isValid(kLineData)) {
           const { open, high, low, close } = kLineData

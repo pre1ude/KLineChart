@@ -18,13 +18,13 @@ import { type GradientColor } from '../common/Styles'
 import Animation from '../common/Animation'
 import { isNumber, isArray, isValid } from '../common/utils/typeChecks'
 import { UpdateLevel } from '../common/Updater'
-import ChildrenView from './ChildrenView'
+import View from './View'
 import { lineTo } from '../extension/figure/line'
 import type Nullable from '../common/Nullable'
 import type DualYPane from '../pane/DualYPane'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 
-export default class CandleAreaView extends ChildrenView {
+export default class CandleAreaView extends View {
   private readonly _ripplePoint = createFigure('circle')
 
   private _animationFrameTime = 0
@@ -39,6 +39,7 @@ export default class CandleAreaView extends ChildrenView {
     const widget = this.getWidget()
     const pane = widget.getPane()
     const chart = pane.getChart()
+    const chartStore = chart.getChartStore()
     const dataList = chart.getDataList()
     const lastDataIndex = dataList.length - 1
     const bounding = widget.getBounding()
@@ -48,7 +49,9 @@ export default class CandleAreaView extends ChildrenView {
     let minY = Number.MAX_SAFE_INTEGER
     let areaStartX: number = Number.MIN_SAFE_INTEGER
     let ripplePointCoordinate: Nullable<Coordinate> = null
-    this.eachChildren((data: VisibleData) => {
+
+    const visibleDataList = chartStore.getVisibleDataList()
+    visibleDataList.forEach((data: VisibleData) => {
       const { data: kLineData, x } = data
       const value = kLineData?.[styles.value]
       if (isNumber(value)) {

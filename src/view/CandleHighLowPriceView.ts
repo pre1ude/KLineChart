@@ -13,15 +13,22 @@
  */
 
 import type Coordinate from '../common/Coordinate'
-import { type CandleHighLowPriceMarkStyle } from '../common/Styles'
 import type VisibleData from '../common/VisibleData'
+import type BarSpace from '../common/BarSpace'
+import { type CandleHighLowPriceMarkStyle } from '../common/Styles'
 import type DualYPane from '../pane/DualYPane'
-import ChildrenView from './ChildrenView'
+import View from './View'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { isValid } from '../common/utils/typeChecks'
 import { drawStaticFigure } from '../extension/figure'
 
-export default class CandleHighLowPriceView extends ChildrenView {
+export type EachChildCallback = (
+  data: VisibleData,
+  barSpace: BarSpace,
+  index: number
+) => void
+
+export default class CandleHighLowPriceView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
@@ -38,7 +45,10 @@ export default class CandleHighLowPriceView extends ChildrenView {
       let highX = 0
       let low = Number.MAX_SAFE_INTEGER
       let lowX = 0
-      this.eachChildren((data: VisibleData) => {
+      const visibleDataList = chartStore.getVisibleDataList()
+
+      // todo should not calc min max here
+      visibleDataList.forEach((data: VisibleData) => {
         const { data: kLineData, x } = data
         if (isValid(kLineData)) {
           if (high < kLineData.high) {

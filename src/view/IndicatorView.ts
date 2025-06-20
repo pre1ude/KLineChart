@@ -14,7 +14,6 @@
 
 import type Nullable from '../common/Nullable'
 import type VisibleData from '../common/VisibleData'
-import type BarSpace from '../common/BarSpace'
 import { CandleType, type SmoothLineStyle } from '../common/Styles'
 import { formatValue } from '../common/utils/format'
 import { isNumber, isValid } from '../common/utils/typeChecks'
@@ -101,7 +100,10 @@ export default class IndicatorView extends CandleBarView {
           const result = indicator.result
           const lines: Array<Array<{ coordinates: Coordinate[], styles: SmoothLineStyle }>> = []
 
-          this.eachChildren((data: VisibleData, barSpace: BarSpace) => {
+          const visibleDataList = chartStore.getVisibleDataList()
+          const barSpace = chartStore.getTimeScaleStore().getBarSpace()
+
+          visibleDataList.forEach((data: VisibleData) => {
             const { halfGapBar } = barSpace
             const { dataIndex, x } = data
             const prevX = xAxis.convertToPixel(dataIndex - 1)
