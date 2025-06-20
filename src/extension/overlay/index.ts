@@ -13,9 +13,8 @@
  */
 
 import type Nullable from '../../common/Nullable'
-
-import OverlayImp, { type OverlayTemplate, type OverlayConstructor, type OverlayInnerConstructor } from '../../component/Overlay'
-
+import { TemplateManager } from '../../common/TemplateManager'
+import { type OverlayTemplate } from '../../component/Overlay'
 import fibonacciLine from './fibonacciLine'
 import horizontalRayLine from './horizontalRayLine'
 import horizontalSegment from './horizontalSegment'
@@ -29,11 +28,8 @@ import straightLine from './straightLine'
 import verticalRayLine from './verticalRayLine'
 import verticalSegment from './verticalSegment'
 import verticalStraightLine from './verticalStraightLine'
-
 import simpleAnnotation from './simpleAnnotation'
 import simpleTag from './simpleTag'
-
-const overlays: Record<string, OverlayInnerConstructor> = {}
 
 const extensions = [
   fibonacciLine, horizontalRayLine, horizontalSegment, horizontalStraightLine,
@@ -42,24 +38,18 @@ const extensions = [
   simpleAnnotation, simpleTag
 ]
 
-extensions.forEach((template: OverlayTemplate) => {
-  overlays[template.name] = OverlayImp.extend(template)
-})
+const overlayTemplateManager = new TemplateManager<OverlayTemplate>(extensions)
 
 function registerOverlay (template: OverlayTemplate): void {
-  overlays[template.name] = OverlayImp.extend(template)
+  overlayTemplateManager.add(template)
 }
 
-function getOverlayInnerClass (name: string): Nullable<OverlayInnerConstructor> {
-  return overlays[name] ?? null
-}
-
-function getOverlayClass (name: string): Nullable<OverlayConstructor> {
-  return overlays[name] ?? null
+function getOverlayClass (name: string): Nullable<OverlayTemplate> {
+  return overlayTemplateManager.get(name)
 }
 
 function getSupportedOverlays (): string[] {
-  return Object.keys(overlays)
+  return overlayTemplateManager.keys()
 }
 
-export { registerOverlay, getOverlayClass, getOverlayInnerClass, getSupportedOverlays }
+export { registerOverlay, getOverlayClass, getSupportedOverlays }

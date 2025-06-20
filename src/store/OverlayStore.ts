@@ -18,20 +18,15 @@ import { type MouseTouchEvent } from '../common/SyntheticEvent'
 import { isFunction, isValid, isString, isBoolean, isNumber, isArray } from '../common/utils/typeChecks'
 import { createId } from '../common/utils/id'
 import { LoadDataType } from '../common/LoadDataCallback'
-
-import { type OverlayCreate, type OverlayRemove } from '../component/Overlay'
-import type OverlayImp from '../component/Overlay'
-import { OVERLAY_ID_PREFIX } from '../component/Overlay'
-
-import { getOverlayInnerClass } from '../extension/overlay/index'
-
+import type { OverlayCreate, OverlayRemove } from '../component/Overlay'
+import { OVERLAY_ID_PREFIX, Overlay } from '../component/Overlay'
+import { getOverlayClass } from '../extension/overlay'
 import type ChartStore from './ChartStore'
-
 import { PaneIdConstants } from '../pane/types'
 
 export interface ProgressOverlayInfo {
   paneId: string
-  instance: OverlayImp
+  instance: Overlay
   appointPaneFlag: boolean
 }
 
@@ -41,7 +36,7 @@ export const enum EventOverlayInfoFigureType {
 
 export interface EventOverlayInfo {
   paneId: string
-  instance: Nullable<OverlayImp>
+  instance: Nullable<Overlay>
   figureType: EventOverlayInfoFigureType
   figureKey: string
   figureIndex: number
@@ -51,7 +46,7 @@ export interface EventOverlayInfo {
 export default class OverlayStore {
   private readonly _chartStore: ChartStore
 
-  private _instances = new Map<string, OverlayImp[]>()
+  private _instances = new Map<string, Overlay[]>()
 
   /**
    * Overlay information in painting
@@ -98,7 +93,7 @@ export default class OverlayStore {
     this._chartStore = chartStore
   }
 
-  private _overrideInstance (instance: OverlayImp, overlay: Partial<OverlayCreate>): [boolean, boolean] {
+  private _overrideInstance (instance: Overlay, overlay: Partial<OverlayCreate>): [boolean, boolean] {
     const {
       id, groupId, points, styles, lock, visible,
       zLevel, mode, modeSensitivity, extendData,
@@ -116,14 +111,14 @@ export default class OverlayStore {
     if (isString(groupId)) {
       instance.setGroupId(groupId)
     }
+    if (isBoolean(lock)) {
+      instance.setLock(lock)
+    }
     if (isArray(points) && instance.setPoints(points)) {
       updateFlag = true
     }
     if (isValid(styles) && instance.setStyles(styles)) {
       updateFlag = true
-    }
-    if (isBoolean(lock)) {
-      instance.setLock(lock)
     }
     if (isBoolean(visible) && instance.setVisible(visible)) {
       updateFlag = true
@@ -132,61 +127,61 @@ export default class OverlayStore {
       updateFlag = true
       sortFlag = true
     }
+    if (extendData !== undefined && instance.setExtendData(extendData)) {
+      updateFlag = true
+    }
     if (isValid(mode)) {
       instance.setMode(mode)
     }
     if (isNumber(modeSensitivity)) {
       instance.setModeSensitivity(modeSensitivity)
     }
-    if (extendData !== undefined && instance.setExtendData(extendData)) {
-      updateFlag = true
-    }
     if (onDrawStart !== undefined) {
-      instance.setOnDrawStartCallback(onDrawStart)
+      instance.setOnDrawStart(onDrawStart)
     }
     if (onDrawing !== undefined) {
-      instance.setOnDrawingCallback(onDrawing)
+      instance.setOnDrawing(onDrawing)
     }
     if (onDrawEnd !== undefined) {
-      instance.setOnDrawEndCallback(onDrawEnd)
+      instance.setOnDrawEnd(onDrawEnd)
     }
     if (onClick !== undefined) {
-      instance.setOnClickCallback(onClick)
+      instance.setOnClick(onClick)
     }
     if (onDoubleClick !== undefined) {
-      instance.setOnDoubleClickCallback(onDoubleClick)
+      instance.setOnDoubleClick(onDoubleClick)
     }
     if (onRightClick !== undefined) {
-      instance.setOnRightClickCallback(onRightClick)
+      instance.setOnRightClick(onRightClick)
     }
     if (onPressedMoveStart !== undefined) {
-      instance.setOnPressedMoveStartCallback(onPressedMoveStart)
+      instance.setOnPressedMoveStart(onPressedMoveStart)
     }
     if (onPressedMoving !== undefined) {
-      instance.setOnPressedMovingCallback(onPressedMoving)
+      instance.setOnPressedMoving(onPressedMoving)
     }
     if (onPressedMoveEnd !== undefined) {
-      instance.setOnPressedMoveEndCallback(onPressedMoveEnd)
+      instance.setOnPressedMoveEnd(onPressedMoveEnd)
     }
     if (onMouseEnter !== undefined) {
-      instance.setOnMouseEnterCallback(onMouseEnter)
+      instance.setOnMouseEnter(onMouseEnter)
     }
     if (onMouseLeave !== undefined) {
-      instance.setOnMouseLeaveCallback(onMouseLeave)
+      instance.setOnMouseLeave(onMouseLeave)
     }
     if (onRemoved !== undefined) {
-      instance.setOnRemovedCallback(onRemoved)
+      instance.setOnRemoved(onRemoved)
     }
     if (onSelected !== undefined) {
-      instance.setOnSelectedCallback(onSelected)
+      instance.setOnSelected(onSelected)
     }
     if (onDeselected !== undefined) {
-      instance.setOnDeselectedCallback(onDeselected)
+      instance.setOnDeselected(onDeselected)
     }
     return [updateFlag, sortFlag]
   }
 
-  getInstanceById (id: string): Nullable<OverlayImp> {
+  getInstanceById (id: string): Nullable<Overlay> {
     for (const entry of this._instances) {
       const paneShapes = entry[1]
       const overlay = paneShapes.find(s => s.id === id)
@@ -216,24 +211,24 @@ export default class OverlayStore {
     const ids = overlays.map(overlay => {
       const id = overlay.id ?? createId(OVERLAY_ID_PREFIX)
       if (this.getInstanceById(id) === null) {
-        const OverlayClazz = getOverlayInnerClass(overlay.name)
-        if (OverlayClazz !== null) {
-          const instance = new OverlayClazz()
-          instance.setPaneId(paneId)
+        const overlayTemplate = getOverlayClass(overlay.name)
+        if (overlayTemplate !== null) {
+          const overlayInstance = new Overlay(overlayTemplate)
+          overlayInstance.setPaneId(paneId)
           const groupId = overlay.groupId ?? id
           overlay.id = id
           overlay.groupId = groupId
-          this._overrideInstance(instance, overlay)
-          if (instance.isDrawing()) {
-            this._progressInstanceInfo = { paneId, instance, appointPaneFlag }
+          this._overrideInstance(overlayInstance, overlay)
+          if (overlayInstance.isDrawing()) {
+            this._progressInstanceInfo = { paneId, instance: overlayInstance, appointPaneFlag }
           } else {
             if (!this._instances.has(paneId)) {
               this._instances.set(paneId, [])
             }
-            this._instances.get(paneId)?.push(instance)
+            this._instances.get(paneId)?.push(overlayInstance)
           }
-          if (instance.isStart()) {
-            instance.onDrawStart?.(({ overlay: instance }))
+          if (overlayInstance.isStart()) {
+            overlayInstance.onDrawStart?.(({ overlay: overlayInstance }))
           }
           return id
         }
@@ -277,9 +272,9 @@ export default class OverlayStore {
     }
   }
 
-  getInstances (paneId?: string): OverlayImp[] {
+  getInstances (paneId?: string): Overlay[] {
     if (!isString(paneId)) {
-      let instances: OverlayImp[] = []
+      let instances: Overlay[] = []
       this._instances.forEach(paneInstances => {
         instances = instances.concat(paneInstances)
       })
@@ -293,7 +288,7 @@ export default class OverlayStore {
     let updateFlag = false
     let sortFlag = false
 
-    const setFlag: (instance: OverlayImp) => void = (instance: OverlayImp) => {
+    const setFlag: (instance: Overlay) => void = (instance: Overlay) => {
       const flags = this._overrideInstance(instance, overlay)
       if (flags[0]) {
         updateFlag = true
@@ -342,7 +337,7 @@ export default class OverlayStore {
   }
 
   removeInstance (overlayRemove?: OverlayRemove): void {
-    const match: ((remove: OverlayRemove, overlay: OverlayImp) => boolean) = (remove: OverlayRemove, overlay: OverlayImp) => {
+    const match: ((remove: OverlayRemove, overlay: Overlay) => boolean) = (remove: OverlayRemove, overlay: Overlay) => {
       if (isString(remove.id)) {
         if (overlay.id !== remove.id) {
           return false
@@ -377,7 +372,7 @@ export default class OverlayStore {
       }
     }
     if (overlayRemoveValid) {
-      const instances = new Map<string, OverlayImp[]>()
+      const instances = new Map<string, Overlay[]>()
       for (const entry of this._instances) {
         const paneInstances = entry[1]
         const newPaneInstances = paneInstances.filter(instance => {

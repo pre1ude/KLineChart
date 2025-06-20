@@ -19,17 +19,12 @@ import type BarSpace from '../common/BarSpace'
 import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
 import { isNumber } from '../common/utils/typeChecks'
-
 import { type CustomApi, FormatDateType } from '../Options'
-
 import type XAxis from '../component/XAxis'
 import type YAxis from '../component/YAxis'
-import { type OverlayPrecision, type OverlayFigure } from '../component/Overlay'
-import type Overlay from '../component/Overlay'
-
+import type { OverlayPrecision, OverlayFigure, Overlay } from '../component/Overlay'
 import { type EventOverlayInfo, type ProgressOverlayInfo } from '../store/OverlayStore'
 import type OverlayStore from '../store/OverlayStore'
-
 import OverlayYAxisView from './OverlayYAxisView'
 
 export default class OverlayXAxisView extends OverlayYAxisView {
