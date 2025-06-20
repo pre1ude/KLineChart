@@ -12,10 +12,10 @@
  * limitations under the License.
  */
 
+import { drawStaticFigure } from '../extension/figure'
 import { type LineAttrs } from '../extension/figure/line'
 import type DualYPane from '../pane/DualYPane'
 import type XAxisWidget from '../widget/XAxisWidget'
-
 import View from './View'
 
 export default class GridView extends View {
@@ -41,11 +41,10 @@ export default class GridView extends View {
             { x: bounding.width, y: tick.coord }
           ]
         }))
-        this.createFigure({
-          name: 'line',
+        drawStaticFigure(ctx, 'line', {
           attrs,
           styles: horizontalStyles
-        })?.draw(ctx)
+        })
       }
       const verticalStyles = gridStyles.vertical
       const verticalShow = verticalStyles.show
@@ -57,11 +56,10 @@ export default class GridView extends View {
             { x: tick.coord, y: bounding.height }
           ]
         }))
-        this.createFigure({
-          name: 'line',
+        drawStaticFigure(ctx, 'line', {
           attrs,
           styles: verticalStyles
-        })?.draw(ctx)
+        })
       }
       ctx.restore()
     }

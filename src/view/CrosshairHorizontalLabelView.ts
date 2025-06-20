@@ -18,13 +18,11 @@ import { type CrosshairStyle, type CrosshairDirectionStyle, YAxisType, type Stat
 import { isString } from '../common/utils/typeChecks'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { createFont } from '../common/utils/canvas'
-
 import { type TextAttrs } from '../extension/figure/text'
-
 import type ChartStore from '../store/ChartStore'
-
 import View from './View'
 import type YAxisWidget from '../widget/YAxisWidget'
+import { drawStaticFigure } from '../extension/figure'
 
 export default class CrosshairHorizontalLabelView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {
@@ -41,11 +39,10 @@ export default class CrosshairHorizontalLabelView extends View {
         if (directionStyles.show && textStyles.show) {
           const text = this.getText(crosshair, chartStore)
           ctx.font = createFont(textStyles.size, textStyles.weight, textStyles.family)
-          this.createFigure({
-            name: 'text',
+          drawStaticFigure(ctx, 'text', {
             attrs: this.getTextAttrs(text, ctx.measureText(text).width, crosshair, bounding, textStyles),
             styles: textStyles
-          })?.draw(ctx)
+          })
         }
       }
     }

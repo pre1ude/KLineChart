@@ -17,9 +17,10 @@ import type Coordinate from '../common/Coordinate'
 import Eventful from '../common/Eventful'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
 
+// 扩大选区以方便点击
 export const DEVIATION = 2
 
-export interface Figure<A = any, S = any> {
+export interface FigureApi<A = any, S = any> {
   name: string
   attrs: A
   styles: S
@@ -27,26 +28,22 @@ export interface Figure<A = any, S = any> {
   checkEventOn: (coordinate: Coordinate, attrs: A, styles: S) => boolean
 }
 
-export type FigureTemplate<A = any, S = any> = Pick<Figure<A, S>, 'name' | 'draw' | 'checkEventOn'>
+export type FigureTemplate<A = any, S = any> = Pick<FigureApi<A, S>, 'name' | 'draw' | 'checkEventOn'>
+export type FigureCreate<A = any, S = any> = Pick<FigureApi<A, S>, 'name' | 'attrs' | 'styles'>
 
-export type FigureCreate<A = any, S = any> = Pick<Figure<A, S>, 'name' | 'attrs' | 'styles'>
-
-export type FigureInnerConstructor<A = any, S = any> = new (figure: FigureCreate<A, S>) => FigureImp<A, S>
-
-export type FigureConstructor<A = any, S = any> = new (figure: FigureCreate<A, S>) => ({ draw: (ctx: CanvasRenderingContext2D) => void })
-
-export default abstract class FigureImp<A = any, S = any> extends Eventful implements Omit<Figure<A, S>, 'name' | 'draw' | 'checkEventOn'> {
+export class Figure<A = any, S = any> extends Eventful {
   attrs: A
   styles: S
 
-  constructor (figure: FigureCreate) {
+  private readonly _figure: FigureTemplate
+
+  constructor (figure: FigureTemplate) {
     super()
-    this.attrs = figure.attrs
-    this.styles = figure.styles
+    this._figure = figure
   }
 
   checkEventOn (event: MouseTouchEvent): boolean {
-    return this.checkEventOnImp(event, this.attrs, this.styles)
+    return this._figure.checkEventOn(event, this.attrs, this.styles)
   }
 
   setAttrs (attrs: A): this {
@@ -60,23 +57,6 @@ export default abstract class FigureImp<A = any, S = any> extends Eventful imple
   }
 
   draw (ctx: CanvasRenderingContext2D): void {
-    this.drawImp(ctx, this.attrs, this.styles)
-  }
-
-  abstract checkEventOnImp (event: MouseTouchEvent, attrs: A, styles: S): boolean
-
-  abstract drawImp (ctx: CanvasRenderingContext2D, attrs: A, styles: S): void
-
-  static extend<A, S> (figure: FigureTemplate<A, S>): new (figure: FigureCreate) => FigureImp<A, S> {
-    class Custom extends FigureImp<A, S> {
-      checkEventOnImp (coordinate: Coordinate, attrs: A, styles: S): boolean {
-        return figure.checkEventOn(coordinate, attrs, styles)
-      }
-
-      drawImp (ctx: CanvasRenderingContext2D, attrs: A, styles: S): void {
-        figure.draw(ctx, attrs, styles)
-      }
-    }
-    return Custom
+    this._figure.draw(ctx, this.attrs, this.styles)
   }
 }

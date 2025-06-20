@@ -36,6 +36,7 @@ import View from './View'
 import type XAxisWidget from '../widget/XAxisWidget'
 import type YAxisWidget from '../widget/YAxisWidget'
 import { WidgetNameConstants } from '../widget/types'
+import { createFigure, drawStaticFigure } from '../extension/figure'
 
 export default class OverlayView extends View {
   constructor (widget: DrawWidget<Pane>) {
@@ -502,18 +503,18 @@ export default class OverlayView extends View {
   }
 
   protected drawFigures (ctx: CanvasRenderingContext2D, overlay: Overlay, figures: OverlayFigure[], defaultStyles: OverlayStyle): void {
-    figures.forEach((figure, figureIndex) => {
+    for (let i = 0; i < figures.length; i++) {
+      const figure = figures[i]
       const { type, styles, attrs, ignoreEvent } = figure
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      const attrsArray = [].concat(attrs)
-      attrsArray.forEach((ats, attrsIndex) => {
-        const events = this._createFigureEvents(overlay, EventOverlayInfoFigureType.Other, figure.key ?? '', figureIndex, attrsIndex, ignoreEvent)
-        const ss = { ...defaultStyles[type], ...overlay.styles?.[type], ...styles }
-        this.createFigure({
-          name: type, attrs: ats, styles: ss
-        }, events)?.draw(ctx)
-      })
-    })
+      const finalStyles = { ...defaultStyles[type], ...overlay.styles?.[type], ...styles }
+      const attrsArray = Array.isArray(attrs) ? attrs : [attrs]
+      for (let j = 0; j < attrsArray.length; j++) {
+        const figureInstance = createFigure(type)
+        figureInstance.setAttrs(attrsArray[j]).setStyles(finalStyles).draw(ctx)
+        const events = this._createFigureEvents(overlay, EventOverlayInfoFigureType.Other, figure.key ?? '', i, j, ignoreEvent)
+        events && this.bindFigureEvent(figureInstance, events)
+      }
+    }
   }
 
   protected getCompleteOverlays (overlayStore: OverlayStore, paneId: string): Overlay[] {
@@ -581,16 +582,15 @@ export default class OverlayView extends View {
             borderColor = pointStyles.activeBorderColor
             borderSize = pointStyles.activeBorderSize
           }
-          this.createFigure({
-            name: 'circle',
-            attrs: { x, y, r: radius + borderSize },
-            styles: { color: borderColor }
-          }, this._createFigureEvents(overlay, EventOverlayInfoFigureType.Point, `${OVERLAY_FIGURE_KEY_PREFIX}point_${index}`, index, 0))?.draw(ctx)
-          this.createFigure({
-            name: 'circle',
+          const figureInstance = createFigure('circle')
+          figureInstance.setAttrs({ x, y, r: radius + borderSize }).setStyles({ color: borderColor }).draw(ctx)
+          const events = this._createFigureEvents(overlay, EventOverlayInfoFigureType.Point, `${OVERLAY_FIGURE_KEY_PREFIX}point_${index}`, index, 0)
+          events && this.bindFigureEvent(figureInstance, events)
+
+          drawStaticFigure(ctx, 'circle', {
             attrs: { x, y, r: radius },
             styles: { color }
-          })?.draw(ctx)
+          })
         })
       }
     }

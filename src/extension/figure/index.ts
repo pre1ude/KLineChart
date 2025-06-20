@@ -13,9 +13,8 @@
  */
 
 import type Nullable from '../../common/Nullable'
-
-import FigureImp, { type FigureTemplate, type FigureConstructor, type FigureInnerConstructor } from '../../component/Figure'
-
+import { Figure, type FigureTemplate } from '../../component/Figure'
+import { TemplateManager } from '../../common/TemplateManager'
 import circle from './circle'
 import line from './line'
 import polygon from './polygon'
@@ -24,27 +23,32 @@ import text from './text'
 import rectText from './rectText'
 import arc from './arc'
 
-const figures: Record<string, FigureInnerConstructor> = {}
-
 const extensions = [circle, line, polygon, rect, text, rectText, arc]
-extensions.forEach((figure: FigureTemplate) => {
-  figures[figure.name] = FigureImp.extend(figure)
-})
+
+const figureTemplateManager = new TemplateManager<FigureTemplate<any, any>>(extensions)
+
+function registerFigure<A = any, S = any> (template: FigureTemplate<A, S>): void {
+  figureTemplateManager.add(template)
+}
+
+function getFigureTemplate<A = any, S = any> (name: string): Nullable<FigureTemplate<A, S>> {
+  return figureTemplateManager.get(name)
+}
 
 function getSupportedFigures (): string[] {
-  return Object.keys(figures)
+  return figureTemplateManager.keys()
 }
 
-function registerFigure<A = any, S = any> (figure: FigureTemplate<A, S>): void {
-  figures[figure.name] = FigureImp.extend(figure)
+function createFigure<A = any, S = any> (name: string): Figure<A, S> {
+  const template = getFigureTemplate(name)
+  if (!template) throw new Error(`createFigure failed, Figure ${name} is not supported!`)
+  return new Figure(template)
 }
 
-function getInnerFigureClass<A = any, S = any> (name: string): Nullable<FigureInnerConstructor<A, S>> {
-  return figures[name] ?? null
+function drawStaticFigure<A = any, S = any> (ctx: CanvasRenderingContext2D, name: string, { attrs, styles }: { attrs: A, styles: S }): void {
+  const template = getFigureTemplate(name)
+  if (!template) throw new Error(`drawStaticFigure failed, Figure ${name} is not supported!`)
+  template.draw(ctx, attrs, styles)
 }
 
-function getFigureClass<A = any, S = any> (name: string): Nullable<FigureConstructor<A, S>> {
-  return figures[name] ?? null
-}
-
-export { getSupportedFigures, getFigureClass, getInnerFigureClass, registerFigure }
+export { registerFigure, getFigureTemplate as getFigureClass, getSupportedFigures, createFigure, drawStaticFigure }

@@ -17,6 +17,7 @@ import { isNumber, isValid } from '../common/utils/typeChecks'
 import { eachFigures, type IndicatorFigure, type IndicatorFigureStyle } from '../component/Indicator'
 import View from './View'
 import type YAxisWidget from '../widget/YAxisWidget'
+import { drawStaticFigure } from '../extension/figure'
 
 export default class IndicatorLastValueView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {
@@ -52,8 +53,7 @@ export default class IndicatorLastValueView extends View {
 
               const isAlignLeft = widget.isAlignLeft()
               const align = isAlignLeft ? 'left' : 'right'
-              this.createFigure({
-                name: 'text',
+              drawStaticFigure(ctx, 'text', {
                 attrs: {
                   x: bounding.width * (1 - +isAlignLeft),
                   y,
@@ -65,7 +65,7 @@ export default class IndicatorLastValueView extends View {
                   ...lastValueMarkTextStyles,
                   backgroundColor: figureStyles.color
                 }
-              })?.draw(ctx)
+              })
             }
           })
         }

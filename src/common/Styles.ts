@@ -253,11 +253,17 @@ export interface CandleTooltipStyle extends TooltipStyle, Offset {
 }
 
 export enum CandleType {
+  /** 实心K线 */
   CandleSolid = 'candle_solid',
+  /** 空心K线 */
   CandleStroke = 'candle_stroke',
+  /** 涨空心线 */
   CandleUpStroke = 'candle_up_stroke',
+  /** 跌空心线 */
   CandleDownStroke = 'candle_down_stroke',
+  /** OHLC线 */
   Ohlc = 'ohlc',
+  /** 面积图线 */
   Area = 'area'
 }
 

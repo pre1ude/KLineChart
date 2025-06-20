@@ -52,6 +52,7 @@ export const getAllOverlayFigureIgnoreEventTypes = (): OverlayFigureIgnoreEventT
 export interface OverlayFigure {
   key?: string
   type: string
+  // todo fix type here
   attrs: any
   styles?: any
   ignoreEvent?: boolean | OverlayFigureIgnoreEventType[]

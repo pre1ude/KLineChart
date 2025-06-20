@@ -18,25 +18,14 @@ import { type GradientColor } from '../common/Styles'
 import Animation from '../common/Animation'
 import { isNumber, isArray, isValid } from '../common/utils/typeChecks'
 import { UpdateLevel } from '../common/Updater'
-
 import ChildrenView from './ChildrenView'
-
 import { lineTo } from '../extension/figure/line'
 import type Nullable from '../common/Nullable'
 import type DualYPane from '../pane/DualYPane'
+import { createFigure, drawStaticFigure } from '../extension/figure'
 
 export default class CandleAreaView extends ChildrenView {
-  private readonly _ripplePoint = this.createFigure({
-    name: 'circle',
-    attrs: {
-      x: 0,
-      y: 0,
-      r: 0
-    },
-    styles: {
-      style: 'fill'
-    }
-  })
+  private readonly _ripplePoint = createFigure('circle')
 
   private _animationFrameTime = 0
 
@@ -76,16 +65,14 @@ export default class CandleAreaView extends ChildrenView {
     })
 
     if (coordinates.length > 0) {
-      this.createFigure({
-        name: 'line',
+      drawStaticFigure(ctx, 'line', {
         attrs: { coordinates },
         styles: {
           color: styles.lineColor,
           size: styles.lineSize,
           smooth: styles.smooth
         }
-      }
-      )?.draw(ctx)
+      })
 
       // render area
       const backgroundColor = styles.backgroundColor
@@ -114,8 +101,7 @@ export default class CandleAreaView extends ChildrenView {
 
     const pointStyles = styles.point
     if (pointStyles.show && isValid(ripplePointCoordinate)) {
-      this.createFigure({
-        name: 'circle',
+      drawStaticFigure(ctx, 'circle', {
         attrs: {
           x: ripplePointCoordinate!.x,
           y: ripplePointCoordinate!.y,
@@ -125,12 +111,13 @@ export default class CandleAreaView extends ChildrenView {
           style: 'fill',
           color: pointStyles.color
         }
-      })?.draw(ctx)
+      })
       let rippleRadius = pointStyles.rippleRadius
       if (pointStyles.animation) {
         rippleRadius = pointStyles.radius + this._animationFrameTime / pointStyles.animationDuration * (pointStyles.rippleRadius - pointStyles.radius)
         this._animation.setDuration(pointStyles.animationDuration).start()
       }
+      // todo maybe we should just drawStaticFigure here
       this._ripplePoint
         ?.setAttrs({
           x: ripplePointCoordinate!.x,

@@ -28,6 +28,7 @@ import { type TooltipIcon } from '../store/TooltipStore'
 import View from './View'
 import type DualYPane from '../pane/DualYPane'
 import type XAxisWidget from '../widget/XAxisWidget'
+import { createFigure, drawStaticFigure } from '../extension/figure'
 
 export default class IndicatorTooltipView extends View {
   private readonly _boundIconClickEvent = (currentIcon: TooltipIcon) => () => {
@@ -181,23 +182,22 @@ export default class IndicatorTooltipView extends View {
           backgroundColor, activeBackgroundColor
         } = icon
         const active = activeIcon?.paneId === paneId && activeIcon?.indicatorName === indicatorName && activeIcon?.iconId === icon.id
-        this.createFigure({
-          name: 'text',
-          attrs: { text, x: coordinate.x + marginLeft, y: coordinate.y + marginTop },
-          styles: {
-            paddingLeft,
-            paddingTop,
-            paddingRight,
-            paddingBottom,
-            color: active ? activeColor : color,
-            size,
-            family: fontFamily,
-            backgroundColor: active ? activeBackgroundColor : backgroundColor
-          }
-        }, {
+        const figureInstance = createFigure('text')
+        figureInstance.setAttrs({ text, x: coordinate.x + marginLeft, y: coordinate.y + marginTop }).setStyles({
+          paddingLeft,
+          paddingTop,
+          paddingRight,
+          paddingBottom,
+          color: active ? activeColor : color,
+          size,
+          family: fontFamily,
+          backgroundColor: active ? activeBackgroundColor : backgroundColor
+        }).draw(ctx)
+        this.bindFigureEvent(figureInstance, {
           mouseClickEvent: this._boundIconClickEvent({ paneId, indicatorName, iconId: icon.id }),
           mouseMoveEvent: this._boundIconMouseMoveEvent({ paneId, indicatorName, iconId: icon.id })
-        })?.draw(ctx)
+        })
+
         coordinate.x += (marginLeft + paddingLeft + ctx.measureText(text).width + paddingRight + marginRight)
       })
     }
@@ -231,17 +231,15 @@ export default class IndicatorTooltipView extends View {
           prevRowHeight = Math.max(prevRowHeight, h)
         }
         if (title.text.length > 0) {
-          this.createFigure({
-            name: 'text',
+          drawStaticFigure(ctx, 'text', {
             attrs: { x: coordinate.x + marginLeft, y: coordinate.y + marginTop, text: title.text },
             styles: { color: title.color, size, family, weight }
-          })?.draw(ctx)
+          })
         }
-        this.createFigure({
-          name: 'text',
+        drawStaticFigure(ctx, 'text', {
           attrs: { x: coordinate.x + marginLeft + titleTextWidth, y: coordinate.y + marginTop, text: value.text },
           styles: { color: value.color, size, family, weight }
-        })?.draw(ctx)
+        })
         coordinate.x += (marginLeft + totalTextWidth + marginRight)
       })
     }

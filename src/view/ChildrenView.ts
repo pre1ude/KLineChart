@@ -22,6 +22,7 @@ export type EachChildCallback = (
   index: number
 ) => void
 
+// todo remove it
 export default abstract class ChildrenView extends View {
   protected eachChildren (childCallback: EachChildCallback): void {
     const pane = this.getWidget().getPane()

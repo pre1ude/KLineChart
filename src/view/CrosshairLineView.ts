@@ -15,7 +15,7 @@
 import type Coordinate from '../common/Coordinate'
 import { type CrosshairDirectionStyle } from '../common/Styles'
 import { isString } from '../common/utils/typeChecks'
-
+import { drawStaticFigure } from '../extension/figure'
 import View from './View'
 
 export default class CrosshairLineView extends View {
@@ -54,11 +54,10 @@ export default class CrosshairLineView extends View {
     if (styles.show) {
       const lineStyles = styles.line
       if (lineStyles.show) {
-        this.createFigure({
-          name: 'line',
+        drawStaticFigure(ctx, 'line', {
           attrs: { coordinates },
           styles: lineStyles
-        })?.draw(ctx)
+        })
       }
     }
   }

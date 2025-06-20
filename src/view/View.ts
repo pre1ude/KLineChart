@@ -12,13 +12,9 @@
  * limitations under the License.
  */
 
-import type Nullable from '../common/Nullable'
-import { type EventHandler, type EventName } from '../common/SyntheticEvent'
+import { type MouseTouchEventCallback, type EventHandler, type EventName } from '../common/SyntheticEvent'
 import Eventful from '../common/Eventful'
-import { isValid } from '../common/utils/typeChecks'
-import type Figure from '../component/Figure'
-import { type FigureCreate } from '../component/Figure'
-import { getInnerFigureClass } from '../extension/figure/index'
+import type { Figure } from '../component/Figure'
 import type DrawWidget from '../widget/DrawWidget'
 import type Pane from '../pane/Pane'
 
@@ -35,23 +31,13 @@ export default abstract class View extends Eventful {
 
   getWidget (): DrawWidget<Pane> { return this._widget }
 
-  protected createFigure (figure: FigureCreate, eventHandler?: EventHandler): Nullable<Figure> {
-    const FigureClazz = getInnerFigureClass(figure.name)
-    if (FigureClazz !== null) {
-      const instance = new FigureClazz(figure)
-      if (isValid(eventHandler)) {
-        for (const key in eventHandler) {
-          // eslint-disable-next-line no-prototype-builtins
-          if (eventHandler.hasOwnProperty(key)) {
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-            instance.registerEvent(key as EventName, eventHandler[key])
-          }
-        }
-        this.addChild(instance)
+  bindFigureEvent (figure: Figure<any, any>, events: EventHandler): void {
+    for (const name in events) {
+      if (Object.prototype.hasOwnProperty.call(events, name)) {
+        figure.registerEvent(name as EventName, events[name] as MouseTouchEventCallback)
       }
-      return instance
     }
-    return null
+    this.addChild(figure)
   }
 
   draw (ctx: CanvasRenderingContext2D): void {

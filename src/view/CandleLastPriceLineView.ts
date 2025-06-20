@@ -13,6 +13,7 @@
  */
 
 import type DualYPane from '../pane/DualYPane'
+import { drawStaticFigure } from '../extension/figure'
 import View from './View'
 
 export default class CandleLastPriceView extends View {
@@ -39,8 +40,7 @@ export default class CandleLastPriceView extends View {
         } else {
           color = lastPriceMarkStyles.noChangeColor
         }
-        this.createFigure({
-          name: 'line',
+        drawStaticFigure(ctx, 'line', {
           attrs: {
             coordinates: [
               { x: 0, y: priceY },
@@ -53,7 +53,7 @@ export default class CandleLastPriceView extends View {
             size: lastPriceMarkLineStyles.size,
             dashedValue: lastPriceMarkLineStyles.dashedValue
           }
-        })?.draw(ctx)
+        })
       }
     }
   }

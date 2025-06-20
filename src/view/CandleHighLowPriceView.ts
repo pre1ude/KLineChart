@@ -13,14 +13,13 @@
  */
 
 import type Coordinate from '../common/Coordinate'
-import type VisibleData from '../common/VisibleData'
 import { type CandleHighLowPriceMarkStyle } from '../common/Styles'
-
+import type VisibleData from '../common/VisibleData'
+import type DualYPane from '../pane/DualYPane'
 import ChildrenView from './ChildrenView'
-
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { isValid } from '../common/utils/typeChecks'
-import type DualYPane from '../pane/DualYPane'
+import { drawStaticFigure } from '../extension/figure'
 
 export default class CandleHighLowPriceView extends ChildrenView {
   override drawImp (ctx: CanvasRenderingContext2D): void {
@@ -84,8 +83,7 @@ export default class CandleHighLowPriceView extends ChildrenView {
   ): void {
     const startX = coordinate.x
     const startY = coordinate.y + offsets[0]
-    this.createFigure({
-      name: 'line',
+    drawStaticFigure(ctx, 'line', {
       attrs: {
         coordinates: [
           { x: startX - 2, y: startY + offsets[0] },
@@ -94,7 +92,7 @@ export default class CandleHighLowPriceView extends ChildrenView {
         ]
       },
       styles: { color: styles.color }
-    })?.draw(ctx)
+    })
 
     let lineEndX: number
     let textStartX: number
@@ -111,8 +109,7 @@ export default class CandleHighLowPriceView extends ChildrenView {
     }
 
     const y = startY + offsets[1]
-    this.createFigure({
-      name: 'line',
+    drawStaticFigure(ctx, 'line', {
       attrs: {
         coordinates: [
           { x: startX, y: startY },
@@ -121,9 +118,8 @@ export default class CandleHighLowPriceView extends ChildrenView {
         ]
       },
       styles: { color: styles.color }
-    })?.draw(ctx)
-    this.createFigure({
-      name: 'text',
+    })
+    drawStaticFigure(ctx, 'text', {
       attrs: {
         x: textStartX,
         y,
@@ -137,6 +133,6 @@ export default class CandleHighLowPriceView extends ChildrenView {
         family: styles.textFamily,
         weight: styles.textWeight
       }
-    })?.draw(ctx)
+    })
   }
 }

@@ -14,15 +14,13 @@
 
 import type Bounding from '../common/Bounding'
 import { type AxisStyle, type Styles } from '../common/Styles'
-
 import { type LineAttrs } from '../extension/figure/line'
 import { type TextAttrs } from '../extension/figure/text'
-
 import { type AxisTick } from '../component/Axis'
-
-import View from './View'
 import type XAxisWidget from '../widget/XAxisWidget'
 import type YAxisWidget from '../widget/YAxisWidget'
+import View from './View'
+import { drawStaticFigure } from '../extension/figure'
 
 export default abstract class AxisView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {
@@ -33,11 +31,10 @@ export default abstract class AxisView extends View {
     const styles: AxisStyle = this.getAxisStyles(pane.getChart().getStyles())
     if (styles.show) {
       if (styles.axisLine.show) {
-        this.createFigure({
-          name: 'line',
+        drawStaticFigure(ctx, 'line', {
           attrs: this.createAxisLine(bounding, styles),
           styles: styles.axisLine
-        })?.draw(ctx)
+        })
       }
       // todo should know if it is in indicator pane
       // todo the ticks need generate accord the axisOptions
@@ -45,20 +42,18 @@ export default abstract class AxisView extends View {
       if (styles.tickLine.show) {
         const lines = this.createTickLines(ticks, bounding, styles)
         lines.forEach(line => {
-          this.createFigure({
-            name: 'line',
+          drawStaticFigure(ctx, 'line', {
             attrs: line,
             styles: styles.tickLine
-          })?.draw(ctx)
+          })
         })
       }
       if (styles.tickText.show) {
         const texts = this.createTickTexts(ticks, bounding, styles)
-        this.createFigure({
-          name: 'text',
+        drawStaticFigure(ctx, 'text', {
           attrs: texts,
           styles: styles.tickText
-        })?.draw(ctx)
+        })
       }
     }
   }

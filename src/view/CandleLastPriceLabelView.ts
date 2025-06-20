@@ -17,6 +17,7 @@ import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/u
 import { isValid } from '../common/utils/typeChecks'
 import View from './View'
 import type YAxisWidget from '../widget/YAxisWidget'
+import { drawStaticFigure } from '../extension/figure'
 
 export default class CandleLastPriceLabelView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {
@@ -56,8 +57,7 @@ export default class CandleLastPriceLabelView extends View {
 
         const isAlignLeft = widget.isAlignLeft()
         const align = isAlignLeft ? 'left' : 'right'
-        this.createFigure({
-          name: 'text',
+        drawStaticFigure(ctx, 'text', {
           attrs: {
             x: bounding.width * (1 - +isAlignLeft),
             y: priceY,
@@ -69,7 +69,7 @@ export default class CandleLastPriceLabelView extends View {
             ...lastPriceMarkTextStyles,
             backgroundColor
           }
-        })?.draw(ctx)
+        })
       }
     }
   }

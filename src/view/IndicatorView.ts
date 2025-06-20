@@ -19,14 +19,12 @@ import { CandleType, type SmoothLineStyle } from '../common/Styles'
 import { formatValue } from '../common/utils/format'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import type Coordinate from '../common/Coordinate'
-
 import type ChartStore from '../store/ChartStore'
-
 import { eachFigures, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
-
 import CandleBarView, { type CandleBarOptions } from './CandleBarView'
 import type DualYPane from '../pane/DualYPane'
 import type XAxisWidget from '../widget/XAxisWidget'
+import { drawStaticFigure } from '../extension/figure'
 
 export default class IndicatorView extends CandleBarView {
   override getCandleBarOptions (chartStore: ChartStore): Nullable<CandleBarOptions> {
@@ -187,11 +185,10 @@ export default class IndicatorView extends CandleBarView {
                 }
                 const type = figure.type!
                 if (isValid<IndicatorFigureAttrs>(attrs) && type !== 'line') {
-                  this.createFigure({
-                    name: type === 'bar' ? 'rect' : type,
+                  drawStaticFigure(ctx, type === 'bar' ? 'rect' : type, {
                     attrs,
                     styles: figureStyles
-                  })?.draw(ctx)
+                  })
                 }
               }
             })
@@ -229,11 +226,10 @@ export default class IndicatorView extends CandleBarView {
                 }
               }
               mergeLines.forEach(({ coordinates, styles }) => {
-                this.createFigure({
-                  name: 'line',
+                drawStaticFigure(ctx, 'line', {
                   attrs: { coordinates },
                   styles
-                })?.draw(ctx)
+                })
               })
             }
           })

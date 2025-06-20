@@ -31,6 +31,7 @@ import IndicatorTooltipView from './IndicatorTooltipView'
 import { type TooltipIcon } from '../store/TooltipStore'
 import { i18n } from '../extension/i18n/index'
 import type DualYPane from '../pane/DualYPane'
+import { drawStaticFigure } from '../extension/figure'
 
 export default class CandleTooltipView extends IndicatorTooltipView {
   override drawImp (ctx: CanvasRenderingContext2D): void {
@@ -321,8 +322,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
             rectY = top + rectOffsetTop + offsetTop
           }
         }
-        this.createFigure({
-          name: 'rect',
+        drawStaticFigure(ctx, 'rect', {
           attrs: {
             x: rectX,
             y: rectY,
@@ -336,7 +336,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
             borderSize: rectBorderSize,
             borderRadius: rectBorderRadius
           }
-        })?.draw(ctx)
+        })
         const candleTextX = rectX + rectBorderSize + rectPaddingLeft + baseTextMarginLeft
         let textY = rectY + rectBorderSize + rectPaddingTop
         if (isDrawCandleTooltip) {
@@ -344,8 +344,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
           candleLegends.forEach(data => {
             textY += baseTextMarginTop
             const title = data.title as TooltipLegendChild
-            this.createFigure({
-              name: 'text',
+            drawStaticFigure(ctx, 'text', {
               attrs: {
                 x: candleTextX,
                 y: textY,
@@ -357,10 +356,9 @@ export default class CandleTooltipView extends IndicatorTooltipView {
                 family: baseTextFamily,
                 weight: baseTextWeight
               }
-            })?.draw(ctx)
+            })
             const value = data.value as TooltipLegendChild
-            this.createFigure({
-              name: 'text',
+            drawStaticFigure(ctx, 'text', {
               attrs: {
                 x: rectX + rectWidth - rectBorderSize - baseTextMarginRight - rectPaddingRight,
                 y: textY,
@@ -373,7 +371,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
                 family: baseTextFamily,
                 weight: baseTextWeight
               }
-            })?.draw(ctx)
+            })
             textY += (baseTextSize + baseTextMarginBottom)
           })
         }
@@ -385,8 +383,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
               textY += indicatorTextMarginTop
               const title = data.title as TooltipLegendChild
               const value = data.value as TooltipLegendChild
-              this.createFigure({
-                name: 'text',
+              drawStaticFigure(ctx, 'text', {
                 attrs: {
                   x: indicatorTextX,
                   y: textY,
@@ -398,10 +395,9 @@ export default class CandleTooltipView extends IndicatorTooltipView {
                   family: indicatorTextFamily,
                   weight: indicatorTextWeight
                 }
-              })?.draw(ctx)
+              })
 
-              this.createFigure({
-                name: 'text',
+              drawStaticFigure(ctx, 'text', {
                 attrs: {
                   x: rectX + rectWidth - rectBorderSize - indicatorTextMarginRight - rectPaddingRight,
                   y: textY,
@@ -414,7 +410,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
                   family: indicatorTextFamily,
                   weight: indicatorTextWeight
                 }
-              })?.draw(ctx)
+              })
               textY += (indicatorTextSize + indicatorTextMarginBottom)
             })
           })

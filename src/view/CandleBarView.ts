@@ -15,20 +15,16 @@
 import type Nullable from '../common/Nullable'
 import type VisibleData from '../common/VisibleData'
 import type BarSpace from '../common/BarSpace'
-import { type EventHandler } from '../common/SyntheticEvent'
 import { ActionType } from '../common/Action'
 import { CandleType, type CandleBarColor, type RectStyle, PolygonType } from '../common/Styles'
-
 import type ChartStore from '../store/ChartStore'
-
 import { type FigureCreate } from '../component/Figure'
 import { type RectAttrs } from '../extension/figure/rect'
-
 import ChildrenView from './ChildrenView'
-
 import { PaneIdConstants } from '../pane/types'
 import { isValid } from '../common/utils/typeChecks'
 import type DualYPane from '../pane/DualYPane'
+import { createFigure } from '../extension/figure'
 
 export interface CandleBarOptions {
   type: Exclude<CandleType, CandleType.Area>
@@ -144,15 +140,19 @@ export default class CandleBarView extends ChildrenView {
               break
             }
           }
-          rects.forEach(rect => {
-            let handler: EventHandler | undefined
+          for (let i = 0; i < rects.length; i++) {
+            const rect = rects[i]
+            const { attrs, styles } = rect
+            const attrsArr = Array.isArray(attrs) ? attrs : [attrs]
+            const figureInstance = createFigure(rect.name)
+            figureInstance.setAttrs(attrsArr).setStyles(styles).draw(ctx)
+
             if (isMain) {
-              handler = {
+              this.bindFigureEvent(figureInstance, {
                 mouseClickEvent: this._boundCandleBarClickEvent(data)
-              }
+              })
             }
-            this.createFigure(rect, handler)?.draw(ctx)
-          })
+          }
         }
       })
     }
