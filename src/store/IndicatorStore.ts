@@ -13,24 +13,20 @@
  */
 
 import type Nullable from '../common/Nullable'
-import { isValid, isString, isArray, isNumber, isBoolean, isFunction } from '../common/utils/typeChecks'
-
 import type ChartStore from './ChartStore'
-
-import { type IndicatorCreate, type Indicator } from '../component/Indicator'
-import type IndicatorImp from '../component/Indicator'
-import { IndicatorSeries } from '../component/Indicator'
+import { type IndicatorCreate, Indicator, IndicatorSeries } from '../component/Indicator'
+import { isValid, isString, isArray, isNumber, isBoolean, isFunction } from '../common/utils/typeChecks'
 import { getIndicatorClass } from '../extension/indicator/index'
 
 export default class IndicatorStore {
   private readonly _chartStore: ChartStore
-  private readonly _instances = new Map<string, IndicatorImp[]>()
+  private readonly _instances = new Map<string, Indicator[]>()
 
   constructor (chartStore: ChartStore) {
     this._chartStore = chartStore
   }
 
-  private _overrideInstance (instance: IndicatorImp, indicator: Partial<Indicator>): [boolean, boolean, boolean] {
+  private _overrideInstance (instance: Indicator, indicator: Partial<Indicator>): [boolean, boolean, boolean] {
     const {
       shortName, series, calcParams, precision, figures, minValue, maxValue,
       shouldOhlc, shouldFormatBigNumber, visible, zLevel, styles, extendData,
@@ -120,21 +116,21 @@ export default class IndicatorStore {
     if (!isValid(paneInstances)) {
       paneInstances = []
     }
-    const IndicatorClazz = getIndicatorClass(name)!
-    const instance = new IndicatorClazz()
+    const indicatorTemplate = getIndicatorClass(name)!
+    const indicatorInstance = new Indicator(indicatorTemplate)
 
-    this.synchronizeSeriesPrecision(instance)
-    this._overrideInstance(instance, indicator)
+    this.synchronizeSeriesPrecision(indicatorInstance)
+    this._overrideInstance(indicatorInstance, indicator)
     if (!isStack) {
       paneInstances = []
     }
-    paneInstances.push(instance)
+    paneInstances.push(indicatorInstance)
     this._instances.set(paneId, paneInstances)
     this._sort(paneId)
-    return await instance.calcIndicator(this._chartStore.getDataList())
+    return await indicatorInstance.calcIndicator(this._chartStore.getDataList())
   }
 
-  getInstances (paneId: string): IndicatorImp[] {
+  getInstances (paneId: string): Indicator[] {
     return this._instances.get(paneId) ?? []
   }
 
@@ -194,7 +190,7 @@ export default class IndicatorStore {
   }
 
   getInstanceByPaneId (paneId?: string, name?: string): Nullable<Indicator> | Nullable<Map<string, Indicator>> | Map<string, Map<string, Indicator>> {
-    const createMapping: ((instances: IndicatorImp[]) => Map<string, Indicator>) = (instances: IndicatorImp[]) => {
+    const createMapping: ((instances: Indicator[]) => Map<string, Indicator>) = (instances: Indicator[]) => {
       const mapping = new Map<string, Indicator>()
       instances.forEach(ins => {
         mapping.set(ins.name, ins)
@@ -216,9 +212,9 @@ export default class IndicatorStore {
     return mapping
   }
 
-  synchronizeSeriesPrecision (indicator?: IndicatorImp): void {
+  synchronizeSeriesPrecision (indicator?: Indicator): void {
     const { price: pricePrecision, volume: volumePrecision } = this._chartStore.getPrecision()
-    const synchronize: ((instance: IndicatorImp) => void) = instance => {
+    const synchronize: ((instance: Indicator) => void) = instance => {
       switch (instance.series) {
         case IndicatorSeries.Price: {
           instance.setPrecision(pricePrecision, true)
@@ -245,7 +241,7 @@ export default class IndicatorStore {
 
   async override (indicator: IndicatorCreate, paneId: Nullable<string>): Promise<[boolean, boolean]> {
     const { name } = indicator
-    let instances = new Map<string, IndicatorImp[]>()
+    let instances = new Map<string, Indicator[]>()
     if (paneId !== null) {
       const paneInstances = this._instances.get(paneId)
       if (isValid(paneInstances)) {

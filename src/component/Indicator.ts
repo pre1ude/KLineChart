@@ -20,13 +20,10 @@ import type VisibleRange from '../common/VisibleRange'
 import type BarSpace from '../common/BarSpace'
 import type Crosshair from '../common/Crosshair'
 import { type IndicatorStyle, type IndicatorPolygonStyle, type SmoothLineStyle, type RectStyle, type TextStyle, type TooltipIconStyle, type LineStyle, type LineType, type PolygonType, type TooltipLegend } from '../common/Styles'
-
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
-
 import { formatValue } from '../common/utils/format'
 import { isValid, merge, clone } from '../common/utils/typeChecks'
-
 import { type ArcAttrs } from '../extension/figure/arc'
 import { type RectAttrs } from '../extension/figure/rect'
 import { type TextAttrs } from '../extension/figure/text'
@@ -217,8 +214,6 @@ export type IndicatorTemplate<D = any> = ExcludePickPartial<Omit<Indicator<D>, '
 
 export type IndicatorCreate<D = any> = ExcludePickPartial<Omit<Indicator<D>, 'result'>, 'name'>
 
-export type IndicatorConstructor<D = any> = new () => IndicatorImp<D>
-
 export type EachFigureCallback = (figure: IndicatorFigure, figureStyles: IndicatorFigureStyle, index: number) => void
 
 export function eachFigures<D> (
@@ -284,7 +279,7 @@ export function eachFigures<D> (
   })
 }
 
-export default abstract class IndicatorImp<D = any> implements Indicator<D> {
+export class Indicator<D = any> {
   name: string
   shortName: string
   precision: number
@@ -302,6 +297,7 @@ export default abstract class IndicatorImp<D = any> implements Indicator<D> {
   regenerateFigures: Nullable<IndicatorRegenerateFiguresCallback<D>>
   createTooltipDataSource: Nullable<IndicatorCreateTooltipDataSourceCallback>
   draw: Nullable<IndicatorDrawCallback<D>>
+  calc: IndicatorCalcCallback<D>
 
   result: D[] = []
 
@@ -312,7 +308,7 @@ export default abstract class IndicatorImp<D = any> implements Indicator<D> {
       name, shortName, series, calcParams, figures, precision,
       shouldOhlc, shouldFormatBigNumber, visible, zLevel,
       minValue, maxValue, styles, extendData,
-      regenerateFigures, createTooltipDataSource, draw
+      regenerateFigures, createTooltipDataSource, draw, calc
     } = indicator
     this.name = name
     this.shortName = shortName ?? name
@@ -331,6 +327,7 @@ export default abstract class IndicatorImp<D = any> implements Indicator<D> {
     this.regenerateFigures = regenerateFigures ?? null
     this.createTooltipDataSource = createTooltipDataSource ?? null
     this.draw = draw ?? null
+    this.calc = calc
   }
 
   setShortName (shortName: string): boolean {
@@ -469,20 +466,5 @@ export default abstract class IndicatorImp<D = any> implements Indicator<D> {
     } catch (e) {
       return false
     }
-  }
-
-  abstract calc (dataList: KLineData[], indicator: Indicator<D>): D[] | Promise<D[]>
-
-  static extend<D> (template: IndicatorTemplate): IndicatorConstructor<D> {
-    class Custom extends IndicatorImp<D> {
-      constructor () {
-        super(template)
-      }
-
-      calc (dataList: KLineData[], indicator: Indicator<D>): D[] | Promise<D[]> {
-        return template.calc(dataList, indicator)
-      }
-    }
-    return Custom
   }
 }

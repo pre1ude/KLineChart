@@ -22,8 +22,7 @@ import { isValid, isObject, isString, isNumber } from '../common/utils/typeCheck
 import { createFont } from '../common/utils/canvas'
 import type Coordinate from '../common/Coordinate'
 import { type CustomApi } from '../Options'
-import { type Indicator, type IndicatorFigure, type IndicatorFigureStyle, type IndicatorTooltipData } from '../component/Indicator'
-import type IndicatorImp from '../component/Indicator'
+import type { Indicator, IndicatorFigure, IndicatorFigureStyle, IndicatorTooltipData } from '../component/Indicator'
 import { eachFigures } from '../component/Indicator'
 import { type TooltipIcon } from '../store/TooltipStore'
 import View from './View'
@@ -74,7 +73,7 @@ export default class IndicatorTooltipView extends View {
     dataList: KLineData[],
     crosshair: Crosshair,
     activeTooltipIcon: Nullable<TooltipIcon>,
-    indicators: IndicatorImp[],
+    indicators: Indicator[],
     customApi: CustomApi,
     thousandsSeparator: string,
     decimalFoldThreshold: number,

@@ -44,7 +44,7 @@ function registerOverlay (template: OverlayTemplate): void {
   overlayTemplateManager.add(template)
 }
 
-function getOverlayClass (name: string): Nullable<OverlayTemplate> {
+function getOverlayTemplate (name: string): Nullable<OverlayTemplate> {
   return overlayTemplateManager.get(name)
 }
 
@@ -52,4 +52,4 @@ function getSupportedOverlays (): string[] {
   return overlayTemplateManager.keys()
 }
 
-export { registerOverlay, getOverlayClass, getSupportedOverlays }
+export { registerOverlay, getOverlayTemplate as getOverlayClass, getSupportedOverlays }

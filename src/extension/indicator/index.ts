@@ -13,9 +13,8 @@
  */
 
 import type Nullable from '../../common/Nullable'
-
-import IndicatorImp, { type IndicatorTemplate, type IndicatorConstructor } from '../../component/Indicator'
-
+import { TemplateManager } from '../../common/TemplateManager'
+import type { IndicatorTemplate } from '../../component/Indicator'
 import averagePrice from './averagePrice'
 import awesomeOscillator from './awesomeOscillator'
 import bias from './bias'
@@ -44,8 +43,6 @@ import volume from './volume'
 import volumeRatio from './volumeRatio'
 import williamsR from './williamsR'
 
-const indicators: Record<string, IndicatorConstructor> = {}
-
 const extensions = [
   averagePrice, awesomeOscillator, bias, bollingerBands, brar,
   bullAndBearIndex, commodityChannelIndex, currentRatio, differentOfMovingAverage,
@@ -55,20 +52,18 @@ const extensions = [
   stoch, stopAndReverse, tripleExponentiallySmoothedAverage, volume, volumeRatio, williamsR
 ]
 
-extensions.forEach((indicator: IndicatorTemplate) => {
-  indicators[indicator.name] = IndicatorImp.extend(indicator)
-})
+const indicatorTemplateManager = new TemplateManager<IndicatorTemplate>(extensions)
 
-function registerIndicator<D> (indicator: IndicatorTemplate<D>): void {
-  indicators[indicator.name] = IndicatorImp.extend(indicator)
+function registerIndicator<D> (template: IndicatorTemplate<D>): void {
+  indicatorTemplateManager.add(template)
 }
 
-function getIndicatorClass (name: string): Nullable<IndicatorConstructor> {
-  return indicators[name] ?? null
+function getIndicatorTemplate (name: string): Nullable<IndicatorTemplate> {
+  return indicatorTemplateManager.get(name)
 }
 
 function getSupportedIndicators (): string[] {
-  return Object.keys(indicators)
+  return indicatorTemplateManager.keys()
 }
 
-export { registerIndicator, getIndicatorClass, getSupportedIndicators }
+export { registerIndicator, getIndicatorTemplate as getIndicatorClass, getSupportedIndicators }

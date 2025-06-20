@@ -24,17 +24,11 @@ import {
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { createFont } from '../common/utils/canvas'
 import { isFunction, isObject, isValid } from '../common/utils/typeChecks'
-
 import { type CustomApi, FormatDateType } from '../Options'
-
 import { PaneIdConstants } from '../pane/types'
-
-import type Indicator from '../component/Indicator'
-
+import type { Indicator } from '../component/Indicator'
 import IndicatorTooltipView from './IndicatorTooltipView'
-
 import { type TooltipIcon } from '../store/TooltipStore'
-
 import { i18n } from '../extension/i18n/index'
 import type DualYPane from '../pane/DualYPane'
 
