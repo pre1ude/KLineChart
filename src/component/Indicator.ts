@@ -23,7 +23,7 @@ import { type IndicatorStyle, type IndicatorPolygonStyle, type SmoothLineStyle, 
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
 import { formatValue } from '../common/utils/format'
-import { isValid, merge, clone } from '../common/utils/typeChecks'
+import { isValid, clone } from '../common/utils/typeChecks'
 import { type ArcAttrs } from '../extension/figure/arc'
 import { type RectAttrs } from '../extension/figure/rect'
 import { type TextAttrs } from '../extension/figure/text'
@@ -113,7 +113,7 @@ export interface IndicatorDrawParams<D = any> {
 export type IndicatorDrawCallback<D = any> = (params: IndicatorDrawParams<D>) => boolean
 export type IndicatorCalcCallback<D> = (dataList: KLineData[], indicator: Indicator<D>) => Promise<D[]> | D[]
 
-export interface Indicator<D = any> {
+export interface IndicatorApi<D = any> {
   /**
    * Indicator name
    */
@@ -210,9 +210,9 @@ export interface Indicator<D = any> {
   result: D[]
 }
 
-export type IndicatorTemplate<D = any> = ExcludePickPartial<Omit<Indicator<D>, 'result'>, 'name' | 'calc'>
+export type IndicatorTemplate<D = any> = ExcludePickPartial<Omit<IndicatorApi<D>, 'result'>, 'name' | 'calc'>
 
-export type IndicatorCreate<D = any> = ExcludePickPartial<Omit<Indicator<D>, 'result'>, 'name'>
+export type IndicatorCreate<D = any> = ExcludePickPartial<Omit<IndicatorApi<D>, 'result'>, 'name'>
 
 export type EachFigureCallback = (figure: IndicatorFigure, figureStyles: IndicatorFigureStyle, index: number) => void
 
@@ -279,7 +279,7 @@ export function eachFigures<D> (
   })
 }
 
-export class Indicator<D = any> {
+export class Indicator<D = any> implements IndicatorApi<D> {
   name: string
   shortName: string
   precision: number
@@ -330,22 +330,6 @@ export class Indicator<D = any> {
     this.calc = calc
   }
 
-  setShortName (shortName: string): boolean {
-    if (this.shortName !== shortName) {
-      this.shortName = shortName
-      return true
-    }
-    return false
-  }
-
-  setSeries (series: IndicatorSeries): boolean {
-    if (this.series !== series) {
-      this.series = series
-      return true
-    }
-    return false
-  }
-
   setPrecision (precision: number, flag?: boolean): boolean {
     const f = flag ?? false
     const optimalPrecision = Math.floor(precision)
@@ -363,99 +347,6 @@ export class Indicator<D = any> {
     this.calcParams = params
     this.figures = this.regenerateFigures?.(params) ?? this.figures
     return true
-  }
-
-  setShouldOhlc (shouldOhlc: boolean): boolean {
-    if (this.shouldOhlc !== shouldOhlc) {
-      this.shouldOhlc = shouldOhlc
-      return true
-    }
-    return false
-  }
-
-  setShouldFormatBigNumber (shouldFormatBigNumber: boolean): boolean {
-    if (this.shouldFormatBigNumber !== shouldFormatBigNumber) {
-      this.shouldFormatBigNumber = shouldFormatBigNumber
-      return true
-    }
-    return false
-  }
-
-  setVisible (visible: boolean): boolean {
-    if (this.visible !== visible) {
-      this.visible = visible
-      return true
-    }
-    return false
-  }
-
-  setZLevel (zLevel: number): boolean {
-    if (this.zLevel !== zLevel) {
-      this.zLevel = zLevel
-      return true
-    }
-    return false
-  }
-
-  setStyles (styles: Partial<IndicatorStyle>): boolean {
-    merge(this.styles, styles)
-    return true
-  }
-
-  setExtendData (extendData: any): boolean {
-    if (this.extendData !== extendData) {
-      this.extendData = extendData
-      return true
-    }
-    return false
-  }
-
-  setFigures (figures: IndicatorFigure[]): boolean {
-    if (this.figures !== figures) {
-      this.figures = figures
-      return true
-    }
-    return false
-  }
-
-  setMinValue (value: Nullable<number>): boolean {
-    if (this.minValue !== value) {
-      this.minValue = value
-      return true
-    }
-    return false
-  }
-
-  setMaxValue (value: Nullable<number>): boolean {
-    if (this.maxValue !== value) {
-      this.maxValue = value
-      return true
-    }
-    return false
-  }
-
-  setRegenerateFigures (callback: Nullable<IndicatorRegenerateFiguresCallback>): boolean {
-    if (this.regenerateFigures !== callback) {
-      this.regenerateFigures = callback
-      return true
-    }
-    return false
-  }
-
-  setCreateTooltipDataSource (callback: Nullable<IndicatorCreateTooltipDataSourceCallback>): boolean {
-    if (this.createTooltipDataSource !== callback) {
-      this.createTooltipDataSource = callback
-      return true
-    }
-    return false
-  }
-
-  setDraw (callback: Nullable<IndicatorDrawCallback>): boolean {
-    if (this.draw !== callback) {
-      this.draw = callback
-      return true
-    }
-    return false
   }
 
   async calcIndicator (dataList: KLineData[]): Promise<boolean> {

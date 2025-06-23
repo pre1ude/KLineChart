@@ -15,7 +15,7 @@
 import type Nullable from '../common/Nullable'
 import type ChartStore from './ChartStore'
 import { type IndicatorCreate, Indicator, IndicatorSeries } from '../component/Indicator'
-import { isValid, isString, isArray, isNumber, isBoolean, isFunction } from '../common/utils/typeChecks'
+import { isValid, isString, isArray, isNumber, isBoolean, isFunction, merge } from '../common/utils/typeChecks'
 import { getIndicatorClass } from '../extension/indicator/index'
 
 export default class IndicatorStore {
@@ -33,10 +33,12 @@ export default class IndicatorStore {
       regenerateFigures, createTooltipDataSource, draw, calc
     } = indicator
     let updateFlag = false
-    if (isString(shortName) && instance.setShortName(shortName)) {
+    if (isString(shortName) && instance.shortName !== shortName) {
+      instance.shortName = shortName
       updateFlag = true
     }
-    if (isValid(series) && instance.setSeries(series)) {
+    if (isValid(series) && instance.series !== series) {
+      instance.series = series
       updateFlag = true
     }
     let calcFlag = false
@@ -44,47 +46,59 @@ export default class IndicatorStore {
       updateFlag = true
       calcFlag = true
     }
-    if (isArray(figures) && instance.setFigures(figures)) {
+    if (isArray(figures) && instance.figures !== figures) {
+      instance.figures = figures
       updateFlag = true
       calcFlag = true
     }
-    if (minValue !== undefined && instance.setMinValue(minValue)) {
+    if (minValue !== undefined && instance.minValue !== minValue) {
+      instance.minValue = minValue
       updateFlag = true
     }
-    if (maxValue !== undefined && instance.setMinValue(maxValue)) {
+    if (maxValue !== undefined && instance.maxValue !== maxValue) {
+      instance.maxValue = maxValue
       updateFlag = true
     }
     if (isNumber(precision) && instance.setPrecision(precision)) {
       updateFlag = true
     }
-    if (isBoolean(shouldOhlc) && instance.setShouldOhlc(shouldOhlc)) {
+    if (isBoolean(shouldOhlc) && instance.shouldOhlc !== shouldOhlc) {
+      instance.shouldOhlc = shouldOhlc
       updateFlag = true
     }
-    if (isBoolean(shouldFormatBigNumber) && instance.setShouldFormatBigNumber(shouldFormatBigNumber)) {
+    if (isBoolean(shouldFormatBigNumber) && instance.shouldFormatBigNumber !== shouldFormatBigNumber) {
+      instance.shouldFormatBigNumber = shouldFormatBigNumber
       updateFlag = true
     }
-    if (isBoolean(visible) && instance.setVisible(visible)) {
+    if (isBoolean(visible) && instance.visible !== visible) {
+      instance.visible = visible
       updateFlag = true
     }
     let sortFlag = false
-    if (isNumber(zLevel) && instance.setZLevel(zLevel)) {
+    if (isNumber(zLevel) && instance.zLevel !== zLevel) {
+      instance.zLevel = zLevel
       updateFlag = true
       sortFlag = true
     }
-    if (isValid(styles) && instance.setStyles(styles)) {
+    if (isValid(styles)) {
+      merge(instance.styles, styles)
       updateFlag = true
     }
-    if (extendData !== undefined && instance.setExtendData(extendData)) {
+    if (extendData !== undefined && instance.extendData !== extendData) {
+      instance.extendData = extendData
       updateFlag = true
       calcFlag = true
     }
-    if (regenerateFigures !== undefined && instance.setRegenerateFigures(regenerateFigures)) {
+    if (regenerateFigures !== undefined && instance.regenerateFigures !== regenerateFigures) {
+      instance.regenerateFigures = regenerateFigures
       updateFlag = true
     }
-    if (createTooltipDataSource !== undefined && instance.setCreateTooltipDataSource(createTooltipDataSource)) {
+    if (createTooltipDataSource !== undefined && instance.createTooltipDataSource !== createTooltipDataSource) {
+      instance.createTooltipDataSource = createTooltipDataSource
       updateFlag = true
     }
-    if (draw !== undefined && instance.setDraw(draw)) {
+    if (draw !== undefined && instance.draw !== draw) {
+      instance.draw = draw
       updateFlag = true
     }
     if (isFunction(calc)) {
