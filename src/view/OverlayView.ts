@@ -53,13 +53,13 @@ export default class OverlayView extends View {
       if (progressInstanceInfo !== null) {
         const overlay = progressInstanceInfo.instance
         let progressInstancePaneId = progressInstanceInfo.paneId
-        if (overlay.isStart()) {
+        if (overlay.isStart) {
           overlayStore.updateProgressInstanceInfo(paneId)
           progressInstancePaneId = paneId
         }
         const index = overlay.points.length - 1
         const key = `${OVERLAY_FIGURE_KEY_PREFIX}point_${index}`
-        if (overlay.isDrawing() && progressInstancePaneId === paneId) {
+        if (overlay.isDrawing && progressInstancePaneId === paneId) {
           overlay.eventMoveForDrawing(this._coordinateToPoint(progressInstanceInfo.instance, event))
           overlay.onDrawing?.({ overlay, figureKey: key, figureIndex: index, ...event })
         }
@@ -80,17 +80,17 @@ export default class OverlayView extends View {
       if (progressInstanceInfo !== null) {
         const overlay = progressInstanceInfo.instance
         let progressInstancePaneId = progressInstanceInfo.paneId
-        if (overlay.isStart()) {
+        if (overlay.isStart) {
           overlayStore.updateProgressInstanceInfo(paneId, true)
           progressInstancePaneId = paneId
         }
         const index = overlay.points.length - 1
         const key = `${OVERLAY_FIGURE_KEY_PREFIX}point_${index}`
-        if (overlay.isDrawing() && progressInstancePaneId === paneId) {
+        if (overlay.isDrawing && progressInstancePaneId === paneId) {
           overlay.eventMoveForDrawing(this._coordinateToPoint(overlay, event))
           overlay.onDrawing?.({ overlay, figureKey: key, figureIndex: index, ...event })
           overlay.nextStep()
-          if (!overlay.isDrawing()) {
+          if (!overlay.isDrawing) {
             overlayStore.progressInstanceComplete()
             overlay.onDrawEnd?.({ overlay, figureKey: key, figureIndex: index, ...event })
           }
@@ -112,9 +112,9 @@ export default class OverlayView extends View {
       if (progressInstanceInfo !== null) {
         const overlay = progressInstanceInfo.instance
         const progressInstancePaneId = progressInstanceInfo.paneId
-        if (overlay.isDrawing() && progressInstancePaneId === paneId) {
+        if (overlay.isDrawing && progressInstancePaneId === paneId) {
           overlay.forceComplete()
-          if (!overlay.isDrawing()) {
+          if (!overlay.isDrawing) {
             overlayStore.progressInstanceComplete()
             const index = overlay.points.length - 1
             const key = `${OVERLAY_FIGURE_KEY_PREFIX}point_${index}`
@@ -135,7 +135,7 @@ export default class OverlayView extends View {
       const progressInstanceInfo = overlayStore.getProgressInstanceInfo()
       if (progressInstanceInfo !== null) {
         const overlay = progressInstanceInfo.instance
-        if (overlay.isDrawing()) {
+        if (overlay.isDrawing) {
           const index = overlay.points.length - 1
           return this._figureMouseRightClickEvent(
             overlay,
@@ -184,7 +184,7 @@ export default class OverlayView extends View {
     ignoreEvent?: boolean | OverlayFigureIgnoreEventType[]
   ): EventHandler | undefined {
     let eventHandler
-    if (!overlay.isDrawing()) {
+    if (!overlay.isDrawing) {
       let eventTypes: OverlayFigureIgnoreEventType[] = []
       if (isValid(ignoreEvent)) {
         if (isBoolean(ignoreEvent)) {

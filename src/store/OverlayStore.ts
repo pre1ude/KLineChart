@@ -15,7 +15,7 @@
 import type Nullable from '../common/Nullable'
 import { UpdateLevel } from '../common/Updater'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
-import { isFunction, isValid, isString, isBoolean, isNumber, isArray } from '../common/utils/typeChecks'
+import { isFunction, isValid, isString, isBoolean, isNumber, isArray, merge } from '../common/utils/typeChecks'
 import { createId } from '../common/utils/id'
 import { LoadDataType } from '../common/LoadDataCallback'
 import type { OverlayCreate, OverlayRemove } from '../component/Overlay'
@@ -106,77 +106,81 @@ export default class OverlayStore {
     let updateFlag = false
     let sortFlag = false
     if (isString(id)) {
-      instance.setId(id)
+      instance.id = id
     }
     if (isString(groupId)) {
-      instance.setGroupId(groupId)
+      instance.groupId = groupId
     }
     if (isBoolean(lock)) {
-      instance.setLock(lock)
+      instance.lock = lock
     }
     if (isArray(points) && instance.setPoints(points)) {
       updateFlag = true
     }
-    if (isValid(styles) && instance.setStyles(styles)) {
+    if (isValid(styles) && instance.styles !== styles) {
+      merge(instance.styles, styles)
       updateFlag = true
     }
-    if (isBoolean(visible) && instance.setVisible(visible)) {
+    if (isBoolean(visible) && instance.visible !== visible) {
+      instance.visible = visible
       updateFlag = true
     }
-    if (isNumber(zLevel) && instance.setZLevel(zLevel)) {
+    if (isNumber(zLevel) && instance.zLevel !== zLevel) {
+      instance.zLevel = zLevel
       updateFlag = true
       sortFlag = true
     }
-    if (extendData !== undefined && instance.setExtendData(extendData)) {
+    if (extendData !== undefined && instance.extendData !== extendData) {
+      instance.extendData = extendData
       updateFlag = true
     }
     if (isValid(mode)) {
-      instance.setMode(mode)
+      instance.mode = mode
     }
     if (isNumber(modeSensitivity)) {
-      instance.setModeSensitivity(modeSensitivity)
+      instance.modeSensitivity = modeSensitivity
     }
     if (onDrawStart !== undefined) {
-      instance.setOnDrawStart(onDrawStart)
+      instance.onDrawStart = onDrawStart
     }
     if (onDrawing !== undefined) {
-      instance.setOnDrawing(onDrawing)
+      instance.onDrawing = onDrawing
     }
     if (onDrawEnd !== undefined) {
-      instance.setOnDrawEnd(onDrawEnd)
+      instance.onDrawEnd = onDrawEnd
     }
     if (onClick !== undefined) {
-      instance.setOnClick(onClick)
+      instance.onClick = onClick
     }
     if (onDoubleClick !== undefined) {
-      instance.setOnDoubleClick(onDoubleClick)
+      instance.onDoubleClick = onDoubleClick
     }
     if (onRightClick !== undefined) {
-      instance.setOnRightClick(onRightClick)
+      instance.onRightClick = onRightClick
     }
     if (onPressedMoveStart !== undefined) {
-      instance.setOnPressedMoveStart(onPressedMoveStart)
+      instance.onPressedMoveStart = onPressedMoveStart
     }
     if (onPressedMoving !== undefined) {
-      instance.setOnPressedMoving(onPressedMoving)
+      instance.onPressedMoving = onPressedMoving
     }
     if (onPressedMoveEnd !== undefined) {
-      instance.setOnPressedMoveEnd(onPressedMoveEnd)
+      instance.onPressedMoveEnd = onPressedMoveEnd
     }
     if (onMouseEnter !== undefined) {
-      instance.setOnMouseEnter(onMouseEnter)
+      instance.onMouseEnter = onMouseEnter
     }
     if (onMouseLeave !== undefined) {
-      instance.setOnMouseLeave(onMouseLeave)
+      instance.onMouseLeave = onMouseLeave
     }
     if (onRemoved !== undefined) {
-      instance.setOnRemoved(onRemoved)
+      instance.onRemoved = onRemoved
     }
     if (onSelected !== undefined) {
-      instance.setOnSelected(onSelected)
+      instance.onSelected = onSelected
     }
     if (onDeselected !== undefined) {
-      instance.setOnDeselected(onDeselected)
+      instance.onDeselected = onDeselected
     }
     return [updateFlag, sortFlag]
   }
@@ -214,12 +218,12 @@ export default class OverlayStore {
         const overlayTemplate = getOverlayClass(overlay.name)
         if (overlayTemplate !== null) {
           const overlayInstance = new Overlay(overlayTemplate)
-          overlayInstance.setPaneId(paneId)
+          overlayInstance.paneId = paneId
           const groupId = overlay.groupId ?? id
           overlay.id = id
           overlay.groupId = groupId
           this._overrideInstance(overlayInstance, overlay)
-          if (overlayInstance.isDrawing()) {
+          if (overlayInstance.isDrawing) {
             this._progressInstanceInfo = { paneId, instance: overlayInstance, appointPaneFlag }
           } else {
             if (!this._instances.has(paneId)) {
@@ -227,7 +231,7 @@ export default class OverlayStore {
             }
             this._instances.get(paneId)?.push(overlayInstance)
           }
-          if (overlayInstance.isStart()) {
+          if (overlayInstance.isStart) {
             overlayInstance.onDrawStart?.(({ overlay: overlayInstance }))
           }
           return id
@@ -251,7 +255,7 @@ export default class OverlayStore {
   progressInstanceComplete (): void {
     if (this._progressInstanceInfo !== null) {
       const { instance, paneId } = this._progressInstanceInfo
-      if (!instance.isDrawing()) {
+      if (!instance.isDrawing) {
         if (!this._instances.has(paneId)) {
           this._instances.set(paneId, [])
         }
@@ -268,7 +272,7 @@ export default class OverlayStore {
         this._progressInstanceInfo.appointPaneFlag = appointPaneFlag
       }
       this._progressInstanceInfo.paneId = paneId
-      this._progressInstanceInfo.instance.setPaneId(paneId)
+      this._progressInstanceInfo.instance.paneId = paneId
     }
   }
 
@@ -478,7 +482,7 @@ export default class OverlayStore {
 
   setClickInstanceInfo (info: EventOverlayInfo, event: MouseTouchEvent): void {
     const { paneId, instance, figureType, figureKey, figureIndex } = this._clickInstanceInfo
-    if (!(info.instance?.isDrawing() ?? false)) {
+    if (!(info.instance?.isDrawing ?? false)) {
       info.instance?.onClick?.({ overlay: info.instance, figureKey: info.figureKey, figureIndex: info.figureIndex, ...event })
     }
     if (instance?.id !== info.instance?.id || figureType !== info.figureType || figureIndex !== info.figureIndex) {
@@ -505,6 +509,6 @@ export default class OverlayStore {
   }
 
   isDrawing (): boolean {
-    return this._progressInstanceInfo !== null && (this._progressInstanceInfo?.instance.isDrawing() ?? false)
+    return this._progressInstanceInfo !== null && (this._progressInstanceInfo?.instance.isDrawing ?? false)
   }
 }

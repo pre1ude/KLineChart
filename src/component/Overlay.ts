@@ -22,7 +22,7 @@ import type BarSpace from '../common/BarSpace'
 import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
-import { clone, isNumber, merge } from '../common/utils/typeChecks'
+import { clone, isNumber } from '../common/utils/typeChecks'
 import type TimeScaleStore from '../store/TimeScaleStore'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
@@ -90,7 +90,24 @@ export interface OverlayEvent extends Partial<MouseTouchEvent> {
 export type OverlayEventCallback = (event: OverlayEvent) => boolean
 export type OverlayCreateFiguresCallback = (params: OverlayCreateFiguresCallbackParams) => OverlayFigure | OverlayFigure[]
 
-export interface Overlay {
+interface OverlayEventHandlers {
+  onDrawStart: Nullable<OverlayEventCallback>
+  onDrawing: Nullable<OverlayEventCallback>
+  onDrawEnd: Nullable<OverlayEventCallback>
+  onClick: Nullable<OverlayEventCallback>
+  onDoubleClick: Nullable<OverlayEventCallback>
+  onRightClick: Nullable<OverlayEventCallback>
+  onPressedMoveStart: Nullable<OverlayEventCallback>
+  onPressedMoving: Nullable<OverlayEventCallback>
+  onPressedMoveEnd: Nullable<OverlayEventCallback>
+  onMouseEnter: Nullable<OverlayEventCallback>
+  onMouseLeave: Nullable<OverlayEventCallback>
+  onRemoved: Nullable<OverlayEventCallback>
+  onSelected: Nullable<OverlayEventCallback>
+  onDeselected: Nullable<OverlayEventCallback>
+}
+
+export interface OverlayApi extends OverlayEventHandlers {
   id: string
   groupId: string
   paneId: string
@@ -113,30 +130,16 @@ export interface Overlay {
   createYAxisFigures: Nullable<OverlayCreateFiguresCallback>
   performEventPressedMove: Nullable<(params: OverlayPerformEventParams) => void>
   performEventMoveForDrawing: Nullable<(params: OverlayPerformEventParams) => void>
-
-  // Event callbacks
-  onDrawStart: Nullable<OverlayEventCallback>
-  onDrawing: Nullable<OverlayEventCallback>
-  onDrawEnd: Nullable<OverlayEventCallback>
-  onClick: Nullable<OverlayEventCallback>
-  onDoubleClick: Nullable<OverlayEventCallback>
-  onRightClick: Nullable<OverlayEventCallback>
-  onPressedMoveStart: Nullable<OverlayEventCallback>
-  onPressedMoving: Nullable<OverlayEventCallback>
-  onPressedMoveEnd: Nullable<OverlayEventCallback>
-  onMouseEnter: Nullable<OverlayEventCallback>
-  onMouseLeave: Nullable<OverlayEventCallback>
-  onRemoved: Nullable<OverlayEventCallback>
-  onSelected: Nullable<OverlayEventCallback>
-  onDeselected: Nullable<OverlayEventCallback>
 }
 
-export type OverlayTemplate = ExcludePickPartial<Omit<Overlay, 'id' | 'groupId' | 'paneId' | 'points' | 'currentStep'>, 'name'>
-export type OverlayCreate = ExcludePickPartial<Omit<Overlay, 'paneId' | 'currentStep' | 'totalStep' | 'createPointFigures' | 'createXAxisFigures' | 'createYAxisFigures' | 'performEventPressedMove' | 'performEventMoveForDrawing'>, 'name'>
-export type OverlayRemove = Partial<Pick<Overlay, 'id' | 'groupId' | 'name'>>
+export type OverlayTemplate = ExcludePickPartial<Omit<OverlayApi, 'id' | 'groupId' | 'paneId' | 'points' | 'currentStep'>, 'name'>
+export type OverlayCreate = ExcludePickPartial<Omit<OverlayApi, 'paneId' | 'currentStep' | 'totalStep' | 'createPointFigures' | 'createXAxisFigures' | 'createYAxisFigures' | 'performEventPressedMove' | 'performEventMoveForDrawing'>, 'name'>
+export type OverlayRemove = Partial<Pick<OverlayApi, 'id' | 'groupId' | 'name'>>
 
-const OVERLAY_DRAW_STEP_START = 1
-const OVERLAY_DRAW_STEP_FINISHED = -1
+enum OverlayDrawStep {
+  START = 1,
+  FINISHED = -1
+}
 
 export const OVERLAY_ID_PREFIX = 'overlay_'
 export const OVERLAY_FIGURE_KEY_PREFIX = 'overlay_figure_'
@@ -151,6 +154,7 @@ const defaultTemplate: OverlayTemplate = {
   modeSensitivity: 8,
   extendData: undefined,
   styles: undefined,
+
   needDefaultPointFigure: false,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
@@ -158,8 +162,10 @@ const defaultTemplate: OverlayTemplate = {
   createPointFigures: null,
   createXAxisFigures: null,
   createYAxisFigures: null,
+
   performEventPressedMove: null,
   performEventMoveForDrawing: null,
+
   onDrawStart: null,
   onDrawing: null,
   onDrawEnd: null,
@@ -176,11 +182,11 @@ const defaultTemplate: OverlayTemplate = {
   onDeselected: null
 }
 
-export class Overlay {
+export class Overlay implements OverlayApi {
   id: string
   groupId: string
   paneId: string
-  currentStep: number = OVERLAY_DRAW_STEP_START
+  currentStep: number = OverlayDrawStep.START
   points: Array<Partial<Point>> = []
 
   name: string
@@ -192,12 +198,15 @@ export class Overlay {
   modeSensitivity: number
   extendData: any
   styles: Nullable<DeepPartial<OverlayStyle>>
+
   needDefaultPointFigure: boolean
   needDefaultXAxisFigure: boolean
   needDefaultYAxisFigure: boolean
+
   createPointFigures: Nullable<OverlayCreateFiguresCallback>
   createXAxisFigures: Nullable<OverlayCreateFiguresCallback>
   createYAxisFigures: Nullable<OverlayCreateFiguresCallback>
+
   performEventPressedMove: Nullable<(params: OverlayPerformEventParams) => void>
   performEventMoveForDrawing: Nullable<(params: OverlayPerformEventParams) => void>
 
@@ -224,37 +233,14 @@ export class Overlay {
     Object.assign(this, defaultTemplate, overlay)
   }
 
-  setId (id: string): void { this.id = id }
-  setGroupId (groupId: string): void { this.groupId = groupId }
-  setPaneId (paneId: string): void { this.paneId = paneId }
-  setLock (lock: boolean): void { this.lock = lock }
-
-  setMode (mode: OverlayMode): void { this.mode = mode }
-  setModeSensitivity (modeSensitivity: number): void { this.modeSensitivity = modeSensitivity }
-
-  setOnDrawStart (cb: Nullable<OverlayEventCallback>): void { this.onDrawStart = cb }
-  setOnDrawing (cb: Nullable<OverlayEventCallback>): void { this.onDrawing = cb }
-  setOnDrawEnd (cb: Nullable<OverlayEventCallback>): void { this.onDrawEnd = cb }
-  setOnClick (cb: Nullable<OverlayEventCallback>): void { this.onClick = cb }
-  setOnDoubleClick (cb: Nullable<OverlayEventCallback>): void { this.onDoubleClick = cb }
-  setOnRightClick (cb: Nullable<OverlayEventCallback>): void { this.onRightClick = cb }
-  setOnPressedMoveStart (cb: Nullable<OverlayEventCallback>): void { this.onPressedMoveStart = cb }
-  setOnPressedMoving (cb: Nullable<OverlayEventCallback>): void { this.onPressedMoving = cb }
-  setOnPressedMoveEnd (cb: Nullable<OverlayEventCallback>): void { this.onPressedMoveEnd = cb }
-  setOnMouseEnter (cb: Nullable<OverlayEventCallback>): void { this.onMouseEnter = cb }
-  setOnMouseLeave (cb: Nullable<OverlayEventCallback>): void { this.onMouseLeave = cb }
-  setOnRemoved (cb: Nullable<OverlayEventCallback>): void { this.onRemoved = cb }
-  setOnSelected (cb: Nullable<OverlayEventCallback>): void { this.onSelected = cb }
-  setOnDeselected (cb: Nullable<OverlayEventCallback>): void { this.onDeselected = cb }
-
   setPoints (points: Array<Partial<Point>>): boolean {
     if (points.length === 0) return false
 
     this.points = [...points]
-    const repeatTotalStep = Math.min(points.length, this.totalStep - 1)
+    const repeatTotalStep = Math.min(points.length, Math.max(0, this.totalStep - 1))
 
     this.currentStep = points.length >= this.totalStep - 1
-      ? OVERLAY_DRAW_STEP_FINISHED
+      ? OverlayDrawStep.FINISHED
       : points.length + 1
 
     // Handle drawing events
@@ -270,7 +256,7 @@ export class Overlay {
       }
     }
 
-    if (this.currentStep === OVERLAY_DRAW_STEP_FINISHED && this.performEventPressedMove) {
+    if (this.currentStep === OverlayDrawStep.FINISHED && this.performEventPressedMove) {
       this.performEventPressedMove({
         currentStep: this.currentStep,
         mode: this.mode,
@@ -283,51 +269,22 @@ export class Overlay {
     return true
   }
 
-  setStyles (styles: DeepPartial<OverlayStyle>): boolean {
-    merge(this.styles, styles)
-    return true
+  get isDrawing (): boolean {
+    return this.currentStep !== OverlayDrawStep.FINISHED
   }
 
-  setVisible (visible: boolean): boolean {
-    if (visible !== this.visible) {
-      this.visible = visible
-      return true
-    }
-    return false
-  }
-
-  setZLevel (zLevel: number): boolean {
-    if (zLevel !== this.zLevel) {
-      this.zLevel = zLevel
-      return true
-    }
-    return false
-  }
-
-  setExtendData (extendData: any): boolean {
-    if (extendData !== this.extendData) {
-      this.extendData = extendData
-      return true
-    }
-    return false
+  get isStart (): boolean {
+    return this.currentStep === OverlayDrawStep.START
   }
 
   nextStep (): void {
     this.currentStep = this.currentStep === this.totalStep - 1
-      ? OVERLAY_DRAW_STEP_FINISHED
+      ? OverlayDrawStep.FINISHED
       : this.currentStep + 1
   }
 
   forceComplete (): void {
-    this.currentStep = OVERLAY_DRAW_STEP_FINISHED
-  }
-
-  isDrawing (): boolean {
-    return this.currentStep !== OVERLAY_DRAW_STEP_FINISHED
-  }
-
-  isStart (): boolean {
-    return this.currentStep === OVERLAY_DRAW_STEP_START
+    this.currentStep = OverlayDrawStep.FINISHED
   }
 
   eventMoveForDrawing (point: Partial<Point>): void {
