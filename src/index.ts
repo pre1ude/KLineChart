@@ -178,3 +178,5 @@ export {
   CandleType, YAxisPosition, YAxisType, FormatDateType,
   DomPosition, ActionType, IndicatorSeries, OverlayMode, LoadDataType
 }
+
+export type { ChartApi } from './Chart'
