@@ -15,7 +15,7 @@
 import type Nullable from '../common/Nullable'
 import { UpdateLevel } from '../common/Updater'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
-import { isFunction, isValid, isString, isBoolean, isNumber, isArray, merge } from '../common/utils/typeChecks'
+import { isFunction, isValid, isString, isBoolean } from '../common/utils/typeChecks'
 import { createId } from '../common/utils/id'
 import { LoadDataType } from '../common/LoadDataCallback'
 import type { OverlayCreate, OverlayRemove } from '../component/Overlay'
@@ -93,98 +93,6 @@ export default class OverlayStore {
     this._chartStore = chartStore
   }
 
-  private _overrideInstance (instance: Overlay, overlay: Partial<OverlayCreate>): [boolean, boolean] {
-    const {
-      id, groupId, points, styles, lock, visible,
-      zLevel, mode, modeSensitivity, extendData,
-      onDrawStart, onDrawing,
-      onDrawEnd, onClick, onDoubleClick, onRightClick,
-      onPressedMoveStart, onPressedMoving, onPressedMoveEnd,
-      onMouseEnter, onMouseLeave,
-      onRemoved, onSelected, onDeselected
-    } = overlay
-    let updateFlag = false
-    let sortFlag = false
-    if (isString(id)) {
-      instance.id = id
-    }
-    if (isString(groupId)) {
-      instance.groupId = groupId
-    }
-    if (isBoolean(lock)) {
-      instance.lock = lock
-    }
-    if (isArray(points) && instance.setPoints(points)) {
-      updateFlag = true
-    }
-    if (isValid(styles) && instance.styles !== styles) {
-      merge(instance.styles, styles)
-      updateFlag = true
-    }
-    if (isBoolean(visible) && instance.visible !== visible) {
-      instance.visible = visible
-      updateFlag = true
-    }
-    if (isNumber(zLevel) && instance.zLevel !== zLevel) {
-      instance.zLevel = zLevel
-      updateFlag = true
-      sortFlag = true
-    }
-    if (extendData !== undefined && instance.extendData !== extendData) {
-      instance.extendData = extendData
-      updateFlag = true
-    }
-    if (isValid(mode)) {
-      instance.mode = mode
-    }
-    if (isNumber(modeSensitivity)) {
-      instance.modeSensitivity = modeSensitivity
-    }
-    if (onDrawStart !== undefined) {
-      instance.onDrawStart = onDrawStart
-    }
-    if (onDrawing !== undefined) {
-      instance.onDrawing = onDrawing
-    }
-    if (onDrawEnd !== undefined) {
-      instance.onDrawEnd = onDrawEnd
-    }
-    if (onClick !== undefined) {
-      instance.onClick = onClick
-    }
-    if (onDoubleClick !== undefined) {
-      instance.onDoubleClick = onDoubleClick
-    }
-    if (onRightClick !== undefined) {
-      instance.onRightClick = onRightClick
-    }
-    if (onPressedMoveStart !== undefined) {
-      instance.onPressedMoveStart = onPressedMoveStart
-    }
-    if (onPressedMoving !== undefined) {
-      instance.onPressedMoving = onPressedMoving
-    }
-    if (onPressedMoveEnd !== undefined) {
-      instance.onPressedMoveEnd = onPressedMoveEnd
-    }
-    if (onMouseEnter !== undefined) {
-      instance.onMouseEnter = onMouseEnter
-    }
-    if (onMouseLeave !== undefined) {
-      instance.onMouseLeave = onMouseLeave
-    }
-    if (onRemoved !== undefined) {
-      instance.onRemoved = onRemoved
-    }
-    if (onSelected !== undefined) {
-      instance.onSelected = onSelected
-    }
-    if (onDeselected !== undefined) {
-      instance.onDeselected = onDeselected
-    }
-    return [updateFlag, sortFlag]
-  }
-
   getInstanceById (id: string): Nullable<Overlay> {
     for (const entry of this._instances) {
       const paneShapes = entry[1]
@@ -222,7 +130,7 @@ export default class OverlayStore {
           const groupId = overlay.groupId ?? id
           overlay.id = id
           overlay.groupId = groupId
-          this._overrideInstance(overlayInstance, overlay)
+          overlayInstance.overrideOverlay(overlay)
           if (overlayInstance.isDrawing) {
             this._progressInstanceInfo = { paneId, instance: overlayInstance, appointPaneFlag }
           } else {
@@ -293,13 +201,10 @@ export default class OverlayStore {
     let sortFlag = false
 
     const setFlag: (instance: Overlay) => void = (instance: Overlay) => {
-      const flags = this._overrideInstance(instance, overlay)
-      if (flags[0]) {
-        updateFlag = true
-      }
-      if (flags[1]) {
-        sortFlag = true
-      }
+      const [needUpdate, needSort] = instance.shouldUpdate(overlay)
+      instance.overrideOverlay(overlay)
+      updateFlag = needUpdate
+      sortFlag = needSort
     }
 
     if (isString(id)) {

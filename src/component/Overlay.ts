@@ -22,7 +22,7 @@ import type BarSpace from '../common/BarSpace'
 import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
-import { clone, isNumber } from '../common/utils/typeChecks'
+import { clone, isArray, isBoolean, isNumber, isString, isValid, merge } from '../common/utils/typeChecks'
 import type TimeScaleStore from '../store/TimeScaleStore'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
@@ -233,8 +233,8 @@ export class Overlay implements OverlayApi {
     Object.assign(this, defaultTemplate, overlay)
   }
 
-  setPoints (points: Array<Partial<Point>>): boolean {
-    if (points.length === 0) return false
+  setPoints (points: Array<Partial<Point>>): void {
+    if (points.length === 0) return
 
     this.points = [...points]
     const repeatTotalStep = Math.min(points.length, Math.max(0, this.totalStep - 1))
@@ -265,8 +265,6 @@ export class Overlay implements OverlayApi {
         performPoint: this.points[this.points.length - 1]
       })
     }
-
-    return true
   }
 
   get isDrawing (): boolean {
@@ -360,5 +358,50 @@ export class Overlay implements OverlayApi {
 
       return newPoint
     })
+  }
+
+  shouldUpdate (next: Partial<OverlayCreate>): [boolean, boolean] {
+    const needSort = shouldSort(next)
+    const needUpdate = shouldUpdate(next)
+
+    function shouldUpdate (next: Partial<OverlayCreate>): boolean {
+      return (
+        needSort ||
+        (isBoolean(next.visible) && this.visible !== next.visible) ||
+        (isArray(next.points) && JSON.stringify(this.points) !== JSON.stringify(next.points)) ||
+        (isValid(next.styles) && this.styles !== next.styles) ||
+        (isValid(next.extendData) && JSON.stringify(this.extendData) !== JSON.stringify(next.extendData))
+      )
+    }
+    function shouldSort (next: Partial<OverlayCreate>): boolean {
+      return (
+        (isNumber(next.zLevel) && this.zLevel !== next.zLevel)
+      )
+    }
+
+    return [needUpdate, needSort]
+  }
+
+  overrideOverlay (next: Partial<Overlay>): void {
+    const {
+      id, name, currentStep: _, points, styles, ...others
+    } = next
+
+    if (!isString(this.name)) {
+      this.name = name ?? ''
+    }
+
+    if (!isString(this.id) && isString(id)) {
+      this.id = id
+    }
+
+    if (isValid(styles)) {
+      this.styles ??= {}
+      merge(this.styles, styles)
+    }
+
+    this.setPoints(points ?? [])
+
+    merge(this, others)
   }
 }
