@@ -23,7 +23,7 @@ import { type IndicatorStyle, type IndicatorPolygonStyle, type SmoothLineStyle, 
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
 import { formatValue } from '../common/utils/format'
-import { isValid, clone } from '../common/utils/typeChecks'
+import { isValid, clone, isNumber, isFunction, isString, isBoolean, isArray, merge } from '../common/utils/typeChecks'
 import { type ArcAttrs } from '../extension/figure/arc'
 import { type RectAttrs } from '../extension/figure/rect'
 import { type TextAttrs } from '../extension/figure/text'
@@ -301,7 +301,7 @@ export class Indicator<D = any> implements IndicatorApi<D> {
 
   result: D[] = []
 
-  private _precisionFlag: boolean = false
+  private _lockSeriesPrecision: boolean = false
 
   constructor (indicator: IndicatorTemplate) {
     const {
@@ -330,23 +330,78 @@ export class Indicator<D = any> implements IndicatorApi<D> {
     this.calc = calc
   }
 
-  setPrecision (precision: number, flag?: boolean): boolean {
-    const f = flag ?? false
-    const optimalPrecision = Math.floor(precision)
-    if (optimalPrecision !== this.precision && precision >= 0 && (!f || (f && !this._precisionFlag))) {
-      this.precision = optimalPrecision
-      if (!f) {
-        this._precisionFlag = true
-      }
-      return true
+  shouldUpdate (next: Partial<Indicator>): [boolean, boolean, boolean] {
+    const needCalc = shouldCalc(next)
+    const needSort = shouldSort(next)
+    const needUpdate = shouldUpdate(next)
+
+    function shouldUpdate (next: Partial<Indicator>): boolean {
+      return (
+        needCalc || needSort ||
+        isValid(next.styles) ||
+        (isString(next.shortName) && this.shortName !== next.shortName) ||
+        (isValid(next.series) && this.series !== next.series) ||
+        (isNumber(next.minValue) && this.minValue !== next.minValue) ||
+        (isNumber(next.maxValue) && this.maxValue !== next.maxValue) ||
+        (isNumber(next.precision) && this.precision !== next.precision) ||
+        (isBoolean(next.shouldOhlc) && this.shouldOhlc !== next.shouldOhlc) ||
+        (isBoolean(next.shouldFormatBigNumber) && this.shouldFormatBigNumber !== next.shouldFormatBigNumber) ||
+        (isBoolean(next.visible) && this.visible !== next.visible) ||
+        (isFunction(next.regenerateFigures) && this.regenerateFigures !== next.regenerateFigures) ||
+        (isFunction(next.createTooltipDataSource) && this.createTooltipDataSource !== next.createTooltipDataSource) ||
+        (isValid(next.draw) && this.draw !== next.draw)
+      )
     }
-    return false
+    function shouldSort (next: Partial<Indicator>): boolean {
+      return (
+        (isNumber(next.zLevel) && this.zLevel !== next.zLevel)
+      )
+    }
+    // todo should we calc after extendData change?
+    // todo should we calc after figures change?
+    function shouldCalc (next: Partial<Indicator>): boolean {
+      return (
+        (isFunction(next.calc) && this.calc !== next.calc) ||
+        (isArray(next.calcParams) && JSON.stringify(this.calcParams) !== JSON.stringify(next.calcParams)) ||
+        (isValid(next.extendData) && JSON.stringify(this.extendData) !== JSON.stringify(next.extendData)) ||
+        (isValid(next.figures) && this.figures !== next.figures)
+      )
+    }
+
+    return [needUpdate, needCalc, needSort]
   }
 
-  setCalcParams (params: any[]): boolean {
-    this.calcParams = params
-    this.figures = this.regenerateFigures?.(params) ?? this.figures
-    return true
+  overrideIndicator (next: Partial<Indicator>): void {
+    const {
+      shortName, calcParams, precision, figures, styles, ...others
+    } = next
+
+    this.shortName = shortName ?? this.shortName ?? this.name
+
+    if (isNumber(precision)) {
+      this._lockSeriesPrecision = true
+      this.precision = precision
+    }
+
+    if (isValid(styles)) {
+      merge(this.styles, styles)
+    }
+
+    merge(this, others)
+
+    this.figures = figures ?? this.figures
+    if (isValid(calcParams)) {
+      this.calcParams = calcParams
+      if (isFunction(this.regenerateFigures)) {
+        this.figures = this.regenerateFigures(calcParams) ?? this.figures
+      }
+    }
+  }
+
+  setSeriesPrecision (precision: number): void {
+    if (!this._lockSeriesPrecision) {
+      this.precision = precision
+    }
   }
 
   async calcIndicator (dataList: KLineData[]): Promise<boolean> {
