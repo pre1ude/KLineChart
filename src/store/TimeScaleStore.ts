@@ -37,7 +37,7 @@ const BarSpaceLimitConstants = {
   MAX: 50
 }
 
-const enum ScrollLimitRole {
+const enum ScrollByType {
   BarCount,
   Distance
 }
@@ -104,7 +104,7 @@ export default class TimeScaleStore {
   /**
    * Scroll limit role
    */
-  private _scrollLimitRole: ScrollLimitRole = ScrollLimitRole.BarCount
+  private _ScrollByType: ScrollByType = ScrollByType.BarCount
 
   /**
    * Scroll to the leftmost and rightmost visible bar
@@ -155,7 +155,7 @@ export default class TimeScaleStore {
     let leftMinVisibleBarCount: number
     let rightMinVisibleBarCount: number
 
-    if (this._scrollLimitRole === ScrollLimitRole.Distance) {
+    if (this._ScrollByType === ScrollByType.Distance) {
       leftMinVisibleBarCount = (this._totalBarSpace - this._maxOffsetDistance.right) / this._barSpace
       rightMinVisibleBarCount = (this._totalBarSpace - this._maxOffsetDistance.left) / this._barSpace
     } else {
@@ -274,7 +274,7 @@ export default class TimeScaleStore {
   }
 
   setOffsetRightDistance (distance: number, isUpdate?: boolean): this {
-    this._offsetRightDistance = this._scrollLimitRole === ScrollLimitRole.Distance ? Math.min(this._maxOffsetDistance.right, distance) : distance
+    this._offsetRightDistance = this._ScrollByType === ScrollByType.Distance ? Math.min(this._maxOffsetDistance.right, distance) : distance
     this._lastBarRightSideDiffBarCount = this._offsetRightDistance / this._barSpace
     if (isUpdate ?? false) {
       this.adjustVisibleRange()
@@ -306,25 +306,25 @@ export default class TimeScaleStore {
   }
 
   setMaxOffsetLeftDistance (distance: number): this {
-    this._scrollLimitRole = ScrollLimitRole.Distance
+    this._ScrollByType = ScrollByType.Distance
     this._maxOffsetDistance.left = distance
     return this
   }
 
   setMaxOffsetRightDistance (distance: number): this {
-    this._scrollLimitRole = ScrollLimitRole.Distance
+    this._ScrollByType = ScrollByType.Distance
     this._maxOffsetDistance.right = distance
     return this
   }
 
   setLeftMinVisibleBarCount (barCount: number): this {
-    this._scrollLimitRole = ScrollLimitRole.BarCount
+    this._ScrollByType = ScrollByType.BarCount
     this._minVisibleBarCount.left = barCount
     return this
   }
 
   setRightMinVisibleBarCount (barCount: number): this {
-    this._scrollLimitRole = ScrollLimitRole.BarCount
+    this._ScrollByType = ScrollByType.BarCount
     this._minVisibleBarCount.right = barCount
     return this
   }
