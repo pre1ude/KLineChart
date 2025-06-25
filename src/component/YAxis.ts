@@ -153,6 +153,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const height = this.getParent()?.getBounding().height ?? 0
     const { gap: paneGap } = parent.getOptions()
     let topRate = paneGap?.top ?? 0.2
+    // todo this should be in options normalize
     if (topRate >= 1) {
       topRate = topRate / height
     }
@@ -297,6 +298,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     }
     const chartStore = chart.getChartStore()
     const customApi = chartStore.getCustomApi()
+
     let yAxisWidth = 0
     if (yAxisStyles.show) {
       if (yAxisStyles.axisLine.show) {

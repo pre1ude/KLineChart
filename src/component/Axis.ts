@@ -84,7 +84,7 @@ export default abstract class AxisImp implements Pick<AxisTemplate, 'createTicks
   }
 
   getScrollZoomEnabled (): boolean {
-    return this.getParent().getOptions().scrollZoomEnabled ?? true
+    return this.getParent().getPane().getOptions().axisOptions?.scrollZoomEnabled ?? true
   }
 
   setRange (range: AxisRange): void {
