@@ -44,7 +44,7 @@ import { IndicatorSeries } from './component/Indicator'
 import { OverlayMode } from './component/Overlay'
 
 import { type Options, FormatDateType } from './Options'
-import ChartImp, { type ChartApi, DomPosition } from './Chart'
+import Chart, { type ChartApi, DomPosition } from './Chart'
 
 import { checkCoordinateOnArc, drawArc } from './extension/figure/arc'
 import { checkCoordinateOnCircle, drawCircle } from './extension/figure/circle'
@@ -65,7 +65,7 @@ import { registerStyles } from './extension/styles/index'
 import { registerXAxis } from './extension/x-axis'
 import { registerYAxis } from './extension/y-axis'
 
-const instances = new Map<string, ChartImp>()
+const instances = new Map<string, Chart>()
 let chartBaseId = 1
 
 /**
@@ -100,7 +100,7 @@ function init (ds: HTMLElement | string, options?: Options): Nullable<ChartApi> 
     return chart
   }
   const id = `k_line_chart_${chartBaseId++}`
-  chart = new ChartImp(dom, options)
+  chart = new Chart(dom, options)
   chart.id = id
   dom.setAttribute('k-line-chart-id', id)
   instances.set(id, chart)
@@ -113,7 +113,7 @@ function init (ds: HTMLElement | string, options?: Options): Nullable<ChartApi> 
  */
 function dispose (dcs: HTMLElement | ChartApi | string): void {
   let id: Nullable<string>
-  if (dcs instanceof ChartImp) {
+  if (dcs instanceof Chart) {
     id = dcs.id
   } else {
     let dom: Nullable<HTMLElement>
