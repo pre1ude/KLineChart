@@ -19,11 +19,8 @@ import type BarSpace from '../common/BarSpace'
 import type VisibleRange from '../common/VisibleRange'
 import { getDefaultVisibleRange } from '../common/VisibleRange'
 import { ActionType } from '../common/Action'
-
-import { logWarn } from '../common/utils/logger'
 import { binarySearchNearest } from '../common/utils/number'
-import { isNumber, isString } from '../common/utils/typeChecks'
-
+import { isNumber } from '../common/utils/typeChecks'
 import type ChartStore from './ChartStore'
 import { LoadDataType } from '../common/LoadDataCallback'
 
@@ -55,11 +52,6 @@ export default class TimeScaleStore {
    * Root store
    */
   private readonly _chartStore: ChartStore
-
-  /**
-   * Time format
-   */
-  private _dateTimeFormat: Intl.DateTimeFormat = this._buildDateTimeFormat()!
 
   /**
    * Scale enabled flag
@@ -213,43 +205,6 @@ export default class TimeScaleStore {
         data: dataList[totalBarCount - 1] ?? null
       })
     }
-  }
-
-  getDateTimeFormat (): Intl.DateTimeFormat {
-    return this._dateTimeFormat
-  }
-
-  _buildDateTimeFormat (timezone?: string): Nullable<Intl.DateTimeFormat> {
-    const options: Intl.DateTimeFormatOptions = {
-      hour12: false,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    }
-    if (isString(timezone)) {
-      options.timeZone = timezone
-    }
-    let dateTimeFormat: Nullable<Intl.DateTimeFormat> = null
-    try {
-      dateTimeFormat = new Intl.DateTimeFormat('en', options)
-    } catch (e) {
-      logWarn('', '', 'Timezone is error!!!')
-    }
-    return dateTimeFormat
-  }
-
-  setTimezone (timezone: string): void {
-    const dateTimeFormat: Nullable<Intl.DateTimeFormat> = this._buildDateTimeFormat(timezone)
-    if (dateTimeFormat !== null) {
-      this._dateTimeFormat = dateTimeFormat
-    }
-  }
-
-  getTimezone (): string {
-    return this._dateTimeFormat.resolvedOptions().timeZone
   }
 
   getBarSpace (): BarSpace {

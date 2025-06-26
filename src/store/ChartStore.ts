@@ -24,18 +24,15 @@ import type LoadDataCallback from '../common/LoadDataCallback'
 import { type LoadDataParams, LoadDataType } from '../common/LoadDataCallback'
 import type LoadMoreCallback from '../common/LoadMoreCallback'
 import { ActionType } from '../common/Action'
-
 import { getDefaultCustomApi, type CustomApi, defaultLocale, type Options } from '../Options'
-
 import TimeScaleStore from './TimeScaleStore'
 import IndicatorStore from './IndicatorStore'
 import TooltipStore from './TooltipStore'
 import OverlayStore from './OverlayStore'
 import ActionStore from './ActionStore'
-
 import { getStyles } from '../extension/styles/index'
-
 import type Chart from '../Chart'
+import { setTimezone } from '../common/utils/dateTimeFormat'
 
 export default class ChartStore {
   /**
@@ -166,7 +163,7 @@ export default class ChartStore {
         this._locale = locale
       }
       if (isString(timezone)) {
-        this._timeScaleStore.setTimezone(timezone)
+        setTimezone(timezone)
       }
       if (isValid(styles)) {
         let ss: Nullable<DeepPartial<Styles>> = null

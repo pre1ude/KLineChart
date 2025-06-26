@@ -23,6 +23,7 @@ import type ChartStore from '../store/ChartStore'
 
 import CrosshairHorizontalLabelView from './CrosshairHorizontalLabelView'
 import { type TextAttrs } from '../extension/figure/text'
+import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
 
 export default class CrosshairVerticalLabelView extends CrosshairHorizontalLabelView {
   override compare (crosshair: Crosshair): boolean {
@@ -35,7 +36,8 @@ export default class CrosshairVerticalLabelView extends CrosshairHorizontalLabel
 
   override getText (crosshair: Crosshair, chartStore: ChartStore): string {
     const timestamp = crosshair.kLineData?.timestamp
-    return chartStore.getCustomApi().formatDate(chartStore.getTimeScaleStore().getDateTimeFormat(), timestamp!, 'YYYY-MM-DD HH:mm', FormatDateType.Crosshair)
+    const dateTimeFormat = getDateTimeFormat()
+    return chartStore.getCustomApi().formatDate(dateTimeFormat, timestamp!, 'YYYY-MM-DD HH:mm', FormatDateType.Crosshair)
   }
 
   override getTextAttrs (text: string, textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs {

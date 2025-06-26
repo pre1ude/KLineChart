@@ -19,6 +19,7 @@ import { isValid } from '../common/utils/typeChecks'
 import { type FormatDate, FormatDateType } from '../Options'
 import AxisImp, { type AxisTemplate, type Axis, type AxisRange, type AxisTick, type AxisCreateTicksParams } from './Axis'
 import type XAxisWidget from '../widget/XAxisWidget'
+import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
 
 export type XAxis = Axis
 
@@ -44,7 +45,7 @@ export default abstract class XAxisImp extends AxisImp {
     const tickLength = ticks.length
     const dataList = chartStore.getDataList()
     if (tickLength > 0) {
-      const dateTimeFormat = chartStore.getTimeScaleStore().getDateTimeFormat()
+      const dateTimeFormat = getDateTimeFormat()
       const tickTextStyles = chart.getStyles().xAxis.tickText
       const defaultLabelWidth = calcTextWidth('00-00 00:00', createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.family))
       const pos = parseInt(ticks[0].value as string, 10)

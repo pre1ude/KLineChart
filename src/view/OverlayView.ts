@@ -37,6 +37,7 @@ import type XAxisWidget from '../widget/XAxisWidget'
 import type YAxisWidget from '../widget/YAxisWidget'
 import { WidgetNameConstants } from '../widget/types'
 import { createFigure, drawStaticFigure } from '../extension/figure'
+import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
 
 export default class OverlayView extends View {
   constructor (widget: DrawWidget<Pane>) {
@@ -390,7 +391,7 @@ export default class OverlayView extends View {
     const thousandsSeparator = chartStore.getThousandsSeparator()
     const decimalFoldThreshold = chartStore.getDecimalFoldThreshold()
     const timeScaleStore = chartStore.getTimeScaleStore()
-    const dateTimeFormat = timeScaleStore.getDateTimeFormat()
+    const dateTimeFormat = getDateTimeFormat()
     const barSpace = timeScaleStore.getBarSpace()
     const precision = chartStore.getPrecision()
     const defaultStyles = chartStore.getStyles().overlay

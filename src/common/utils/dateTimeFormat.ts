@@ -1,0 +1,39 @@
+import type Nullable from '../Nullable'
+import { logWarn } from './logger'
+import { isString } from './typeChecks'
+
+let _dateTimeFormat: Intl.DateTimeFormat = buildDateTimeFormat()!
+
+export function buildDateTimeFormat (timezone?: string): Nullable<Intl.DateTimeFormat> {
+  const options: Intl.DateTimeFormatOptions = {
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  }
+  if (isString(timezone)) {
+    options.timeZone = timezone
+  }
+  let dateTimeFormat: Nullable<Intl.DateTimeFormat> = null
+  try {
+    dateTimeFormat = new Intl.DateTimeFormat('en', options)
+  } catch (e) {
+    logWarn('', '', 'Timezone is error!!!')
+  }
+  return dateTimeFormat
+}
+
+export function getDateTimeFormat (): Intl.DateTimeFormat {
+  return _dateTimeFormat
+}
+
+export function setTimezone (timezone: string): void {
+  _dateTimeFormat = buildDateTimeFormat(timezone)!
+}
+
+export function getTimezone (): string {
+  return _dateTimeFormat.resolvedOptions().timeZone
+}

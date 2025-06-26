@@ -49,6 +49,7 @@ import { getIndicatorClass } from './extension/indicator/index'
 import Event from './Event'
 import type XAxisWidget from './widget/XAxisWidget'
 import type DualYPane from './pane/DualYPane'
+import { getTimezone } from './common/utils/dateTimeFormat'
 
 export enum DomPosition {
   Root = 'root',
@@ -637,7 +638,7 @@ export default class Chart implements ChartApi {
   }
 
   getTimezone (): string {
-    return this._chartStore.getTimeScaleStore().getTimezone()
+    return getTimezone()
   }
 
   setOffsetRightDistance (distance: number): void {

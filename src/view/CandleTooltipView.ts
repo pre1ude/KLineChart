@@ -32,6 +32,7 @@ import { type TooltipIcon } from '../store/TooltipStore'
 import { i18n } from '../extension/i18n/index'
 import type DualYPane from '../pane/DualYPane'
 import { drawStaticFigure } from '../extension/figure'
+import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
 
 export default class CandleTooltipView extends IndicatorTooltipView {
   override drawImp (ctx: CanvasRenderingContext2D): void {
@@ -54,7 +55,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
       const decimalFoldThreshold = chartStore.getDecimalFoldThreshold()
       const activeIcon = chartStore.getTooltipStore().getActiveIcon()
       const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
-      const dateTimeFormat = chartStore.getTimeScaleStore().getDateTimeFormat()
+      const dateTimeFormat = getDateTimeFormat()
       const styles = chartStore.getStyles()
       const candleStyles = styles.candle
       const indicatorStyles = styles.indicator
