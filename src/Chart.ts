@@ -388,7 +388,9 @@ export default class Chart implements ChartApi {
       yRightAxisLeft = totalWidth - yRightAxisWidth
     }
 
-    this._chartStore.getTimeScaleStore().setTotalBarSpace(mainWidth)
+    this._chartStore.mainWidth = mainWidth
+    this._chartStore.getTimeScaleStore().adjustVisibleRange()
+    this._chartStore.getTooltipStore().recalculateCrosshair(true)
 
     const paneBounding = { width: totalWidth }
     const mainBounding = { width: mainWidth, left: mainLeft }

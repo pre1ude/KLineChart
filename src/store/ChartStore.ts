@@ -43,6 +43,9 @@ export default class ChartStore {
    */
   private readonly _chart: Chart
 
+  // Add mainWidth property
+  public mainWidth: number = 0
+
   /**
    * Style config
    */

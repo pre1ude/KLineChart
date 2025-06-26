@@ -72,11 +72,6 @@ export default class TimeScaleStore {
   private _scrollEnabled: boolean = true
 
   /**
-   * Total space of drawing area
-   */
-  private _totalBarSpace: number = 0
-
-  /**
    * Space occupied by a single piece of data
    */
   private _barSpace: number = DEFAULT_BAR_SPACE
@@ -145,19 +140,20 @@ export default class TimeScaleStore {
   }
 
   /**
-   * adjust visible range
+   * Compute the visible range based on current state (pure function, no side effects)
    */
-  adjustVisibleRange (): void {
+  private computeVisibleRange (): VisibleRange {
     const dataList = this._chartStore.getDataList()
     const totalBarCount = dataList.length
-    const visibleBarCount = this._totalBarSpace / this._barSpace
+    const mainWidth = this._chartStore.mainWidth
+    const visibleBarCount = mainWidth / this._barSpace
 
     let leftMinVisibleBarCount: number
     let rightMinVisibleBarCount: number
 
     if (this._ScrollByType === ScrollByType.Distance) {
-      leftMinVisibleBarCount = (this._totalBarSpace - this._maxOffsetDistance.right) / this._barSpace
-      rightMinVisibleBarCount = (this._totalBarSpace - this._maxOffsetDistance.left) / this._barSpace
+      leftMinVisibleBarCount = (mainWidth - this._maxOffsetDistance.right) / this._barSpace
+      rightMinVisibleBarCount = (mainWidth - this._maxOffsetDistance.left) / this._barSpace
     } else {
       leftMinVisibleBarCount = this._minVisibleBarCount.left
       rightMinVisibleBarCount = this._minVisibleBarCount.right
@@ -167,16 +163,17 @@ export default class TimeScaleStore {
     rightMinVisibleBarCount = Math.max(0, rightMinVisibleBarCount)
 
     const maxRightOffsetBarCount = visibleBarCount - Math.min(leftMinVisibleBarCount, totalBarCount)
-    if (this._lastBarRightSideDiffBarCount > maxRightOffsetBarCount) {
-      this._lastBarRightSideDiffBarCount = maxRightOffsetBarCount
+    let lastBarRightSideDiffBarCount = this._offsetRightDistance / this._barSpace
+    if (lastBarRightSideDiffBarCount > maxRightOffsetBarCount) {
+      lastBarRightSideDiffBarCount = maxRightOffsetBarCount
     }
 
     const minRightOffsetBarCount = -totalBarCount + Math.min(rightMinVisibleBarCount, totalBarCount)
-    if (this._lastBarRightSideDiffBarCount < minRightOffsetBarCount) {
-      this._lastBarRightSideDiffBarCount = minRightOffsetBarCount
+    if (lastBarRightSideDiffBarCount < minRightOffsetBarCount) {
+      lastBarRightSideDiffBarCount = minRightOffsetBarCount
     }
 
-    let to = Math.round(this._lastBarRightSideDiffBarCount + totalBarCount + 0.5)
+    let to = Math.round(lastBarRightSideDiffBarCount + totalBarCount + 0.5)
     const realTo = to
     if (to > totalBarCount) {
       to = totalBarCount
@@ -185,11 +182,23 @@ export default class TimeScaleStore {
     if (from < 0) {
       from = 0
     }
-    const realFrom = this._lastBarRightSideDiffBarCount > 0 ? Math.round(totalBarCount + this._lastBarRightSideDiffBarCount - visibleBarCount) - 1 : from
-    this._visibleRange = { from, to, realFrom, realTo }
-    this._chartStore.getActionStore().execute(ActionType.OnVisibleRangeChange, this._visibleRange)
+    const realFrom = lastBarRightSideDiffBarCount > 0 ? Math.round(totalBarCount + lastBarRightSideDiffBarCount - visibleBarCount) - 1 : from
+
+    const visibleRange = { from, to, realFrom, realTo }
+    this._visibleRange = visibleRange
+    return visibleRange
+  }
+
+  /**
+   * Adjust visible range: notify listeners, adjust data, and trigger data loading if needed
+   */
+  adjustVisibleRange (): void {
+    const visibleRange = this.computeVisibleRange()
+    this._chartStore.getActionStore().execute(ActionType.OnVisibleRangeChange, visibleRange)
     this._chartStore.adjustVisibleDataList()
-    // More processing and loading, more loading if there are callback methods and no data is being loaded
+    const dataList = this._chartStore.getDataList()
+    const totalBarCount = dataList.length
+    const { from, to } = visibleRange
     if (from === 0) {
       const firstData = dataList[0]
       this._chartStore.executeLoadMoreCallback(firstData?.timestamp ?? null)
@@ -262,15 +271,6 @@ export default class TimeScaleStore {
     this.adjustVisibleRange()
     this._chartStore.getTooltipStore().recalculateCrosshair(true)
     this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
-  }
-
-  setTotalBarSpace (totalSpace: number): this {
-    if (this._totalBarSpace !== totalSpace) {
-      this._totalBarSpace = totalSpace
-      this.adjustVisibleRange()
-      this._chartStore.getTooltipStore().recalculateCrosshair(true)
-    }
-    return this
   }
 
   setOffsetRightDistance (distance: number, isUpdate?: boolean): this {
@@ -361,7 +361,7 @@ export default class TimeScaleStore {
 
   coordinateToFloatIndex (x: number): number {
     const dataCount = this._chartStore.getDataList().length
-    const deltaFromRight = (this._totalBarSpace - x) / this._barSpace
+    const deltaFromRight = (this._chartStore.mainWidth - x) / this._barSpace
     const index = dataCount + this._lastBarRightSideDiffBarCount - deltaFromRight
     return Math.round(index * 1000000) / 1000000
   }
@@ -383,7 +383,7 @@ export default class TimeScaleStore {
     const dataCount = this._chartStore.getDataList().length
     const deltaFromRight = dataCount + this._lastBarRightSideDiffBarCount - dataIndex
     // return Math.floor(this._totalBarSpace - (deltaFromRight - 0.5) * this._barSpace) - 0.5
-    return Math.floor(this._totalBarSpace - (deltaFromRight - 0.5) * this._barSpace)
+    return Math.floor(this._chartStore.mainWidth - (deltaFromRight - 0.5) * this._barSpace)
   }
 
   coordinateToDataIndex (x: number): number {
@@ -397,7 +397,7 @@ export default class TimeScaleStore {
     let zoomCoordinate: Nullable<Partial<Coordinate>> = coordinate ?? null
     if (!isNumber(zoomCoordinate?.x)) {
       const crosshair = this._chartStore.getTooltipStore().getCrosshair()
-      zoomCoordinate = { x: crosshair?.x ?? this._totalBarSpace / 2 }
+      zoomCoordinate = { x: crosshair?.x ?? this._chartStore.mainWidth / 2 }
     }
     const x = zoomCoordinate!.x!
     const floatIndex = this.coordinateToFloatIndex(x)
