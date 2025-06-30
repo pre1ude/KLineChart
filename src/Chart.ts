@@ -36,7 +36,6 @@ import { logWarn } from './common/utils/logger'
 import { binarySearchNearest } from './common/utils/number'
 import { LoadDataType } from './common/LoadDataCallback'
 import ChartStore from './store/ChartStore'
-import { SCALE_MULTIPLIER } from './store/TimeScaleStore'
 import CandlePane from './pane/CandlePane'
 import IndicatorPane from './pane/IndicatorPane'
 import XAxisPane from './pane/XAxisPane'
@@ -112,6 +111,7 @@ export interface ChartApi {
   isZoomEnabled: () => boolean
   setScrollEnabled: (enabled: boolean) => void
   isScrollEnabled: () => boolean
+  scrollByBar: (count: number, animationDuration?: number) => void
   scrollByDistance: (distance: number, animationDuration?: number) => void
   scrollToRealTime: (animationDuration?: number) => void
   scrollToDataIndex: (dataIndex: number, animationDuration?: number) => void
@@ -875,25 +875,29 @@ export default class Chart implements ChartApi {
   }
 
   setZoomEnabled (enabled: boolean): void {
-    this._chartStore.getTimeScaleStore().setZoomEnabled(enabled)
+    this._chartStore.getTimeScaleStore().zoomEnabled = enabled
   }
 
   isZoomEnabled (): boolean {
-    return this._chartStore.getTimeScaleStore().getZoomEnabled()
+    return this._chartStore.getTimeScaleStore().zoomEnabled
   }
 
   setScrollEnabled (enabled: boolean): void {
-    this._chartStore.getTimeScaleStore().setScrollEnabled(enabled)
+    this._chartStore.getTimeScaleStore().scrollEnabled = enabled
   }
 
   isScrollEnabled (): boolean {
-    return this._chartStore.getTimeScaleStore().getScrollEnabled()
+    return this._chartStore.getTimeScaleStore().scrollEnabled
+  }
+
+  scrollByBar (count: number, animationDuration?: number): void {
+    const barWidth = this.getBarSpace()
+    this.scrollByDistance(count * barWidth, animationDuration)
   }
 
   scrollByDistance (distance: number, animationDuration?: number): void {
     const duration = isNumber(animationDuration) && animationDuration > 0 ? animationDuration : 0
     const timeScaleStore = this._chartStore.getTimeScaleStore()
-    timeScaleStore.startScroll()
     if (duration > 0) {
       const animation = new Animation({ duration })
       animation.doFrame(frameTime => {
@@ -908,17 +912,15 @@ export default class Chart implements ChartApi {
 
   scrollToRealTime (animationDuration?: number): void {
     const timeScaleStore = this._chartStore.getTimeScaleStore()
-    const { bar: barSpace } = timeScaleStore.getBarSpace()
-    const difBarCount = timeScaleStore.getLastBarRightSideDiffBarCount() - timeScaleStore.getInitialOffsetRightDistance() / barSpace
-    const distance = difBarCount * barSpace
+    const distance = timeScaleStore.getOffsetRightDistance() - timeScaleStore.getInitialOffsetRightDistance()
     this.scrollByDistance(distance, animationDuration)
   }
 
   scrollToDataIndex (dataIndex: number, animationDuration?: number): void {
     const timeScaleStore = this._chartStore.getTimeScaleStore()
     const distance = (
-      timeScaleStore.getLastBarRightSideDiffBarCount() + (this.getDataList().length - 1 - dataIndex)
-    ) * timeScaleStore.getBarSpace().bar
+      timeScaleStore.getOffsetRightDistance() + (this.getDataList().length - 1 - dataIndex) * timeScaleStore.getBarSpace().bar
+    )
     this.scrollByDistance(distance, animationDuration)
   }
 
@@ -930,21 +932,20 @@ export default class Chart implements ChartApi {
   zoomAtCoordinate (scale: number, coordinate?: Coordinate, animationDuration?: number): void {
     const duration = isNumber(animationDuration) && animationDuration > 0 ? animationDuration : 0
     const timeScaleStore = this._chartStore.getTimeScaleStore()
-    const { bar: barSpace } = timeScaleStore.getBarSpace()
-    const scaleBarSpace = barSpace * scale
-    const difSpace = scaleBarSpace - barSpace
+    const scaleDelta = scale - 1
     if (duration > 0) {
-      let prevProgressBarSpace = 0
+      let prev = 0
       const animation = new Animation({ duration })
-      animation.doFrame(frameTime => {
-        const progressBarSpace = difSpace * (frameTime / duration)
-        const scale = (progressBarSpace - prevProgressBarSpace) / timeScaleStore.getBarSpace().bar * SCALE_MULTIPLIER
-        timeScaleStore.zoom(scale, coordinate)
-        prevProgressBarSpace = progressBarSpace
+      animation.doFrame(time => {
+        const t = time / duration
+        const cur = scaleDelta * t
+        const scale = cur - prev
+        timeScaleStore.zoom(scale, coordinate?.x)
+        prev = cur
       })
       animation.start()
     } else {
-      timeScaleStore.zoom(difSpace / barSpace * SCALE_MULTIPLIER, coordinate)
+      timeScaleStore.zoom(scaleDelta, coordinate?.x)
     }
   }
 
@@ -964,7 +965,6 @@ export default class Chart implements ChartApi {
     if (paneId !== PaneIdConstants.X_AXIS) {
       const pane = this.getDrawPaneById(paneId)
       if (pane !== null) {
-        const timeScaleStore = this._chartStore.getTimeScaleStore()
         const bounding = pane.getBounding()
         const ps = new Array<Partial<Point>>().concat(points)
         const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
@@ -975,7 +975,7 @@ export default class Chart implements ChartApi {
           const coordinate: Partial<Coordinate> = {}
           let dataIndex = point.dataIndex
           if (isNumber(point.timestamp)) {
-            dataIndex = timeScaleStore.timestampToDataIndex(point.timestamp)
+            dataIndex = this._chartStore.timestampToDataIndex(point.timestamp)
           }
           if (isNumber(dataIndex)) {
             coordinate.x = xAxis?.convertToPixel(dataIndex)
@@ -997,7 +997,6 @@ export default class Chart implements ChartApi {
     if (paneId !== PaneIdConstants.X_AXIS) {
       const pane = this.getDrawPaneById(paneId)
       if (pane !== null) {
-        const timeScaleStore = this._chartStore.getTimeScaleStore()
         const bounding = pane.getBounding()
         const cs = new Array<Partial<Coordinate>>().concat(coordinates)
         const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
@@ -1009,7 +1008,7 @@ export default class Chart implements ChartApi {
           if (isNumber(coordinate.x)) {
             const dataIndex = xAxis?.convertFromPixel(coordinate.x) ?? -1
             point.dataIndex = dataIndex
-            point.timestamp = timeScaleStore.dataIndexToTimestamp(dataIndex) ?? undefined
+            point.timestamp = this._chartStore.dataIndexToTimestamp(dataIndex) ?? undefined
           }
           if (isNumber(coordinate.y)) {
             const y = absolute ? coordinate.y - bounding.top : coordinate.y

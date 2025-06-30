@@ -33,6 +33,7 @@ import ActionStore from './ActionStore'
 import { getStyles } from '../extension/styles/index'
 import type Chart from '../Chart'
 import { setTimezone } from '../common/utils/dateTimeFormat'
+import { binarySearchNearest } from '../common/utils/number'
 
 export default class ChartStore {
   /**
@@ -138,24 +139,6 @@ export default class ChartStore {
     this.setOptions(options)
   }
 
-  /**
-   * @description Adjust visible data
-   * @return {*}
-   */
-  adjustVisibleDataList (): void {
-    this._visibleDataList = []
-    const { realFrom, realTo } = this._timeScaleStore.getVisibleRange()
-    for (let i = realFrom; i < realTo; i++) {
-      const kLineData = this._dataList[i]
-      const x = this._timeScaleStore.dataIndexToCoordinate(i)
-      this._visibleDataList.push({
-        dataIndex: i,
-        x,
-        data: kLineData
-      })
-    }
-  }
-
   setOptions (options?: Options): this {
     if (isValid(options)) {
       const { locale, timezone, styles, customApi, thousandsSeparator, decimalFoldThreshold } = options
@@ -225,13 +208,40 @@ export default class ChartStore {
     return this._dataList
   }
 
+  getDataByDataIndex (index: number): Nullable<KLineData> {
+    return this._dataList[index] ?? null
+  }
+
+  dataIndexToTimestamp (index: number): Nullable<number> {
+    const data = this.getDataByDataIndex(index)
+    return data?.timestamp ?? null
+  }
+
+  timestampToDataIndex (timestamp: number): number {
+    if (this._dataList.length === 0) {
+      return 0
+    }
+    return binarySearchNearest(this._dataList, 'timestamp', timestamp)
+  }
+
   getVisibleFirstData (): Nullable<KLineData> {
-    const { from } = this._timeScaleStore.getVisibleRange()
-    return this._dataList[from] ?? null
+    return this._dataList[0] ?? null
   }
 
   getVisibleDataList (): VisibleData[] {
     return this._visibleDataList
+  }
+
+  adjustVisibleDataList (): void {
+    this._visibleDataList = []
+    const { from, to } = this._timeScaleStore.getVisibleRange()
+    for (let i = from; i < to; i++) {
+      this._visibleDataList.push({
+        dataIndex: i,
+        x: this._timeScaleStore.dataIndexToCoordinate(i),
+        data: this._dataList[i]
+      })
+    }
   }
 
   async addData (data: KLineData | KLineData[], type?: LoadDataType, more?: boolean): Promise<void> {
@@ -270,10 +280,8 @@ export default class ChartStore {
       const lastDataTimestamp = formatValue(this._dataList[dataCount - 1], 'timestamp', 0) as number
       if (timestamp > lastDataTimestamp) {
         this._dataList.push(data)
-        let lastBarRightSideDiffBarCount = this._timeScaleStore.getLastBarRightSideDiffBarCount()
-        if (lastBarRightSideDiffBarCount < 0) {
-          this._timeScaleStore.setLastBarRightSideDiffBarCount(--lastBarRightSideDiffBarCount)
-        }
+        const nextOffsetRight = this._timeScaleStore.getOffsetRightDistance() - this._timeScaleStore.getBarSpace().bar
+        this._timeScaleStore.setOffsetRightDistance(nextOffsetRight)
         dataLengthChange = 1
         success = true
         adjustFlag = true

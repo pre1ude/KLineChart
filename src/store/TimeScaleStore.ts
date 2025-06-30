@@ -12,178 +12,74 @@
  * limitations under the License.
  */
 
-import type Nullable from '../common/Nullable'
-import type Coordinate from '../common/Coordinate'
-import type KLineData from '../common/KLineData'
 import type BarSpace from '../common/BarSpace'
 import type VisibleRange from '../common/VisibleRange'
 import { getDefaultVisibleRange } from '../common/VisibleRange'
 import { ActionType } from '../common/Action'
-import { binarySearchNearest } from '../common/utils/number'
-import { isNumber } from '../common/utils/typeChecks'
 import type ChartStore from './ChartStore'
 import { LoadDataType } from '../common/LoadDataCallback'
-
-interface LeftRightSide {
-  left: number
-  right: number
-}
+import { clamp } from '../component/scale/utils'
+import { createLinear, type LinearScale } from '../component/scale'
 
 const BarSpaceLimitConstants = {
   MIN: 1,
   MAX: 50
 }
 
-const enum ScrollByType {
-  BarCount,
-  Distance
-}
-
-const DEFAULT_BAR_SPACE = 8
-
-const DEFAULT_OFFSET_RIGHT_DISTANCE = 80
-
-const GAP_BAR_SPACE_RATIO = 0.88
-
-export const SCALE_MULTIPLIER = 10
+const DEFAULT_BAR_WIDTH = 8
+const DEFAULT_OFFSET_RIGHT = 80
+const K_BAR_RATIO = 0.88
 
 export default class TimeScaleStore {
-  /**
-   * Root store
-   */
   private readonly _chartStore: ChartStore
-
-  /**
-   * Scale enabled flag
-   */
   private _zoomEnabled: boolean = true
-
-  /**
-   * Scroll enabled flag
-   */
   private _scrollEnabled: boolean = true
+  private _barWidth: number = DEFAULT_BAR_WIDTH
+  private _kWidth: number
+  private _offsetRight = DEFAULT_OFFSET_RIGHT
 
   /**
-   * Space occupied by a single piece of data
+   * 滚动到最左时最小剩余宽度, 滚动到最右时最小剩余宽度
    */
-  private _barSpace: number = DEFAULT_BAR_SPACE
+  private readonly _minRemainWidth = { left: 0, right: 0 }
 
-  /**
-   * The space of the draw bar
-   */
-  private _gapBarSpace: number
-
-  /**
-   * Distance from the last data to the right of the drawing area
-   */
-  private _offsetRightDistance = DEFAULT_OFFSET_RIGHT_DISTANCE
-
-  /**
-   * The number of bar calculated from the distance of the last data to the right of the drawing area
-   */
-  private _lastBarRightSideDiffBarCount: number
-
-  /**
-   * The number of bar to the right of the drawing area from the last data when scrolling starts
-   */
-  private _startLastBarRightSideDiffBarCount = 0
-
-  /**
-   * Scroll limit role
-   */
-  private _ScrollByType: ScrollByType = ScrollByType.BarCount
-
-  /**
-   * Scroll to the leftmost and rightmost visible bar
-   */
-  private readonly _minVisibleBarCount: LeftRightSide = { left: 2, right: 2 }
-
-  /**
-   * Scroll to the leftmost and rightmost distance
-   */
-  private readonly _maxOffsetDistance: LeftRightSide = { left: 50, right: 50 }
-
-  /**
-   * Start and end points of visible area data index
-   */
   private _visibleRange: VisibleRange = getDefaultVisibleRange()
+
+  private _xScale: LinearScale
 
   constructor (chartStore: ChartStore) {
     this._chartStore = chartStore
-    this._gapBarSpace = this._calcGapBarSpace()
-    this._lastBarRightSideDiffBarCount = this._offsetRightDistance / this._barSpace
+    this._xScale = createScale(this._visibleRange, this._chartStore.mainWidth)
+    this._kWidth = getKWidth(this._barWidth)
   }
 
-  private _calcGapBarSpace (): number {
-    let gapBarSpace: number
-    if (this._barSpace > 3) {
-      gapBarSpace = Math.floor(this._barSpace * GAP_BAR_SPACE_RATIO)
-    } else {
-      gapBarSpace = Math.floor(this._barSpace)
-      if (gapBarSpace === this._barSpace) {
-        gapBarSpace--
-      }
-    }
-    if (gapBarSpace % 2 === 0) {
-      gapBarSpace--
-    }
-    gapBarSpace = Math.max(1, gapBarSpace)
-    return gapBarSpace
-  }
-
-  /**
-   * Compute the visible range based on current state (pure function, no side effects)
-   */
   private computeVisibleRange (): VisibleRange {
     const dataList = this._chartStore.getDataList()
     const totalBarCount = dataList.length
+    const totalBarWidth = totalBarCount * this._barWidth
     const mainWidth = this._chartStore.mainWidth
-    const visibleBarCount = mainWidth / this._barSpace
 
-    let leftMinVisibleBarCount: number
-    let rightMinVisibleBarCount: number
+    const [lmin, rmin] = [this._minRemainWidth.left, this._minRemainWidth.right].map(v => Math.min(v, totalBarWidth))
+    const rightOffsetRange = [-totalBarWidth + rmin, mainWidth - lmin] as [number, number]
 
-    if (this._ScrollByType === ScrollByType.Distance) {
-      leftMinVisibleBarCount = (mainWidth - this._maxOffsetDistance.right) / this._barSpace
-      rightMinVisibleBarCount = (mainWidth - this._maxOffsetDistance.left) / this._barSpace
-    } else {
-      leftMinVisibleBarCount = this._minVisibleBarCount.left
-      rightMinVisibleBarCount = this._minVisibleBarCount.right
-    }
+    this._offsetRight = clamp(this._offsetRight, ...rightOffsetRange)
 
-    leftMinVisibleBarCount = Math.max(0, leftMinVisibleBarCount)
-    rightMinVisibleBarCount = Math.max(0, rightMinVisibleBarCount)
+    const to = this._offsetRight > 0 ? totalBarCount : Math.ceil(totalBarCount + this._offsetRight / this._barWidth)
 
-    const maxRightOffsetBarCount = visibleBarCount - Math.min(leftMinVisibleBarCount, totalBarCount)
-    let lastBarRightSideDiffBarCount = this._offsetRightDistance / this._barSpace
-    if (lastBarRightSideDiffBarCount > maxRightOffsetBarCount) {
-      lastBarRightSideDiffBarCount = maxRightOffsetBarCount
-    }
+    const diff = this._offsetRight + totalBarCount * this._barWidth - mainWidth
+    const from = diff < 0 ? 0 : Math.floor(diff / this._barWidth)
 
-    const minRightOffsetBarCount = -totalBarCount + Math.min(rightMinVisibleBarCount, totalBarCount)
-    if (lastBarRightSideDiffBarCount < minRightOffsetBarCount) {
-      lastBarRightSideDiffBarCount = minRightOffsetBarCount
-    }
+    const domainTo = totalBarCount + this._offsetRight / this._barWidth
 
-    let to = Math.round(lastBarRightSideDiffBarCount + totalBarCount + 0.5)
-    const realTo = to
-    if (to > totalBarCount) {
-      to = totalBarCount
-    }
-    let from = Math.round(to - visibleBarCount) - 1
-    if (from < 0) {
-      from = 0
-    }
-    const realFrom = lastBarRightSideDiffBarCount > 0 ? Math.round(totalBarCount + lastBarRightSideDiffBarCount - visibleBarCount) - 1 : from
+    // (domainTo - domainFrom) * barWidth = mainWidth
+    const domainFrom = domainTo - mainWidth / this._barWidth
 
-    const visibleRange = { from, to, realFrom, realTo }
+    const visibleRange = { from, to, domainFrom, domainTo }
     this._visibleRange = visibleRange
+    this._xScale = createScale(visibleRange, this._chartStore.mainWidth)
     return visibleRange
   }
 
-  /**
-   * Adjust visible range: notify listeners, adjust data, and trigger data loading if needed
-   */
   adjustVisibleRange (): void {
     const visibleRange = this.computeVisibleRange()
     this._chartStore.getActionStore().execute(ActionType.OnVisibleRangeChange, visibleRange)
@@ -209,29 +105,27 @@ export default class TimeScaleStore {
 
   getBarSpace (): BarSpace {
     return {
-      bar: this._barSpace,
-      halfBar: this._barSpace / 2,
-      gapBar: this._gapBarSpace,
-      halfGapBar: Math.floor(this._gapBarSpace / 2)
+      bar: this._barWidth,
+      halfBar: this._barWidth / 2,
+      gapBar: this._kWidth,
+      halfGapBar: Math.floor(this._kWidth / 2)
     }
   }
 
-  setBarSpace (barSpace: number, adjustBeforeFunc?: () => void): void {
-    if (barSpace < BarSpaceLimitConstants.MIN || barSpace > BarSpaceLimitConstants.MAX || this._barSpace === barSpace) {
+  setBarSpace (barWidth: number): void {
+    if (this._barWidth === barWidth) {
       return
     }
-    this._barSpace = barSpace
-    this._gapBarSpace = this._calcGapBarSpace()
-    adjustBeforeFunc?.()
+    this._barWidth = clamp(barWidth, BarSpaceLimitConstants.MIN, BarSpaceLimitConstants.MAX)
+    this._kWidth = getKWidth(this._barWidth)
     this.adjustVisibleRange()
     this._chartStore.getTooltipStore().recalculateCrosshair(true)
     this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
   }
 
-  setOffsetRightDistance (distance: number, isUpdate?: boolean): this {
-    this._offsetRightDistance = this._ScrollByType === ScrollByType.Distance ? Math.min(this._maxOffsetDistance.right, distance) : distance
-    this._lastBarRightSideDiffBarCount = this._offsetRightDistance / this._barSpace
-    if (isUpdate ?? false) {
+  setOffsetRightDistance (distance: number, update?: boolean): this {
+    this._offsetRight = distance
+    if (update ?? false) {
       this.adjustVisibleRange()
       this._chartStore.getTooltipStore().recalculateCrosshair(true)
       this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
@@ -240,152 +134,137 @@ export default class TimeScaleStore {
   }
 
   resetOffsetRightDistance (): void {
-    this.setOffsetRightDistance(this._offsetRightDistance)
+    this.setOffsetRightDistance(DEFAULT_OFFSET_RIGHT)
   }
 
   getInitialOffsetRightDistance (): number {
-    return this._offsetRightDistance
+    return DEFAULT_OFFSET_RIGHT
   }
 
   getOffsetRightDistance (): number {
-    return Math.max(0, this._lastBarRightSideDiffBarCount * this._barSpace)
+    return this._offsetRight
   }
 
-  getLastBarRightSideDiffBarCount (): number {
-    return this._lastBarRightSideDiffBarCount
+  setMaxOffsetLeftDistance (distance = 50): void {
+    const mainWidth = this._chartStore.mainWidth
+    this._minRemainWidth.right = mainWidth - distance
   }
 
-  setLastBarRightSideDiffBarCount (barCount: number): this {
-    this._lastBarRightSideDiffBarCount = barCount
-    return this
+  setMaxOffsetRightDistance (distance = 50): void {
+    const mainWidth = this._chartStore.mainWidth
+    this._minRemainWidth.left = mainWidth - distance
   }
 
-  setMaxOffsetLeftDistance (distance: number): this {
-    this._ScrollByType = ScrollByType.Distance
-    this._maxOffsetDistance.left = distance
-    return this
+  setLeftMinVisibleBarCount (barCount = 2): void {
+    this._minRemainWidth.left = barCount * this._barWidth
   }
 
-  setMaxOffsetRightDistance (distance: number): this {
-    this._ScrollByType = ScrollByType.Distance
-    this._maxOffsetDistance.right = distance
-    return this
-  }
-
-  setLeftMinVisibleBarCount (barCount: number): this {
-    this._ScrollByType = ScrollByType.BarCount
-    this._minVisibleBarCount.left = barCount
-    return this
-  }
-
-  setRightMinVisibleBarCount (barCount: number): this {
-    this._ScrollByType = ScrollByType.BarCount
-    this._minVisibleBarCount.right = barCount
-    return this
+  setRightMinVisibleBarCount (barCount = 2): void {
+    this._minRemainWidth.right = barCount * this._barWidth
   }
 
   getVisibleRange (): VisibleRange {
     return this._visibleRange
   }
 
-  startScroll (): void {
-    this._startLastBarRightSideDiffBarCount = this._lastBarRightSideDiffBarCount
+  getXScale (): LinearScale {
+    return this._xScale
   }
 
   scroll (distance: number): void {
     if (!this._scrollEnabled) {
       return
     }
-    const distanceBarCount = distance / this._barSpace
-    const prevLastBarRightSideDistance = this._lastBarRightSideDiffBarCount * this._barSpace
-    this._lastBarRightSideDiffBarCount = this._startLastBarRightSideDiffBarCount - distanceBarCount
+    const prevOffsetRight = this._offsetRight
+    this._offsetRight -= distance
     this.adjustVisibleRange()
     this._chartStore.getTooltipStore().recalculateCrosshair(true)
     this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
-    const realDistance = Math.round(
-      prevLastBarRightSideDistance - this._lastBarRightSideDiffBarCount * this._barSpace
-    )
+    const realDistance = Math.round(prevOffsetRight - this._offsetRight)
     if (realDistance !== 0) {
       this._chartStore.getActionStore().execute(ActionType.OnScroll, { distance: realDistance })
     }
   }
 
-  getDataByDataIndex (dataIndex: number): Nullable<KLineData> {
-    return this._chartStore.getDataList()[dataIndex] ?? null
-  }
-
-  coordinateToFloatIndex (x: number): number {
-    const dataCount = this._chartStore.getDataList().length
-    const deltaFromRight = (this._chartStore.mainWidth - x) / this._barSpace
-    const index = dataCount + this._lastBarRightSideDiffBarCount - deltaFromRight
-    return Math.round(index * 1000000) / 1000000
-  }
-
-  dataIndexToTimestamp (dataIndex: number): Nullable<number> {
-    const data = this.getDataByDataIndex(dataIndex)
-    return data?.timestamp ?? null
-  }
-
-  timestampToDataIndex (timestamp: number): number {
-    const dataList = this._chartStore.getDataList()
-    if (dataList.length === 0) {
-      return 0
-    }
-    return binarySearchNearest(dataList, 'timestamp', timestamp)
-  }
-
+  // map from [domainFrom, domainTo] -> [0, mainWidth]
   dataIndexToCoordinate (dataIndex: number): number {
-    const dataCount = this._chartStore.getDataList().length
-    const deltaFromRight = dataCount + this._lastBarRightSideDiffBarCount - dataIndex
-    // return Math.floor(this._totalBarSpace - (deltaFromRight - 0.5) * this._barSpace) - 0.5
-    return Math.floor(this._chartStore.mainWidth - (deltaFromRight - 0.5) * this._barSpace)
+    return this._xScale(dataIndex)
   }
 
   coordinateToDataIndex (x: number): number {
-    return Math.ceil(this.coordinateToFloatIndex(x)) - 1
+    const dataCount = this._chartStore.getDataList().length
+    // * math explain: (dataCount - index) * bar = (mainWidth - offsetRight - x)
+    const index = dataCount - (this._chartStore.mainWidth - this._offsetRight - x) / this._barWidth
+    return Math.floor(index)
   }
 
-  zoom (scale: number, coordinate?: Partial<Coordinate>): void {
+  zoom (scaleDelta: number, xCoord?: number): void {
     if (!this._zoomEnabled) {
       return
     }
-    let zoomCoordinate: Nullable<Partial<Coordinate>> = coordinate ?? null
-    if (!isNumber(zoomCoordinate?.x)) {
+    const getDefaultXCoord = (): number => {
       const crosshair = this._chartStore.getTooltipStore().getCrosshair()
-      zoomCoordinate = { x: crosshair?.x ?? this._chartStore.mainWidth / 2 }
+      return crosshair?.x ?? this._chartStore.mainWidth / 2
     }
-    const x = zoomCoordinate!.x!
-    const floatIndex = this.coordinateToFloatIndex(x)
-    const prevBarSpace = this._barSpace
-    const barSpace = this._barSpace + scale * (this._barSpace / SCALE_MULTIPLIER)
-    this.setBarSpace(barSpace, () => {
-      this._lastBarRightSideDiffBarCount += (floatIndex - this.coordinateToFloatIndex(x))
-    })
-    const realScale = this._barSpace / prevBarSpace
-    if (realScale !== 1) {
-      this._chartStore.getActionStore().execute(ActionType.OnZoom, { scale: realScale })
+    const x = xCoord ?? getDefaultXCoord()
+
+    const scaleRatio = 1 + scaleDelta
+
+    const nextBarWidth = clamp(this._barWidth * scaleRatio, BarSpaceLimitConstants.MIN, BarSpaceLimitConstants.MAX)
+
+    const realScaleRatio = nextBarWidth / this._barWidth
+
+    // let right edge as the origin, left direction is positive
+    // Math explain: (nextOffsetRight - offsetX) / (offsetRight - offsetX) = scaleRatio
+    const mainWidth = this._chartStore.mainWidth
+    const offsetX = mainWidth - x
+    const nextOffsetRight = (this._offsetRight - offsetX) * realScaleRatio + offsetX
+    this._offsetRight = nextOffsetRight
+    this._barWidth = nextBarWidth
+
+    this._kWidth = getKWidth(this._barWidth)
+    this.adjustVisibleRange()
+    this._chartStore.getTooltipStore().recalculateCrosshair(true)
+    this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
+
+    if (realScaleRatio !== 1) {
+      this._chartStore.getActionStore().execute(ActionType.OnZoom, { scale: realScaleRatio })
     }
   }
 
-  setZoomEnabled (enabled: boolean): this {
-    this._zoomEnabled = enabled
-    return this
-  }
+  get zoomEnabled (): boolean { return this._zoomEnabled }
 
-  getZoomEnabled (): boolean {
-    return this._zoomEnabled
-  }
+  set zoomEnabled (enabled: boolean) { this._zoomEnabled = enabled }
 
-  setScrollEnabled (enabled: boolean): this {
-    this._scrollEnabled = enabled
-    return this
-  }
+  get scrollEnabled (): boolean { return this._scrollEnabled }
 
-  getScrollEnabled (): boolean {
-    return this._scrollEnabled
-  }
+  set scrollEnabled (enabled: boolean) { this._scrollEnabled = enabled }
 
   clear (): void {
     this._visibleRange = getDefaultVisibleRange()
   }
+}
+
+function getKWidth (barWidth: number): number {
+  let kWidth: number
+  if (barWidth > 3) {
+    kWidth = Math.floor(barWidth * K_BAR_RATIO)
+  } else {
+    kWidth = Math.floor(barWidth)
+    if (kWidth === barWidth) {
+      kWidth--
+    }
+  }
+  if (kWidth % 2 === 0) {
+    kWidth--
+  }
+  kWidth = Math.max(1, kWidth)
+  return kWidth
+}
+
+function createScale ({ domainFrom, domainTo }: VisibleRange, mainWidth: number): LinearScale {
+  return createLinear({
+    domain: [domainFrom, domainTo - 1],
+    range: [0, mainWidth]
+  })
 }

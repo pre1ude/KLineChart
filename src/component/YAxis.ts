@@ -15,13 +15,14 @@
 import { YAxisType, CandleType } from '../common/Styles'
 import type Bounding from '../common/Bounding'
 import { isNumber, isValid } from '../common/utils/typeChecks'
-import { index10, log10 } from '../common/utils/number'
+import { getPrecision, index10, log10, nice, round } from '../common/utils/number'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
-import AxisImp, { type AxisTemplate, type Axis, type AxisRange, type AxisTick, type AxisCreateTicksParams } from './Axis'
+import AxisImp, { type AxisTemplate, type Axis, type AxisTick, type AxisCreateTicksParams } from './Axis'
 import { type IndicatorFigure } from './Indicator'
 import { PaneIdConstants } from '../pane/types'
 import type YAxisWidget from '../widget/YAxisWidget'
+import type VisibleRange from '../common/VisibleRange'
 
 interface FiguresResult {
   figures: IndicatorFigure[]
@@ -35,7 +36,46 @@ export interface YAxis extends Axis {
 export type YAxisConstructor = new (parent: YAxisWidget) => YAxisImp
 
 export default abstract class YAxisImp extends AxisImp implements YAxis {
-  protected calcRange (): AxisRange {
+  private _autoCalcTickFlag = true
+  private _range: VisibleRange = { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
+  private _prevRange: VisibleRange = { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
+  private _ticks: AxisTick[] = []
+
+  buildTicks (force: boolean): boolean {
+    if (this._autoCalcTickFlag) {
+      this._range = this.calcRange()
+    }
+    if (this._prevRange.from !== this._range.from || this._prevRange.to !== this._range.to || force) {
+      this._prevRange = this._range
+      const defaultTicks = this.optimalTicks(this._calcTicks())
+      this._ticks = this.createTicks({
+        range: this._range,
+        bounding: this.getSelfBounding(),
+        defaultTicks
+      })
+      return true
+    }
+    return false
+  }
+
+  getTicks (): AxisTick[] {
+    return this._ticks
+  }
+
+  setRange (range: VisibleRange): void {
+    this._autoCalcTickFlag = false
+    this._range = range
+  }
+
+  getRange (): VisibleRange { return this._range }
+
+  setAutoCalcTickFlag (flag: boolean): void {
+    this._autoCalcTickFlag = flag
+  }
+
+  getAutoCalcTickFlag (): boolean { return this._autoCalcTickFlag }
+
+  protected calcRange (): VisibleRange {
     const parent = this.getParent().getPane()
     const chart = parent.getChart()
     const chartStore = chart.getChartStore()
@@ -161,26 +201,22 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     if (bottomRate >= 1) {
       bottomRate = bottomRate / height
     }
-    let range = Math.abs(max - min)
+    const range = Math.abs(max - min)
     // gap
     min = min - range * bottomRate
     max = max + range * topRate
-    range = Math.abs(max - min)
-    let realMin: number
-    let realMax: number
-    let realRange: number
+    let domainFrom: number
+    let domainTo: number
     if (type === YAxisType.Log) {
-      realMin = index10(min)
-      realMax = index10(max)
-      realRange = Math.abs(realMax - realMin)
+      domainFrom = index10(min)
+      domainTo = index10(max)
     } else {
-      realMin = min
-      realMax = max
-      realRange = range
+      domainFrom = min
+      domainTo = max
     }
 
     return {
-      from: min, to: max, range, realFrom: realMin, realTo: realMax, realRange
+      from: min, to: max, domainFrom, domainTo
     }
   }
 
@@ -193,8 +229,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   _innerConvertToPixel (value: number): number {
     // todo should get the pane height
     const height = this.getParent()?.getBounding().height ?? 0
-    const { from, range } = this.getRange()
-    const rate = (value - from) / range
+    const { from, to } = this.getRange()
+    const rate = (value - from) / (to - from)
     return this.isReverse() ? Math.round(rate * height) : Math.round((1 - rate) * height)
   }
 
@@ -296,8 +332,6 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     if (width !== 'auto') {
       return width
     }
-    const chartStore = chart.getChartStore()
-    const customApi = chartStore.getCustomApi()
 
     let yAxisWidth = 0
     if (yAxisStyles.show) {
@@ -316,6 +350,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         yAxisWidth += (yAxisStyles.tickText.marginStart + yAxisStyles.tickText.marginEnd + textWidth)
       }
     }
+    return yAxisWidth
+    /*
+    const chartStore = chart.getChartStore()
+    const customApi = chartStore.getCustomApi()
     const crosshairStyles = styles.crosshair
     let crosshairVerticalTextWidth = 0
     if (
@@ -365,7 +403,36 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         )
       )
     }
-    return Math.max(yAxisWidth, crosshairVerticalTextWidth)
+    return Math.max(yAxisWidth, crosshairVerticalTextWidth) */
+  }
+
+  private _calcTicks (): AxisTick[] {
+    const { from, to } = this._range
+    const ticks: AxisTick[] = []
+
+    if (to - from >= 0) {
+      const [interval, precision] = this._calcTickInterval(to - from)
+      const first = round(Math.ceil(from / interval) * interval, precision)
+      const last = round(Math.floor(to / interval) * interval, precision)
+      let n = 0
+      let f = first
+
+      if (interval !== 0) {
+        while (f <= last) {
+          const v = f.toFixed(precision)
+          ticks[n] = { text: v, coord: 0, value: v }
+          ++n
+          f += interval
+        }
+      }
+    }
+    return ticks
+  }
+
+  private _calcTickInterval (range: number): number[] {
+    const interval = nice(range / 8.0)
+    const precision = getPrecision(interval)
+    return [interval, precision]
   }
 
   getSelfBounding (): Bounding {
@@ -374,9 +441,9 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
   convertFromPixel (pixel: number): number {
     const height = this.getParent().getBounding().height ?? 0
-    const { from, range } = this.getRange()
+    const { from, to } = this.getRange()
     const rate = this.isReverse() ? pixel / height : 1 - pixel / height
-    const value = rate * range + from
+    const value = rate * (to - from) + from
     switch (this.getType()) {
       case YAxisType.Percentage: {
         const fromData = this.getParent().getPane().getChart().getChartStore().getVisibleFirstData()

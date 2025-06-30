@@ -17,24 +17,57 @@ import type Bounding from '../common/Bounding'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { isValid } from '../common/utils/typeChecks'
 import { type FormatDate, FormatDateType } from '../Options'
-import AxisImp, { type AxisTemplate, type Axis, type AxisRange, type AxisTick, type AxisCreateTicksParams } from './Axis'
+import AxisImp, { type AxisTemplate, type Axis, type AxisTick, type AxisCreateTicksParams } from './Axis'
 import type XAxisWidget from '../widget/XAxisWidget'
 import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
+import type VisibleRange from '../common/VisibleRange'
+import { type LinearScale } from './scale'
 
 export type XAxis = Axis
 
 export type XAxisConstructor = new (parent: XAxisWidget) => XAxisImp
 
 export default abstract class XAxisImp extends AxisImp {
-  protected calcRange (): AxisRange {
-    const chartStore = this.getParent().getPane().getChart().getChartStore()
-    const { from, to } = chartStore.getTimeScaleStore().getVisibleRange()
-    const af = from
-    const at = to - 1
-    const range = to - from
-    return {
-      from: af, to: at, range, realFrom: af, realTo: at, realRange: range
+  private _autoCalcTickFlag = true
+  private _range: VisibleRange = { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
+  private _prevRange: VisibleRange = { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
+  private _ticks: AxisTick[] = []
+
+  buildTicks (force: boolean): boolean {
+    if (this._autoCalcTickFlag) {
+      this._range = this.calcRange()
     }
+    if (this._prevRange.from !== this._range.from || this._prevRange.to !== this._range.to || force) {
+      this._prevRange = this._range
+      const defaultTicks = this.optimalTicks(this._calcTicks())
+      this._ticks = this.createTicks({
+        range: this._range,
+        bounding: this.getSelfBounding(),
+        defaultTicks
+      })
+      return true
+    }
+    return false
+  }
+
+  getTicks (): AxisTick[] {
+    return this._ticks
+  }
+
+  protected _calcTicks (): AxisTick[] {
+    const xScale = this.getXScale()
+    const ticks = xScale.ticks()
+    return ticks.map(v => ({ text: v + '', coord: 0, value: v }))
+  }
+
+  protected getXScale (): LinearScale {
+    const timeScaleStore = this.getParent().getPane().getChart().getChartStore().getTimeScaleStore()
+    return timeScaleStore.getXScale()
+  }
+
+  protected calcRange (): VisibleRange {
+    const chartStore = this.getParent().getPane().getChart().getChartStore()
+    return chartStore.getTimeScaleStore().getVisibleRange()
   }
 
   protected optimalTicks (ticks: AxisTick[]): AxisTick[] {
@@ -62,6 +95,7 @@ export default abstract class XAxisImp extends AxisImp {
       for (let i = 0; i < tickLength; i += tickCountDif) {
         const pos = parseInt(ticks[i].value as string, 10)
         const kLineData = dataList[pos]
+        if (!isValid(kLineData)) continue
         const timestamp = kLineData.timestamp
         let text = formatDate(dateTimeFormat, timestamp, 'HH:mm', FormatDateType.XAxis)
         if (i !== 0) {
@@ -74,6 +108,7 @@ export default abstract class XAxisImp extends AxisImp {
         optimalTicks.push({ text, coord: x, value: timestamp })
       }
       const optimalTickLength = optimalTicks.length
+      if (optimalTickLength < 1) return optimalTicks
       if (optimalTickLength === 1) {
         optimalTicks[0].text = formatDate(dateTimeFormat, optimalTicks[0].value as number, 'YYYY-MM-DD HH:mm', FormatDateType.XAxis)
       } else {
@@ -96,6 +131,7 @@ export default abstract class XAxisImp extends AxisImp {
     return optimalTicks
   }
 
+  // should only call once
   private _optimalTickLabel (formatDate: FormatDate, dateTimeFormat: Intl.DateTimeFormat, timestamp: number, comparedTimestamp: number): Nullable<string> {
     const year = formatDate(dateTimeFormat, timestamp, 'YYYY', FormatDateType.XAxis)
     const month = formatDate(dateTimeFormat, timestamp, 'YYYY-MM', FormatDateType.XAxis)
@@ -150,15 +186,31 @@ export default abstract class XAxisImp extends AxisImp {
     return this.getParent().getBounding()
   }
 
+  setRange (range: VisibleRange): void {
+    this._autoCalcTickFlag = false
+    this._range = range
+  }
+
+  getRange (): VisibleRange { return this._range }
+
+  setAutoCalcTickFlag (flag: boolean): void {
+    this._autoCalcTickFlag = flag
+  }
+
+  getAutoCalcTickFlag (): boolean { return this._autoCalcTickFlag }
+
+  // todo should just use the timeScaleStore
   convertTimestampFromPixel (pixel: number): Nullable<number> {
-    const timeScaleStore = this.getParent().getPane().getChart().getChartStore().getTimeScaleStore()
+    const chartStore = this.getParent().getPane().getChart().getChartStore()
+    const timeScaleStore = chartStore.getTimeScaleStore()
     const dataIndex = timeScaleStore.coordinateToDataIndex(pixel)
-    return timeScaleStore.dataIndexToTimestamp(dataIndex)
+    return chartStore.dataIndexToTimestamp(dataIndex)
   }
 
   convertTimestampToPixel (timestamp: number): number {
-    const timeScaleStore = this.getParent().getPane().getChart().getChartStore().getTimeScaleStore()
-    const dataIndex = timeScaleStore.timestampToDataIndex(timestamp)
+    const chartStore = this.getParent().getPane().getChart().getChartStore()
+    const timeScaleStore = chartStore.getTimeScaleStore()
+    const dataIndex = chartStore.timestampToDataIndex(timestamp)
     return timeScaleStore.dataIndexToCoordinate(dataIndex)
   }
 

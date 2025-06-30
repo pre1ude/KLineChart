@@ -319,8 +319,8 @@ export default class SyntheticEvent {
       }
 
       if (deltaY !== 0) {
-        const scale = Math.sign(deltaY) * Math.min(1, Math.abs(deltaY))
-        this._handler.mouseWheelVertEvent(this._makeCompatEvent(wheelEvent), scale)
+        const normDeltaY = Math.sign(deltaY) * Math.min(1, Math.abs(deltaY))
+        this._handler.mouseWheelVertEvent(this._makeCompatEvent(wheelEvent), normDeltaY)
       }
     }
   }

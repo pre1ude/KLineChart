@@ -81,3 +81,7 @@ export function ticks (min: number, max: number, count: number): number[] {
 export function interpolateNumber (t: number, start: number, stop: number): number {
   return start * (1 - t) + stop * t
 }
+
+export function clamp (v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v))
+}

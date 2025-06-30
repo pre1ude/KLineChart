@@ -46,7 +46,7 @@ export default class CandleBarView extends View {
       let ohlcSize = 0
       let halfOhlcSize = 0
       if (candleBarOptions.type === CandleType.Ohlc) {
-        const { gapBar } = chartStore.getTimeScaleStore().getBarSpace()
+        const gapBar = chartStore.getTimeScaleStore().getBarSpace().gapBar
         ohlcSize = Math.min(Math.max(Math.round(gapBar * 0.2), 1), 8)
         if (ohlcSize > 2 && ohlcSize % 2 === 1) {
           ohlcSize--

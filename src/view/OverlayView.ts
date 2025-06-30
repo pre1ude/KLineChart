@@ -28,7 +28,6 @@ import { OVERLAY_FIGURE_KEY_PREFIX, OverlayMode, getAllOverlayFigureIgnoreEventT
 import { type ProgressOverlayInfo, type EventOverlayInfo } from '../store/OverlayStore'
 import type OverlayStore from '../store/OverlayStore'
 import { EventOverlayInfoFigureType } from '../store/OverlayStore'
-import type TimeScaleStore from '../store/TimeScaleStore'
 import { PaneIdConstants } from '../pane/types'
 import type DrawWidget from '../widget/DrawWidget'
 import type Pane from '../pane/Pane'
@@ -38,6 +37,7 @@ import type YAxisWidget from '../widget/YAxisWidget'
 import { WidgetNameConstants } from '../widget/types'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
+import type ChartStore from '../store/ChartStore'
 
 export default class OverlayView extends View {
   constructor (widget: DrawWidget<Pane>) {
@@ -166,7 +166,7 @@ export default class OverlayView extends View {
             if (figureType === EventOverlayInfoFigureType.Point) {
               instance.eventPressedPointMove(point, figureIndex)
             } else {
-              instance.eventPressedOtherMove(point, this.getWidget().getPane().getChart().getChartStore().getTimeScaleStore())
+              instance.eventPressedOtherMove(point, this.getWidget().getPane().getChart().getChartStore())
             }
           }
         }
@@ -287,11 +287,11 @@ export default class OverlayView extends View {
     const pane = widget.getPane()
     const chart = pane.getChart()
     const paneId = pane.getId()
-    const timeScaleStore = chart.getChartStore().getTimeScaleStore()
+    const chartStore = chart.getChartStore()
     if (this.coordinateToPointTimestampDataIndexFlag()) {
       const xAxis = (widget as XAxisWidget).getAxisComponent()
       const dataIndex = xAxis.convertFromPixel(coordinate.x)
-      const timestamp = timeScaleStore.dataIndexToTimestamp(dataIndex) ?? undefined
+      const timestamp = chartStore.dataIndexToTimestamp(dataIndex) ?? undefined
       point.dataIndex = dataIndex
       point.timestamp = timestamp
     }
@@ -299,7 +299,7 @@ export default class OverlayView extends View {
       const yAxis = (widget as YAxisWidget).getAxisComponent()
       let value = yAxis.convertFromPixel(coordinate.y)
       if (overlay.mode !== OverlayMode.Normal && paneId === PaneIdConstants.CANDLE && isNumber(point.dataIndex)) {
-        const kLineData = timeScaleStore.getDataByDataIndex(point.dataIndex)
+        const kLineData = chartStore.getDataByDataIndex(point.dataIndex)
         if (kLineData !== null) {
           const modeSensitivity = overlay.modeSensitivity
           if (value > kLineData.high) {
@@ -421,7 +421,7 @@ export default class OverlayView extends View {
           ctx, overlay, bounding, barSpace, overlayPrecision,
           dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
           defaultStyles, xAxis, yAxis,
-          hoverInstanceInfo, clickInstanceInfo, timeScaleStore
+          hoverInstanceInfo, clickInstanceInfo, chartStore
         )
       }
     })
@@ -434,7 +434,7 @@ export default class OverlayView extends View {
           ctx, overlay, bounding, barSpace,
           overlayPrecision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
           defaultStyles, xAxis, yAxis,
-          hoverInstanceInfo, clickInstanceInfo, timeScaleStore
+          hoverInstanceInfo, clickInstanceInfo, chartStore
         )
       }
     }
@@ -455,13 +455,13 @@ export default class OverlayView extends View {
     yAxis: Nullable<YAxis>,
     hoverInstanceInfo: EventOverlayInfo,
     clickInstanceInfo: EventOverlayInfo,
-    timeScaleStore: TimeScaleStore
+    chartStore: ChartStore
   ): void {
     const { points } = overlay
     const coordinates = points.map(point => {
       let dataIndex = point.dataIndex
       if (isNumber(point.timestamp)) {
-        dataIndex = timeScaleStore.timestampToDataIndex(point.timestamp)
+        dataIndex = chartStore.timestampToDataIndex(point.timestamp)
       }
       const coordinate = { x: 0, y: 0 }
       if (isNumber(dataIndex)) {

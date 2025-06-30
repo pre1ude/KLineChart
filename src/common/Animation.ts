@@ -23,6 +23,7 @@ interface AnimationOptions {
   iterationCount: number
 }
 
+// todo should support timing function
 export default class Animation {
   private readonly _options = { duration: 500, iterationCount: 1 }
 

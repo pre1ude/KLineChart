@@ -18,7 +18,6 @@ import type Coordinate from './common/Coordinate'
 import { UpdateLevel } from './common/Updater'
 import type Crosshair from './common/Crosshair'
 import { requestAnimationFrame, cancelAnimationFrame } from './common/utils/compatible'
-import { type AxisRange } from './component/Axis'
 import type Chart from './Chart'
 import type Pane from './pane/Pane'
 import { PaneIdConstants } from './pane/types'
@@ -28,6 +27,7 @@ import type DualYPane from './pane/DualYPane'
 import type YAxisWidget from './widget/YAxisWidget'
 import type XAxisWidget from './widget/XAxisWidget'
 import { isPointInBounding } from './common/Bounding'
+import type VisibleRange from './common/VisibleRange'
 
 interface EventTriggerWidgetInfo {
   pane: Nullable<Pane>
@@ -56,7 +56,7 @@ export default class Event implements EventHandler {
 
   private _mouseDownWidget: Nullable<Widget> = null
 
-  private _prevYAxisRange: Nullable<AxisRange> = null
+  private _prevYAxisRange: Nullable<VisibleRange> = null
 
   private _xAxisStartScaleCoordinate: Nullable<Coordinate> = null
   private _xAxisStartScaleDistance = 0
@@ -70,23 +70,19 @@ export default class Event implements EventHandler {
     if (event.shiftKey) {
       switch (event.code) {
         case 'Equal': {
-          this._chart.getChartStore().getTimeScaleStore().zoom(0.5)
+          this._chart.getChartStore().getTimeScaleStore().zoom(0.05)
           break
         }
         case 'Minus': {
-          this._chart.getChartStore().getTimeScaleStore().zoom(-0.5)
+          this._chart.getChartStore().getTimeScaleStore().zoom(-0.05)
           break
         }
         case 'ArrowLeft': {
-          const timeScaleStore = this._chart.getChartStore().getTimeScaleStore()
-          timeScaleStore.startScroll()
-          timeScaleStore.scroll(-3 * timeScaleStore.getBarSpace().bar)
+          this._chart.scrollByBar(-3)
           break
         }
         case 'ArrowRight': {
-          const timeScaleStore = this._chart.getChartStore().getTimeScaleStore()
-          timeScaleStore.startScroll()
-          timeScaleStore.scroll(3 * timeScaleStore.getBarSpace().bar)
+          this._chart.scrollByBar(3)
           break
         }
         default: {
@@ -116,9 +112,9 @@ export default class Event implements EventHandler {
     const { pane, widget } = this._findWidgetByEvent(e)
     if (pane?.getId() !== PaneIdConstants.X_AXIS && widget?.getName() === WidgetNameConstants.MAIN) {
       const event = this._makeWidgetEvent(e, widget)
-      const zoomScale = (scale - this._pinchScale) * 5
+      const zoomScale = (scale - this._pinchScale) * 0.5
       this._pinchScale = scale
-      this._chart.getChartStore().getTimeScaleStore().zoom(zoomScale, { x: event.x, y: event.y })
+      this._chart.getChartStore().getTimeScaleStore().zoom(zoomScale, event.x)
       return true
     }
     return false
@@ -126,17 +122,17 @@ export default class Event implements EventHandler {
 
   mouseWheelHortEvent (_: MouseTouchEvent, distance: number): boolean {
     const timeScaleStore = this._chart.getChartStore().getTimeScaleStore()
-    timeScaleStore.startScroll()
     timeScaleStore.scroll(distance)
     return true
   }
 
-  mouseWheelVertEvent (e: MouseTouchEvent, scale: number): boolean {
+  mouseWheelVertEvent (e: MouseTouchEvent, normDeltaY: number): boolean {
     const { widget } = this._findWidgetByEvent(e)
     const event = this._makeWidgetEvent(e, widget)
     const name = widget?.getName()
     if (name === WidgetNameConstants.MAIN) {
-      this._chart.getChartStore().getTimeScaleStore().zoom(scale, { x: event.x, y: event.y })
+      const scale = normDeltaY * 0.1
+      this._chart.getChartStore().getTimeScaleStore().zoom(scale, event.x)
       return true
     }
     return false
@@ -157,7 +153,6 @@ export default class Event implements EventHandler {
           const range = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent().getRange() ?? null
           this._prevYAxisRange = range === null ? range : { ...range }
           this._startScrollCoordinate = { x: event.x, y: event.y }
-          this._chart.getChartStore().getTimeScaleStore().startScroll()
           return widget.dispatchEvent('mouseDownEvent', event)
         }
         case WidgetNameConstants.X_AXIS: {
@@ -243,7 +238,8 @@ export default class Event implements EventHandler {
             // todo use left
             const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
             if (this._prevYAxisRange !== null && !yAxis.getAutoCalcTickFlag() && yAxis.getScrollZoomEnabled()) {
-              const { from, to, range } = this._prevYAxisRange
+              const { from, to } = this._prevYAxisRange
+              const range = to - from
               let distance: number
               if (yAxis?.isReverse() ?? false) {
                 distance = this._startScrollCoordinate.y - event.y
@@ -259,13 +255,12 @@ export default class Event implements EventHandler {
               yAxis.setRange({
                 from: newFrom,
                 to: newTo,
-                range: newTo - newFrom,
-                realFrom: newRealFrom,
-                realTo: newRealTo,
-                realRange: newRealTo - newRealFrom
+                domainFrom: newRealFrom,
+                domainTo: newRealTo
               })
             }
             const distance = event.x - this._startScrollCoordinate.x
+            this._startScrollCoordinate = { x: event.x, y: event.y }
             this._chart.getChartStore().getTimeScaleStore().scroll(distance)
           }
           this._chart.getChartStore().getTooltipStore().setCrosshair({ x: event.x, y: event.y, paneId: pane?.getId() })
@@ -278,9 +273,9 @@ export default class Event implements EventHandler {
             if ((xAxis?.getScrollZoomEnabled() ?? true)) {
               const scale = this._xAxisStartScaleDistance / event.pageX
               if (Number.isFinite(scale)) {
-                const zoomScale = (scale - this._xAxisScale) * 10
+                const zoomScale = scale - this._xAxisScale
                 this._xAxisScale = scale
-                this._chart.getChartStore().getTimeScaleStore().zoom(zoomScale, this._xAxisStartScaleCoordinate ?? undefined)
+                this._chart.getChartStore().getTimeScaleStore().zoom(zoomScale, this._xAxisStartScaleCoordinate?.x)
               }
             }
           } else {
@@ -293,7 +288,8 @@ export default class Event implements EventHandler {
           if (!consumed) {
             const yAxis = (widget as YAxisWidget).getAxisComponent()
             if (this._prevYAxisRange !== null && yAxis.getScrollZoomEnabled()) {
-              const { from, to, range } = this._prevYAxisRange
+              const { from, to } = this._prevYAxisRange
+              const range = to - from
               const scale = event.pageY / this._yAxisStartScaleDistance
               const newRange = range * scale
               const difRange = (newRange - range) / 2
@@ -304,10 +300,8 @@ export default class Event implements EventHandler {
               yAxis.setRange({
                 from: newFrom,
                 to: newTo,
-                range: newRange,
-                realFrom: newRealFrom,
-                realTo: newRealTo,
-                realRange: newRealTo - newRealFrom
+                domainFrom: newRealFrom,
+                domainTo: newRealTo
               })
               this._chart.adjustPaneViewport(false, true, true, true)
             }
@@ -430,7 +424,6 @@ export default class Event implements EventHandler {
           }
           this._flingStartTime = new Date().getTime()
           this._startScrollCoordinate = { x: event.x, y: event.y }
-          chartStore.getTimeScaleStore().startScroll()
           this._touchZoomed = false
           if (this._touchCoordinate !== null) {
             const xDif = event.x - this._touchCoordinate.x
@@ -519,7 +512,6 @@ export default class Event implements EventHandler {
               const timeScaleStore = this._chart.getChartStore().getTimeScaleStore()
               const flingScroll: (() => void) = () => {
                 this._flingScrollRequestId = requestAnimationFrame(() => {
-                  timeScaleStore.startScroll()
                   timeScaleStore.scroll(v)
                   v = v * (1 - 0.025)
                   if (Math.abs(v) < 1) {
