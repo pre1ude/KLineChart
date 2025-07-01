@@ -101,6 +101,7 @@ export default abstract class XAxisImp extends AxisImp {
         if (i !== 0) {
           const prevPos = parseInt(ticks[i - tickCountDif].value as string, 10)
           const prevKLineData = dataList[prevPos]
+          if (!isValid(prevKLineData)) continue
           const prevTimestamp = prevKLineData.timestamp
           text = this._optimalTickLabel(formatDate, dateTimeFormat, timestamp, prevTimestamp) ?? text
         }
