@@ -64,7 +64,11 @@ export default class CrosshairHorizontalLabelView extends View {
     let text: string
     if (axisType === YAxisType.Percentage) {
       const fromData = chartStore.getVisibleFirstData()
-      text = `${((value - fromData!.close) / fromData!.close * 100).toFixed(2)}%`
+      if (!fromData) {
+        text = ''
+      } else {
+        text = `${((value - fromData.close) / fromData.close * 100).toFixed(2)}%`
+      }
     } else {
       const indicators = chartStore.getIndicatorStore().getInstances(crosshair.paneId!)
       let precision = 0
