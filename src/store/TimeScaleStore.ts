@@ -56,6 +56,13 @@ export default class TimeScaleStore {
   private computeVisibleRange (): VisibleRange {
     const dataList = this._chartStore.getDataList()
     const totalBarCount = dataList.length
+    if (!totalBarCount) {
+      const visibleRange = getDefaultVisibleRange()
+
+      this._visibleRange = visibleRange
+      this._xScale = createScale(visibleRange, this._chartStore.mainWidth)
+      return visibleRange
+    }
     const totalBarWidth = totalBarCount * this._barWidth
     const mainWidth = this._chartStore.mainWidth
 
