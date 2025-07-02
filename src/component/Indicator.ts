@@ -28,6 +28,7 @@ import { type ArcAttrs } from '../extension/figure/arc'
 import { type RectAttrs } from '../extension/figure/rect'
 import { type TextAttrs } from '../extension/figure/text'
 
+// 用于区分使用什么精度
 export enum IndicatorSeries {
   Normal = 'normal',
   Price = 'price',

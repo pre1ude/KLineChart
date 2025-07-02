@@ -146,14 +146,14 @@ export default class IndicatorStore {
 
   synchronizeSeriesPrecision (indicator?: Indicator): void {
     const { price: pricePrecision, volume: volumePrecision } = this._chartStore.getPrecision()
-    const synchronize: ((instance: Indicator) => void) = instance => {
-      switch (instance.series) {
+    const synchronize = (indicator: Indicator): void => {
+      switch (indicator.series) {
         case IndicatorSeries.Price: {
-          instance.setSeriesPrecision(pricePrecision)
+          indicator.setSeriesPrecision(pricePrecision)
           break
         }
         case IndicatorSeries.Volume: {
-          instance.setSeriesPrecision(volumePrecision)
+          indicator.setSeriesPrecision(volumePrecision)
           break
         }
         default: { break }
