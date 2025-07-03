@@ -46,7 +46,11 @@ export default class CandleLastPriceLabelView extends View {
         }
         let text: string
 
-        if (widget.getAxisType() === YAxisType.Percentage) {
+        if (widget.getAxisType() === YAxisType.MinutePercentage) {
+          const fromData = chartStore.getVisibleFirstData()
+          const prevClose = fromData?.prevClose ?? fromData?.close
+          text = `${((close - prevClose) / prevClose * 100).toFixed(2)}%`
+        } else if (widget.getAxisType() === YAxisType.Percentage) {
           const fromData = chartStore.getVisibleFirstData()
           const fromClose = fromData!.close
           text = `${((close - fromClose) / fromClose * 100).toFixed(2)}%`

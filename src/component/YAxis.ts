@@ -206,6 +206,25 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         dif = Math.pow(10, -2)
         break
       }
+      case YAxisType.MinutePercentage: {
+        const firstData = chartStore.getVisibleFirstData()
+        // 获取昨收
+        let prevClose = firstData?.prevClose
+        if (!prevClose) {
+          console.warn('YAxisImp: prevClose is not set, using first data close as prevClose')
+          prevClose = firstData?.close
+        }
+        if (isNumber(prevClose)) {
+          const maxPercent = Math.max(
+            Math.abs((max - prevClose) / prevClose * 100),
+            Math.abs((min - prevClose) / prevClose * 100)
+          )
+          min = -maxPercent
+          max = maxPercent
+        }
+        dif = Math.pow(10, -2)
+        break
+      }
       case YAxisType.Log: {
         min = log10(min)
         max = log10(max)
@@ -329,6 +348,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       let v: string
       let y = this._innerConvertToPixel(+value)
       switch (type) {
+        case YAxisType.MinutePercentage:
         case YAxisType.Percentage: {
           v = `${formatPrecision(value, 2)}%`
           break
@@ -481,6 +501,19 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const rate = this.isReverse() ? pixel / height : 1 - pixel / height
     const value = rate * (to - from) + from
     switch (this.getType()) {
+      case YAxisType.MinutePercentage: {
+        const fromData = this.getParent().getPane().getChart().getChartStore().getVisibleFirstData()
+        // 获取昨收
+        let prevClose = fromData?.prevClose
+        if (!prevClose) {
+          console.warn('YAxisImp: prevClose is not set, using first data close as prevClose')
+          prevClose = fromData?.close
+        }
+        if (isNumber(prevClose)) {
+          return prevClose * (value / 100 + 1)
+        }
+        return 0
+      }
       case YAxisType.Percentage: {
         const fromData = this.getParent().getPane().getChart().getChartStore().getVisibleFirstData()
         if (isValid(fromData) && isNumber(fromData.close)) {
@@ -508,6 +541,19 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   convertToPixel (value: number): number {
     let v = value
     switch (this.getType()) {
+      case YAxisType.MinutePercentage: {
+        const fromData = this.getParent().getPane().getChart().getChartStore().getVisibleFirstData()
+        // 获取昨收
+        let prevClose = fromData?.prevClose
+        if (!prevClose) {
+          console.warn('YAxisImp: prevClose is not set, using first data close as prevClose')
+          prevClose = fromData?.close
+        }
+        if (isNumber(prevClose)) {
+          v = (value - prevClose) / prevClose * 100
+        }
+        break
+      }
       case YAxisType.Percentage: {
         const fromData = this.getParent().getPane().getChart().getChartStore().getVisibleFirstData()
         if (isValid(fromData) && isNumber(fromData.close)) {

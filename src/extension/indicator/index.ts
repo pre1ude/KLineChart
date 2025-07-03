@@ -40,11 +40,12 @@ import stoch from './stoch'
 import stopAndReverse from './stopAndReverse'
 import tripleExponentiallySmoothedAverage from './tripleExponentiallySmoothedAverage'
 import volume from './volume'
-import waPrice from './waPrice'
-import volumeMinute from './volumeMinute'
-import openInterest from './openInterest'
 import volumeRatio from './volumeRatio'
 import williamsR from './williamsR'
+/** indicator for minute period */
+import waPrice from './waPrice'
+import openInterest from './openInterest'
+import volumeMinute from './volumeMinute'
 
 const extensions = [
   averagePrice, awesomeOscillator, bias, bollingerBands, brar,

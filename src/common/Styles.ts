@@ -336,6 +336,7 @@ export enum YAxisPosition {
 export enum YAxisType {
   Normal = 'normal',
   Percentage = 'percentage',
+  MinutePercentage = 'minute-percentage',
   Log = 'log'
 }
 
