@@ -162,10 +162,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     let dif: number
     switch (type) {
       case YAxisType.Percentage: {
-        const fromData = chartStore.getVisibleFirstData()
-        if (isValid(fromData) && isNumber(fromData.close)) {
-          min = (min - fromData.close) / fromData.close * 100
-          max = (max - fromData.close) / fromData.close * 100
+        const firstData = chartStore.getVisibleFirstData()
+        if (isValid(firstData) && isNumber(firstData.close)) {
+          min = (min - firstData.close) / firstData.close * 100
+          max = (max - firstData.close) / firstData.close * 100
         }
         dif = Math.pow(10, -2)
         break

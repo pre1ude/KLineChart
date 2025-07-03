@@ -81,6 +81,7 @@ export default class IndicatorView extends CandleBarView {
           ctx.globalCompositeOperation = 'source-over'
         }
         let isCover = false
+        // render custom indicator draw
         if (indicator.draw !== null) {
           ctx.save()
           isCover = indicator.draw({
