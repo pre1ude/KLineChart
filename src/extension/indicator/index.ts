@@ -40,6 +40,7 @@ import stoch from './stoch'
 import stopAndReverse from './stopAndReverse'
 import tripleExponentiallySmoothedAverage from './tripleExponentiallySmoothedAverage'
 import volume from './volume'
+import volumeSimple from './volumeSimple'
 import openInterest from './openInterest'
 import volumeRatio from './volumeRatio'
 import williamsR from './williamsR'
@@ -50,7 +51,7 @@ const extensions = [
   directionalMovementIndex, easeOfMovementValue, exponentialMovingAverage, momentum,
   movingAverage, movingAverageConvergenceDivergence, onBalanceVolume, priceAndVolumeTrend,
   psychologicalLine, rateOfChange, relativeStrengthIndex, simpleMovingAverage,
-  stoch, stopAndReverse, tripleExponentiallySmoothedAverage, volume, openInterest, volumeRatio, williamsR
+  stoch, stopAndReverse, tripleExponentiallySmoothedAverage, volume, volumeSimple, openInterest, volumeRatio, williamsR
 ]
 
 const indicatorTemplateManager = new TemplateManager<IndicatorTemplate>(extensions)
