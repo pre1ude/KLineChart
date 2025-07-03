@@ -24,6 +24,7 @@ import CandleBarView, { type CandleBarOptions } from './CandleBarView'
 import type DualYPane from '../pane/DualYPane'
 import type XAxisWidget from '../widget/XAxisWidget'
 import { drawStaticFigure } from '../extension/figure'
+import type YAxisImp from '../component/YAxis'
 
 export default class IndicatorView extends CandleBarView {
   override getCandleBarOptions (chartStore: ChartStore): Nullable<CandleBarOptions> {
@@ -75,11 +76,15 @@ export default class IndicatorView extends CandleBarView {
 
     const defaultStyles = chartStore.getStyles().indicator
     ctx.save()
-    drawForAxis(paneIndicators, yLeftAxis)
-    drawForAxis(paneIndicators, yRightAxis)
+    if (yLeftAxis.isInCandle()) {
+      drawForAxis(paneIndicators, yLeftAxis)
+    } else {
+      drawForAxis(filterIndicatorsByAxis(paneIndicators, yLeftAxis), yLeftAxis)
+      drawForAxis(filterIndicatorsByAxis(paneIndicators, yRightAxis), yRightAxis)
+    }
     ctx.restore()
 
-    function drawForAxis (paneIndicators, yAxis): void {
+    function filterIndicatorsByAxis (paneIndicators: Indicator[], yAxis: YAxisImp): Indicator[] {
       let indicators: Array<Indicator<any>> = []
       const indicatorNames = yAxis.getIndicatorNames()
       if (indicatorNames.length > 0) {
@@ -89,6 +94,10 @@ export default class IndicatorView extends CandleBarView {
           indicators = filteredIndicators
         }
       }
+      return indicators
+    }
+
+    function drawForAxis (indicators: Indicator[], yAxis: YAxisImp): void {
       indicators.forEach(indicator => {
         if (indicator.visible) {
           if (indicator.zLevel < 0) {
