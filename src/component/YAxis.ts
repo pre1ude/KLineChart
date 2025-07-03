@@ -40,6 +40,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   private _range: VisibleRange = { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
   private _prevRange: VisibleRange = { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
   private _ticks: AxisTick[] = []
+  private readonly _indicatorNames: string[] = []
 
   buildTicks (force: boolean): boolean {
     if (this._autoCalcTickFlag) {
@@ -75,6 +76,27 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
   getAutoCalcTickFlag (): boolean { return this._autoCalcTickFlag }
 
+  addToCollect (name: string): void {
+    this._indicatorNames.push(name)
+  }
+
+  removeFromCollect (name: string): boolean {
+    const index = this._indicatorNames.indexOf(name)
+    if (index >= 0) {
+      this._indicatorNames.splice(index, 1)
+      return true
+    }
+    return false
+  }
+
+  clearCollect (): void {
+    this._indicatorNames.length = 0
+  }
+
+  getIndicatorNames (): string[] {
+    return this._indicatorNames
+  }
+
   protected calcRange (): VisibleRange {
     const parent = this.getParent().getPane()
     const chart = parent.getChart()
@@ -86,7 +108,22 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     let indicatorMin = Number.MAX_SAFE_INTEGER
     let indicatorMax = Number.MIN_SAFE_INTEGER
     let indicatorPrecision = Number.MAX_SAFE_INTEGER
-    const indicators = chartStore.getIndicatorStore().getInstances(parent.getId())
+    const paneIndicators = chartStore.getIndicatorStore().getInstances(parent.getId())
+    const inCandle = this.isInCandle()
+
+    let indicators = paneIndicators
+    if (!inCandle) {
+      // 如果不在蜡烛图面板里 我们只关心Y轴指明需要收集的指标
+      const indicatorNames = this.getIndicatorNames()
+      if (indicatorNames.length > 0) {
+        // 如果有收集的指标，则只计算收集的指标
+        const filteredIndicators = paneIndicators.filter(indicator => indicatorNames.includes(indicator.name))
+        if (filteredIndicators.length > 0) {
+          indicators = filteredIndicators
+        }
+      }
+    }
+
     indicators.forEach(indicator => {
       if (!shouldOhlc) {
         shouldOhlc = indicator.shouldOhlc ?? false
@@ -105,7 +142,6 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     })
 
     let precision = 4
-    const inCandle = this.isInCandle()
     if (inCandle) {
       const { price: pricePrecision } = chartStore.getPrecision()
       if (indicatorPrecision !== Number.MAX_SAFE_INTEGER) {

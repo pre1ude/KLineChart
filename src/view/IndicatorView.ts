@@ -19,7 +19,7 @@ import { formatValue } from '../common/utils/format'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import type Coordinate from '../common/Coordinate'
 import type ChartStore from '../store/ChartStore'
-import { eachFigures, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
+import { eachFigures, type Indicator, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
 import CandleBarView, { type CandleBarOptions } from './CandleBarView'
 import type DualYPane from '../pane/DualYPane'
 import type XAxisWidget from '../widget/XAxisWidget'
@@ -65,153 +65,169 @@ export default class IndicatorView extends CandleBarView {
     const chart = pane.getChart()
     const bounding = widget.getBounding()
     const xAxis = (chart.getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
-    const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+    const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+    const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
     const chartStore = chart.getChartStore()
     const dataList = chartStore.getDataList()
     const timeScaleStore = chartStore.getTimeScaleStore()
     const visibleRange = timeScaleStore.getVisibleRange()
-    const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
+    const paneIndicators = chartStore.getIndicatorStore().getInstances(pane.getId())
+
     const defaultStyles = chartStore.getStyles().indicator
     ctx.save()
-    indicators.forEach(indicator => {
-      if (indicator.visible) {
-        if (indicator.zLevel < 0) {
-          ctx.globalCompositeOperation = 'destination-over'
-        } else {
-          ctx.globalCompositeOperation = 'source-over'
-        }
-        let isCover = false
-        // render custom indicator draw
-        if (indicator.draw !== null) {
-          ctx.save()
-          isCover = indicator.draw({
-            ctx,
-            kLineDataList: dataList,
-            indicator,
-            visibleRange,
-            bounding,
-            barSpace: timeScaleStore.getBarSpace(),
-            defaultStyles,
-            xAxis,
-            yAxis
-          }) ?? false
-          ctx.restore()
-        }
-        if (!isCover) {
-          const result = indicator.result
-          const lines: Array<Array<{ coordinates: Coordinate[], styles: SmoothLineStyle }>> = []
+    drawForAxis(paneIndicators, yLeftAxis)
+    drawForAxis(paneIndicators, yRightAxis)
+    ctx.restore()
 
-          const visibleDataList = chartStore.getVisibleDataList()
-          const barSpace = chartStore.getTimeScaleStore().getBarSpace()
+    function drawForAxis (paneIndicators, yAxis): void {
+      let indicators: Array<Indicator<any>> = []
+      const indicatorNames = yAxis.getIndicatorNames()
+      if (indicatorNames.length > 0) {
+        // 如果有收集的指标，则只计算收集的指标
+        const filteredIndicators = paneIndicators.filter(indicator => indicatorNames.includes(indicator.name))
+        if (filteredIndicators.length > 0) {
+          indicators = filteredIndicators
+        }
+      }
+      indicators.forEach(indicator => {
+        if (indicator.visible) {
+          if (indicator.zLevel < 0) {
+            ctx.globalCompositeOperation = 'destination-over'
+          } else {
+            ctx.globalCompositeOperation = 'source-over'
+          }
+          let isCover = false
+          // render custom indicator draw
+          if (indicator.draw !== null) {
+            ctx.save()
+            isCover = indicator.draw({
+              ctx,
+              kLineDataList: dataList,
+              indicator,
+              visibleRange,
+              bounding,
+              barSpace: timeScaleStore.getBarSpace(),
+              defaultStyles,
+              xAxis,
+              yAxis
+            }) ?? false
+            ctx.restore()
+          }
+          if (!isCover) {
+            const result = indicator.result
+            const lines: Array<Array<{ coordinates: Coordinate[], styles: SmoothLineStyle }>> = []
 
-          visibleDataList.forEach((data: VisibleData) => {
-            const { halfGapBar } = barSpace
-            const { dataIndex, x } = data
-            const prevX = xAxis.convertToPixel(dataIndex - 1)
-            const nextX = xAxis.convertToPixel(dataIndex + 1)
-            const prevData = result[dataIndex - 1] ?? null
-            const currentData = result[dataIndex] ?? null
-            const nextData = result[dataIndex + 1] ?? null
-            const prevCoordinate = { x: prevX }
-            const currentCoordinate = { x }
-            const nextCoordinate = { x: nextX }
-            indicator.figures.forEach(({ key }) => {
-              const prevValue = prevData?.[key]
-              if (isNumber(prevValue)) {
-                prevCoordinate[key] = yAxis.convertToPixel(prevValue)
-              }
-              const currentValue = currentData?.[key]
-              if (isNumber(currentValue)) {
-                currentCoordinate[key] = yAxis.convertToPixel(currentValue)
-              }
-              const nextValue = nextData?.[key]
-              if (isNumber(nextValue)) {
-                nextCoordinate[key] = yAxis.convertToPixel(nextValue)
-              }
-            })
-            eachFigures(dataList, indicator, dataIndex, defaultStyles, (figure: IndicatorFigure, figureStyles: IndicatorFigureStyle, figureIndex: number) => {
-              if (isValid(currentData?.[figure.key])) {
-                const valueY = currentCoordinate[figure.key]
-                let attrs = figure.attrs?.({
-                  data: { prev: prevData, current: currentData, next: nextData },
-                  coordinate: { prev: prevCoordinate, current: currentCoordinate, next: nextCoordinate },
-                  bounding,
-                  barSpace,
-                  xAxis,
-                  yAxis
-                })
-                if (!isValid<IndicatorFigureAttrs>(attrs)) {
-                  switch (figure.type) {
-                    case 'circle': {
-                      attrs = { x, y: valueY, r: Math.max(1, halfGapBar) }
-                      break
+            const visibleDataList = chartStore.getVisibleDataList()
+            const barSpace = chartStore.getTimeScaleStore().getBarSpace()
+
+            visibleDataList.forEach((data: VisibleData) => {
+              const { halfGapBar } = barSpace
+              const { dataIndex, x } = data
+              const prevX = xAxis.convertToPixel(dataIndex - 1)
+              const nextX = xAxis.convertToPixel(dataIndex + 1)
+              const prevData = result[dataIndex - 1] ?? null
+              const currentData = result[dataIndex] ?? null
+              const nextData = result[dataIndex + 1] ?? null
+              const prevCoordinate = { x: prevX }
+              const currentCoordinate = { x }
+              const nextCoordinate = { x: nextX }
+              indicator.figures.forEach(({ key }) => {
+                const prevValue = prevData?.[key]
+                if (isNumber(prevValue)) {
+                  prevCoordinate[key] = yAxis.convertToPixel(prevValue)
+                }
+                const currentValue = currentData?.[key]
+                if (isNumber(currentValue)) {
+                  currentCoordinate[key] = yAxis.convertToPixel(currentValue)
+                }
+                const nextValue = nextData?.[key]
+                if (isNumber(nextValue)) {
+                  nextCoordinate[key] = yAxis.convertToPixel(nextValue)
+                }
+              })
+              eachFigures(dataList, indicator, dataIndex, defaultStyles, (figure: IndicatorFigure, figureStyles: IndicatorFigureStyle, figureIndex: number) => {
+                if (isValid(currentData?.[figure.key])) {
+                  const valueY = currentCoordinate[figure.key]
+                  let attrs = figure.attrs?.({
+                    data: { prev: prevData, current: currentData, next: nextData },
+                    coordinate: { prev: prevCoordinate, current: currentCoordinate, next: nextCoordinate },
+                    bounding,
+                    barSpace,
+                    xAxis,
+                    yAxis
+                  })
+                  if (!isValid<IndicatorFigureAttrs>(attrs)) {
+                    switch (figure.type) {
+                      case 'circle': {
+                        attrs = { x, y: valueY, r: Math.max(1, halfGapBar) }
+                        break
+                      }
+                      case 'rect':
+                      case 'bar': {
+                        const baseValue = figure.baseValue ?? yAxis.getRange().from
+                        const baseValueY = yAxis.convertToPixel(baseValue)
+                        let height = Math.abs(baseValueY - (valueY as number))
+                        if (baseValue !== currentData?.[figure.key]) {
+                          height = Math.max(1, height)
+                        }
+                        let y: number
+                        if (valueY > baseValueY) {
+                          y = baseValueY
+                        } else {
+                          y = valueY
+                        }
+                        attrs = {
+                          x: x - halfGapBar,
+                          y,
+                          width: Math.max(1, halfGapBar * 2),
+                          height
+                        }
+                        break
+                      }
+                      case 'line': {
+                        if (!isValid(lines[figureIndex])) {
+                          lines[figureIndex] = []
+                        }
+                        if (isNumber(currentCoordinate[figure.key]) && isNumber(nextCoordinate[figure.key])) {
+                          lines[figureIndex].push({
+                            coordinates: [
+                              { x: currentCoordinate.x, y: currentCoordinate[figure.key] },
+                              { x: nextCoordinate.x, y: nextCoordinate[figure.key] }
+                            ],
+                            styles: figureStyles as unknown as SmoothLineStyle
+                          })
+                        }
+                        break
+                      }
+                      default: { break }
                     }
-                    case 'rect':
-                    case 'bar': {
-                      const baseValue = figure.baseValue ?? yAxis.getRange().from
-                      const baseValueY = yAxis.convertToPixel(baseValue)
-                      let height = Math.abs(baseValueY - (valueY as number))
-                      if (baseValue !== currentData?.[figure.key]) {
-                        height = Math.max(1, height)
-                      }
-                      let y: number
-                      if (valueY > baseValueY) {
-                        y = baseValueY
-                      } else {
-                        y = valueY
-                      }
-                      attrs = {
-                        x: x - halfGapBar,
-                        y,
-                        width: Math.max(1, halfGapBar * 2),
-                        height
-                      }
-                      break
-                    }
-                    case 'line': {
-                      if (!isValid(lines[figureIndex])) {
-                        lines[figureIndex] = []
-                      }
-                      if (isNumber(currentCoordinate[figure.key]) && isNumber(nextCoordinate[figure.key])) {
-                        lines[figureIndex].push({
-                          coordinates: [
-                            { x: currentCoordinate.x, y: currentCoordinate[figure.key] },
-                            { x: nextCoordinate.x, y: nextCoordinate[figure.key] }
-                          ],
-                          styles: figureStyles as unknown as SmoothLineStyle
-                        })
-                      }
-                      break
-                    }
-                    default: { break }
+                  }
+                  const type = figure.type!
+                  if (isValid<IndicatorFigureAttrs>(attrs) && type !== 'line') {
+                    drawStaticFigure(ctx, type === 'bar' ? 'rect' : type, {
+                      attrs,
+                      styles: figureStyles
+                    })
                   }
                 }
-                const type = figure.type!
-                if (isValid<IndicatorFigureAttrs>(attrs) && type !== 'line') {
-                  drawStaticFigure(ctx, type === 'bar' ? 'rect' : type, {
-                    attrs,
-                    styles: figureStyles
-                  })
-                }
-              }
+              })
             })
-          })
 
-          // merge line and render
-          lines.forEach(items => {
-            if (items.length > 1) {
-              const mergeLines = [
-                {
-                  coordinates: [items[0].coordinates[0], items[0].coordinates[1]],
-                  styles: items[0].styles
-                }
-              ]
-              for (let i = 1; i < items.length; i++) {
-                const lastMergeLine = mergeLines[mergeLines.length - 1]
-                const current = items[i]
-                const lastMergeLineLastCoordinate = lastMergeLine.coordinates[lastMergeLine.coordinates.length - 1]
-                if (
-                  lastMergeLineLastCoordinate.x === current.coordinates[0].x &&
+            // merge line and render
+            lines.forEach(items => {
+              if (items.length > 1) {
+                const mergeLines = [
+                  {
+                    coordinates: [items[0].coordinates[0], items[0].coordinates[1]],
+                    styles: items[0].styles
+                  }
+                ]
+                for (let i = 1; i < items.length; i++) {
+                  const lastMergeLine = mergeLines[mergeLines.length - 1]
+                  const current = items[i]
+                  const lastMergeLineLastCoordinate = lastMergeLine.coordinates[lastMergeLine.coordinates.length - 1]
+                  if (
+                    lastMergeLineLastCoordinate.x === current.coordinates[0].x &&
                   lastMergeLineLastCoordinate.y === current.coordinates[0].y &&
                   lastMergeLine.styles.style === current.styles.style &&
                   lastMergeLine.styles.color === current.styles.color &&
@@ -219,26 +235,26 @@ export default class IndicatorView extends CandleBarView {
                   lastMergeLine.styles.smooth === current.styles.smooth &&
                   lastMergeLine.styles.dashedValue[0] === current.styles.dashedValue[0] &&
                   lastMergeLine.styles.dashedValue[1] === current.styles.dashedValue[1]
-                ) {
-                  lastMergeLine.coordinates.push(current.coordinates[1])
-                } else {
-                  mergeLines.push({
-                    coordinates: [current.coordinates[0], current.coordinates[1]],
-                    styles: current.styles
-                  })
+                  ) {
+                    lastMergeLine.coordinates.push(current.coordinates[1])
+                  } else {
+                    mergeLines.push({
+                      coordinates: [current.coordinates[0], current.coordinates[1]],
+                      styles: current.styles
+                    })
+                  }
                 }
-              }
-              mergeLines.forEach(({ coordinates, styles }) => {
-                drawStaticFigure(ctx, 'line', {
-                  attrs: { coordinates },
-                  styles
+                mergeLines.forEach(({ coordinates, styles }) => {
+                  drawStaticFigure(ctx, 'line', {
+                    attrs: { coordinates },
+                    styles
+                  })
                 })
-              })
-            }
-          })
+              }
+            })
+          }
         }
-      }
-    })
-    ctx.restore()
+      })
+    }
   }
 }

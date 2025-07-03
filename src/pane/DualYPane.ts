@@ -107,6 +107,15 @@ export default abstract class DualYPane extends Pane {
 
   getMainWidget (): DrawWidget<DualYPane> { return this._mainWidget }
 
+  getAxisWidget (position: string): YAxisWidget {
+    if (position === 'left') {
+      return this._yLeftAxisWidget
+    } else if (position === 'right') {
+      return this._yRightAxisWidget
+    }
+    throw new Error(`Invalid axis position: ${position}. Use 'left' or 'right'.`)
+  }
+
   getYLeftAxisWidget (): YAxisWidget { return this._yLeftAxisWidget }
   getYRightAxisWidget (): YAxisWidget { return this._yRightAxisWidget }
 

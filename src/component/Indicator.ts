@@ -213,7 +213,9 @@ export interface IndicatorApi<D = any> {
 
 export type IndicatorTemplate<D = any> = ExcludePickPartial<Omit<IndicatorApi<D>, 'result'>, 'name' | 'calc'>
 
-export type IndicatorCreate<D = any> = ExcludePickPartial<Omit<IndicatorApi<D>, 'result'>, 'name'>
+export type IndicatorCreate<D = any> = ExcludePickPartial<Omit<IndicatorApi<D>, 'result'>, 'name'> & {
+  yAxisPosition?: 'left' | 'right'
+}
 
 export type EachFigureCallback = (figure: IndicatorFigure, figureStyles: IndicatorFigureStyle, index: number) => void
 
