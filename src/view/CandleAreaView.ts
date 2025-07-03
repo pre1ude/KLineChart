@@ -77,29 +77,31 @@ export default class CandleAreaView extends View {
         }
       })
 
-      // render area
-      const backgroundColor = styles.backgroundColor
-      let color: string | CanvasGradient
-      if (isArray<GradientColor>(backgroundColor)) {
-        const gradient = ctx.createLinearGradient(0, bounding.height, 0, minY)
-        try {
-          backgroundColor.forEach(({ offset, color }) => {
-            gradient.addColorStop(offset, color)
-          })
-        } catch (e) {
+      if (!styles.lineOnly) {
+        // render area
+        const backgroundColor = styles.backgroundColor
+        let color: string | CanvasGradient
+        if (isArray<GradientColor>(backgroundColor)) {
+          const gradient = ctx.createLinearGradient(0, bounding.height, 0, minY)
+          try {
+            backgroundColor.forEach(({ offset, color }) => {
+              gradient.addColorStop(offset, color)
+            })
+          } catch (e) {
+          }
+          color = gradient
+        } else {
+          color = backgroundColor
         }
-        color = gradient
-      } else {
-        color = backgroundColor
+        ctx.fillStyle = color
+        ctx.beginPath()
+        ctx.moveTo(areaStartX, bounding.height)
+        ctx.lineTo(coordinates[0].x, coordinates[0].y)
+        lineTo(ctx, coordinates, styles.smooth)
+        ctx.lineTo(coordinates[coordinates.length - 1].x, bounding.height)
+        ctx.closePath()
+        ctx.fill()
       }
-      ctx.fillStyle = color
-      ctx.beginPath()
-      ctx.moveTo(areaStartX, bounding.height)
-      ctx.lineTo(coordinates[0].x, coordinates[0].y)
-      lineTo(ctx, coordinates, styles.smooth)
-      ctx.lineTo(coordinates[coordinates.length - 1].x, bounding.height)
-      ctx.closePath()
-      ctx.fill()
     }
 
     const pointStyles = styles.point
