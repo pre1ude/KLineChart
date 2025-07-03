@@ -33,9 +33,9 @@ function getVolumeFigure (): IndicatorFigure<Vol> {
       const kLineData = data.current.kLineData
       let color = formatValue(indicator.styles, 'bars[0].noChangeColor', (defaultStyles.bars)[0].noChangeColor)
       if (isValid(kLineData)) {
-        if (kLineData.close > kLineData.open) {
+        if (kLineData.diffLastPrice > 0) {
           color = formatValue(indicator.styles, 'bars[0].upColor', (defaultStyles.bars)[0].upColor)
-        } else if (kLineData.close < kLineData.open) {
+        } else if (kLineData.diffLastPrice < 0) {
           color = formatValue(indicator.styles, 'bars[0].downColor', (defaultStyles.bars)[0].downColor)
         }
       }

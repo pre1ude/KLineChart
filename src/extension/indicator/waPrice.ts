@@ -16,32 +16,32 @@ import type KLineData from '../../common/KLineData'
 
 import { type IndicatorTemplate, IndicatorSeries } from '../../component/Indicator'
 
-interface Vol {
-  openInterest?: number
+interface WaPrice {
+  waPrice?: number
 }
 
-const openInterest: IndicatorTemplate<Vol> = {
-  name: 'OPEN_INTEREST',
-  shortName: 'OI',
-  series: IndicatorSeries.Volume,
+const waPrice: IndicatorTemplate<WaPrice> = {
+  name: 'WA_PRICE',
+  shortName: 'waPrice',
+  series: IndicatorSeries.Price,
   shouldFormatBigNumber: true,
-  precision: 0,
+  precision: 3,
   figures: [
     {
-      key: 'openInterest',
-      title: '持仓量: ',
+      key: 'waPrice',
+      title: '分时均价: ',
       type: 'line',
       styles: () => {
-        return { color: '#E6A760' }
+        return { color: '#FFC62B' }
       }
     }
   ],
   calc: (dataList: KLineData[]) => {
     return dataList.map((kLineData: KLineData) => {
-      const openInterest = kLineData.openInterest ?? 0
-      return { openInterest }
+      const waPrice = kLineData.waPrice ?? 0
+      return { waPrice }
     })
   }
 }
 
-export default openInterest
+export default waPrice
