@@ -22,14 +22,14 @@ interface WaPrice {
 
 const waPrice: IndicatorTemplate<WaPrice> = {
   name: 'WA_PRICE',
-  shortName: 'waPrice',
+  shortName: '',
   series: IndicatorSeries.Price,
   shouldFormatBigNumber: true,
   precision: 3,
   figures: [
     {
       key: 'waPrice',
-      title: '分时均价: ',
+      // title: '分时均价: ',
       type: 'line',
       styles: () => {
         return { color: '#FFC62B' }

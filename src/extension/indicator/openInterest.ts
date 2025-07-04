@@ -22,14 +22,14 @@ interface Vol {
 
 const openInterest: IndicatorTemplate<Vol> = {
   name: 'OPEN_INTEREST',
-  shortName: 'OI',
+  shortName: '',
   series: IndicatorSeries.Volume,
   shouldFormatBigNumber: true,
   precision: 0,
   figures: [
     {
       key: 'openInterest',
-      title: '持仓量: ',
+      // title: '持仓量: ',
       type: 'line',
       styles: () => {
         return { color: '#E6A760' }

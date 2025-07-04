@@ -26,7 +26,7 @@ interface Vol {
 function getVolumeFigure (): IndicatorFigure<Vol> {
   return {
     key: 'volume',
-    title: 'VOLUME: ',
+    // title: 'VOLUME: ',
     type: 'bar',
     baseValue: 0,
     styles: (data: IndicatorFigureStylesCallbackData<Vol>, indicator: Indicator, defaultStyles: IndicatorStyle) => {
@@ -46,7 +46,7 @@ function getVolumeFigure (): IndicatorFigure<Vol> {
 
 const volume: IndicatorTemplate<Vol> = {
   name: 'VOL_SIMPLE',
-  shortName: 'VOL',
+  shortName: '',
   series: IndicatorSeries.Volume,
   shouldFormatBigNumber: true,
   precision: 0,
