@@ -20,6 +20,7 @@ import type ChartStore from './ChartStore'
 import { LoadDataType } from '../common/LoadDataCallback'
 import { clamp } from '../component/scale/utils'
 import { createLinear, type LinearScale } from '../component/scale'
+import { formatToHHmm } from '../common/utils/format'
 
 const BarSpaceLimitConstants = {
   MIN: 1,
@@ -82,13 +83,48 @@ export default class TimeScaleStore {
     const domainFrom = domainTo - mainWidth / this._barWidth
 
     const visibleRange = { from, to, domainFrom, domainTo }
-    this._visibleRange = visibleRange
-    this._xScale = createScale(visibleRange, this._chartStore.mainWidth)
     return visibleRange
   }
 
+  adjustForTimeShare (): void {
+    console.log('adjustForTimeShare')
+    const mainWidth = this._chartStore.mainWidth
+    const dataList = this._chartStore.getDataList()
+    const totalBarCount = dataList.length
+    const timeShareTicks = this._chartStore.getTimeShareTicks()
+    const tickCount = timeShareTicks.length
+    if (tickCount === 0) {
+      console.warn('Time share ticks is empty, cannot adjust for time share.')
+      return
+    }
+    const barWidth = mainWidth / tickCount
+    let offsetRight = this._offsetRight
+    if (totalBarCount === 0) {
+      offsetRight = mainWidth
+    } else {
+      const lastData = dataList[totalBarCount - 1]
+      const hhmm = formatToHHmm(lastData.timestamp)
+      const idx = timeShareTicks.indexOf(hhmm)
+      if (idx === -1) {
+        console.warn('Last data timestamp not found in time share ticks:', hhmm, lastData)
+      } else {
+        offsetRight = (tickCount - idx - 1) * barWidth
+      }
+    }
+    this._barWidth = clamp(barWidth, BarSpaceLimitConstants.MIN, BarSpaceLimitConstants.MAX)
+    this._kWidth = getKWidth(this._barWidth)
+    this._offsetRight = offsetRight
+  }
+
   adjustVisibleRange (): void {
+    const isTimeShare = this._chartStore.getIsTimeShare() ?? false
+    if (isTimeShare) {
+      this.adjustForTimeShare()
+    }
     const visibleRange = this.computeVisibleRange()
+    this._visibleRange = visibleRange
+    this._xScale = createScale(visibleRange, this._chartStore.mainWidth)
+
     this._chartStore.getActionStore().execute(ActionType.OnVisibleRangeChange, visibleRange)
     this._chartStore.adjustVisibleDataList()
     const dataList = this._chartStore.getDataList()

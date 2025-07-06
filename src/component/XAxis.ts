@@ -40,6 +40,7 @@ export default abstract class XAxisImp extends AxisImp {
     if (this._prevRange.from !== this._range.from || this._prevRange.to !== this._range.to || force) {
       this._prevRange = this._range
       const defaultTicks = this.optimalTicks(this._calcTicks())
+      // todo if is minute period, should use fixed ticks
       this._ticks = this.createTicks({
         range: this._range,
         bounding: this.getSelfBounding(),

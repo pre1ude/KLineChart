@@ -23,6 +23,7 @@ import { type IndicatorFigure } from './Indicator'
 import { PaneIdConstants } from '../pane/types'
 import type YAxisWidget from '../widget/YAxisWidget'
 import type VisibleRange from '../common/VisibleRange'
+import type DualYPane from '../pane/DualYPane'
 
 interface FiguresResult {
   figures: IndicatorFigure[]
@@ -42,13 +43,53 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   private _ticks: AxisTick[] = []
   private readonly _indicatorNames: string[] = []
 
+  isMainAxis (): boolean {
+    const parent = this.getParent()
+    const pane = parent.getPane() as DualYPane
+    const mainAxisWidget = pane.getMainAxisWidget()
+    return parent === mainAxisWidget
+  }
+
   buildTicks (force: boolean): boolean {
     if (this._autoCalcTickFlag) {
       this._range = this.calcRange()
     }
     if (this._prevRange.from !== this._range.from || this._prevRange.to !== this._range.to || force) {
       this._prevRange = this._range
-      const defaultTicks = this.optimalTicks(this._calcTicks())
+      const cTicks = this._calcTicks()
+      let defaultTicks: AxisTick[] = []
+      if (!this.isMainAxis()) {
+        const mainAxisWidget = (this.getParent().getPane() as DualYPane).getMainAxisWidget()
+        const mainAxis = mainAxisWidget.getAxisComponent()
+        const parent = this.getParent().getPane()
+        const chart = parent.getChart()
+        const chartStore = chart.getChartStore()
+        const indicators = chartStore.getIndicatorStore().getInstances(parent.getId())
+
+        let precision = 0
+        let shouldFormatBigNumber = false
+        if (this.isInCandle()) {
+          precision = chartStore.getPrecision().price
+        } else {
+          indicators.forEach(tech => {
+            precision = Math.max(precision, tech.precision)
+            if (!shouldFormatBigNumber) {
+              shouldFormatBigNumber = tech.shouldFormatBigNumber
+            }
+          })
+        }
+        defaultTicks = mainAxis.getTicks().map(tick => {
+          const v = this.convertFromPixel(tick.coord)
+
+          return {
+            text: formatPrecision(v, precision),
+            coord: tick.coord,
+            value: v
+          }
+        })
+      } else {
+        defaultTicks = this.optimalTicks(cTicks)
+      }
       this._ticks = this.createTicks({
         range: this._range,
         bounding: this.getSelfBounding(),
@@ -194,6 +235,21 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       max = 10
     }
 
+    if (this.isInCandle()) {
+      if (chartStore.getIsTimeShare()) {
+        // 分时图需要特殊处理
+        const firstData = chartStore.getVisibleFirstData()
+        if (isValid(firstData) && isNumber(firstData.prevClose)) {
+          const maxDiff = Math.max(
+            Math.abs(max - firstData.prevClose),
+            Math.abs(min - firstData.prevClose)
+          )
+          min = firstData.prevClose - maxDiff
+          max = firstData.prevClose + maxDiff
+        }
+      }
+    }
+
     const type = this.getType()
     let dif: number
     switch (type) {
@@ -274,6 +330,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       from: min, to: max, domainFrom, domainTo
     }
   }
+
+  // todo splite the part that paneGap handle
+
+  // todo splite the part that handle type
 
   /**
    * 内部值转换成坐标
@@ -517,7 +577,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       case YAxisType.Percentage: {
         const fromData = this.getParent().getPane().getChart().getChartStore().getVisibleFirstData()
         if (isValid(fromData) && isNumber(fromData.close)) {
-          return fromData.close * value / 100 + fromData.close
+          return fromData.close * (value / 100 + 1)
         }
         return 0
       }

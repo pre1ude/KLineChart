@@ -59,6 +59,10 @@ export default class ChartStore {
    */
   private _locale = defaultLocale
 
+  private _isTimeShare = false
+
+  private _timeShareTicks: string[] = []
+
   /**
    * Price and volume precision
    */
@@ -170,6 +174,16 @@ export default class ChartStore {
       if (isNumber(decimalFoldThreshold) && decimalFoldThreshold > 0) {
         this._decimalFoldThreshold = decimalFoldThreshold
       }
+      if (isValid(options.isTimeShare)) {
+        this._isTimeShare = options.isTimeShare
+        if (this._isTimeShare) {
+          if (!isValid(options.timeShareTicks) || !isArray(options.timeShareTicks) || options.timeShareTicks.length === 0) {
+            console.warn('KLineChart: `timeShareTicks` is required when `isTimeShare` is true.')
+          } else {
+            this._timeShareTicks = options.timeShareTicks
+          }
+        }
+      }
     }
     return this
   }
@@ -180,6 +194,14 @@ export default class ChartStore {
 
   getLocale (): string {
     return this._locale
+  }
+
+  getIsTimeShare (): boolean {
+    return this._isTimeShare
+  }
+
+  getTimeShareTicks (): string[] {
+    return this._timeShareTicks
   }
 
   getCustomApi (): CustomApi {
@@ -217,6 +239,7 @@ export default class ChartStore {
     return data?.timestamp ?? null
   }
 
+  // todo
   timestampToDataIndex (timestamp: number): number {
     if (this._dataList.length === 0) {
       return 0
@@ -234,6 +257,8 @@ export default class ChartStore {
 
   adjustVisibleDataList (): void {
     this._visibleDataList = []
+    // if is timeshare, we should accord the time ticks
+
     const { from, to } = this._timeScaleStore.getVisibleRange()
     for (let i = from; i < to; i++) {
       this._visibleDataList.push({

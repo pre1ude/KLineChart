@@ -75,4 +75,6 @@ export interface Options {
   customApi?: Partial<CustomApi>
   thousandsSeparator?: string
   decimalFoldThreshold?: number
+  isTimeShare?: boolean
+  timeShareTicks?: string[]
 }
