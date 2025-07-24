@@ -62,12 +62,16 @@ export default class CrosshairHorizontalLabelView extends View {
     const yAxis = widget.getAxisComponent()
     const value = yAxis.convertFromPixel(crosshair.y!)
     let text: string
-    if (axisType === YAxisType.Percentage) {
+    if (axisType === YAxisType.Percentage || axisType === YAxisType.MinutePercentage) {
       const fromData = chartStore.getVisibleFirstData()
       if (!fromData) {
         text = ''
       } else {
-        text = `${((value - fromData.close) / fromData.close * 100).toFixed(2)}%`
+        if (axisType === YAxisType.MinutePercentage) {
+          text = `${((value - fromData.prevClose) / fromData.prevClose * 100).toFixed(2)}%`
+        } else {
+          text = `${((value - fromData.close) / fromData.close * 100).toFixed(2)}%`
+        }
       }
     } else {
       const indicators = chartStore.getIndicatorStore().getInstances(crosshair.paneId!)
