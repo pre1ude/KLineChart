@@ -42,7 +42,7 @@ export default abstract class XAxisImp extends AxisImp {
       const chart = this.getParent().getPane().getChart()
       const chartStore = chart.getChartStore()
       const isTimeShare = chartStore.getIsTimeShare()
-      const defaultTicks = isTimeShare ? this.optimalMinuteTicks(this._calcTicks()) : this.optimalTicks(this._calcTicks())
+      const defaultTicks = isTimeShare ? this.optimalMinuteTicks(this._calcTicks(true)) : this.optimalTicks(this._calcTicks())
 
       // todo if is minute period, should use fixed ticks
       this._ticks = this.createTicks({
@@ -59,9 +59,18 @@ export default abstract class XAxisImp extends AxisImp {
     return this._ticks
   }
 
-  protected _calcTicks (): AxisTick[] {
+  protected _calcTicks (includeLast?: boolean): AxisTick[] {
     const xScale = this.getXScale()
-    const ticks = xScale.ticks()
+    const _ticks = xScale.ticks()
+    let ticks = _ticks
+    if (ticks.length > 0) {
+      if (includeLast) {
+        const lastTick = _ticks[_ticks.length - 1]
+        if (lastTick !== this._range.domainTo - 1) {
+          ticks = _ticks.concat([this._range.domainTo - 1])
+        }
+      }
+    }
     return ticks.map(v => ({ text: v + '', coord: 0, value: v }))
   }
 
