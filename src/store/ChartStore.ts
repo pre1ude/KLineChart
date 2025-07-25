@@ -63,6 +63,8 @@ export default class ChartStore {
 
   private _timeShareTicks: string[] = []
 
+  private _preferXTicks: string[] | undefined
+
   /**
    * Price and volume precision
    */
@@ -182,6 +184,10 @@ export default class ChartStore {
           } else {
             this._timeShareTicks = options.timeShareTicks
           }
+
+          if (isValid(options.preferXTicks) && isArray(options.preferXTicks)) {
+            this._preferXTicks = options.preferXTicks
+          }
         }
       }
     }
@@ -202,6 +208,10 @@ export default class ChartStore {
 
   getTimeShareTicks (): string[] {
     return this._timeShareTicks
+  }
+
+  getPreferXTicks (): string[] | undefined {
+    return this._preferXTicks
   }
 
   getCustomApi (): CustomApi {

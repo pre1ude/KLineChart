@@ -37,3 +37,10 @@ export function setTimezone (timezone: string): void {
 export function getTimezone (): string {
   return _dateTimeFormat.resolvedOptions().timeZone
 }
+
+export function genTimeStamp (text: string, hintTs: number): number {
+  const [hour, minute] = text.split(':').map(Number)
+  const date = new Date(hintTs)
+  date.setHours(hour, minute, 0, 0)
+  return date.getTime()
+}

@@ -18,6 +18,7 @@ import { type LineAttrs } from '../extension/figure/line'
 import { type TextAttrs } from '../extension/figure/text'
 import { type AxisTick } from '../component/Axis'
 import AxisView from './AxisView'
+import { calcTextWidth, createFont } from '../common/utils/canvas'
 
 export default class XAxisView extends AxisView {
   override getAxisStyles (styles: Styles): AxisStyle {
@@ -48,12 +49,22 @@ export default class XAxisView extends AxisView {
     const tickTickStyles = styles.tickText
     const axisLineSize = styles.axisLine.size
     const tickLineLength = styles.tickLine.length
-    return ticks.map(tick => ({
-      x: tick.coord,
-      y: axisLineSize + tickLineLength + tickTickStyles.marginStart,
-      text: tick.text,
-      align: 'center',
-      baseline: 'top'
-    }))
+
+    return ticks.map((tick, i) => {
+      let x = tick.coord
+      if (i === 0) {
+        x += calcTextWidth(tick.text, createFont(tickTickStyles.size, tickTickStyles.weight, tickTickStyles.family)) / 2
+      } else if (i === ticks.length - 1) {
+        x -= calcTextWidth(tick.text, createFont(tickTickStyles.size, tickTickStyles.weight, tickTickStyles.family)) / 2
+      }
+
+      return {
+        x,
+        y: axisLineSize + tickLineLength + tickTickStyles.marginStart,
+        text: tick.text,
+        align: 'center',
+        baseline: 'top'
+      }
+    })
   }
 }

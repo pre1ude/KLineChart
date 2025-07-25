@@ -19,7 +19,7 @@ import { isValid } from '../common/utils/typeChecks'
 import { type FormatDate, FormatDateType } from '../Options'
 import AxisImp, { type AxisTemplate, type Axis, type AxisTick, type AxisCreateTicksParams } from './Axis'
 import type XAxisWidget from '../widget/XAxisWidget'
-import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
+import { genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import type VisibleRange from '../common/VisibleRange'
 import { type LinearScale } from './scale'
 
@@ -39,7 +39,11 @@ export default abstract class XAxisImp extends AxisImp {
     }
     if (this._prevRange.from !== this._range.from || this._prevRange.to !== this._range.to || force) {
       this._prevRange = this._range
-      const defaultTicks = this.optimalTicks(this._calcTicks())
+      const chart = this.getParent().getPane().getChart()
+      const chartStore = chart.getChartStore()
+      const isTimeShare = chartStore.getIsTimeShare()
+      const defaultTicks = isTimeShare ? this.optimalMinuteTicks(this._calcTicks()) : this.optimalTicks(this._calcTicks())
+
       // todo if is minute period, should use fixed ticks
       this._ticks = this.createTicks({
         range: this._range,
@@ -130,6 +134,47 @@ export default abstract class XAxisImp extends AxisImp {
         }
       }
     }
+    return optimalTicks
+  }
+
+  protected optimalMinuteTicks (ticks: AxisTick[]): AxisTick[] {
+    const chart = this.getParent().getPane().getChart()
+    const chartStore = chart.getChartStore()
+    const timeShareTicks = chartStore.getTimeShareTicks()
+    const dataList = chartStore.getDataList()
+    if (dataList.length < 1) return []
+    const hintTs = dataList[0].timestamp
+    const optimalTicks: AxisTick[] = []
+
+    const tickTextStyles = chart.getStyles().xAxis.tickText
+    const defaultLabelWidth = calcTextWidth('00:00', createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.family))
+
+    const preferXTicks = chartStore.getPreferXTicks()
+    if (preferXTicks) {
+      const indexArr = getIndexArr(timeShareTicks, preferXTicks)
+      for (let i = 0; i < indexArr.length; i++) {
+        const x = this.convertToPixel(indexArr[i])
+        const text = timeShareTicks[indexArr[i]]
+        const timeStamp = genTimeStamp(text, hintTs)
+        optimalTicks.push({ text, coord: x, value: timeStamp })
+      }
+    } else {
+      let tickCountDif = 1
+      if (ticks.length > 1) {
+        const nextX = this.convertToPixel(parseInt(ticks[1].value as string, 10))
+        const xDif = Math.abs(this.convertToPixel(parseInt(ticks[0].value as string, 10)) - nextX)
+        if (xDif < defaultLabelWidth) {
+          tickCountDif = Math.ceil(defaultLabelWidth / xDif)
+        }
+      }
+      for (let i = 0; i < ticks.length; i += tickCountDif) {
+        const text = timeShareTicks[ticks[i].value as number]
+        const x = this.convertToPixel(ticks[i].value as number)
+        const timeStamp = genTimeStamp(text, hintTs)
+        optimalTicks.push({ text, coord: x, value: timeStamp })
+      }
+    }
+
     return optimalTicks
   }
 
@@ -232,4 +277,14 @@ export default abstract class XAxisImp extends AxisImp {
     }
     return Custom
   }
+}
+
+function getIndexArr (timeShareTicks: string[], preferXTicks: string[]): number[] {
+  const indexArr: number[] = []
+  for (let i = 0; i < timeShareTicks.length; i++) {
+    if (preferXTicks.includes(timeShareTicks[i])) {
+      indexArr.push(i)
+    }
+  }
+  return indexArr
 }

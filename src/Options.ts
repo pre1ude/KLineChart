@@ -77,4 +77,5 @@ export interface Options {
   decimalFoldThreshold?: number
   isTimeShare?: boolean
   timeShareTicks?: string[]
+  preferXTicks?: string[]
 }

@@ -23,10 +23,12 @@ import type ChartStore from '../store/ChartStore'
 
 import CrosshairHorizontalLabelView from './CrosshairHorizontalLabelView'
 import { type TextAttrs } from '../extension/figure/text'
-import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
+import { genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 
 export default class CrosshairVerticalLabelView extends CrosshairHorizontalLabelView {
   override compare (crosshair: Crosshair): boolean {
+    const isTimeShare = this.getWidget().getPane().getChart().getChartStore().getIsTimeShare()
+    if (isTimeShare) return true
     return isValid(crosshair.kLineData) && crosshair.dataIndex === crosshair.realDataIndex
   }
 
@@ -35,7 +37,21 @@ export default class CrosshairVerticalLabelView extends CrosshairHorizontalLabel
   }
 
   override getText (crosshair: Crosshair, chartStore: ChartStore): string {
-    const timestamp = crosshair.kLineData?.timestamp
+    const hintTs = crosshair.kLineData?.timestamp
+    let timestamp = hintTs
+    const isTimeShare = chartStore.getIsTimeShare()
+    if (isTimeShare) {
+      if (crosshair.realDataIndex !== crosshair.dataIndex) {
+        const timeShareTicks = chartStore.getTimeShareTicks()
+        const realIndex = crosshair.realDataIndex ?? 0
+        if (realIndex < 0 || realIndex >= timeShareTicks.length) {
+          return ''
+        }
+        const text = timeShareTicks[realIndex]
+        timestamp = genTimeStamp(text, hintTs!)
+      }
+    }
+
     const dateTimeFormat = getDateTimeFormat()
     return chartStore.getCustomApi().formatDate(dateTimeFormat, timestamp!, 'YYYY-MM-DD HH:mm', FormatDateType.Crosshair)
   }
