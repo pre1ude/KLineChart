@@ -61,55 +61,60 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       if (!this.isMainAxis()) {
         const mainAxisWidget = (this.getParent().getPane() as DualYPane).getMainAxisWidget()
         const mainAxis = mainAxisWidget.getAxisComponent()
-        const parent = this.getParent().getPane()
-        const chart = parent.getChart()
-        const chartStore = chart.getChartStore()
-        const indicators = chartStore.getIndicatorStore().getInstances(parent.getId())
-        const type = this.getType()
-
-        let precision = 0
-        let shouldFormatBigNumber = false
-        if (this.isInCandle()) {
-          precision = chartStore.getPrecision().price
+        if (mainAxis.getType() === this.getType() && this._range.from === mainAxis.getRange().from && this._range.to === mainAxis.getRange().to) {
+          // 如果主轴和当前轴类型相同，则使用主轴的刻度
+          defaultTicks = mainAxis.getTicks()
         } else {
-          indicators.forEach(tech => {
-            precision = Math.max(precision, tech.precision)
-            if (!shouldFormatBigNumber) {
-              shouldFormatBigNumber = tech.shouldFormatBigNumber
+          const parent = this.getParent().getPane()
+          const chart = parent.getChart()
+          const chartStore = chart.getChartStore()
+          const indicators = chartStore.getIndicatorStore().getInstances(parent.getId())
+          const type = this.getType()
+
+          let precision = 0
+          let shouldFormatBigNumber = false
+          if (this.isInCandle()) {
+            precision = chartStore.getPrecision().price
+          } else {
+            indicators.forEach(tech => {
+              precision = Math.max(precision, tech.precision)
+              if (!shouldFormatBigNumber) {
+                shouldFormatBigNumber = tech.shouldFormatBigNumber
+              }
+            })
+          }
+          defaultTicks = mainAxis.getTicks().map(tick => {
+            let v = this.convertFromPixel(tick.coord)
+
+            let text = formatPrecision(v, precision)
+            if (type === YAxisType.MinutePercentage) {
+              const firstData = chartStore.getVisibleFirstData()
+              // 获取昨收
+              let prevClose = firstData?.prevClose
+              if (!prevClose) {
+                console.warn('YAxisImp: prevClose is not set, using first data close as prevClose')
+                prevClose = firstData?.close
+              }
+              v = (v - prevClose) / prevClose * 100
+              text = `${formatPrecision(v, precision)}%`
+            } else if (type === YAxisType.Percentage) {
+              const firstData = chartStore.getVisibleFirstData()
+              const fromClose = firstData?.close
+              if (!fromClose) { throw new Error('YAxisImp: close is not undefined') }
+              v = (v - fromClose) / fromClose * 100
+              text = `${formatPrecision(v, precision)}%`
+            } else if (type === YAxisType.Log) {
+              v = log10(v)
+              text = formatPrecision(v, precision)
+            }
+
+            return {
+              text,
+              coord: tick.coord,
+              value: v
             }
           })
         }
-        defaultTicks = mainAxis.getTicks().map(tick => {
-          let v = this.convertFromPixel(tick.coord)
-
-          let text = formatPrecision(v, precision)
-          if (type === YAxisType.MinutePercentage) {
-            const firstData = chartStore.getVisibleFirstData()
-            // 获取昨收
-            let prevClose = firstData?.prevClose
-            if (!prevClose) {
-              console.warn('YAxisImp: prevClose is not set, using first data close as prevClose')
-              prevClose = firstData?.close
-            }
-            v = (v - prevClose) / prevClose * 100
-            text = `${formatPrecision(v, precision)}%`
-          } else if (type === YAxisType.Percentage) {
-            const firstData = chartStore.getVisibleFirstData()
-            const fromClose = firstData?.close
-            if (!fromClose) { throw new Error('YAxisImp: close is not undefined') }
-            v = (v - fromClose) / fromClose * 100
-            text = `${formatPrecision(v, precision)}%`
-          } else if (type === YAxisType.Log) {
-            v = log10(v)
-            text = formatPrecision(v, precision)
-          }
-
-          return {
-            text,
-            coord: tick.coord,
-            value: v
-          }
-        })
       } else {
         defaultTicks = this.optimalTicks(cTicks)
       }
