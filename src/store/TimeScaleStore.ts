@@ -87,7 +87,7 @@ export default class TimeScaleStore {
   }
 
   adjustForTimeShare (): void {
-    console.log('adjustForTimeShare')
+    // console.log('adjustForTimeShare')
     const mainWidth = this._chartStore.mainWidth
     const dataList = this._chartStore.getDataList()
     const totalBarCount = dataList.length
