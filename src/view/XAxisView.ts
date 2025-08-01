@@ -52,10 +52,17 @@ export default class XAxisView extends AxisView {
 
     return ticks.map((tick, i) => {
       let x = tick.coord
+      const labelWidth = calcTextWidth(tick.text, createFont(tickTickStyles.size, tickTickStyles.weight, tickTickStyles.family))
       if (i === 0) {
-        x += calcTextWidth(tick.text, createFont(tickTickStyles.size, tickTickStyles.weight, tickTickStyles.family)) / 2
+        const delta = x - labelWidth / 2
+        if (delta < 0) {
+          x -= delta
+        }
       } else if (i === ticks.length - 1) {
-        x -= calcTextWidth(tick.text, createFont(tickTickStyles.size, tickTickStyles.weight, tickTickStyles.family)) / 2
+        const delta = x + labelWidth / 2 - _bounding.width
+        if (delta > 0) {
+          x -= delta
+        }
       }
 
       return {
