@@ -85,8 +85,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
           }
           defaultTicks = mainAxis.getTicks().map(tick => {
             let v = this.convertFromPixel(tick.coord)
-
             let text = formatPrecision(v, precision)
+
             if (type === YAxisType.MinutePercentage) {
               const firstData = chartStore.getVisibleFirstData()
               // 获取昨收
@@ -95,14 +95,17 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
                 console.warn('YAxisImp: prevClose is not set, using first data close as prevClose')
                 prevClose = firstData?.close
               }
-              v = (v - prevClose) / prevClose * 100
-              text = `${formatPrecision(v, precision)}%`
+              if (isNumber(prevClose)) {
+                v = (v - prevClose) / prevClose * 100
+                text = `${formatPrecision(v, precision)}%`
+              }
             } else if (type === YAxisType.Percentage) {
               const firstData = chartStore.getVisibleFirstData()
               const fromClose = firstData?.close
-              if (!fromClose) { throw new Error('YAxisImp: close is not undefined') }
-              v = (v - fromClose) / fromClose * 100
-              text = `${formatPrecision(v, precision)}%`
+              if (isNumber(fromClose)) {
+                v = (v - fromClose) / fromClose * 100
+                text = `${formatPrecision(v, precision)}%`
+              }
             } else if (type === YAxisType.Log) {
               v = log10(v)
               text = formatPrecision(v, precision)
