@@ -18,62 +18,37 @@ import { type Styles } from '../../common/Styles'
 const dark: DeepPartial<Styles> = {
   grid: {
     horizontal: {
-      color: '#292929'
+      color: '#1F2733'
     },
     vertical: {
-      color: '#292929'
-    }
-  },
-  candle: {
-    priceMark: {
-      high: {
-        color: '#929AA5'
-      },
-      low: {
-        color: '#929AA5'
-      }
-    },
-    tooltip: {
-      rect: {
-        color: 'rgba(10, 10, 10, .6)',
-        borderColor: 'rgba(10, 10, 10, .6)'
-      },
-      text: {
-        color: '#929AA5'
-      }
-    }
-  },
-  indicator: {
-    tooltip: {
-      text: {
-        color: '#929AA5'
-      }
+      color: '#1F2733'
     }
   },
   xAxis: {
     axisLine: {
-      color: '#333333'
+      color: '#40516B'
     },
     tickText: {
-      color: '#929AA5'
+      color: '#C3CCD9'
     },
     tickLine: {
-      color: '#333333'
+      color: '#37465C'
     }
   },
   yAxis: {
     axisLine: {
-      color: '#333333'
+      color: '#40516B'
     },
     tickText: {
-      color: '#929AA5'
+      color: '#C3CCD9'
     },
     tickLine: {
-      color: '#333333'
+      color: '#37465C'
     }
   },
   separator: {
-    color: '#333333'
+    color: '#37465C',
+    activeBackgroundColor: 'rgba(255,255,255,0.14)'
   },
   crosshair: {
     horizontal: {

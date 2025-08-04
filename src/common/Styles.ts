@@ -405,15 +405,15 @@ export interface Styles {
   overlay: OverlayStyle
 }
 
-const red = '#F92855'
-const alphaRed = 'rgba(249, 40, 85, .7)'
-const green = '#2DC08E'
-const alphaGreen = 'rgba(45, 192, 142, .7)'
-const grey = '#888888'
 const white = '#FFFFFF'
-const blue = '#1677FF'
 const textColor = '#76808F'
 const axisLineColor = '#DDDDDD'
+
+const upColor = '#FE5500'
+const downColor = '#34C734'
+const noChangeColor = '#9CA3AD'
+const indicatorUpColor = 'rgba(255, 102, 0, 0.6)'
+const indicatorDownColor = 'rgba(52, 199, 52, 0.6)'
 
 function getAlphaBlue (alpha: number): string {
   return `rgba(22, 119, 255, ${alpha})`
@@ -443,7 +443,7 @@ function getDefaultGridStyle (): GridStyle {
 function getDefaultCandleStyle (): CandleStyle {
   const highLow = {
     show: true,
-    color: textColor,
+    color: '#B8CAE6',
     textOffset: 5,
     textSize: 10,
     textFamily: 'Helvetica Neue',
@@ -452,19 +452,19 @@ function getDefaultCandleStyle (): CandleStyle {
   return {
     type: CandleType.CandleSolid,
     bar: {
-      upColor: green,
-      downColor: red,
-      noChangeColor: grey,
-      upBorderColor: green,
-      downBorderColor: red,
-      noChangeBorderColor: grey,
-      upWickColor: green,
-      downWickColor: red,
-      noChangeWickColor: grey
+      upColor,
+      downColor,
+      noChangeColor,
+      upBorderColor: upColor,
+      downBorderColor: downColor,
+      noChangeBorderColor: noChangeColor,
+      upWickColor: upColor,
+      downWickColor: downColor,
+      noChangeWickColor: noChangeColor
     },
     area: {
-      lineSize: 2,
-      lineColor: blue,
+      lineSize: 1,
+      lineColor: '#4D97FF',
       smooth: false,
       value: 'close',
       lineOnly: false,
@@ -476,12 +476,12 @@ function getDefaultCandleStyle (): CandleStyle {
         color: getAlphaBlue(0.2)
       }],
       point: {
-        show: true,
-        color: blue,
+        show: false,
+        color: '#4D97FF',
         radius: 4,
-        rippleColor: getAlphaBlue(0.3),
+        rippleColor: 'rgba(77, 151, 255, 0.3)',
         rippleRadius: 8,
-        animation: true,
+        animation: false,
         animationDuration: 1000
       }
     },
@@ -491,9 +491,9 @@ function getDefaultCandleStyle (): CandleStyle {
       low: { ...highLow },
       last: {
         show: true,
-        upColor: green,
-        downColor: red,
-        noChangeColor: grey,
+        upColor,
+        downColor,
+        noChangeColor,
         line: {
           show: true,
           style: LineType.Dashed,
@@ -524,8 +524,8 @@ function getDefaultCandleStyle (): CandleStyle {
       offsetTop: 6,
       offsetRight: 4,
       offsetBottom: 6,
-      showRule: TooltipShowRule.Always,
-      showType: TooltipShowType.Standard,
+      showRule: TooltipShowRule.FollowCross,
+      showType: TooltipShowType.Rect,
       custom: [
         { title: 'time', value: '{time}' },
         { title: 'open', value: '{open}' },
@@ -547,14 +547,14 @@ function getDefaultCandleStyle (): CandleStyle {
         offsetBottom: 4,
         borderRadius: 4,
         borderSize: 1,
-        borderColor: '#F2F3F5',
-        color: '#FEFEFE'
+        borderColor: '#40516B',
+        color: 'rgba(15,30,51, 0.7)'
       },
       text: {
         size: 12,
         family: 'Helvetica Neue',
         weight: 'normal',
-        color: textColor,
+        color: '#B8CAE6',
         marginLeft: 8,
         marginTop: 4,
         marginRight: 8,
@@ -569,28 +569,30 @@ function getDefaultCandleStyle (): CandleStyle {
  * Get default indicator style
  */
 function getDefaultIndicatorStyle (): IndicatorStyle {
-  const lines = ['#FF9600', '#935EBD', blue, '#E11D74', '#01C5C4'].map(color => ({
-    style: LineType.Solid,
-    smooth: false,
-    size: 1,
-    dashedValue: [2, 2],
-    color
-  }))
+  const lines = ['#FDD75D', '#FF9379', '#0BE6CE', '#CF8FFF', '#23B6FF'].map(
+    (color) => ({
+      style: LineType.Solid,
+      smooth: false,
+      size: 1,
+      dashedValue: [2, 2],
+      color
+    })
+  )
 
   return {
     ohlc: {
-      upColor: alphaGreen,
-      downColor: alphaRed,
-      noChangeColor: grey
+      upColor,
+      downColor,
+      noChangeColor
     },
     bars: [{
       style: PolygonType.Fill,
       borderStyle: LineType.Solid,
       borderSize: 1,
       borderDashedValue: [2, 2],
-      upColor: alphaGreen,
-      downColor: alphaRed,
-      noChangeColor: grey
+      upColor: indicatorUpColor,
+      downColor: indicatorDownColor,
+      noChangeColor
     }],
     lines,
     circles: [{
@@ -598,10 +600,11 @@ function getDefaultIndicatorStyle (): IndicatorStyle {
       borderStyle: LineType.Solid,
       borderSize: 1,
       borderDashedValue: [2, 2],
-      upColor: alphaGreen,
-      downColor: alphaRed,
-      noChangeColor: grey
+      upColor,
+      downColor,
+      noChangeColor
     }],
+    // 用于指标最新价标签
     lastValueMark: {
       show: false,
       text: {
@@ -636,7 +639,7 @@ function getDefaultIndicatorStyle (): IndicatorStyle {
         size: 12,
         family: 'Helvetica Neue',
         weight: 'normal',
-        color: textColor,
+        color: '#B8CAE6',
         marginLeft: 8,
         marginTop: 4,
         marginRight: 8,
@@ -676,7 +679,6 @@ function getDefaultXAxisStyle (): XAxisStyle {
 
 function getDefaultYAxisStyle (): YAxisStyle {
   const style = getDefaultXAxisStyle() as YAxisStyle
-  // style.type = YAxisType.Normal
   style.position = YAxisPosition.Right
   style.inside = false
   style.reverse = false
@@ -723,12 +725,10 @@ function getDefaultCrosshairStyle (): CrosshairStyle {
 }
 
 function getDefaultOverlayStyle (): OverlayStyle {
-  const pointBorderColor = getAlphaBlue(0.35)
-  const alphaBg = getAlphaBlue(0.25)
   function text (): TextStyle {
     return {
       style: PolygonType.Fill,
-      color: white,
+      color: '#000000',
       size: 12,
       family: 'Helvetica Neue',
       weight: 'normal',
@@ -736,36 +736,36 @@ function getDefaultOverlayStyle (): OverlayStyle {
       borderDashedValue: [2, 2],
       borderSize: 1,
       borderRadius: 2,
-      borderColor: blue,
+      borderColor: '#FFC62B',
       paddingLeft: 4,
       paddingRight: 4,
       paddingTop: 4,
       paddingBottom: 4,
-      backgroundColor: blue
+      backgroundColor: '#FFC62B'
     }
   }
   return {
     point: {
-      color: blue,
-      borderColor: pointBorderColor,
+      color: '#FFC62B',
+      borderColor: '#FFC62B',
       borderSize: 1,
       radius: 5,
-      activeColor: blue,
-      activeBorderColor: pointBorderColor,
+      activeColor: '#FFC62B',
+      activeBorderColor: '#FFC62B',
       activeBorderSize: 3,
       activeRadius: 5
     },
     line: {
       style: LineType.Solid,
       smooth: false,
-      color: blue,
+      color: '#FFC62B',
       size: 1,
       dashedValue: [2, 2]
     },
     rect: {
       style: PolygonType.Fill,
-      color: alphaBg,
-      borderColor: blue,
+      color: 'rgba(255,198,43,0.15)',
+      borderColor: '#FFC62B',
       borderSize: 1,
       borderRadius: 0,
       borderStyle: LineType.Solid,
@@ -773,23 +773,23 @@ function getDefaultOverlayStyle (): OverlayStyle {
     },
     polygon: {
       style: PolygonType.Fill,
-      color: blue,
-      borderColor: blue,
+      color: 'rgba(255,198,43,0.15)',
+      borderColor: '#FFC62B',
       borderSize: 1,
       borderStyle: LineType.Solid,
       borderDashedValue: [2, 2]
     },
     circle: {
       style: PolygonType.Fill,
-      color: alphaBg,
-      borderColor: blue,
+      color: 'rgba(255,198,43,0.15)',
+      borderColor: '#FFC62B',
       borderSize: 1,
       borderStyle: LineType.Solid,
       borderDashedValue: [2, 2]
     },
     arc: {
       style: LineType.Solid,
-      color: blue,
+      color: '#FFC62B',
       size: 1,
       dashedValue: [2, 2]
     },
