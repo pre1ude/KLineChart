@@ -28,7 +28,7 @@ const BarSpaceLimitConstants = {
 }
 
 const DEFAULT_BAR_WIDTH = 8
-const DEFAULT_OFFSET_RIGHT = 80
+const DEFAULT_OFFSET_RIGHT = 10
 const K_BAR_RATIO = 0.88
 
 export default class TimeScaleStore {
@@ -39,6 +39,11 @@ export default class TimeScaleStore {
   private _kWidth: number
   private _offsetRight = DEFAULT_OFFSET_RIGHT
 
+  private _maxOffsetLeftDistance: number
+  private _maxOffsetRightDistance: number
+  private _leftMinVisibleBarCount: number
+  private _rightMinVisibleBarCount: number
+  private _calcMode: 'DISTANCE_MODE' | 'BARCOUNT_MODE' = 'DISTANCE_MODE'
   /**
    * 滚动到最左时最小剩余宽度, 滚动到最右时最小剩余宽度
    */
@@ -54,6 +59,24 @@ export default class TimeScaleStore {
     this._kWidth = getKWidth(this._barWidth)
   }
 
+  private calcMinRemainWidth (): void {
+    if (this._calcMode === 'DISTANCE_MODE') {
+      if (this._maxOffsetLeftDistance != null) {
+        this._minRemainWidth.right = this._chartStore.mainWidth - this._maxOffsetLeftDistance
+      }
+      if (this._maxOffsetRightDistance != null) {
+        this._minRemainWidth.left = this._chartStore.mainWidth - this._maxOffsetRightDistance
+      }
+    } else if (this._calcMode === 'BARCOUNT_MODE') {
+      if (this._leftMinVisibleBarCount != null) {
+        this._minRemainWidth.left = this._barWidth * this._leftMinVisibleBarCount
+      }
+      if (this._rightMinVisibleBarCount != null) {
+        this._minRemainWidth.right = this._barWidth * this._rightMinVisibleBarCount
+      }
+    }
+  }
+
   private computeVisibleRange (): VisibleRange {
     const dataList = this._chartStore.getDataList()
     const totalBarCount = dataList.length
@@ -67,10 +90,10 @@ export default class TimeScaleStore {
     const totalBarWidth = totalBarCount * this._barWidth
     const mainWidth = this._chartStore.mainWidth
 
+    this.calcMinRemainWidth()
     const [lmin, rmin] = [this._minRemainWidth.left, this._minRemainWidth.right].map(v => Math.min(v, totalBarWidth))
-    const rightOffsetRange = [-totalBarWidth + rmin, mainWidth - lmin] as [number, number]
 
-    this._offsetRight = clamp(this._offsetRight, ...rightOffsetRange)
+    this._offsetRight = clamp(this._offsetRight, -totalBarWidth + rmin, mainWidth - lmin)
 
     const to = this._offsetRight > 0 ? totalBarCount : Math.ceil(totalBarCount + this._offsetRight / this._barWidth)
 
@@ -188,22 +211,24 @@ export default class TimeScaleStore {
     return this._offsetRight
   }
 
-  setMaxOffsetLeftDistance (distance = 50): void {
-    const mainWidth = this._chartStore.mainWidth
-    this._minRemainWidth.right = mainWidth - distance
+  setMaxOffsetLeftDistance (distance: number): void {
+    this._maxOffsetLeftDistance = distance
+    this._calcMode = 'DISTANCE_MODE'
   }
 
-  setMaxOffsetRightDistance (distance = 50): void {
-    const mainWidth = this._chartStore.mainWidth
-    this._minRemainWidth.left = mainWidth - distance
+  setMaxOffsetRightDistance (distance: number): void {
+    this._maxOffsetRightDistance = distance
+    this._calcMode = 'DISTANCE_MODE'
   }
 
-  setLeftMinVisibleBarCount (barCount = 2): void {
-    this._minRemainWidth.left = barCount * this._barWidth
+  setLeftMinVisibleBarCount (barCount: number): void {
+    this._leftMinVisibleBarCount = barCount
+    this._calcMode = 'BARCOUNT_MODE'
   }
 
-  setRightMinVisibleBarCount (barCount = 2): void {
-    this._minRemainWidth.right = barCount * this._barWidth
+  setRightMinVisibleBarCount (barCount: number): void {
+    this._rightMinVisibleBarCount = barCount
+    this._calcMode = 'BARCOUNT_MODE'
   }
 
   getVisibleRange (): VisibleRange {
