@@ -49,26 +49,6 @@ const dark: DeepPartial<Styles> = {
   separator: {
     color: '#37465C',
     activeBackgroundColor: 'rgba(255,255,255,0.14)'
-  },
-  crosshair: {
-    horizontal: {
-      line: {
-        color: '#929AA5'
-      },
-      text: {
-        borderColor: '#373a40',
-        backgroundColor: '#373a40'
-      }
-    },
-    vertical: {
-      line: {
-        color: '#929AA5'
-      },
-      text: {
-        borderColor: '#373a40',
-        backgroundColor: '#373a40'
-      }
-    }
   }
 }
 
