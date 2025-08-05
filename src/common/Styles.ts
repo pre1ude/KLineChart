@@ -679,7 +679,7 @@ function getDefaultXAxisStyle (): XAxisStyle {
 
 function getDefaultYAxisStyle (): YAxisStyle {
   const style = getDefaultXAxisStyle() as YAxisStyle
-  style.position = YAxisPosition.Right
+  style.position = YAxisPosition.Left
   style.inside = false
   style.reverse = false
   return style

@@ -46,7 +46,7 @@ export default abstract class DualYPane extends Pane {
       name: 'default',
       scrollZoomEnabled: true,
       YAxis: {
-        left: { type: YAxisType.Normal }, right: { type: YAxisType.Percentage }
+        left: { type: YAxisType.Normal }, right: { type: YAxisType.Normal }
       }
     }
   }

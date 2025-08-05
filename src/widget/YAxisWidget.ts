@@ -38,7 +38,7 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
   private _axisOptions: YAxisOptions = {
     name: 'default',
     scrollZoomEnabled: true,
-    position: YAxisPosition.Right,
+    position: YAxisPosition.Left,
     type: YAxisType.Normal
   }
 
