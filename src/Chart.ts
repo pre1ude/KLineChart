@@ -61,7 +61,7 @@ export interface ConvertFinder {
   absolute?: boolean
 }
 
-export interface ChartApi {
+export interface Chart {
   id: string
   getDom: (paneId?: string, position?: DomPosition) => Nullable<HTMLElement>
   getSize: (paneId?: string, position?: DomPosition) => Nullable<Bounding>
@@ -128,7 +128,7 @@ export interface ChartApi {
   resize: () => void
 }
 
-export default class Chart implements ChartApi {
+export default class ChartImp implements Chart {
   id: string
 
   private _container: HTMLElement
@@ -224,7 +224,7 @@ export default class Chart implements ChartApi {
   }
 
   private _createPane<P extends DrawPane> (
-    DrawPaneClass: new (rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: ChartApi, id: string, options: Omit<PaneOptions, 'id' | 'height'>) => P,
+    DrawPaneClass: new (rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string, options: Omit<PaneOptions, 'id' | 'height'>) => P,
     id: string,
     options?: PaneOptions
   ): P {

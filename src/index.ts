@@ -44,7 +44,7 @@ import { IndicatorSeries } from './component/Indicator'
 import { OverlayMode } from './component/Overlay'
 
 import { type Options, FormatDateType } from './Options'
-import Chart, { type ChartApi, DomPosition } from './Chart'
+import Chart, { type DomPosition } from './Chart'
 
 import { checkCoordinateOnArc, drawArc } from './extension/figure/arc'
 import { checkCoordinateOnCircle, drawCircle } from './extension/figure/circle'
@@ -80,9 +80,9 @@ function version (): string {
  * Init chart instance
  * @param ds
  * @param options
- * @returns {ChartApi}
+ * @returns {Chart}
  */
-function init (ds: HTMLElement | string, options?: Options): Nullable<ChartApi> {
+function init (ds: HTMLElement | string, options?: Options): Nullable<Chart> {
   logTag()
   let dom: Nullable<HTMLElement>
   if (isString(ds)) {
@@ -111,7 +111,7 @@ function init (ds: HTMLElement | string, options?: Options): Nullable<ChartApi> 
  * Destroy chart instance
  * @param dcs
  */
-function dispose (dcs: HTMLElement | ChartApi | string): void {
+function dispose (dcs: HTMLElement | Chart | string): void {
   let id: Nullable<string>
   if (dcs instanceof Chart) {
     id = dcs.id
@@ -179,4 +179,4 @@ export {
   DomPosition, ActionType, IndicatorSeries, OverlayMode, LoadDataType
 }
 
-export type { ChartApi } from './Chart'
+export type { Chart } from './Chart'
