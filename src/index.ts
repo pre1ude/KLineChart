@@ -120,7 +120,7 @@ function dispose (dcs: HTMLElement | Chart | string): void {
     if (isString(dcs)) {
       dom = document.getElementById(dcs)
     } else {
-      dom = dcs as HTMLElement
+      dom = dcs
     }
     id = dom?.getAttribute('k-line-chart-id') ?? null
   }
