@@ -102,8 +102,8 @@ export default abstract class XAxisImp extends AxisImp {
         const nextPos = parseInt(ticks[1].value as string, 10)
         const nextX = this.convertToPixel(nextPos)
         const xDif = Math.abs(nextX - x)
-        if (xDif < defaultLabelWidth) {
-          tickCountDif = Math.ceil(defaultLabelWidth / xDif)
+        if (xDif < defaultLabelWidth * 1.5) {
+          tickCountDif = Math.ceil(defaultLabelWidth * 1.5 / xDif)
         }
       }
       for (let i = 0; i < tickLength; i += tickCountDif) {
