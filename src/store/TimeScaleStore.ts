@@ -332,7 +332,7 @@ function getKWidth (barWidth: number): number {
 
 function createScale ({ domainFrom, domainTo }: VisibleRange, mainWidth: number): LinearScale {
   return createLinear({
-    domain: [domainFrom, domainTo - 1],
+    domain: [domainFrom - 0.5, domainTo - 0.5],
     range: [0, mainWidth]
   })
 }
