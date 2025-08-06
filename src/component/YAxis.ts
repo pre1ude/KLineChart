@@ -497,8 +497,6 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         yAxisWidth += (yAxisStyles.tickText.marginStart + yAxisStyles.tickText.marginEnd + textWidth)
       }
     }
-    return yAxisWidth
-    /*
     const chartStore = chart.getChartStore()
     const customApi = chartStore.getCustomApi()
     const crosshairStyles = styles.crosshair
@@ -531,6 +529,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
           precision = techPrecision
         }
       }
+      // TODO should we consider this.getRange().from?
       let valueText = formatPrecision(this.getRange().to, precision)
       if (shouldFormatBigNumber) {
         valueText = customApi.formatBigNumber(valueText)
@@ -550,7 +549,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         )
       )
     }
-    return Math.max(yAxisWidth, crosshairVerticalTextWidth) */
+    return Math.max(yAxisWidth, crosshairVerticalTextWidth)
   }
 
   private _calcTicks (): AxisTick[] {
