@@ -333,7 +333,7 @@ export default class OverlayStore {
           const points = o.points
           points.forEach(point => {
             if (!isValid(point.timestamp) && isValid(point.dataIndex)) {
-              if (type === LoadDataType.Forward) {
+              if (type === LoadDataType.Backward) {
                 point.dataIndex = point.dataIndex + dataChangeLength
               }
               const data = dataList[point.dataIndex]

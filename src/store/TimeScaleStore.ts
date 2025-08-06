@@ -100,6 +100,8 @@ export default class TimeScaleStore {
     const diff = this._offsetRight + totalBarCount * this._barWidth - mainWidth
     const from = diff < 0 ? 0 : Math.floor(diff / this._barWidth)
 
+    //
+
     const domainTo = totalBarCount + this._offsetRight / this._barWidth
 
     // (domainTo - domainFrom) * barWidth = mainWidth
@@ -157,13 +159,13 @@ export default class TimeScaleStore {
       const firstData = dataList[0]
       this._chartStore.executeLoadMoreCallback(firstData?.timestamp ?? null)
       this._chartStore.executeLoadDataCallback({
-        type: LoadDataType.Forward,
+        type: LoadDataType.Backward,
         data: firstData ?? null
       })
     }
     if (to === totalBarCount) {
       this._chartStore.executeLoadDataCallback({
-        type: LoadDataType.Backward,
+        type: LoadDataType.Forward,
         data: dataList[totalBarCount - 1] ?? null
       })
     }
