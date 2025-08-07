@@ -24,6 +24,7 @@
 import type Coordinate from './Coordinate'
 
 import type Nullable from './Nullable'
+import { setScale } from './utils/canvas'
 
 import { isFF, isIOS } from './utils/platform'
 import { isValid } from './utils/typeChecks'
@@ -174,6 +175,7 @@ export default class SyntheticEvent {
     this._handler = handler
     this._options = options
 
+    this._calcScale()
     this._init()
   }
 
@@ -664,6 +666,13 @@ export default class SyntheticEvent {
       this._clickTimeoutId = setTimeout(this._resetClickTimeout.bind(this), Delay.ResetClick)
       this._clickCoordinate = this._getCoordinate(downEvent)
     }
+  }
+
+  private _calcScale (): void {
+    const box = this._target.getBoundingClientRect() ?? { left: 0, top: 0 }
+
+    const scale = box.width / this._target.offsetWidth
+    setScale(scale)
   }
 
   private _init (): void {

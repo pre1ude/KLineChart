@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-import { getPixelRatio } from './utils/canvas'
+import { getPixelRatio, getScale } from './utils/canvas'
 import { createDom } from './utils/dom'
 import { isValid } from './utils/typeChecks'
 import { requestAnimationFrame, DEFAULT_REQUEST_ID } from './utils/compatible'
@@ -69,8 +69,9 @@ export default class Canvas {
           const entry = entries.find((entry: ResizeObserverEntry) => entry.target === this._element)
           const size = entry?.devicePixelContentBoxSize?.[0]
           if (isValid(size)) {
-            this._nextPixelWidth = size.inlineSize
-            this._nextPixelHeight = size.blockSize
+            const scale = getScale()
+            this._nextPixelWidth = size.inlineSize * scale
+            this._nextPixelHeight = size.blockSize * scale
             if (this._pixelWidth !== this._nextPixelWidth || this._pixelHeight !== this._nextPixelHeight) {
               this._resetPixelRatio()
             }
