@@ -44,7 +44,7 @@ import { IndicatorSeries } from './component/Indicator'
 import { OverlayMode } from './component/Overlay'
 
 import { type Options, FormatDateType } from './Options'
-import Chart, { type DomPosition } from './Chart'
+import Chart, { DomPosition } from './Chart'
 
 import { checkCoordinateOnArc, drawArc } from './extension/figure/arc'
 import { checkCoordinateOnCircle, drawCircle } from './extension/figure/circle'
