@@ -18,10 +18,12 @@ import { type Styles } from '../../common/Styles'
 
 import light from './light'
 import dark from './dark'
+import black from './black'
 
 const styles: Record<string, DeepPartial<Styles>> = {
   light,
-  dark
+  dark,
+  black
 }
 
 function registerStyles (name: string, ss: DeepPartial<Styles>): void {
