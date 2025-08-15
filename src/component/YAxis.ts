@@ -97,14 +97,14 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
               }
               if (isNumber(prevClose)) {
                 v = (v - prevClose) / prevClose * 100
-                text = `${formatPrecision(v, precision)}%`
+                text = `${formatPrecision(v, 2)}%`
               }
             } else if (type === YAxisType.Percentage) {
               const firstData = chartStore.getVisibleFirstData()
               const fromClose = firstData?.close
               if (isNumber(fromClose)) {
                 v = (v - fromClose) / fromClose * 100
-                text = `${formatPrecision(v, precision)}%`
+                text = `${formatPrecision(v, 2)}%`
               }
             } else if (type === YAxisType.Log) {
               v = log10(v)
