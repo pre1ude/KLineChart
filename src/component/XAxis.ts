@@ -59,15 +59,29 @@ export default abstract class XAxisImp extends AxisImp {
     return this._ticks
   }
 
-  protected _calcTicks (includeLast?: boolean): AxisTick[] {
+  protected _calcTicks (isMinute?: boolean): AxisTick[] {
     const xScale = this.getXScale()
     const _ticks = xScale.ticks()
     let ticks = _ticks
     if (ticks.length > 0) {
-      if (includeLast) {
+      if (isMinute) {
         const lastTick = _ticks[_ticks.length - 1]
         if (lastTick !== this._range.domainTo - 1) {
           ticks = _ticks.concat([this._range.domainTo - 1])
+        }
+      } else {
+        const _ticks: number[] = []
+        const { from, to } = this._range
+        const firstTick = ticks[0]
+        if (firstTick < from) {
+          const step = ticks[1] - ticks[0]
+          let it = from
+          do {
+            _ticks.push(it)
+            it += step
+          }
+          while (it <= ticks[ticks.length - 1] && it <= to)
+          ticks = _ticks
         }
       }
     }
@@ -94,6 +108,7 @@ export default abstract class XAxisImp extends AxisImp {
     if (tickLength > 0) {
       const dateTimeFormat = getDateTimeFormat()
       const tickTextStyles = chart.getStyles().xAxis.tickText
+      // todo should consider period, for month period: 2025-06
       const defaultLabelWidth = calcTextWidth('00-00 00:00', createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.family))
       const pos = parseInt(ticks[0].value as string, 10)
       const x = this.convertToPixel(pos)
@@ -115,9 +130,10 @@ export default abstract class XAxisImp extends AxisImp {
         if (i !== 0) {
           const prevPos = parseInt(ticks[i - tickCountDif].value as string, 10)
           const prevKLineData = dataList[prevPos]
-          if (!isValid(prevKLineData)) continue
-          const prevTimestamp = prevKLineData.timestamp
-          text = this._optimalTickLabel(formatDate, dateTimeFormat, timestamp, prevTimestamp) ?? text
+          if (isValid(prevKLineData)) {
+            const prevTimestamp = prevKLineData.timestamp
+            text = this._optimalTickLabel(formatDate, dateTimeFormat, timestamp, prevTimestamp) ?? text
+          }
         }
         const x = this.convertToPixel(pos)
         optimalTicks.push({ text, coord: x, value: timestamp })
