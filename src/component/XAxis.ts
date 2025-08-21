@@ -65,10 +65,19 @@ export default abstract class XAxisImp extends AxisImp {
     let ticks = _ticks
     if (ticks.length > 0) {
       if (isMinute) {
-        const lastTick = _ticks[_ticks.length - 1]
-        if (lastTick !== this._range.domainTo - 1) {
-          ticks = _ticks.concat([this._range.domainTo - 1])
+        const tmpTicks: number[] = []
+        const interval = 30 // 时间间隔至少30分钟
+        const { domainFrom, domainTo } = this._range
+        let f = domainFrom
+        while (f <= domainTo - 1) {
+          tmpTicks.push(f)
+          f += interval
         }
+        /* const lastTick = tmpTicks[tmpTicks.length - 1]
+        if (lastTick !== domainTo - 1) {
+          tmpTicks = tmpTicks.concat([domainTo - 1])
+        } */
+        ticks = tmpTicks
       } else {
         const _ticks: number[] = []
         const { from, to } = this._range
@@ -188,8 +197,8 @@ export default abstract class XAxisImp extends AxisImp {
       if (ticks.length > 1) {
         const nextX = this.convertToPixel(parseInt(ticks[1].value as string, 10))
         const xDif = Math.abs(this.convertToPixel(parseInt(ticks[0].value as string, 10)) - nextX)
-        if (xDif < defaultLabelWidth) {
-          tickCountDif = Math.ceil(defaultLabelWidth / xDif)
+        if (xDif < defaultLabelWidth * 1.5) {
+          tickCountDif = Math.ceil(defaultLabelWidth * 1.5 / xDif)
         }
       }
       for (let i = 0; i < ticks.length; i += tickCountDif) {
