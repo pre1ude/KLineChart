@@ -64,33 +64,32 @@ export default abstract class XAxisImp extends AxisImp {
     const _ticks = xScale.ticks()
     let ticks = _ticks
     if (ticks.length > 0) {
+      const tmpTicks: number[] = []
       if (isMinute) {
-        const tmpTicks: number[] = []
         const interval = 30 // 时间间隔至少30分钟
-        const { domainFrom, domainTo } = this._range
-        let f = domainFrom
-        while (f <= domainTo - 1) {
+        const { from, to } = this._range
+        let f = from
+        while (f <= to - 1) {
           tmpTicks.push(f)
           f += interval
         }
         /* const lastTick = tmpTicks[tmpTicks.length - 1]
-        if (lastTick !== domainTo - 1) {
-          tmpTicks = tmpTicks.concat([domainTo - 1])
+        if (lastTick !== to - 1) {
+          tmpTicks = tmpTicks.concat([to - 1])
         } */
         ticks = tmpTicks
       } else {
-        const _ticks: number[] = []
         const { from, to } = this._range
         const firstTick = ticks[0]
         if (firstTick < from) {
           const step = ticks[1] - ticks[0]
           let it = from
           do {
-            _ticks.push(it)
+            tmpTicks.push(it)
             it += step
           }
           while (it <= ticks[ticks.length - 1] && it <= to)
-          ticks = _ticks
+          ticks = tmpTicks
         }
       }
     }
