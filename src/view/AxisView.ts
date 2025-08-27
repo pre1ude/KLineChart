@@ -21,11 +21,13 @@ import type XAxisWidget from '../widget/XAxisWidget'
 import type YAxisWidget from '../widget/YAxisWidget'
 import View from './View'
 import { drawStaticFigure } from '../extension/figure'
+import { PaneIdConstants } from '../pane/types'
 
 export default abstract class AxisView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget() as XAxisWidget | YAxisWidget
     const pane = widget.getPane()
+    const chartStore = pane.getChart().getChartStore()
     const bounding = widget.getBounding()
     const axis = widget.getAxisComponent()
     const styles: AxisStyle = this.getAxisStyles(pane.getChart().getStyles())
@@ -49,11 +51,27 @@ export default abstract class AxisView extends View {
         })
       }
       if (styles.tickText.show) {
-        const texts = this.createTickTexts(ticks, bounding, styles)
-        drawStaticFigure(ctx, 'text', {
-          attrs: texts,
-          styles: styles.tickText
-        })
+        const tickHasColor = chartStore.getIsTimeShare() && pane.getId() === PaneIdConstants.CANDLE
+        if (tickHasColor) {
+          const barStyles = chartStore.getStyles().candle.bar
+          const tickTexts = this.createTickTexts(ticks, bounding, styles)
+          tickTexts.forEach((text, index) => {
+            const colorHint = ticks[index].colorHint
+            drawStaticFigure(ctx, 'text', {
+              attrs: text,
+              styles: {
+                ...styles.tickText,
+                color: colorHint === 1 ? barStyles.upColor : colorHint === -1 ? barStyles.downColor : styles.tickText.color
+              }
+            })
+          })
+        } else {
+          const tickTexts = this.createTickTexts(ticks, bounding, styles)
+          drawStaticFigure(ctx, 'text', {
+            attrs: tickTexts,
+            styles: styles.tickText
+          })
+        }
       }
     }
   }

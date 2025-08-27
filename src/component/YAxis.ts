@@ -438,7 +438,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       })
     }
     const textHeight = chartStore.getStyles().xAxis.tickText.size
-    const tempTicks = ticks.map(({ value }) => {
+    const tempTicks = ticks.map(({ value, colorHint }) => {
       let v: string
       let y = this._innerConvertToPixel(+value)
       switch (type) {
@@ -461,7 +461,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         }
       }
       v = formatFoldDecimal(formatThousands(v, thousandsSeparator), decimalFoldThreshold)
-      return { text: v, coord: y, value }
+      return { text: v, coord: y, value, colorHint }
     })
     const isTimeShare = chartStore.getIsTimeShare()
     const isInCandle = this.isInCandle()
@@ -570,6 +570,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
   private _calcTimeShareTicks (): AxisTick[] {
     const { from, to } = this._range
+    const mid = (from + to) / 2
+
     const arrV: number[] = []
 
     if (to - from >= 0) {
@@ -583,7 +585,6 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
       const interval = (to - from) / Math.min(7, Math.max(3, maxTickCount - 1))
 
-      const mid = (from + to) / 2
       const first = mid
       let n = 0
       let f = first
@@ -605,7 +606,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         }
       }
     }
-    return arrV.map(e => ({ text: e + '', coord: 0, value: e }))
+    return arrV.map(e => ({ text: e + '', coord: 0, value: e, colorHint: e > mid ? 1 : e < mid ? -1 : 0 }))
   }
 
   private _calcTicks (): AxisTick[] {

@@ -21,6 +21,7 @@ export interface AxisTick {
   coord: number
   value: number | string
   text: string
+  colorHint?: -1 | 0 | 1
 }
 
 export interface Axis {
