@@ -63,7 +63,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
       const cTicks = shouldCalcTimeShareTicks ? this._calcTimeShareTicks() : this._calcTicks()
       let defaultTicks: AxisTick[] = []
-      if (!this.isMainAxis()) {
+      if (!this.isMainAxis() && !shouldCalcTimeShareTicks) {
         const mainAxisWidget = (this.getParent().getPane() as DualYPane).getMainAxisWidget()
         const mainAxis = mainAxisWidget.getAxisComponent()
         if (mainAxis.getType() === this.getType() && this._range.from === mainAxis.getRange().from && this._range.to === mainAxis.getRange().to) {
@@ -421,7 +421,6 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const height = widget?.getBounding().height ?? 0
     const chartStore = pane.getChart().getChartStore()
     const customApi = chartStore.getCustomApi()
-    const optimalTicks: AxisTick[] = []
     const type = this.getType()
     const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
     const thousandsSeparator = chartStore.getThousandsSeparator()
@@ -439,8 +438,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       })
     }
     const textHeight = chartStore.getStyles().xAxis.tickText.size
-    let validY: number
-    ticks.forEach(({ value }) => {
+    const tempTicks = ticks.map(({ value }) => {
       let v: string
       let y = this._innerConvertToPixel(+value)
       switch (type) {
@@ -463,12 +461,25 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         }
       }
       v = formatFoldDecimal(formatThousands(v, thousandsSeparator), decimalFoldThreshold)
+      return { text: v, coord: y, value }
+    })
+    const isTimeShare = chartStore.getIsTimeShare()
+    const isInCandle = this.isInCandle()
+    const optimalTicks = isTimeShare && isInCandle ? tempTicks : this._commonYTicksLayout(tempTicks, textHeight, height)
+    return optimalTicks
+  }
+
+  private _commonYTicksLayout (ticks: AxisTick[], textHeight: number, height: number): AxisTick[] {
+    const optimalTicks: AxisTick[] = []
+    let validY: number
+    ticks.forEach((tick) => {
+      const y = tick.coord
       const validYNumber = isNumber(validY)
       if (
         y > textHeight &&
         y < height - textHeight &&
         ((validYNumber && (Math.abs(validY - y) > textHeight * 2)) || !validYNumber)) {
-        optimalTicks.push({ text: v, coord: y, value })
+        optimalTicks.push(tick)
         validY = y
       }
     })
@@ -562,23 +573,31 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const arrV: string[] = []
 
     if (to - from >= 0) {
-      const [interval, precision] = this._calcTickInterval(to - from)
+      const widget = this.getParent()
+      const pane = widget.getPane()
+      const chartStore = pane.getChart().getChartStore()
+
+      const height = widget?.getBounding().height ?? 0
+      const textHeight = chartStore.getStyles().xAxis.tickText.size
+      const maxTickCount = Math.floor(height / (textHeight * 2.5))
+
+      const interval = (to - from) / Math.min(7, Math.max(3, maxTickCount - 1))
 
       const mid = (from + to) / 2
-      const first = round(mid, precision)
-      const last = round(Math.floor(to / interval) * interval, precision)
+      const first = mid
       let n = 0
       let f = first
 
+      const halfLabelToRange = (to - from) * textHeight / height / 2
       if (interval !== 0) {
-        while (f <= last) {
+        while (f <= to - halfLabelToRange) {
           if (n > 0) {
-            const v1 = (first + n * interval).toFixed(precision)
-            const v2 = (first - n * interval).toFixed(precision)
+            const v1 = first + n * interval + ''
+            const v2 = first - n * interval + ''
             arrV.unshift(v2)
             arrV.push(v1)
           } else {
-            const v = first.toFixed(precision)
+            const v = first + ''
             arrV.push(v)
           }
           ++n
