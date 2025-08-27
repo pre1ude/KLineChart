@@ -570,7 +570,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
   private _calcTimeShareTicks (): AxisTick[] {
     const { from, to } = this._range
-    const arrV: string[] = []
+    const arrV: number[] = []
 
     if (to - from >= 0) {
       const widget = this.getParent()
@@ -579,7 +579,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
       const height = widget?.getBounding().height ?? 0
       const textHeight = chartStore.getStyles().xAxis.tickText.size
-      const maxTickCount = Math.floor(height / (textHeight * 2.5))
+      const maxTickCount = Math.floor(height / (textHeight * 2))
 
       const interval = (to - from) / Math.min(7, Math.max(3, maxTickCount - 1))
 
@@ -592,12 +592,12 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       if (interval !== 0) {
         while (f <= to - halfLabelToRange) {
           if (n > 0) {
-            const v1 = first + n * interval + ''
-            const v2 = first - n * interval + ''
+            const v1 = first + n * interval
+            const v2 = first - n * interval
             arrV.unshift(v2)
             arrV.push(v1)
           } else {
-            const v = first + ''
+            const v = first
             arrV.push(v)
           }
           ++n
@@ -605,7 +605,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         }
       }
     }
-    return arrV.map(e => ({ text: e, coord: 0, value: e }))
+    return arrV.map(e => ({ text: e + '', coord: 0, value: e }))
   }
 
   private _calcTicks (): AxisTick[] {
@@ -622,7 +622,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       if (interval !== 0) {
         while (f <= last) {
           const v = f.toFixed(precision)
-          ticks[n] = { text: v, coord: 0, value: v }
+          ticks[n] = { text: v, coord: 0, value: f }
           ++n
           f += interval
         }
