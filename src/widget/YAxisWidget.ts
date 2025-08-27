@@ -109,9 +109,14 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
   }
 
   override updateMain (ctx: CanvasRenderingContext2D): void {
+    const chart = this.getPane().getChart()
+    const chartStore = chart.getChartStore()
     this._yAxisView.draw(ctx)
     if (this.getAxisComponent().isInCandle()) {
-      this._candleLastPriceLabelView.draw(ctx)
+      if (!chartStore.getIsTimeShare()) {
+        // 非分时图才展示最新价标签
+        this._candleLastPriceLabelView.draw(ctx)
+      }
     }
     this._indicatorLastValueView.draw(ctx)
   }
