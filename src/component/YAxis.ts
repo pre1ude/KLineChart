@@ -56,7 +56,12 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     }
     if (this._prevRange.from !== this._range.from || this._prevRange.to !== this._range.to || force) {
       this._prevRange = this._range
-      const cTicks = this._calcTicks()
+      const parent = this.getParent().getPane()
+      const chart = parent.getChart()
+      const chartStore = chart.getChartStore()
+      const shouldCalcTimeShareTicks = this.isInCandle() && chartStore.getIsTimeShare()
+
+      const cTicks = shouldCalcTimeShareTicks ? this._calcTimeShareTicks() : this._calcTicks()
       let defaultTicks: AxisTick[] = []
       if (!this.isMainAxis()) {
         const mainAxisWidget = (this.getParent().getPane() as DualYPane).getMainAxisWidget()
@@ -170,8 +175,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   }
 
   protected calcRange (): VisibleRange {
-    const parent = this.getParent().getPane()
-    const chart = parent.getChart()
+    const pane = this.getParent().getPane()
+    const chart = pane.getChart()
     const chartStore = chart.getChartStore()
     let min = Number.MAX_SAFE_INTEGER
     let max = Number.MIN_SAFE_INTEGER
@@ -180,7 +185,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     let indicatorMin = Number.MAX_SAFE_INTEGER
     let indicatorMax = Number.MIN_SAFE_INTEGER
     let indicatorPrecision = Number.MAX_SAFE_INTEGER
-    const paneIndicators = chartStore.getIndicatorStore().getInstances(parent.getId())
+    const paneIndicators = chartStore.getIndicatorStore().getInstances(pane.getId())
     const inCandle = this.isInCandle()
 
     let indicators = paneIndicators
@@ -333,7 +338,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     }
 
     const height = this.getParent()?.getBounding().height ?? 0
-    const { gap: paneGap } = parent.getOptions()
+    const { gap: paneGap } = pane.getOptions()
     let topRate = paneGap?.top ?? 0.2
     // todo this should be in options normalize
     if (topRate >= 1) {
@@ -550,6 +555,38 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       )
     }
     return Math.max(yAxisWidth, crosshairVerticalTextWidth)
+  }
+
+  private _calcTimeShareTicks (): AxisTick[] {
+    const { from, to } = this._range
+    const arrV: string[] = []
+
+    if (to - from >= 0) {
+      const [interval, precision] = this._calcTickInterval(to - from)
+
+      const mid = (from + to) / 2
+      const first = round(mid, precision)
+      const last = round(Math.floor(to / interval) * interval, precision)
+      let n = 0
+      let f = first
+
+      if (interval !== 0) {
+        while (f <= last) {
+          if (n > 0) {
+            const v1 = (first + n * interval).toFixed(precision)
+            const v2 = (first - n * interval).toFixed(precision)
+            arrV.unshift(v2)
+            arrV.push(v1)
+          } else {
+            const v = first.toFixed(precision)
+            arrV.push(v)
+          }
+          ++n
+          f += interval
+        }
+      }
+    }
+    return arrV.map(e => ({ text: e, coord: 0, value: e }))
   }
 
   private _calcTicks (): AxisTick[] {
