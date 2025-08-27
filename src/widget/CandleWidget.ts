@@ -17,6 +17,7 @@ import CandleBarView from '../view/CandleBarView'
 import CandleAreaView from '../view/CandleAreaView'
 import CandleHighLowPriceView from '../view/CandleHighLowPriceView'
 import CandleLastPriceLineView from '../view/CandleLastPriceLineView'
+import CandleZeroPriceLineView from '../view/CandleZeroPriceLineView'
 import type IndicatorTooltipView from '../view/IndicatorTooltipView'
 import CandleTooltipView from '../view/CandleTooltipView'
 import { CandleType } from '../common/Styles'
@@ -27,6 +28,7 @@ export default class CandleWidget extends IndicatorWidget {
   private readonly _candleAreaView = new CandleAreaView(this)
   private readonly _candleHighLowPriceView = new CandleHighLowPriceView(this)
   private readonly _candleLastPriceLineView = new CandleLastPriceLineView(this)
+  private readonly _candleZeroPriceLineView = new CandleZeroPriceLineView(this)
 
   constructor (rootContainer: HTMLElement, pane: AxisPane) {
     super(rootContainer, pane)
@@ -34,7 +36,9 @@ export default class CandleWidget extends IndicatorWidget {
   }
 
   override updateMainContent (ctx: CanvasRenderingContext2D): void {
-    const candleStyles = this.getPane().getChart().getStyles().candle
+    const chart = this.getPane().getChart()
+    const chartStore = chart.getChartStore()
+    const candleStyles = chart.getStyles().candle
     if (candleStyles.type !== CandleType.Area) {
       this._candleBarView.draw(ctx)
       this._candleHighLowPriceView.draw(ctx)
@@ -42,7 +46,11 @@ export default class CandleWidget extends IndicatorWidget {
     } else {
       this._candleAreaView.draw(ctx)
     }
-    this._candleLastPriceLineView.draw(ctx)
+    if (chartStore.getIsTimeShare()) {
+      this._candleZeroPriceLineView.draw(ctx)
+    } else {
+      this._candleLastPriceLineView.draw(ctx)
+    }
   }
 
   override createTooltipView (): IndicatorTooltipView {
