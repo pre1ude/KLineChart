@@ -45,7 +45,7 @@ function getVolumeFigure (): IndicatorFigure<Vol> {
 }
 
 const volume: IndicatorTemplate<Vol> = {
-  name: 'VOL_SIMPLE',
+  name: 'VOL_MINUTE',
   shortName: '',
   series: IndicatorSeries.Volume,
   shouldFormatBigNumber: true,
