@@ -42,7 +42,7 @@ export default abstract class XAxisImp extends AxisImp {
       const chart = this.getParent().getPane().getChart()
       const chartStore = chart.getChartStore()
       const isTimeShare = chartStore.getIsTimeShare()
-      const defaultTicks = isTimeShare ? this.optimalMinuteTicks(this._calcTicks(true)) : this.optimalTicks(this._calcTicks())
+      const defaultTicks = isTimeShare ? this.optimalMinuteTicks(this._calcMinuteTicks()) : this.optimalTicks(this._calcTicks())
 
       // todo if is minute period, should use fixed ticks
       this._ticks = this.createTicks({
@@ -59,38 +59,37 @@ export default abstract class XAxisImp extends AxisImp {
     return this._ticks
   }
 
-  protected _calcTicks (isMinute?: boolean): AxisTick[] {
+  protected _calcMinuteTicks (): AxisTick[] {
+    const chart = this.getParent().getPane().getChart()
+    const chartStore = chart.getChartStore()
+    const timeShareTicks = chartStore.getTimeShareTicks()
+
+    const tmpTicks: number[] = []
+    const interval = 30 // 时间间隔至少30分钟
+
+    for (let i = 0; i < timeShareTicks.length; i += interval) {
+      tmpTicks.push(i)
+    }
+    return tmpTicks.map(v => ({ text: v + '', coord: 0, value: v }))
+  }
+
+  protected _calcTicks (): AxisTick[] {
     const xScale = this.getXScale()
     const _ticks = xScale.ticks()
     let ticks = _ticks
     if (ticks.length > 0) {
       const tmpTicks: number[] = []
-      if (isMinute) {
-        const interval = 30 // 时间间隔至少30分钟
-        const { from, to } = this._range
-        let f = from
-        while (f <= to - 1) {
-          tmpTicks.push(f)
-          f += interval
+      const { from, to } = this._range
+      const firstTick = ticks[0]
+      if (firstTick < from) {
+        const step = ticks[1] - ticks[0]
+        let it = from
+        do {
+          tmpTicks.push(it)
+          it += step
         }
-        /* const lastTick = tmpTicks[tmpTicks.length - 1]
-        if (lastTick !== to - 1) {
-          tmpTicks = tmpTicks.concat([to - 1])
-        } */
+        while (it <= ticks[ticks.length - 1] && it <= to)
         ticks = tmpTicks
-      } else {
-        const { from, to } = this._range
-        const firstTick = ticks[0]
-        if (firstTick < from) {
-          const step = ticks[1] - ticks[0]
-          let it = from
-          do {
-            tmpTicks.push(it)
-            it += step
-          }
-          while (it <= ticks[ticks.length - 1] && it <= to)
-          ticks = tmpTicks
-        }
       }
     }
     return ticks.map(v => ({ text: v + '', coord: 0, value: v }))
