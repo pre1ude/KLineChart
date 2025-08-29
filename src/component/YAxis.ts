@@ -478,7 +478,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       if (
         y > textHeight &&
         y < height - textHeight &&
-        ((validYNumber && (Math.abs(validY - y) > textHeight * 2)) || !validYNumber)) {
+        ((validYNumber && (Math.abs(validY - y) >= textHeight * 2)) || !validYNumber)) {
         optimalTicks.push(tick)
         validY = y
       }
