@@ -16,13 +16,26 @@ import { isValid } from './typeChecks'
 
 let measureCtx: CanvasRenderingContext2D
 
+let scale: number = 1
+
+export function setScale (v: number): void {
+  scale = v
+}
+
+export function getScale (): number {
+  return scale
+}
+
 /**
  * Get pixel ratio
  * @param canvas
  * @returns {number}
  */
 export function getPixelRatio (canvas: HTMLCanvasElement): number {
-  return canvas.ownerDocument?.defaultView?.devicePixelRatio ?? 1
+  const scale = getScale()
+  let dpr = (canvas.ownerDocument?.defaultView?.devicePixelRatio ?? 1) * scale
+  dpr = Math.round(dpr * 100) / 100
+  return dpr < 1 ? 1 : dpr > 3 ? 3 : dpr
 }
 
 export function createFont (size?: number, weight?: string | number, family?: string): string {
