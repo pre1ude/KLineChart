@@ -15,6 +15,10 @@
 import type KLineData from '../../common/KLineData'
 import { type Indicator, type IndicatorTemplate } from '../../component/Indicator'
 
+const isValidNumber = (value: number): boolean => {
+  return typeof value === 'number' && !isNaN(value) && isFinite(value)
+}
+
 interface Rsi {
   rsi1?: number
   rsi2?: number
@@ -42,34 +46,73 @@ const relativeStrengthIndex: IndicatorTemplate<Rsi> = {
   },
   calc: (dataList: KLineData[], indicator: Indicator<Rsi>) => {
     const { calcParams: params, figures } = indicator
-    const sumCloseAs: number[] = []
-    const sumCloseBs: number[] = []
+
     return dataList.map((kLineData, i) => {
       const rsi = {}
+
+      // 计算价格变化
       const prevClose = (dataList[i - 1] ?? kLineData).close
-      const tmp = kLineData.close - prevClose
-      params.forEach((p, index) => {
-        if (tmp > 0) {
-          sumCloseAs[index] = (sumCloseAs[index] ?? 0) + tmp
-        } else {
-          sumCloseBs[index] = (sumCloseBs[index] ?? 0) + Math.abs(tmp)
-        }
-        if (i >= p - 1) {
-          if (sumCloseBs[index] !== 0) {
-            rsi[figures[index].key] = 100 - (100.0 / (1 + sumCloseAs[index] / sumCloseBs[index]))
+      const change = kLineData.close - prevClose
+      const gain = Math.max(change, 0)
+      const loss = Math.abs(Math.min(change, 0))
+
+      params.forEach((period, index) => {
+        const figureKey = figures[index].key
+        let avgGain = NaN
+        let avgLoss = NaN
+        let rsiValue = NaN
+
+        if (i >= period) {
+          if (i === period) {
+            // 初始计算：使用简单移动平均
+            let gainSum = 0
+            let lossSum = 0
+
+            // 计算前period个周期的平均涨跌幅
+            for (let j = 1; j <= period; j++) {
+              const prevData = dataList[i - j + 1]
+              const prevPrevData = dataList[i - j] ?? prevData
+              const periodChange = prevData.close - prevPrevData.close
+
+              if (periodChange > 0) {
+                gainSum += periodChange
+              } else {
+                lossSum += Math.abs(periodChange)
+              }
+            }
+
+            avgGain = gainSum / period
+            avgLoss = lossSum / period
           } else {
-            rsi[figures[index].key] = 0
+            // 后续计算：使用Wilder的平滑移动平均 (EMA with alpha = 1/period)
+            const prevResult = dataList[i - 1]
+            const prevAvgGain = isValidNumber(prevResult[`${figureKey}_avgGain`] as number) ? prevResult[`${figureKey}_avgGain`] : 0
+            const prevAvgLoss = isValidNumber(prevResult[`${figureKey}_avgLoss`] as number) ? prevResult[`${figureKey}_avgLoss`] : 0
+
+            // Wilder's smoothing: new_avg = (prev_avg * (period-1) + current_value) / period
+            avgGain = (prevAvgGain * (period - 1) + gain) / period
+            avgLoss = (prevAvgLoss * (period - 1) + loss) / period
           }
-          const agoData = dataList[i - (p - 1)]
-          const agoPreData = dataList[i - p] ?? agoData
-          const agoTmp = agoData.close - agoPreData.close
-          if (agoTmp > 0) {
-            sumCloseAs[index] -= agoTmp
+
+          // 计算RSI
+          if (avgLoss === 0) {
+            rsiValue = 100
+          } else if (avgGain === 0) {
+            rsiValue = 0
           } else {
-            sumCloseBs[index] -= Math.abs(agoTmp)
+            const rs = avgGain / avgLoss
+            rsiValue = 100 - (100 / (1 + rs))
           }
+
+          // 存储中间计算结果供下次使用
+          const currentData = kLineData as any
+          currentData[`${figureKey}_avgGain`] = avgGain
+          currentData[`${figureKey}_avgLoss`] = avgLoss
+
+          rsi[figureKey] = rsiValue
         }
       })
+
       return rsi
     })
   }
