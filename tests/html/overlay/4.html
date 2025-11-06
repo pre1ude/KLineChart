@@ -23,68 +23,70 @@ limitations under the License.
     <script type="text/javascript" src="../../../dist/umd/klinecharts.js"></script>
     <script type="text/javascript" src="../../js/dataSource.js"></script>
     <link rel="stylesheet" type="text/css" href="../../css/chart.css"/>
-    <title>Overlay override</title>
+    <title>Overlay -- Use built-in overlays</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="chart"></div>
     <script>
       window.onload = function () {
-        // Register overlay
+        var chart = klinecharts.init('chart')
+        var kdjPaneId = chart.createIndicator('KDJ')
+        var dataList = generated()
+        chart.applyNewData(dataList)
+
         klinecharts.registerOverlay({
           name: 'circle',
-          needDefaultPointFigure: true,
-          needDefaultXAxisFigure: true,
-          needDefaultYAxisFigure: true,
-          totalStep: 3,
+          needDefaultPointFigure: false,
+          needDefaultXAxisFigure: false,
+          needDefaultYAxisFigure: false,
+          totalStep: 2,
+          onMouseEnter: function ({ overlay, point, event }) {
+            console.log('onMouseEnter', overlay, point, event)
+          },
+          onMouseLeave: function ({ overlay, point, event }) {
+            console.log('onMouseLeave', overlay, point, event)
+          },
+          onClick: function ({ overlay, point, event }) {
+            console.log('onClick', overlay, point, event)
+          },
           createPointFigures: function ({ overlay, coordinates }) {
-            if (coordinates.length === 2) {
-              const xDis = Math.abs(coordinates[0].x - coordinates[1].x)
-              const yDis = Math.abs(coordinates[0].y - coordinates[1].y)
-              const radius = Math.sqrt(xDis * xDis + yDis * yDis)
+            if (coordinates.length === 1) {
               return [
                 {
                   key: 'circle',
                   type: 'circle',
                   attrs: {
                     ...coordinates[0],
-                    r: radius
+                    r: 20
                   },
                   styles: {
-                    style: 'stroke_fill'
+                    style: 'fill',
+                    color: '#FF0000',
+                    // borderColor: 'blue',
+                    // borderSize: 5
                   }
                 },
-                {
-                  key: 'text',
-                  type: 'text',
-                  attrs: {
-                    ...coordinates[0],
-                    text: overlay.extendData
-                  }
-                }
               ]
             }
             return []
           }
         })
-
-        var chart = klinecharts.init('chart')
-        chart.applyNewData(generated())
-        // Create overlay
+        // Create on main
         chart.createOverlay({
           name: 'circle',
-          extendData: 'Override overlay',
-          styles: { text: { color: 'rgba(100, 10, 200, .3)' } },
-          onDrawEnd: function ({ overlay }) {
-            // Listen to the completion of drawing and overwrite the attribute
-            chart.overrideOverlay({
-              id: overlay.id,
-              lock: true,
-              extendData: 'Update override overlay',
-              styles: { color: 'rgba(10, 230, 100, .3)' }
-            })
-          }
+          // extendData: '1111111111',
+          points: [
+            { timestamp: dataList[dataList.length - 20].timestamp, value: dataList[dataList.length - 20].high },
+            // { timestamp: dataList[dataList.length - 19].timestamp, value: dataList[dataList.length - 20].high },
+          ]
         })
+         // Create on sub
+        // chart.createOverlay({
+        //   name: 'simpleAnnotation',
+        //   extendData: '22222222222',
+        //   points: [{ timestamp: dataList[dataList.length - 20].timestamp, value: 40 }]
+        // }, kdjPaneId)
       }
     </script>
   </body>
