@@ -216,6 +216,11 @@ export default class ChartStore {
     return this._timeShareDays
   }
 
+  setTimeShareDays (days: number): this {
+    this._timeShareDays = days
+    return this
+  }
+
   getTimeShareTicks (): string[] {
     return this._timeShareTicks
   }

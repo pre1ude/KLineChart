@@ -626,6 +626,10 @@ export default class ChartImp implements Chart {
     this._chartStore.setPrecision({ price: pricePrecision, volume: volumePrecision })
   }
 
+  setTimeShareDays (days: number): void {
+    this._chartStore.setTimeShareDays(days)
+  }
+
   getPriceVolumePrecision (): Precision {
     return this._chartStore.getPrecision()
   }
