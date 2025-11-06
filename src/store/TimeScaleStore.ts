@@ -22,11 +22,6 @@ import { clamp } from '../component/scale/utils'
 import { createLinear, type LinearScale } from '../component/scale'
 import { formatToHHmm } from '../common/utils/format'
 
-const BarSpaceLimitConstants = {
-  MIN: 1,
-  MAX: 50
-}
-
 const DEFAULT_BAR_WIDTH = 8
 const DEFAULT_OFFSET_RIGHT = 10
 const K_BAR_RATIO = 0.88
@@ -38,6 +33,7 @@ export default class TimeScaleStore {
   private _barWidth: number = DEFAULT_BAR_WIDTH
   private _kWidth: number
   private _offsetRight = DEFAULT_OFFSET_RIGHT
+  private _barSpaceLimit = { min: 1, max: 50 }
 
   private _maxOffsetLeftDistance: number
   private _maxOffsetRightDistance: number
@@ -57,6 +53,14 @@ export default class TimeScaleStore {
     this._chartStore = chartStore
     this._xScale = createScale(this._visibleRange, this._chartStore.mainWidth)
     this._kWidth = getKWidth(this._barWidth)
+  }
+
+  public initBarSpaceLimit (isTimeShare: boolean): void {
+    if (isTimeShare) {
+      this._barSpaceLimit = { min: 0.1, max: 50 }
+    } else {
+      this._barSpaceLimit = { min: 1, max: 50 }
+    }
   }
 
   private calcMinRemainWidth (): void {
@@ -136,7 +140,7 @@ export default class TimeScaleStore {
         offsetRight = (tickCount - idx - 1) * barWidth
       }
     }
-    this._barWidth = clamp(barWidth, BarSpaceLimitConstants.MIN, BarSpaceLimitConstants.MAX)
+    this._barWidth = clamp(barWidth, this._barSpaceLimit.min, this._barSpaceLimit.max)
     this._kWidth = getKWidth(this._barWidth)
     this._offsetRight = offsetRight
   }
@@ -184,7 +188,7 @@ export default class TimeScaleStore {
     if (this._barWidth === barWidth) {
       return
     }
-    this._barWidth = clamp(barWidth, BarSpaceLimitConstants.MIN, BarSpaceLimitConstants.MAX)
+    this._barWidth = clamp(barWidth, this._barSpaceLimit.min, this._barSpaceLimit.max)
     this._kWidth = getKWidth(this._barWidth)
     this.adjustVisibleRange()
     this._chartStore.getTooltipStore().recalculateCrosshair(true)
@@ -280,7 +284,7 @@ export default class TimeScaleStore {
 
     const scaleRatio = 1 + scaleDelta
 
-    const nextBarWidth = clamp(this._barWidth * scaleRatio, BarSpaceLimitConstants.MIN, BarSpaceLimitConstants.MAX)
+    const nextBarWidth = clamp(this._barWidth * scaleRatio, this._barSpaceLimit.min, this._barSpaceLimit.max)
 
     const realScaleRatio = nextBarWidth / this._barWidth
 

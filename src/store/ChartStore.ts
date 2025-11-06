@@ -189,6 +189,7 @@ export default class ChartStore {
             this._preferXTicks = options.preferXTicks
           }
         }
+        this._timeScaleStore.initBarSpaceLimit(this._isTimeShare)
       }
     }
     return this
