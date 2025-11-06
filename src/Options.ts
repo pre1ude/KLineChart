@@ -76,6 +76,7 @@ export interface Options {
   thousandsSeparator?: string
   decimalFoldThreshold?: number
   isTimeShare?: boolean
+  timeShareDays?: number
   timeShareTicks?: string[]
   preferXTicks?: string[]
 }

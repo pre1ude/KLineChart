@@ -61,6 +61,8 @@ export default class ChartStore {
 
   private _isTimeShare = false
 
+  private _timeShareDays = 1
+
   private _timeShareTicks: string[] = []
 
   private _preferXTicks: string[] | undefined
@@ -191,6 +193,9 @@ export default class ChartStore {
         }
         this._timeScaleStore.initBarSpaceLimit(this._isTimeShare)
       }
+      if (isValid(options.timeShareDays)) {
+        this._timeShareDays = options.timeShareDays
+      }
     }
     return this
   }
@@ -205,6 +210,10 @@ export default class ChartStore {
 
   getIsTimeShare (): boolean {
     return this._isTimeShare
+  }
+
+  getTimeShareDays (): number {
+    return this._timeShareDays
   }
 
   getTimeShareTicks (): string[] {

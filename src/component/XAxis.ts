@@ -63,11 +63,14 @@ export default abstract class XAxisImp extends AxisImp {
     const chart = this.getParent().getPane().getChart()
     const chartStore = chart.getChartStore()
     const timeShareTicks = chartStore.getTimeShareTicks()
+    const timeShareDays = chartStore.getTimeShareDays()
 
     const tmpTicks: number[] = []
-    const interval = 30 // 时间间隔至少30分钟
+    const interval = timeShareDays > 1
+      ? timeShareTicks.length
+      : 30 // 时间间隔至少30分钟
 
-    for (let i = 0; i < timeShareTicks.length; i += interval) {
+    for (let i = 0; i < timeShareTicks.length * timeShareDays; i += interval) {
       tmpTicks.push(i)
     }
     return tmpTicks.map(v => ({ text: v + '', coord: 0, value: v }))
@@ -183,6 +186,7 @@ export default abstract class XAxisImp extends AxisImp {
 
     const preferXTicks = chartStore.getPreferXTicks()
     if (preferXTicks) {
+      // todo fix timeShareDays
       const indexArr = getIndexArr(timeShareTicks, preferXTicks)
       for (let i = 0; i < indexArr.length; i++) {
         const x = this.convertToPixel(indexArr[i])
@@ -200,7 +204,8 @@ export default abstract class XAxisImp extends AxisImp {
         }
       }
       for (let i = 0; i < ticks.length; i += tickCountDif) {
-        const text = timeShareTicks[ticks[i].value as number]
+        const index = (ticks[i].value as number) % timeShareTicks.length
+        const text = timeShareTicks[index]
         const x = this.convertToPixel(ticks[i].value as number)
         const timeStamp = genTimeStamp(text, hintTs)
         optimalTicks.push({ text, coord: x, value: timeStamp })
