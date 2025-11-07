@@ -22,6 +22,7 @@ import type XAxisWidget from '../widget/XAxisWidget'
 import { genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import type VisibleRange from '../common/VisibleRange'
 import { type LinearScale } from './scale'
+import { formatDate } from '../common/utils/format'
 
 export type XAxis = Axis
 
@@ -64,15 +65,23 @@ export default abstract class XAxisImp extends AxisImp {
     const chartStore = chart.getChartStore()
     const timeShareTicks = chartStore.getTimeShareTicks()
     const timeShareDays = chartStore.getTimeShareDays()
+    const dataList = chartStore.getDataList()
 
     const tmpTicks: number[] = []
-    const interval = timeShareDays > 1
-      ? timeShareTicks.length
-      : 30 // 时间间隔至少30分钟
-
-    for (let i = 0; i < timeShareTicks.length * timeShareDays; i += interval) {
-      tmpTicks.push(i)
+    if (timeShareDays > 1) {
+      for (let i = 0; i < timeShareDays; i++) {
+        const data = dataList[i * timeShareTicks.length]
+        if (isValid(data)) {
+          tmpTicks.push(i * timeShareTicks.length)
+        }
+      }
+    } else {
+      for (let i = 0; i < timeShareTicks.length; i += 30) {
+        tmpTicks.push(i)
+      }
+      // tmpTicks.push(timeShareTicks.length - 1)
     }
+
     return tmpTicks.map(v => ({ text: v + '', coord: 0, value: v }))
   }
 
@@ -176,9 +185,13 @@ export default abstract class XAxisImp extends AxisImp {
     const chart = this.getParent().getPane().getChart()
     const chartStore = chart.getChartStore()
     const timeShareTicks = chartStore.getTimeShareTicks()
+    const timeShareDays = chartStore.getTimeShareDays()
     const dataList = chartStore.getDataList()
     if (dataList.length < 1) return []
-    const hintTs = dataList[0].timestamp
+    const getHintTs = (i: number): number => {
+      const ts = dataList[i * timeShareTicks.length]?.timestamp
+      return ts ?? Date.now()
+    }
     const optimalTicks: AxisTick[] = []
 
     const tickTextStyles = chart.getStyles().xAxis.tickText
@@ -186,13 +199,16 @@ export default abstract class XAxisImp extends AxisImp {
 
     const preferXTicks = chartStore.getPreferXTicks()
     if (preferXTicks) {
-      // todo fix timeShareDays
+      // todo check the fix for timeShareDays
       const indexArr = getIndexArr(timeShareTicks, preferXTicks)
-      for (let i = 0; i < indexArr.length; i++) {
-        const x = this.convertToPixel(indexArr[i])
-        const text = timeShareTicks[indexArr[i]]
-        const timeStamp = genTimeStamp(text, hintTs)
-        optimalTicks.push({ text, coord: x, value: timeStamp })
+      for (let j = 0; j < timeShareDays; j++) {
+        const hintTs = getHintTs(j)
+        for (let i = 0; i < indexArr.length; i++) {
+          const x = this.convertToPixel(indexArr[i] + j * timeShareTicks.length)
+          const text = timeShareTicks[indexArr[i]]
+          const timeStamp = genTimeStamp(text, hintTs)
+          optimalTicks.push({ text, coord: x, value: timeStamp })
+        }
       }
     } else {
       let tickCountDif = 1
@@ -205,10 +221,20 @@ export default abstract class XAxisImp extends AxisImp {
       }
       for (let i = 0; i < ticks.length; i += tickCountDif) {
         const index = (ticks[i].value as number) % timeShareTicks.length
-        const text = timeShareTicks[index]
         const x = this.convertToPixel(ticks[i].value as number)
-        const timeStamp = genTimeStamp(text, hintTs)
-        optimalTicks.push({ text, coord: x, value: timeStamp })
+        if (timeShareDays === 1) {
+          const text = timeShareTicks[index]
+          const hintTs = getHintTs(0)
+          const timeStamp = genTimeStamp(text, hintTs)
+          optimalTicks.push({ text, coord: x, value: timeStamp })
+        } else {
+          // timeShareDays > 1
+          const hintTs = getHintTs(i)
+          let text = timeShareTicks[index]
+          const timeStamp = genTimeStamp(text, hintTs)
+          text = formatDate(getDateTimeFormat(), timeStamp, 'YYYY-MM-DD')
+          optimalTicks.push({ text, coord: x, value: timeStamp })
+        }
       }
     }
 
