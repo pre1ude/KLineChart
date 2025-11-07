@@ -187,7 +187,7 @@ export default abstract class XAxisImp extends AxisImp {
     const timeShareTicks = chartStore.getTimeShareTicks()
     const timeShareDays = chartStore.getTimeShareDays()
     const dataList = chartStore.getDataList()
-    if (dataList.length < 1) return []
+
     const getHintTs = (i: number): number => {
       const ts = dataList[i * timeShareTicks.length]?.timestamp
       return ts ?? Date.now()

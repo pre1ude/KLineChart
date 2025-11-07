@@ -24,3 +24,7 @@ export default interface VisibleRange {
 export function getDefaultVisibleRange (): VisibleRange {
   return { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
 }
+
+export function createDefaultTimeShareVisibleRange (timeTickLength: number): VisibleRange {
+  return { from: 0, to: 0, domainFrom: 0, domainTo: timeTickLength }
+}

@@ -14,7 +14,7 @@
 
 import type BarSpace from '../common/BarSpace'
 import type VisibleRange from '../common/VisibleRange'
-import { getDefaultVisibleRange } from '../common/VisibleRange'
+import { createDefaultTimeShareVisibleRange, getDefaultVisibleRange } from '../common/VisibleRange'
 import { ActionType } from '../common/Action'
 import type ChartStore from './ChartStore'
 import { LoadDataType } from '../common/LoadDataCallback'
@@ -82,13 +82,14 @@ export default class TimeScaleStore {
   }
 
   private computeVisibleRange (): VisibleRange {
+    const isTimeShare = this._chartStore.getIsTimeShare()
+    const timeShareTicks = this._chartStore.getTimeShareTicks()
+    const timeShareDays = this._chartStore.getTimeShareDays()
     const dataList = this._chartStore.getDataList()
     const totalBarCount = dataList.length
     if (!totalBarCount) {
-      const visibleRange = getDefaultVisibleRange()
+      const visibleRange = isTimeShare ? createDefaultTimeShareVisibleRange(timeShareTicks.length * timeShareDays) : getDefaultVisibleRange()
 
-      this._visibleRange = visibleRange
-      this._xScale = createScale(visibleRange, this._chartStore.mainWidth)
       return visibleRange
     }
     const totalBarWidth = totalBarCount * this._barWidth
@@ -148,11 +149,12 @@ export default class TimeScaleStore {
   }
 
   adjustVisibleRange (): void {
-    const isTimeShare = this._chartStore.getIsTimeShare() ?? false
+    const isTimeShare = this._chartStore.getIsTimeShare()
     if (isTimeShare) {
       this.adjustForTimeShare()
     }
     const visibleRange = this.computeVisibleRange()
+
     this._visibleRange = visibleRange
     this._xScale = createScale(visibleRange, this._chartStore.mainWidth)
 
