@@ -295,26 +295,20 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
           min = (min - firstData.close) / firstData.close * 100
           max = (max - firstData.close) / firstData.close * 100
         }
-        dif = Math.pow(10, -2)
+        dif = index10(-2)
         break
       }
       case YAxisType.MinutePercentage: {
         const firstData = chartStore.getVisibleFirstData()
-        // 获取昨收
-        let prevClose = firstData?.prevClose
-        if (!prevClose) {
-          console.warn('YAxisImp: prevClose is not set, using first data close as prevClose')
-          prevClose = firstData?.close
-        }
-        if (isNumber(prevClose)) {
+        if (isValid(firstData) && isNumber(firstData.prevClose)) {
           const maxPercent = Math.max(
-            Math.abs((max - prevClose) / prevClose * 100),
-            Math.abs((min - prevClose) / prevClose * 100)
+            Math.abs((max - firstData.prevClose) / firstData.prevClose * 100),
+            Math.abs((min - firstData.prevClose) / firstData.prevClose * 100)
           )
           min = -maxPercent
           max = maxPercent
         }
-        dif = Math.pow(10, -2)
+        dif = index10(-2)
         break
       }
       case YAxisType.Log: {
