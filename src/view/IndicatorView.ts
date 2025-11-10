@@ -124,7 +124,7 @@ export default class IndicatorView extends CandleBarView {
           }
           if (!isCover) {
             const result = indicator.result
-            const lines: Array<Array<{ coordinates: Coordinate[], styles: SmoothLineStyle }>> = []
+            const lines: Array<Array<{ coordinates: Coordinate[], styles: SmoothLineStyle, dataIndex: number, nextDataIndex: number }>> = []
 
             const visibleDataList = chartStore.getVisibleDataList()
             const barSpace = chartStore.getTimeScaleStore().getBarSpace()
@@ -198,13 +198,32 @@ export default class IndicatorView extends CandleBarView {
                           lines[figureIndex] = []
                         }
                         if (isNumber(currentCoordinate[figure.key]) && isNumber(nextCoordinate[figure.key])) {
-                          lines[figureIndex].push({
-                            coordinates: [
-                              { x: currentCoordinate.x, y: currentCoordinate[figure.key] },
-                              { x: nextCoordinate.x, y: nextCoordinate[figure.key] }
-                            ],
-                            styles: figureStyles as unknown as SmoothLineStyle
-                          })
+                          // 在分时图模式下，检查这条线段是否跨日
+                          const isTimeShare = chartStore.getIsTimeShare()
+                          const timeShareTicks = chartStore.getTimeShareTicks()
+                          const ticksPerDay = timeShareTicks.length
+                          let shouldDrawLine = true
+
+                          if (isTimeShare && ticksPerDay > 0) {
+                            const currentDayIndex = Math.floor(dataIndex / ticksPerDay)
+                            const nextDayIndex = Math.floor((dataIndex + 1) / ticksPerDay)
+                            // 如果跨日，不绘制这条线段
+                            if (currentDayIndex !== nextDayIndex) {
+                              shouldDrawLine = false
+                            }
+                          }
+
+                          if (shouldDrawLine) {
+                            lines[figureIndex].push({
+                              coordinates: [
+                                { x: currentCoordinate.x, y: currentCoordinate[figure.key] },
+                                { x: nextCoordinate.x, y: nextCoordinate[figure.key] }
+                              ],
+                              styles: figureStyles as unknown as SmoothLineStyle,
+                              dataIndex,
+                              nextDataIndex: dataIndex + 1
+                            })
+                          }
                         }
                         break
                       }
@@ -223,6 +242,10 @@ export default class IndicatorView extends CandleBarView {
             })
 
             // merge line and render
+            const isTimeShare = chartStore.getIsTimeShare()
+            const timeShareTicks = chartStore.getTimeShareTicks()
+            const ticksPerDay = timeShareTicks.length
+
             lines.forEach(items => {
               if (items.length > 1) {
                 const mergeLines = [
@@ -235,7 +258,21 @@ export default class IndicatorView extends CandleBarView {
                   const lastMergeLine = mergeLines[mergeLines.length - 1]
                   const current = items[i]
                   const lastMergeLineLastCoordinate = lastMergeLine.coordinates[lastMergeLine.coordinates.length - 1]
+
+                  // 检查是否跨日（在分时图模式下）
+                  const prev = items[i - 1]
+                  let isCrossingDay = false
+                  if (isTimeShare && ticksPerDay > 0) {
+                    // 检查当前线段的起点和前一个线段的终点是否跨日
+                    // current.dataIndex 是当前线段的起点
+                    // prev.nextDataIndex 是前一个线段的终点
+                    const currentStartDayIndex = Math.floor(current.dataIndex / ticksPerDay)
+                    const prevEndDayIndex = Math.floor(prev.nextDataIndex / ticksPerDay)
+                    isCrossingDay = currentStartDayIndex !== prevEndDayIndex
+                  }
+
                   if (
+                    !isCrossingDay &&
                     lastMergeLineLastCoordinate.x === current.coordinates[0].x &&
                   lastMergeLineLastCoordinate.y === current.coordinates[0].y &&
                   lastMergeLine.styles.style === current.styles.style &&
