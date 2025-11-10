@@ -46,27 +46,46 @@ export default class TooltipStore {
     const cr = crosshair ?? {}
     let realDataIndex: number
     let dataIndex: number
-    if (isNumber(cr.x)) {
-      realDataIndex = this._chartStore.getTimeScaleStore().coordinateToDataIndex(cr.x)
-      if (realDataIndex < 0) {
-        dataIndex = 0
-      } else if (realDataIndex > dataList.length - 1) {
-        dataIndex = dataList.length - 1
+    let kLineData: KLineData | undefined
+    let realX: number | undefined
+
+    // 当有数据时，计算数据索引和 kLineData
+    if (dataList.length > 0) {
+      if (isNumber(cr.x)) {
+        realDataIndex = this._chartStore.getTimeScaleStore().coordinateToDataIndex(cr.x)
+        if (realDataIndex < 0) {
+          dataIndex = 0
+        } else if (realDataIndex > dataList.length - 1) {
+          dataIndex = dataList.length - 1
+        } else {
+          dataIndex = realDataIndex
+        }
       } else {
+        realDataIndex = dataList.length - 1
         dataIndex = realDataIndex
       }
+      kLineData = dataList[dataIndex] ?? undefined
+      realX = this._chartStore.getTimeScaleStore().dataIndexToCoordinate(realDataIndex)
     } else {
-      realDataIndex = dataList.length - 1
-      dataIndex = realDataIndex
+      // 没有数据时，仍然允许垂直线跟随鼠标移动
+      kLineData = undefined
+      if (isNumber(cr.x)) {
+        realX = cr.x
+        realDataIndex = -1
+        dataIndex = -1
+      } else {
+        realX = undefined
+        realDataIndex = -1
+        dataIndex = -1
+      }
     }
-    const kLineData: Nullable<KLineData> = dataList[dataIndex]
-    const realX = this._chartStore.getTimeScaleStore().dataIndexToCoordinate(realDataIndex)
+
     const prevCrosshair = { x: this._crosshair.x, y: this._crosshair.y, paneId: this._crosshair.paneId }
     this._crosshair = { ...cr, realX, kLineData, realDataIndex, dataIndex }
     if (
       prevCrosshair.x !== cr.x || prevCrosshair.y !== cr.y || prevCrosshair.paneId !== cr.paneId
     ) {
-      if (kLineData !== null && !(notExecuteAction ?? false)) {
+      if (kLineData !== undefined && !(notExecuteAction ?? false)) {
         this._chartStore.getChart().crosshairChange(this._crosshair)
       }
       if (!(notInvalidate ?? false)) {
