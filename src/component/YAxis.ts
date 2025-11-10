@@ -42,6 +42,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   private _prevRange: VisibleRange = { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
   private _ticks: AxisTick[] = []
   private readonly _indicatorNames: string[] = []
+  private _hasValidData = true
 
   isMainAxis (): boolean {
     const parent = this.getParent()
@@ -53,6 +54,11 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   buildTicks (force: boolean): boolean {
     if (this._autoCalcTickFlag) {
       this._range = this.calcRange()
+    }
+    // 如果没有有效数据，返回空刻度数组
+    if (!this._hasValidData) {
+      this._ticks = []
+      return true
     }
     if (this._prevRange.from !== this._range.from || this._prevRange.to !== this._range.to || force) {
       this._prevRange = this._range
@@ -266,7 +272,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     if (min !== Number.MAX_SAFE_INTEGER && max !== Number.MIN_SAFE_INTEGER) {
       min = Math.min(indicatorMin, min)
       max = Math.max(indicatorMax, max)
+      this._hasValidData = true
     } else {
+      // 没有有效数据时，标记状态并设置默认范围（用于内部计算）
+      this._hasValidData = false
       min = 0
       max = 10
     }
