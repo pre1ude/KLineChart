@@ -230,13 +230,28 @@ export function eachFigures<D> (
   const figures = indicator.figures
   const styles = indicator.styles
 
-  const circleStyles = formatValue(styles, 'circles', defaultStyles.circles) as IndicatorPolygonStyle[]
+  // 获取用户配置的样式，如果没有则使用默认样式
+  const userCircleStyles = formatValue(styles, 'circles', defaultStyles.circles) as IndicatorPolygonStyle[]
+  const userBarStyles = formatValue(styles, 'bars', defaultStyles.bars) as IndicatorPolygonStyle[]
+  const userLineStyles = formatValue(styles, 'lines', defaultStyles.lines) as SmoothLineStyle[]
+
+  // 深度合并用户样式和默认样式，确保所有属性都有值
+  const circleStyles = userCircleStyles.map((userStyle, index) => ({
+    ...defaultStyles.circles[index % defaultStyles.circles.length],
+    ...userStyle
+  }))
   const circleStyleCount = circleStyles.length
 
-  const barStyles = formatValue(styles, 'bars', defaultStyles.bars) as IndicatorPolygonStyle[]
+  const barStyles = userBarStyles.map((userStyle, index) => ({
+    ...defaultStyles.bars[index % defaultStyles.bars.length],
+    ...userStyle
+  }))
   const barStyleCount = barStyles.length
 
-  const lineStyles = formatValue(styles, 'lines', defaultStyles.lines) as SmoothLineStyle[]
+  const lineStyles = userLineStyles.map((userStyle, index) => ({
+    ...defaultStyles.lines[index % defaultStyles.lines.length],
+    ...userStyle
+  }))
   const lineStyleCount = lineStyles.length
 
   let circleCount = 0
