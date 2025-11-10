@@ -24,8 +24,21 @@ import { genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 
 export default class CrosshairVerticalLabelView extends CrosshairLabelView {
   override compare (crosshair: Crosshair): boolean {
-    const isTimeShare = this.getWidget().getPane().getChart().getChartStore().getIsTimeShare()
-    if (isTimeShare) return true
+    const chartStore = this.getWidget().getPane().getChart().getChartStore()
+    const isTimeShare = chartStore.getIsTimeShare()
+
+    if (isTimeShare) {
+      // 分时图模式下，检查是否在时间轴范围内（而不是实际数据范围）
+      const timeShareTicks = chartStore.getTimeShareTicks()
+      const timeShareDays = chartStore.getTimeShareDays()
+      const realIndex = crosshair.realDataIndex ?? -1
+      // 只要在时间轴的理论范围内就显示标签
+      if (realIndex < 0 || realIndex >= timeShareTicks.length * timeShareDays) {
+        return false
+      }
+      return true
+    }
+
     return isValid(crosshair.kLineData) && crosshair.dataIndex === crosshair.realDataIndex
   }
 
@@ -34,23 +47,30 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
   }
 
   override getText (crosshair: Crosshair, chartStore: ChartStore): string {
-    const hintTs = crosshair.kLineData?.timestamp
-    let timestamp = hintTs
     const isTimeShare = chartStore.getIsTimeShare()
+
+    let timestamp = crosshair.kLineData?.timestamp
     if (isTimeShare) {
-      if (crosshair.realDataIndex !== crosshair.dataIndex) {
-        const timeShareTicks = chartStore.getTimeShareTicks()
-        const realIndex = crosshair.realDataIndex ?? 0
-        if (realIndex < 0 || realIndex >= timeShareTicks.length) {
-          return ''
-        }
-        const text = timeShareTicks[realIndex]
-        timestamp = genTimeStamp(text, hintTs!)
+      const timeShareTicks = chartStore.getTimeShareTicks()
+      const timeShareDays = chartStore.getTimeShareDays()
+      const realIndex = crosshair.realDataIndex ?? 0
+
+      // 检查是否在时间轴范围内
+      if (realIndex < 0 || realIndex >= timeShareTicks.length * timeShareDays) {
+        return ''
       }
+
+      // 获取时间文本
+      const text = timeShareTicks[realIndex % timeShareTicks.length]
+
+      timestamp = timestamp ? genTimeStamp(text, timestamp) : undefined
+    }
+    if (!timestamp) {
+      return ''
     }
 
     const dateTimeFormat = getDateTimeFormat()
-    return chartStore.getCustomApi().formatDate(dateTimeFormat, timestamp!, 'YYYY-MM-DD HH:mm', FormatDateType.Crosshair)
+    return chartStore.getCustomApi().formatDate(dateTimeFormat, timestamp, 'YYYY-MM-DD HH:mm', FormatDateType.Crosshair)
   }
 
   override getTextAttrs (text: string, textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs {
