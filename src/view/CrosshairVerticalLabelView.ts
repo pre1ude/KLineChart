@@ -16,16 +16,13 @@ import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
 import { type CrosshairStyle, type CrosshairDirectionStyle, type StateTextStyle } from '../common/Styles'
 import { isValid } from '../common/utils/typeChecks'
-
 import { FormatDateType } from '../Options'
-
 import type ChartStore from '../store/ChartStore'
-
-import CrosshairHorizontalLabelView from './CrosshairHorizontalLabelView'
+import CrosshairLabelView from './CrosshairLabelView'
 import { type TextAttrs } from '../extension/figure/text'
 import { genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 
-export default class CrosshairVerticalLabelView extends CrosshairHorizontalLabelView {
+export default class CrosshairVerticalLabelView extends CrosshairLabelView {
   override compare (crosshair: Crosshair): boolean {
     const isTimeShare = this.getWidget().getPane().getChart().getChartStore().getIsTimeShare()
     if (isTimeShare) return true

@@ -15,39 +15,13 @@
 import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
 import { type CrosshairStyle, type CrosshairDirectionStyle, YAxisType, type StateTextStyle } from '../common/Styles'
-import { isString } from '../common/utils/typeChecks'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
-import { createFont } from '../common/utils/canvas'
 import { type TextAttrs } from '../extension/figure/text'
 import type ChartStore from '../store/ChartStore'
-import View from './View'
+import CrosshairLabelView from './CrosshairLabelView'
 import type YAxisWidget from '../widget/YAxisWidget'
-import { drawStaticFigure } from '../extension/figure'
 
-export default class CrosshairHorizontalLabelView extends View {
-  override drawImp (ctx: CanvasRenderingContext2D): void {
-    const widget = this.getWidget()
-    const pane = widget.getPane()
-    const bounding = widget.getBounding()
-    const chartStore = widget.getPane().getChart().getChartStore()
-    const crosshair = chartStore.getTooltipStore().getCrosshair()
-    const styles = chartStore.getStyles().crosshair
-    if (isString(crosshair.paneId) && this.compare(crosshair, pane.getId())) {
-      if (styles.show) {
-        const directionStyles = this.getDirectionStyles(styles)
-        const textStyles = directionStyles.text
-        if (directionStyles.show && textStyles.show) {
-          const text = this.getText(crosshair, chartStore)
-          ctx.font = createFont(textStyles.size, textStyles.weight, textStyles.family)
-          drawStaticFigure(ctx, 'text', {
-            attrs: this.getTextAttrs(text, ctx.measureText(text).width, crosshair, bounding, textStyles),
-            styles: textStyles
-          })
-        }
-      }
-    }
-  }
-
+export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
   protected compare (crosshair: Crosshair, paneId: string): boolean {
     return crosshair.paneId === paneId
   }
