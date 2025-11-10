@@ -51,57 +51,102 @@ export default class CandleAreaView extends View {
     let ripplePointCoordinate: Nullable<Coordinate> = null
 
     const visibleDataList = chartStore.getVisibleDataList()
-    visibleDataList.forEach((data: VisibleData) => {
-      const { data: kLineData, x } = data
+    const isTimeShare = chartStore.getIsTimeShare()
+    const timeShareTicks = chartStore.getTimeShareTicks()
+    const ticksPerDay = timeShareTicks.length
+
+    visibleDataList.forEach((data: VisibleData, index: number) => {
+      const { data: kLineData, x, dataIndex } = data
       const value = kLineData?.[styles.value]
       if (isNumber(value)) {
         const y = yAxis.convertToPixel(value)
+
+        // 在多日分时图中，检查是否是新的一天的开始
+        if (isTimeShare && ticksPerDay > 0 && index > 0) {
+          const prevDataIndex = visibleDataList[index - 1].dataIndex
+          const currentDayIndex = Math.floor(dataIndex / ticksPerDay)
+          const prevDayIndex = Math.floor(prevDataIndex / ticksPerDay)
+
+          // 如果跨天了，需要断开连接
+          if (currentDayIndex !== prevDayIndex) {
+            // 使用 NaN 分隔符
+            coordinates.push({ x: NaN, y: NaN })
+          }
+        }
+
         if (areaStartX === Number.MIN_SAFE_INTEGER) {
           areaStartX = x
         }
         coordinates.push({ x, y })
         minY = Math.min(minY, y)
-        if (data.dataIndex === lastDataIndex) {
+        if (dataIndex === lastDataIndex) {
           ripplePointCoordinate = { x, y }
         }
       }
     })
 
     if (coordinates.length > 0) {
-      drawStaticFigure(ctx, 'line', {
-        attrs: { coordinates },
-        styles: {
-          color: styles.lineColor,
-          size: styles.lineSize,
-          smooth: styles.smooth
+      // 将坐标分割成多个线段（根据 NaN 分隔符）
+      const segments: Coordinate[][] = []
+      let currentSegment: Coordinate[] = []
+
+      coordinates.forEach(coord => {
+        if (isNaN(coord.x) || isNaN(coord.y)) {
+          // 遇到分隔符，保存当前线段并开始新线段
+          if (currentSegment.length > 0) {
+            segments.push(currentSegment)
+            currentSegment = []
+          }
+        } else {
+          currentSegment.push(coord)
         }
       })
 
-      if (!styles.lineOnly) {
-        // render area
-        const backgroundColor = styles.backgroundColor
-        let color: string | CanvasGradient
-        if (isArray<GradientColor>(backgroundColor)) {
-          const gradient = ctx.createLinearGradient(0, bounding.height, 0, minY)
-          try {
-            backgroundColor.forEach(({ offset, color }) => {
-              gradient.addColorStop(offset, color)
-            })
-          } catch (e) {
-          }
-          color = gradient
-        } else {
-          color = backgroundColor
-        }
-        ctx.fillStyle = color
-        ctx.beginPath()
-        ctx.moveTo(areaStartX, bounding.height)
-        ctx.lineTo(coordinates[0].x, coordinates[0].y)
-        lineTo(ctx, coordinates, styles.smooth)
-        ctx.lineTo(coordinates[coordinates.length - 1].x, bounding.height)
-        ctx.closePath()
-        ctx.fill()
+      // 最后一条线段
+      if (currentSegment.length > 0) {
+        segments.push(currentSegment)
       }
+
+      // 绘制每个线段
+      segments.forEach(segment => {
+        if (segment.length > 0) {
+          drawStaticFigure(ctx, 'line', {
+            attrs: { coordinates: segment },
+            styles: {
+              color: styles.lineColor,
+              size: styles.lineSize,
+              smooth: styles.smooth
+            }
+          })
+
+          if (!styles.lineOnly) {
+            // render area
+            const backgroundColor = styles.backgroundColor
+            let color: string | CanvasGradient
+            const segmentMinY = Math.min(...segment.map(c => c.y))
+            if (isArray<GradientColor>(backgroundColor)) {
+              const gradient = ctx.createLinearGradient(0, bounding.height, 0, segmentMinY)
+              try {
+                backgroundColor.forEach(({ offset, color }) => {
+                  gradient.addColorStop(offset, color)
+                })
+              } catch (e) {
+              }
+              color = gradient
+            } else {
+              color = backgroundColor
+            }
+            ctx.fillStyle = color
+            ctx.beginPath()
+            ctx.moveTo(segment[0].x, bounding.height)
+            ctx.lineTo(segment[0].x, segment[0].y)
+            lineTo(ctx, segment, styles.smooth)
+            ctx.lineTo(segment[segment.length - 1].x, bounding.height)
+            ctx.closePath()
+            ctx.fill()
+          }
+        }
+      })
     }
 
     const pointStyles = styles.point
