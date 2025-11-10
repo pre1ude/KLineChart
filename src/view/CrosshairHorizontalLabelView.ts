@@ -23,6 +23,10 @@ import type YAxisWidget from '../widget/YAxisWidget'
 
 export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
   protected compare (crosshair: Crosshair, paneId: string): boolean {
+    // 当没有有效数据时（kLineData 为 undefined），不显示水平标签
+    if (crosshair.kLineData === undefined) {
+      return false
+    }
     return crosshair.paneId === paneId
   }
 
