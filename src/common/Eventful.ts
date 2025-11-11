@@ -67,4 +67,8 @@ export default abstract class Eventful implements EventDispatcher {
   clear (): void {
     this._children = []
   }
+
+  protected getChildren (): Eventful[] {
+    return this._children
+  }
 }

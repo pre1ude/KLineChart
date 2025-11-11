@@ -14,7 +14,6 @@
 
 import { type MouseTouchEventCallback, type EventHandler, type EventName } from '../common/SyntheticEvent'
 import Eventful from '../common/Eventful'
-import type { Figure } from '../component/Figure'
 import type DrawWidget from '../widget/DrawWidget'
 import type Pane from '../pane/Pane'
 
@@ -31,13 +30,13 @@ export default abstract class View extends Eventful {
 
   getWidget (): DrawWidget<Pane> { return this._widget }
 
-  bindFigureEvent (figure: Figure<any, any>, events: EventHandler): void {
+  bindFigureEvent (eventful: Eventful, events: EventHandler): void {
     for (const name in events) {
       if (Object.prototype.hasOwnProperty.call(events, name)) {
-        figure.registerEvent(name as EventName, events[name] as MouseTouchEventCallback)
+        eventful.registerEvent(name as EventName, events[name] as MouseTouchEventCallback)
       }
     }
-    this.addChild(figure)
+    this.addChild(eventful)
   }
 
   draw (ctx: CanvasRenderingContext2D): void {

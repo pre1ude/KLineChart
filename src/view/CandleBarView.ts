@@ -19,6 +19,7 @@ import { ActionType } from '../common/Action'
 import { CandleType, type CandleBarColor, type RectStyle, PolygonType } from '../common/Styles'
 import type ChartStore from '../store/ChartStore'
 import { type FigureCreate } from '../component/Figure'
+import { FigureGroup } from '../component/FigureGroup'
 import { type RectAttrs } from '../extension/figure/rect'
 import View from './View'
 import { PaneIdConstants } from '../pane/types'
@@ -143,18 +144,26 @@ export default class CandleBarView extends View {
               break
             }
           }
+          // 使用 FigureGroup 将同一个蜡烛的所有图形组合在一起
+          const group = new FigureGroup()
+
           for (let i = 0; i < rects.length; i++) {
             const rect = rects[i]
             const { attrs, styles } = rect
             const attrsArr = Array.isArray(attrs) ? attrs : [attrs]
             const figureInstance = createFigure(rect.name)
-            figureInstance.setAttrs(attrsArr).setStyles(styles).draw(ctx)
+            figureInstance.setAttrs(attrsArr).setStyles(styles)
+            group.addFigure(figureInstance)
+          }
 
-            if (isMain) {
-              this.bindFigureEvent(figureInstance, {
-                mouseClickEvent: this._boundCandleBarClickEvent(data)
-              })
-            }
+          // 绘制组内所有图形
+          group.draw(ctx)
+
+          // 在 group 层级绑定事件，避免重复触发
+          if (isMain) {
+            this.bindFigureEvent(group, {
+              mouseClickEvent: this._boundCandleBarClickEvent(data)
+            })
           }
         }
       })
