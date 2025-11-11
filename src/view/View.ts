@@ -30,12 +30,24 @@ export default abstract class View extends Eventful {
 
   getWidget (): DrawWidget<Pane> { return this._widget }
 
-  bindFigureEvent (eventful: Eventful, events: EventHandler): void {
+  /**
+   * 注册事件到 Eventful 对象
+   * @param eventful - Figure 或 FigureGroup
+   * @param events - 事件处理器映射
+   */
+  registerFigureEvents (eventful: Eventful, events: EventHandler): void {
     for (const name in events) {
       if (Object.prototype.hasOwnProperty.call(events, name)) {
         eventful.registerEvent(name as EventName, events[name] as MouseTouchEventCallback)
       }
     }
+  }
+
+  /**
+   * @todo deprecated
+   */
+  bindFigureEvent (eventful: Eventful, events: EventHandler): void {
+    this.registerFigureEvents(eventful, events)
     this.addChild(eventful)
   }
 
