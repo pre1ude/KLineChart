@@ -51,6 +51,7 @@ export default class CandleAreaView extends View {
     const isTimeShare = chartStore.getIsTimeShare()
     const timeShareTicks = chartStore.getTimeShareTicks()
     const ticksPerDay = timeShareTicks.length
+    const breakOnCrossDays = chartStore.getTimeShareBreakOnCrossDays()
 
     // 流式绘制：收集连续的坐标点
     const currentPath: Coordinate[] = []
@@ -111,8 +112,8 @@ export default class CandleAreaView extends View {
         return
       }
 
-      // 跨日检查 → 绘制当前路径并重置
-      if (isTimeShare && ticksPerDay > 0 && index > 0) {
+      // 跨日检查 → 绘制当前路径并重置（仅当配置启用时）
+      if (breakOnCrossDays && isTimeShare && ticksPerDay > 0 && index > 0) {
         if (dataIndex % ticksPerDay === 0) {
           drawCurrentPath()
         }

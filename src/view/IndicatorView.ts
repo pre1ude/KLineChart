@@ -77,6 +77,7 @@ export default class IndicatorView extends CandleBarView {
     const isTimeShare = chartStore.getIsTimeShare()
     const timeShareTicks = chartStore.getTimeShareTicks()
     const ticksPerDay = timeShareTicks.length
+    const breakOnCrossDays = chartStore.getTimeShareBreakOnCrossDays()
 
     ctx.save()
     if (yLeftAxis.isInCandle()) {
@@ -219,8 +220,8 @@ export default class IndicatorView extends CandleBarView {
           continue
         }
 
-        // 跨日检查 → 绘制当前 path 并重置
-        if (isTimeShare && ticksPerDay > 0) {
+        // 跨日检查 → 绘制当前 path 并重置（仅当配置启用时）
+        if (breakOnCrossDays && isTimeShare && ticksPerDay > 0) {
           if ((dataIndex + 1) % ticksPerDay === 0) {
             drawCurrentPath()
             lastDataIndex = -1

@@ -78,5 +78,7 @@ export interface Options {
   isTimeShare?: boolean
   timeShareDays?: number
   timeShareTicks?: string[]
+  // 多日分时图是否跨天断开连接
+  timeShareBreakOnCrossDays?: boolean
   preferXTicks?: string[]
 }

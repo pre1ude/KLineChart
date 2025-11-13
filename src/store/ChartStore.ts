@@ -65,6 +65,8 @@ export default class ChartStore {
 
   private _timeShareTicks: string[] = []
 
+  private _timeShareBreakOnCrossDays = true
+
   private _preferXTicks: string[] | undefined
 
   /**
@@ -196,6 +198,9 @@ export default class ChartStore {
       if (isValid(options.timeShareDays)) {
         this._timeShareDays = options.timeShareDays
       }
+      if (isValid(options.timeShareBreakOnCrossDays)) {
+        this._timeShareBreakOnCrossDays = options.timeShareBreakOnCrossDays
+      }
     }
     return this
   }
@@ -223,6 +228,10 @@ export default class ChartStore {
 
   getTimeShareTicks (): string[] {
     return this._timeShareTicks
+  }
+
+  getTimeShareBreakOnCrossDays (): boolean {
+    return this._timeShareBreakOnCrossDays
   }
 
   getPreferXTicks (): string[] | undefined {
