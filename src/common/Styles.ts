@@ -201,6 +201,7 @@ export interface CandleAreaPointStyle {
 export interface CandleAreaStyle {
   lineSize: number
   lineColor: string
+  // value: 从klineData取的字段 一般为close
   value: string
   lineOnly: boolean
   smooth: boolean

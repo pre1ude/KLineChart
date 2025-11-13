@@ -63,12 +63,8 @@ export default class CandleAreaView extends View {
 
         // 在多日分时图中，检查是否是新的一天的开始
         if (isTimeShare && ticksPerDay > 0 && index > 0) {
-          const prevDataIndex = visibleDataList[index - 1].dataIndex
-          const currentDayIndex = Math.floor(dataIndex / ticksPerDay)
-          const prevDayIndex = Math.floor(prevDataIndex / ticksPerDay)
-
           // 如果跨天了，需要断开连接
-          if (currentDayIndex !== prevDayIndex) {
+          if (dataIndex % ticksPerDay === 0) {
             // 使用 NaN 分隔符
             coordinates.push({ x: NaN, y: NaN })
           }
