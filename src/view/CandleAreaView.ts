@@ -45,9 +45,6 @@ export default class CandleAreaView extends View {
     const bounding = widget.getBounding()
     const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
     const styles = chart.getStyles().candle.area
-    const coordinates: Coordinate[] = []
-    let minY = Number.MAX_SAFE_INTEGER
-    let areaStartX: number = Number.MIN_SAFE_INTEGER
     let ripplePointCoordinate: Nullable<Coordinate> = null
 
     const visibleDataList = chartStore.getVisibleDataList()
@@ -55,95 +52,89 @@ export default class CandleAreaView extends View {
     const timeShareTicks = chartStore.getTimeShareTicks()
     const ticksPerDay = timeShareTicks.length
 
+    // 流式绘制：收集连续的坐标点
+    const currentPath: Coordinate[] = []
+    let lastVisitedIndex = -1
+
+    // 绘制当前路径并重置
+    const drawCurrentPath = (): void => {
+      if (currentPath.length >= 2) {
+        // 绘制线条
+        drawStaticFigure(ctx, 'line', {
+          attrs: { coordinates: currentPath },
+          styles: {
+            color: styles.lineColor,
+            size: styles.lineSize,
+            smooth: styles.smooth
+          }
+        })
+
+        // 绘制区域填充
+        if (!styles.lineOnly) {
+          const backgroundColor = styles.backgroundColor
+          let color: string | CanvasGradient
+          const segmentMinY = Math.min(...currentPath.map(c => c.y))
+          if (isArray<GradientColor>(backgroundColor)) {
+            const gradient = ctx.createLinearGradient(0, bounding.height, 0, segmentMinY)
+            try {
+              backgroundColor.forEach(({ offset, color }) => {
+                gradient.addColorStop(offset, color)
+              })
+            } catch (e) {
+            }
+            color = gradient
+          } else {
+            color = backgroundColor
+          }
+          ctx.fillStyle = color
+          ctx.beginPath()
+          ctx.moveTo(currentPath[0].x, bounding.height)
+          ctx.lineTo(currentPath[0].x, currentPath[0].y)
+          lineTo(ctx, currentPath, styles.smooth)
+          ctx.lineTo(currentPath[currentPath.length - 1].x, bounding.height)
+          ctx.closePath()
+          ctx.fill()
+        }
+      }
+      currentPath.length = 0
+      lastVisitedIndex = -1
+    }
+
+    // 流式处理每个数据点
     visibleDataList.forEach((data: VisibleData, index: number) => {
       const { data: kLineData, x, dataIndex } = data
       const value = kLineData?.[styles.value]
-      if (isNumber(value)) {
-        const y = yAxis.convertToPixel(value)
 
-        // 在多日分时图中，检查是否是新的一天的开始
-        if (isTimeShare && ticksPerDay > 0 && index > 0) {
-          // 如果跨天了，需要断开连接
-          if (dataIndex % ticksPerDay === 0) {
-            // 使用 NaN 分隔符
-            coordinates.push({ x: NaN, y: NaN })
-          }
-        }
+      // 值无效 → 绘制当前路径并重置
+      if (!isNumber(value)) {
+        drawCurrentPath()
+        return
+      }
 
-        if (areaStartX === Number.MIN_SAFE_INTEGER) {
-          areaStartX = x
+      // 跨日检查 → 绘制当前路径并重置
+      if (isTimeShare && ticksPerDay > 0 && index > 0) {
+        if (dataIndex % ticksPerDay === 0) {
+          drawCurrentPath()
         }
-        coordinates.push({ x, y })
-        minY = Math.min(minY, y)
-        if (dataIndex === lastDataIndex) {
-          ripplePointCoordinate = { x, y }
-        }
+      }
+
+      // 数据不连续 → 绘制当前路径并重置
+      if (lastVisitedIndex !== -1 && lastVisitedIndex + 1 !== dataIndex) {
+        drawCurrentPath()
+      }
+
+      const y = yAxis.convertToPixel(value)
+      currentPath.push({ x, y })
+      lastVisitedIndex = dataIndex
+
+      // 记录最后一个点用于涟漪效果
+      if (dataIndex === lastDataIndex) {
+        ripplePointCoordinate = { x, y }
       }
     })
 
-    if (coordinates.length > 0) {
-      // 将坐标分割成多个线段（根据 NaN 分隔符）
-      const segments: Coordinate[][] = []
-      let currentSegment: Coordinate[] = []
-
-      coordinates.forEach(coord => {
-        if (isNaN(coord.x) || isNaN(coord.y)) {
-          // 遇到分隔符，保存当前线段并开始新线段
-          if (currentSegment.length > 0) {
-            segments.push(currentSegment)
-            currentSegment = []
-          }
-        } else {
-          currentSegment.push(coord)
-        }
-      })
-
-      // 最后一条线段
-      if (currentSegment.length > 0) {
-        segments.push(currentSegment)
-      }
-
-      // 绘制每个线段
-      segments.forEach(segment => {
-        if (segment.length > 0) {
-          drawStaticFigure(ctx, 'line', {
-            attrs: { coordinates: segment },
-            styles: {
-              color: styles.lineColor,
-              size: styles.lineSize,
-              smooth: styles.smooth
-            }
-          })
-
-          if (!styles.lineOnly) {
-            // render area
-            const backgroundColor = styles.backgroundColor
-            let color: string | CanvasGradient
-            const segmentMinY = Math.min(...segment.map(c => c.y))
-            if (isArray<GradientColor>(backgroundColor)) {
-              const gradient = ctx.createLinearGradient(0, bounding.height, 0, segmentMinY)
-              try {
-                backgroundColor.forEach(({ offset, color }) => {
-                  gradient.addColorStop(offset, color)
-                })
-              } catch (e) {
-              }
-              color = gradient
-            } else {
-              color = backgroundColor
-            }
-            ctx.fillStyle = color
-            ctx.beginPath()
-            ctx.moveTo(segment[0].x, bounding.height)
-            ctx.lineTo(segment[0].x, segment[0].y)
-            lineTo(ctx, segment, styles.smooth)
-            ctx.lineTo(segment[segment.length - 1].x, bounding.height)
-            ctx.closePath()
-            ctx.fill()
-          }
-        }
-      })
-    }
+    // 绘制最后一段路径
+    drawCurrentPath()
 
     const pointStyles = styles.point
     if (pointStyles.show && isValid(ripplePointCoordinate)) {
