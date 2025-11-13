@@ -13,10 +13,8 @@
  */
 
 import type KLineData from '../../common/KLineData'
-import { type IndicatorStyle, PolygonType } from '../../common/Styles'
-import { formatValue } from '../../common/utils/format'
-
-import { type Indicator, type IndicatorTemplate, type IndicatorFigureStylesCallbackData } from '../../component/Indicator'
+import { PolygonType } from '../../common/Styles'
+import { type Indicator, type IndicatorTemplate } from '../../component/Indicator'
 
 interface Ao {
   ao?: number
@@ -31,18 +29,20 @@ const awesomeOscillator: IndicatorTemplate<Ao> = {
     title: 'AO: ',
     type: 'bar',
     baseValue: 0,
-    styles: (data: IndicatorFigureStylesCallbackData<Ao>, indicator: Indicator<Ao>, defaultStyles: IndicatorStyle) => {
-      const { prev, current } = data
-      const prevAo = prev.indicatorData?.ao ?? Number.MIN_SAFE_INTEGER
-      const currentAo = current.indicatorData?.ao ?? Number.MIN_SAFE_INTEGER
-      let color: string
-      if (currentAo > prevAo) {
-        color = formatValue(indicator.styles, 'bars[0].upColor', (defaultStyles.bars)[0].upColor) as string
-      } else {
-        color = formatValue(indicator.styles, 'bars[0].downColor', (defaultStyles.bars)[0].downColor) as string
+    styles: (dataIndex, indicator, _kLineDataList, defaultStyles) => {
+      const prevAo = indicator.result[dataIndex - 1]?.ao ?? Number.MIN_SAFE_INTEGER
+      const currentAo = indicator.result[dataIndex]?.ao ?? Number.MIN_SAFE_INTEGER
+
+      const isUp = currentAo > prevAo
+      const color = isUp
+        ? defaultStyles.bars[0].upColor
+        : defaultStyles.bars[0].downColor
+
+      return {
+        color,
+        style: isUp ? PolygonType.Stroke : PolygonType.Fill,
+        borderColor: color
       }
-      const style = currentAo > prevAo ? PolygonType.Stroke : PolygonType.Fill
-      return { color, style, borderColor: color }
     }
   }],
   calc: (dataList: KLineData[], indicator: Indicator<Ao>) => {

@@ -13,11 +13,7 @@
  */
 
 import type KLineData from '../../common/KLineData'
-import { type IndicatorStyle } from '../../common/Styles'
-import { formatValue } from '../../common/utils/format'
-import { isValid } from '../../common/utils/typeChecks'
-
-import { type Indicator, type IndicatorTemplate, type IndicatorFigureStylesCallbackData, IndicatorSeries, type IndicatorFigure } from '../../component/Indicator'
+import { type IndicatorTemplate, IndicatorSeries, type IndicatorFigure } from '../../component/Indicator'
 
 interface Vol {
   volume?: number
@@ -29,17 +25,17 @@ function getVolumeFigure (): IndicatorFigure<Vol> {
     // title: 'VOLUME: ',
     type: 'bar',
     baseValue: 0,
-    styles: (data: IndicatorFigureStylesCallbackData<Vol>, indicator: Indicator, defaultStyles: IndicatorStyle) => {
-      const kLineData = data.current.kLineData
-      let color = formatValue(indicator.styles, 'bars[0].noChangeColor', (defaultStyles.bars)[0].noChangeColor)
-      if (isValid(kLineData)) {
-        if (kLineData.diffLastPrice > 0) {
-          color = formatValue(indicator.styles, 'bars[0].upColor', (defaultStyles.bars)[0].upColor)
-        } else if (kLineData.diffLastPrice < 0) {
-          color = formatValue(indicator.styles, 'bars[0].downColor', (defaultStyles.bars)[0].downColor)
-        }
+    styles: (dataIndex, _indicator, kLineDataList, defaultStyles) => {
+      const kLineData = kLineDataList[dataIndex]
+
+      let color = defaultStyles.bars[0].noChangeColor
+      if (kLineData.diffLastPrice > 0) {
+        color = defaultStyles.bars[0].upColor
+      } else if (kLineData.diffLastPrice < 0) {
+        color = defaultStyles.bars[0].downColor
       }
-      return { color: color as string }
+
+      return { color }
     }
   }
 }

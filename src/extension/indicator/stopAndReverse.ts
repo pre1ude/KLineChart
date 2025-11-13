@@ -13,10 +13,7 @@
  */
 
 import type KLineData from '../../common/KLineData'
-import { type IndicatorStyle } from '../../common/Styles'
-import { formatValue } from '../../common/utils/format'
-
-import { type Indicator, type IndicatorTemplate, IndicatorSeries, type IndicatorFigureStylesCallbackData } from '../../component/Indicator'
+import { type Indicator, type IndicatorTemplate, IndicatorSeries } from '../../component/Indicator'
 
 interface Sar {
   sar?: number
@@ -34,14 +31,15 @@ const stopAndReverse: IndicatorTemplate<Sar> = {
       key: 'sar',
       title: 'SAR: ',
       type: 'circle',
-      styles: (data: IndicatorFigureStylesCallbackData<Sar>, indicator: Indicator, defaultStyles: IndicatorStyle) => {
-        const { current } = data
-        const sar = current.indicatorData?.sar ?? Number.MIN_SAFE_INTEGER
-        const kLineData = current.kLineData!
-        const halfHL = (kLineData?.high + kLineData?.low) / 2
+      styles: (dataIndex, indicator, kLineDataList, defaultStyles) => {
+        const sar = indicator.result[dataIndex]?.sar ?? Number.MIN_SAFE_INTEGER
+        const kLineData = kLineDataList[dataIndex]
+        const halfHL = (kLineData.high + kLineData.low) / 2
+
         const color = sar < halfHL
-          ? formatValue(indicator.styles, 'circles[0].upColor', (defaultStyles.circles)[0].upColor) as string
-          : formatValue(indicator.styles, 'circles[0].downColor', (defaultStyles.circles)[0].downColor) as string
+          ? defaultStyles.circles[0].upColor
+          : defaultStyles.circles[0].downColor
+
         return { color }
       }
     }

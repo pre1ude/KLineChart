@@ -13,13 +13,12 @@
  */
 
 import type Nullable from '../common/Nullable'
-import type VisibleData from '../common/VisibleData'
-import { CandleType, type SmoothLineStyle } from '../common/Styles'
+import { CandleType, type SmoothLineStyle, type IndicatorStyle } from '../common/Styles'
 import { formatValue } from '../common/utils/format'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import type Coordinate from '../common/Coordinate'
 import type ChartStore from '../store/ChartStore'
-import { eachFigures, type Indicator, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
+import { getFigureBaseStyles, getMergedDefaultStyles, type Indicator, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
 import CandleBarView, { type CandleBarOptions } from './CandleBarView'
 import type DualYPane from '../pane/DualYPane'
 import type XAxisWidget from '../widget/XAxisWidget'
@@ -73,12 +72,18 @@ export default class IndicatorView extends CandleBarView {
     const timeScaleStore = chartStore.getTimeScaleStore()
     const visibleRange = timeScaleStore.getVisibleRange()
     const paneIndicators = chartStore.getIndicatorStore().getInstances(pane.getId())
+    const visibleDataList = chartStore.getVisibleDataList()
+    const barSpace = chartStore.getTimeScaleStore().getBarSpace()
+    const isTimeShare = chartStore.getIsTimeShare()
+    const timeShareTicks = chartStore.getTimeShareTicks()
+    const ticksPerDay = timeShareTicks.length
 
-    const defaultStyles = chartStore.getStyles().indicator
     ctx.save()
     if (yLeftAxis.isInCandle()) {
+      // 在主图
       drawForAxis(paneIndicators, yLeftAxis)
     } else {
+      // 在副图
       drawForAxis(filterIndicatorsByAxis(paneIndicators, yLeftAxis), yLeftAxis)
       drawForAxis(filterIndicatorsByAxis(paneIndicators, yRightAxis), yRightAxis)
     }
@@ -99,208 +104,205 @@ export default class IndicatorView extends CandleBarView {
 
     function drawForAxis (indicators: Indicator[], yAxis: YAxisImp): void {
       indicators.forEach(indicator => {
-        if (indicator.visible) {
-          if (indicator.zLevel < 0) {
-            ctx.globalCompositeOperation = 'destination-over'
-          } else {
-            ctx.globalCompositeOperation = 'source-over'
-          }
-          let isCover = false
-          // render custom indicator draw
-          if (indicator.draw !== null) {
-            ctx.save()
-            isCover = indicator.draw({
-              ctx,
-              kLineDataList: dataList,
-              indicator,
-              visibleRange,
-              bounding,
-              barSpace: timeScaleStore.getBarSpace(),
-              defaultStyles,
-              xAxis,
-              yAxis
-            }) ?? false
-            ctx.restore()
-          }
-          if (!isCover) {
-            const result = indicator.result
-            const lines: Array<Array<{ coordinates: Coordinate[], styles: SmoothLineStyle, dataIndex: number, nextDataIndex: number }>> = []
+        if (!indicator.visible) return
 
-            const visibleDataList = chartStore.getVisibleDataList()
-            const barSpace = chartStore.getTimeScaleStore().getBarSpace()
+        setCompositeOperation(indicator.zLevel)
 
-            visibleDataList.forEach((data: VisibleData) => {
-              const { halfGapBar } = barSpace
-              const { dataIndex, x } = data
-              const prevX = xAxis.convertToPixel(dataIndex - 1)
-              const nextX = xAxis.convertToPixel(dataIndex + 1)
-              const prevData = result[dataIndex - 1] ?? null
-              const currentData = result[dataIndex] ?? null
-              const nextData = result[dataIndex + 1] ?? null
-              const prevCoordinate = { x: prevX }
-              const currentCoordinate = { x }
-              const nextCoordinate = { x: nextX }
-              indicator.figures.forEach(({ key }) => {
-                const prevValue = prevData?.[key]
-                if (isNumber(prevValue)) {
-                  prevCoordinate[key] = yAxis.convertToPixel(prevValue)
-                }
-                const currentValue = currentData?.[key]
-                if (isNumber(currentValue)) {
-                  currentCoordinate[key] = yAxis.convertToPixel(currentValue)
-                }
-                const nextValue = nextData?.[key]
-                if (isNumber(nextValue)) {
-                  nextCoordinate[key] = yAxis.convertToPixel(nextValue)
-                }
-              })
-              eachFigures(dataList, indicator, dataIndex, defaultStyles, (figure: IndicatorFigure, figureStyles: IndicatorFigureStyle, figureIndex: number) => {
-                if (isValid(currentData?.[figure.key])) {
-                  const valueY = currentCoordinate[figure.key]
-                  let attrs = figure.attrs?.({
-                    data: { prev: prevData, current: currentData, next: nextData },
-                    coordinate: { prev: prevCoordinate, current: currentCoordinate, next: nextCoordinate },
-                    bounding,
-                    barSpace,
-                    xAxis,
-                    yAxis
-                  })
-                  if (!isValid<IndicatorFigureAttrs>(attrs)) {
-                    switch (figure.type) {
-                      case 'circle': {
-                        attrs = { x, y: valueY, r: Math.max(1, halfGapBar) }
-                        break
-                      }
-                      case 'rect':
-                      case 'bar': {
-                        const baseValue = figure.baseValue ?? yAxis.getRange().from
-                        const baseValueY = yAxis.convertToPixel(baseValue)
-                        let height = Math.abs(baseValueY - (valueY as number))
-                        if (baseValue !== currentData?.[figure.key]) {
-                          height = Math.max(1, height)
-                        }
-                        let y: number
-                        if (valueY > baseValueY) {
-                          y = baseValueY
-                        } else {
-                          y = valueY
-                        }
-                        attrs = {
-                          x: x - halfGapBar,
-                          y,
-                          width: Math.max(1, halfGapBar * 2),
-                          height
-                        }
-                        break
-                      }
-                      case 'line': {
-                        if (!isValid(lines[figureIndex])) {
-                          lines[figureIndex] = []
-                        }
-                        if (isNumber(currentCoordinate[figure.key]) && isNumber(nextCoordinate[figure.key])) {
-                          // 在分时图模式下，检查这条线段是否跨日
-                          const isTimeShare = chartStore.getIsTimeShare()
-                          const timeShareTicks = chartStore.getTimeShareTicks()
-                          const ticksPerDay = timeShareTicks.length
-                          let shouldDrawLine = true
+        const mergedDefaultStyles = getMergedDefaultStyles(indicator, chartStore.getStyles().indicator)
 
-                          if (isTimeShare && ticksPerDay > 0) {
-                            const currentDayIndex = Math.floor(dataIndex / ticksPerDay)
-                            const nextDayIndex = Math.floor((dataIndex + 1) / ticksPerDay)
-                            // 如果跨日，不绘制这条线段
-                            if (currentDayIndex !== nextDayIndex) {
-                              shouldDrawLine = false
-                            }
-                          }
+        const customDrawCovered = tryCustomDraw(indicator, yAxis, mergedDefaultStyles)
+        if (customDrawCovered) return
 
-                          if (shouldDrawLine) {
-                            lines[figureIndex].push({
-                              coordinates: [
-                                { x: currentCoordinate.x, y: currentCoordinate[figure.key] },
-                                { x: nextCoordinate.x, y: nextCoordinate[figure.key] }
-                              ],
-                              styles: figureStyles as unknown as SmoothLineStyle,
-                              dataIndex,
-                              nextDataIndex: dataIndex + 1
-                            })
-                          }
-                        }
-                        break
-                      }
-                      default: { break }
-                    }
-                  }
-                  const type = figure.type!
-                  if (isValid<IndicatorFigureAttrs>(attrs) && type !== 'line') {
-                    drawStaticFigure(ctx, type === 'bar' ? 'rect' : type, {
-                      attrs,
-                      styles: figureStyles
-                    })
-                  }
-                }
-              })
-            })
-
-            // merge line and render
-            const isTimeShare = chartStore.getIsTimeShare()
-            const timeShareTicks = chartStore.getTimeShareTicks()
-            const ticksPerDay = timeShareTicks.length
-
-            lines.forEach(items => {
-              if (items.length > 1) {
-                const mergeLines = [
-                  {
-                    coordinates: [items[0].coordinates[0], items[0].coordinates[1]],
-                    styles: items[0].styles
-                  }
-                ]
-                for (let i = 1; i < items.length; i++) {
-                  const lastMergeLine = mergeLines[mergeLines.length - 1]
-                  const current = items[i]
-                  const lastMergeLineLastCoordinate = lastMergeLine.coordinates[lastMergeLine.coordinates.length - 1]
-
-                  // 检查是否跨日（在分时图模式下）
-                  const prev = items[i - 1]
-                  let isCrossingDay = false
-                  if (isTimeShare && ticksPerDay > 0) {
-                    // 检查当前线段的起点和前一个线段的终点是否跨日
-                    // current.dataIndex 是当前线段的起点
-                    // prev.nextDataIndex 是前一个线段的终点
-                    const currentStartDayIndex = Math.floor(current.dataIndex / ticksPerDay)
-                    const prevEndDayIndex = Math.floor(prev.nextDataIndex / ticksPerDay)
-                    isCrossingDay = currentStartDayIndex !== prevEndDayIndex
-                  }
-
-                  if (
-                    !isCrossingDay &&
-                    lastMergeLineLastCoordinate.x === current.coordinates[0].x &&
-                  lastMergeLineLastCoordinate.y === current.coordinates[0].y &&
-                  lastMergeLine.styles.style === current.styles.style &&
-                  lastMergeLine.styles.color === current.styles.color &&
-                  lastMergeLine.styles.size === current.styles.size &&
-                  lastMergeLine.styles.smooth === current.styles.smooth &&
-                  lastMergeLine.styles.dashedValue[0] === current.styles.dashedValue[0] &&
-                  lastMergeLine.styles.dashedValue[1] === current.styles.dashedValue[1]
-                  ) {
-                    lastMergeLine.coordinates.push(current.coordinates[1])
-                  } else {
-                    mergeLines.push({
-                      coordinates: [current.coordinates[0], current.coordinates[1]],
-                      styles: current.styles
-                    })
-                  }
-                }
-                mergeLines.forEach(({ coordinates, styles }) => {
-                  drawStaticFigure(ctx, 'line', {
-                    attrs: { coordinates },
-                    styles
-                  })
-                })
-              }
-            })
-          }
+        for (let i = 0; i < indicator.figures.length; i++) {
+          drawSingleFigure(indicator.figures[i], i, indicator, mergedDefaultStyles, yAxis)
         }
       })
     }
+
+    function setCompositeOperation (zLevel: number): void {
+      ctx.globalCompositeOperation = zLevel < 0 ? 'destination-over' : 'source-over'
+    }
+
+    function tryCustomDraw (indicator: Indicator, yAxis: YAxisImp, defaultStyles: IndicatorStyle): boolean {
+      if (indicator.draw == null) return false
+
+      ctx.save()
+      const isCover = indicator.draw({
+        ctx,
+        kLineDataList: dataList,
+        indicator,
+        visibleRange,
+        bounding,
+        barSpace: timeScaleStore.getBarSpace(),
+        defaultStyles,
+        xAxis,
+        yAxis
+      }) ?? false
+      ctx.restore()
+
+      return isCover
+    }
+
+    function drawSingleFigure (
+      figure: IndicatorFigure,
+      figureIndex: number,
+      indicator: Indicator,
+      mergedDefaultStyles: IndicatorStyle,
+      yAxis: YAxisImp
+    ): void {
+      const type = figure.type ?? 'line'
+      const baseStyles = getFigureBaseStyles(type, figureIndex, mergedDefaultStyles)
+      const createFigureStyles = (dataIndex: number): IndicatorFigureStyle => {
+        const customStyles = figure.styles?.(dataIndex, indicator, dataList, mergedDefaultStyles)
+        return customStyles ? { ...baseStyles, ...customStyles } : baseStyles
+      }
+
+      if (type === 'line') {
+        // 线段类型：流式绘制
+        drawLineStreaming(figure, createFigureStyles, indicator, yAxis)
+      } else {
+        // 其他类型：逐个绘制
+        for (const data of visibleDataList) {
+          const { dataIndex, x } = data
+          if (!isValid(indicator.result[dataIndex]?.[figure.key])) continue
+
+          const figureStyles = createFigureStyles(dataIndex)
+
+          const attrs = figure.attrs?.(dataIndex, indicator.result, bounding, barSpace, xAxis, yAxis) ??
+            computeDefaultAttrs(figure, type, dataIndex, x, indicator.result, yAxis)
+
+          if (isValid<IndicatorFigureAttrs>(attrs)) {
+            drawStaticFigure(ctx, type === 'bar' ? 'rect' : type, {
+              attrs,
+              styles: figureStyles
+            })
+          }
+        }
+      }
+    }
+
+    function drawLineStreaming (
+      figure: IndicatorFigure,
+      createFigureStyles: (dataIndex: number) => IndicatorFigureStyle,
+      indicator: Indicator,
+      yAxis: YAxisImp
+    ): void {
+      const key = figure.key
+      const result = indicator.result
+
+      const currentPath: Coordinate[] = []
+      let currentStyles: SmoothLineStyle | null = null
+      let lastDataIndex = -1
+
+      // 绘制当前 path 并重置
+      const drawCurrentPath = (): void => {
+        if (currentPath.length >= 2 && currentStyles) {
+          drawStaticFigure(ctx, 'line', {
+            attrs: { coordinates: currentPath },
+            styles: currentStyles
+          })
+        }
+        currentPath.length = 0
+        currentStyles = null
+      }
+
+      for (const data of visibleDataList) {
+        const { dataIndex, x } = data
+
+        const currentValue = result[dataIndex]?.[key]
+        const nextValue = result[dataIndex + 1]?.[key]
+
+        // 值无效 → 绘制当前 path 并重置
+        if (!isNumber(currentValue) || !isNumber(nextValue)) {
+          drawCurrentPath()
+          lastDataIndex = -1
+          continue
+        }
+
+        // 跨日检查 → 绘制当前 path 并重置
+        if (isTimeShare && ticksPerDay > 0) {
+          if ((dataIndex + 1) % ticksPerDay === 0) {
+            drawCurrentPath()
+            lastDataIndex = -1
+            continue
+          }
+        }
+
+        // 数据不连续 → 绘制当前 path 并重置
+        if (lastDataIndex !== -1 && lastDataIndex !== dataIndex) {
+          drawCurrentPath()
+        }
+
+        const figureStyles = createFigureStyles(dataIndex) as unknown as SmoothLineStyle
+
+        // 样式变化 → 绘制当前 path 并重置
+        if (currentStyles && !isSameStyle(currentStyles, figureStyles)) {
+          drawCurrentPath()
+        }
+
+        const y1 = yAxis.convertToPixel(currentValue)
+        const x2 = xAxis.convertToPixel(dataIndex + 1)
+        const y2 = yAxis.convertToPixel(nextValue)
+
+        if (currentPath.length === 0) {
+          currentPath.push({ x, y: y1 }, { x: x2, y: y2 })
+          currentStyles = figureStyles
+        } else {
+          currentPath.push({ x: x2, y: y2 })
+        }
+
+        lastDataIndex = dataIndex + 1
+      }
+
+      drawCurrentPath()
+    }
+
+    function computeDefaultAttrs (
+      figure: IndicatorFigure,
+      type: string,
+      dataIndex: number,
+      x: number,
+      result: any[],
+      yAxis: YAxisImp
+    ): IndicatorFigureAttrs | undefined {
+      const value = result[dataIndex]?.[figure.key]
+      if (!isNumber(value)) return undefined
+
+      const { halfGapBar } = barSpace
+      const valueY = yAxis.convertToPixel(value)
+
+      if (type === 'circle') {
+        return { x, y: valueY, r: Math.max(1, halfGapBar) }
+      }
+
+      if (type === 'rect' || type === 'bar') {
+        const baseValue = figure.baseValue ?? yAxis.getRange().from
+        const baseValueY = yAxis.convertToPixel(baseValue)
+        let height = Math.abs(baseValueY - valueY)
+        if (baseValue !== value) {
+          height = Math.max(1, height)
+        }
+        const y = valueY > baseValueY ? baseValueY : valueY
+        return {
+          x: x - halfGapBar,
+          y,
+          width: Math.max(1, halfGapBar * 2),
+          height
+        }
+      }
+
+      return undefined
+    }
   }
+}
+
+function isSameStyle (a: SmoothLineStyle, b: SmoothLineStyle): boolean {
+  return a === b || (
+    a.style === b.style &&
+    a.color === b.color &&
+    a.size === b.size &&
+    a.smooth === b.smooth &&
+    a.dashedValue[0] === b.dashedValue[0] &&
+    a.dashedValue[1] === b.dashedValue[1]
+  )
 }

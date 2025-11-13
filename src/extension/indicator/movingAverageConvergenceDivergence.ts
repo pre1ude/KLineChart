@@ -13,11 +13,8 @@
  */
 
 import type KLineData from '../../common/KLineData'
-import { type IndicatorStyle, PolygonType } from '../../common/Styles'
-
-import { formatValue } from '../../common/utils/format'
-
-import { type Indicator, type IndicatorTemplate, type IndicatorFigureStylesCallbackData } from '../../component/Indicator'
+import { PolygonType } from '../../common/Styles'
+import { type Indicator, type IndicatorTemplate } from '../../component/Indicator'
 
 interface Macd {
   dif?: number
@@ -45,20 +42,22 @@ const movingAverageConvergenceDivergence: IndicatorTemplate<Macd> = {
       title: 'MACD: ',
       type: 'bar',
       baseValue: 0,
-      styles: (data: IndicatorFigureStylesCallbackData<Macd>, indicator: Indicator, defaultStyles: IndicatorStyle) => {
-        const { prev, current } = data
-        const prevMacd = prev.indicatorData?.macd ?? Number.MIN_SAFE_INTEGER
-        const currentMacd = current.indicatorData?.macd ?? Number.MIN_SAFE_INTEGER
-        let color: string
+      styles: (dataIndex, indicator, _kLineDataList, defaultStyles) => {
+        const prevMacd = indicator.result[dataIndex - 1]?.macd ?? Number.MIN_SAFE_INTEGER
+        const currentMacd = indicator.result[dataIndex]?.macd ?? Number.MIN_SAFE_INTEGER
+
+        let color = defaultStyles.bars[0].noChangeColor
         if (currentMacd > 0) {
-          color = formatValue(indicator.styles, 'bars[0].upColor', (defaultStyles.bars)[0].upColor) as string
+          color = defaultStyles.bars[0].upColor
         } else if (currentMacd < 0) {
-          color = formatValue(indicator.styles, 'bars[0].downColor', (defaultStyles.bars)[0].downColor) as string
-        } else {
-          color = formatValue(indicator.styles, 'bars[0].noChangeColor', (defaultStyles.bars)[0].noChangeColor) as string
+          color = defaultStyles.bars[0].downColor
         }
-        const style = prevMacd < currentMacd ? PolygonType.Stroke : PolygonType.Fill
-        return { style, color, borderColor: color }
+
+        return {
+          color,
+          style: prevMacd < currentMacd ? PolygonType.Stroke : PolygonType.Fill,
+          borderColor: color
+        }
       }
     }
   ],

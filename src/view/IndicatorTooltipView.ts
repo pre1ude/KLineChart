@@ -22,8 +22,7 @@ import { isValid, isObject, isString, isNumber } from '../common/utils/typeCheck
 import { createFont } from '../common/utils/canvas'
 import type Coordinate from '../common/Coordinate'
 import { type CustomApi } from '../Options'
-import type { Indicator, IndicatorFigure, IndicatorFigureStyle, IndicatorTooltipData } from '../component/Indicator'
-import { eachFigures } from '../component/Indicator'
+import { getFigureBaseStyles, getMergedDefaultStyles, type Indicator, type IndicatorTooltipData } from '../component/Indicator'
 import { type TooltipIcon } from '../store/TooltipStore'
 import View from './View'
 import type DualYPane from '../pane/DualYPane'
@@ -261,7 +260,8 @@ export default class IndicatorTooltipView extends View {
     decimalFoldThreshold: number,
     styles: IndicatorStyle
   ): IndicatorTooltipData {
-    const tooltipStyles = styles.tooltip
+    const mergedDefaultStyles = getMergedDefaultStyles(indicator, styles)
+    const tooltipStyles = mergedDefaultStyles.tooltip
     const name = tooltipStyles.showName ? indicator.shortName : ''
     let calcParamsText = ''
     const calcParams = indicator.calcParams
@@ -277,9 +277,14 @@ export default class IndicatorTooltipView extends View {
     const legends: TooltipLegend[] = []
     if (indicator.visible) {
       const indicatorData = result[dataIndex] ?? {}
-      eachFigures(dataList, indicator, dataIndex, styles, (figure: IndicatorFigure, figureStyles: Required<IndicatorFigureStyle>) => {
+
+      indicator.figures.forEach((figure, figureIndex) => {
         if (isString(figure.title)) {
-          const color = figureStyles.color
+          const figureBaseStyles = getFigureBaseStyles(figure.type ?? 'line', figureIndex, mergedDefaultStyles)
+          const customStyles = figure.styles?.(dataIndex, indicator, dataList, mergedDefaultStyles)
+          const figureStyles = customStyles ? { ...figureBaseStyles, ...customStyles } : figureBaseStyles
+          const color = figureStyles.color ?? mergedDefaultStyles.tooltip.text.color
+
           let value = indicatorData[figure.key] ?? tooltipStyles.defaultValue
           if (isNumber(value)) {
             value = formatPrecision(value, indicator.precision)
@@ -306,7 +311,7 @@ export default class IndicatorTooltipView extends View {
         visibleRange: chartStore.getTimeScaleStore().getVisibleRange(),
         bounding: widget.getBounding(),
         crosshair,
-        defaultStyles: styles,
+        defaultStyles: mergedDefaultStyles,
         xAxis,
         yAxis
       })
@@ -321,7 +326,7 @@ export default class IndicatorTooltipView extends View {
       }
       if (isValid(customLegends) && indicator.visible) {
         const optimizedLegends: TooltipLegend[] = []
-        const color = styles.tooltip.text.color
+        const color = mergedDefaultStyles.tooltip.text.color
         customLegends.forEach(data => {
           let title = { text: '', color }
           if (isObject(data.title)) {

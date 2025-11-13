@@ -14,10 +14,10 @@
 
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { isNumber, isValid } from '../common/utils/typeChecks'
-import { eachFigures, type IndicatorFigure, type IndicatorFigureStyle } from '../component/Indicator'
 import View from './View'
 import type YAxisWidget from '../widget/YAxisWidget'
 import { drawStaticFigure } from '../extension/figure'
+import { getFigureBaseStyles, getMergedDefaultStyles } from '../component/Indicator'
 
 export default class IndicatorLastValueView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {
@@ -41,9 +41,16 @@ export default class IndicatorLastValueView extends View {
         const indicatorData = result[dataIndex]
         if (isValid(indicatorData) && indicator.visible) {
           const precision = indicator.precision
-          eachFigures(dataList, indicator, dataIndex, defaultStyles, (figure: IndicatorFigure, figureStyles: Required<IndicatorFigureStyle>) => {
+          const mergedDefaultStyles = getMergedDefaultStyles(indicator, defaultStyles)
+
+          indicator.figures.forEach((figure, figureIndex) => {
             const value = indicatorData[figure.key]
             if (isNumber(value)) {
+              const figureBaseStyles = getFigureBaseStyles(figure.type ?? 'line', figureIndex, mergedDefaultStyles)
+              const customStyles = figure.styles?.(dataIndex, indicator, dataList, mergedDefaultStyles)
+              const figureStyles = customStyles ? { ...figureBaseStyles, ...customStyles } : figureBaseStyles
+              const color = figureStyles.color ?? mergedDefaultStyles.lastValueMark.text.color
+
               const y = yAxis.convertToNicePixel(value)
               let text = formatPrecision(value, precision)
               if (indicator.shouldFormatBigNumber) {
@@ -63,7 +70,7 @@ export default class IndicatorLastValueView extends View {
                 },
                 styles: {
                   ...lastValueMarkTextStyles,
-                  backgroundColor: figureStyles.color
+                  backgroundColor: color
                 }
               })
             }

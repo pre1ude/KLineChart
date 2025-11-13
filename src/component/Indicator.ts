@@ -19,10 +19,9 @@ import type Bounding from '../common/Bounding'
 import type VisibleRange from '../common/VisibleRange'
 import type BarSpace from '../common/BarSpace'
 import type Crosshair from '../common/Crosshair'
-import { type IndicatorStyle, type IndicatorPolygonStyle, type SmoothLineStyle, type RectStyle, type TextStyle, type TooltipIconStyle, type LineStyle, type LineType, type PolygonType, type TooltipLegend } from '../common/Styles'
+import { type IndicatorStyle, type SmoothLineStyle, type RectStyle, type TextStyle, type TooltipIconStyle, type LineStyle, type LineType, type PolygonType, type TooltipLegend } from '../common/Styles'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
-import { formatValue } from '../common/utils/format'
 import { isValid, clone, isNumber, isFunction, isString, isBoolean, isArray, merge } from '../common/utils/typeChecks'
 import { type ArcAttrs } from '../extension/figure/arc'
 import { type RectAttrs } from '../extension/figure/rect'
@@ -39,34 +38,21 @@ export type IndicatorFigureStyle = Partial<Omit<SmoothLineStyle, 'style'>> & Par
 
 export type IndicatorFigureAttrs = Partial<ArcAttrs> & Partial<LineStyle> & Partial<RectAttrs> & Partial<TextAttrs> & Record<string, any>
 
-export interface IndicatorFigureCallbackBrother<PCN> {
-  prev: PCN
-  current: PCN
-  next: PCN
-}
-
-export type IndicatorFigureAttrsCallbackCoordinate<D> = IndicatorFigureCallbackBrother<Record<keyof D, number> & { x: number }>
-
-export type IndicatorFigureAttrsCallbackData<D> = IndicatorFigureCallbackBrother<D>
-
-export interface IndicatorFigureAttrsCallbackParams<D> {
-  data: IndicatorFigureAttrsCallbackData<Nullable<D>>
-  coordinate: IndicatorFigureAttrsCallbackCoordinate<D>
-  bounding: Bounding
-  barSpace: BarSpace
-  xAxis: XAxis
+export type IndicatorFigureAttrsCallback<D> = (
+  dataIndex: number,
+  result: D[],
+  bounding: Bounding,
+  barSpace: BarSpace,
+  xAxis: XAxis,
   yAxis: YAxis
-}
+) => IndicatorFigureAttrs
 
-export interface IndicatorFigureStylesCallbackDataChild<D> {
-  kLineData?: KLineData
-  indicatorData?: D
-}
-
-export type IndicatorFigureStylesCallbackData<D> = IndicatorFigureCallbackBrother<IndicatorFigureStylesCallbackDataChild<D>>
-
-export type IndicatorFigureAttrsCallback<D> = (params: IndicatorFigureAttrsCallbackParams<D>) => IndicatorFigureAttrs
-export type IndicatorFigureStylesCallback<D> = (data: IndicatorFigureStylesCallbackData<D>, indicator: Indicator<D>, defaultStyles: IndicatorStyle) => IndicatorFigureStyle
+export type IndicatorFigureStylesCallback<D> = (
+  dataIndex: number,
+  indicator: Indicator<D>,
+  kLineDataList: KLineData[],
+  defaultStyles: IndicatorStyle
+) => IndicatorFigureStyle
 
 export interface IndicatorFigure<D = any> {
   key: string
@@ -217,86 +203,6 @@ export type IndicatorCreate<D = any> = ExcludePickPartial<Omit<IndicatorApi<D>, 
   yAxisPosition?: 'left' | 'right'
 }
 
-export type EachFigureCallback = (figure: IndicatorFigure, figureStyles: IndicatorFigureStyle, index: number) => void
-
-export function eachFigures<D> (
-  kLineDataList: KLineData[],
-  indicator: Indicator<D>,
-  dataIndex: number,
-  defaultStyles: IndicatorStyle,
-  eachFigureCallback: EachFigureCallback
-): void {
-  const result = indicator.result
-  const figures = indicator.figures
-  const styles = indicator.styles
-
-  // 获取用户配置的样式，如果没有则使用默认样式
-  const userCircleStyles = formatValue(styles, 'circles', defaultStyles.circles) as IndicatorPolygonStyle[]
-  const userBarStyles = formatValue(styles, 'bars', defaultStyles.bars) as IndicatorPolygonStyle[]
-  const userLineStyles = formatValue(styles, 'lines', defaultStyles.lines) as SmoothLineStyle[]
-
-  // 深度合并用户样式和默认样式，确保所有属性都有值
-  const circleStyles = userCircleStyles.map((userStyle, index) => ({
-    ...defaultStyles.circles[index % defaultStyles.circles.length],
-    ...userStyle
-  }))
-  const circleStyleCount = circleStyles.length
-
-  const barStyles = userBarStyles.map((userStyle, index) => ({
-    ...defaultStyles.bars[index % defaultStyles.bars.length],
-    ...userStyle
-  }))
-  const barStyleCount = barStyles.length
-
-  const lineStyles = userLineStyles.map((userStyle, index) => ({
-    ...defaultStyles.lines[index % defaultStyles.lines.length],
-    ...userStyle
-  }))
-  const lineStyleCount = lineStyles.length
-
-  let circleCount = 0
-  let barCount = 0
-  let lineCount = 0
-
-  let defaultFigureStyles
-  let figureIndex = 0
-  figures.forEach(figure => {
-    switch (figure.type) {
-      case 'circle': {
-        figureIndex = circleCount
-        const styles = circleStyles[circleCount % circleStyleCount]
-        defaultFigureStyles = { ...styles, color: styles.noChangeColor }
-        circleCount++
-        break
-      }
-      case 'bar': {
-        figureIndex = barCount
-        const styles = barStyles[barCount % barStyleCount]
-        defaultFigureStyles = { ...styles, color: styles.noChangeColor }
-        barCount++
-        break
-      }
-      case 'line': {
-        figureIndex = lineCount
-        defaultFigureStyles = lineStyles[lineCount % lineStyleCount]
-        lineCount++
-        break
-      }
-      default: { break }
-    }
-    if (isValid(defaultFigureStyles)) {
-      const cbData = {
-        prev: { kLineData: kLineDataList[dataIndex - 1], indicatorData: result[dataIndex - 1] },
-        current: { kLineData: kLineDataList[dataIndex], indicatorData: result[dataIndex] },
-        next: { kLineData: kLineDataList[dataIndex + 1], indicatorData: result[dataIndex + 1] }
-      }
-      const ss = figure.styles?.(cbData, indicator, defaultStyles)
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      eachFigureCallback(figure, { ...defaultFigureStyles, ...ss }, figureIndex)
-    }
-  })
-}
-
 export class Indicator<D = any> implements IndicatorApi<D> {
   name: string
   shortName: string
@@ -430,5 +336,77 @@ export class Indicator<D = any> implements IndicatorApi<D> {
     } catch (e) {
       return false
     }
+  }
+}
+
+export function getMergedDefaultStyles (indicator: Indicator, defaultStyles: IndicatorStyle): IndicatorStyle {
+  const styles = indicator.styles
+
+  const merged: IndicatorStyle = {
+    ...defaultStyles
+  }
+
+  // 合并样式数组
+  if (styles) {
+    if (styles.circles) {
+      merged.circles = defaultStyles.circles.map((defaultStyle, index) => {
+        const userStyle = styles.circles?.[index]
+        return userStyle ? { ...defaultStyle, ...userStyle } : defaultStyle
+      })
+    }
+
+    if (styles.bars) {
+      merged.bars = defaultStyles.bars.map((defaultStyle, index) => {
+        const userStyle = styles.bars?.[index]
+        return userStyle ? { ...defaultStyle, ...userStyle } : defaultStyle
+      })
+    }
+
+    if (styles.lines) {
+      merged.lines = defaultStyles.lines.map((defaultStyle, index) => {
+        const userStyle = styles.lines?.[index]
+        return userStyle ? { ...defaultStyle, ...userStyle } : defaultStyle
+      })
+    }
+
+    if (styles.ohlc) {
+      merged.ohlc = { ...defaultStyles.ohlc, ...styles.ohlc }
+    }
+    if (styles.tooltip) {
+      merged.tooltip = { ...defaultStyles.tooltip, ...styles.tooltip }
+    }
+    if (styles.lastValueMark) {
+      merged.lastValueMark = { ...defaultStyles.lastValueMark, ...styles.lastValueMark }
+    }
+  }
+
+  return merged
+}
+
+export function getFigureBaseStyles (type: string, index: number, styles: IndicatorStyle): IndicatorFigureStyle {
+  switch (type) {
+    case 'circle': {
+      const style = styles.circles[index % styles.circles.length]
+      const merged: IndicatorFigureStyle = { ...style }
+      merged.color = merged.noChangeColor
+      return merged
+    }
+
+    case 'bar':
+    case 'rect': {
+      const style = styles.bars[index % styles.bars.length]
+      const merged: IndicatorFigureStyle = { ...style }
+      merged.color = merged.noChangeColor
+      return merged
+    }
+
+    case 'line': {
+      const style = styles.lines[index % styles.lines.length]
+      return { ...style } as unknown as IndicatorFigureStyle
+    }
+
+    default:
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      return {} as IndicatorFigureStyle
   }
 }
