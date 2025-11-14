@@ -1,5 +1,4 @@
 import Eventful from '../common/Eventful'
-import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 import { Figure } from './Figure'
 
 /**
@@ -14,9 +13,5 @@ export class FigureGroup extends Eventful {
         child.draw(ctx)
       }
     }
-  }
-
-  override dispatchEvent (name: EventName, event: MouseTouchEvent, other?: number): boolean {
-    return this.onEvent(name, event, other)
   }
 }

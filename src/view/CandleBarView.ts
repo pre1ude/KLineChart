@@ -26,7 +26,7 @@ import type DualYPane from '../pane/DualYPane'
 import { createFigure } from '../extension/figure'
 import type DrawWidget from '../widget/DrawWidget'
 import type Pane from '../pane/Pane'
-import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
+import { type MouseTouchEvent } from '../common/SyntheticEvent'
 
 export interface CandleBarOptions {
   type: Exclude<CandleType, CandleType.Area>
@@ -67,10 +67,6 @@ export default class CandleBarView extends View {
         return false
       })
     }
-  }
-
-  override dispatchEvent (name: EventName, event: MouseTouchEvent, other?: number): boolean {
-    return this.onEvent(name, event, other)
   }
 
   override drawImp (ctx: CanvasRenderingContext2D): void {

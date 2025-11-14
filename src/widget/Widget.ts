@@ -17,10 +17,9 @@ import { createDefaultBounding } from '../common/Bounding'
 import type Updater from '../common/Updater'
 import { UpdateLevel } from '../common/Updater'
 import Eventful from '../common/Eventful'
-
 import type Pane from '../pane/Pane'
-
 import { merge } from '../common/utils/typeChecks'
+import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 
 export default abstract class Widget<P extends Pane = Pane> extends Eventful implements Updater {
   /**
@@ -69,6 +68,14 @@ export default abstract class Widget<P extends Pane = Pane> extends Eventful imp
 
   destroy (): void {
     this._rootContainer.removeChild(this._container)
+  }
+
+  /**
+   * 分发事件到 widget
+   * 通过 checkEventOn 检查事件是否命中，然后调用 onEvent 触发回调
+   */
+  dispatchEvent (name: EventName, event: MouseTouchEvent, other?: number): boolean {
+    return this.onEvent(name, event, other)
   }
 
   abstract getName (): string

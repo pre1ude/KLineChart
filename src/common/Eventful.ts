@@ -14,11 +14,7 @@
 
 import { type EventName, type MouseTouchEvent, type MouseTouchEventCallback } from './SyntheticEvent'
 
-export interface EventDispatcher {
-  dispatchEvent: (name: EventName, event: MouseTouchEvent, other?: number) => boolean
-}
-
-export default abstract class Eventful implements EventDispatcher {
+export default abstract class Eventful {
   private readonly _children: Eventful[] = []
 
   private readonly _callbacks = new Map<EventName, MouseTouchEventCallback>()
@@ -51,16 +47,6 @@ export default abstract class Eventful implements EventDispatcher {
       }
     }
     return false
-  }
-
-  dispatchEvent (name: EventName, event: MouseTouchEvent, other?: number): boolean {
-    for (let i = this._children.length - 1; i >= 0; i--) {
-      if (this._children[i].dispatchEvent(name, event, other)) {
-        return true
-      }
-    }
-
-    return this.onEvent(name, event, other)
   }
 
   addChild (eventful: Eventful): this {

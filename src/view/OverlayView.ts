@@ -18,7 +18,7 @@ import type Point from '../common/Point'
 import type Bounding from '../common/Bounding'
 import type BarSpace from '../common/BarSpace'
 import { type OverlayStyle } from '../common/Styles'
-import { type EventHandler, type EventName, type MouseTouchEvent, type MouseTouchEventCallback } from '../common/SyntheticEvent'
+import { type EventHandler, type MouseTouchEvent, type MouseTouchEventCallback } from '../common/SyntheticEvent'
 import { isBoolean, isNumber, isValid } from '../common/utils/typeChecks'
 import { type CustomApi } from '../Options'
 import type XAxis from '../component/XAxis'
@@ -358,15 +358,13 @@ export default class OverlayView extends View {
     return true
   }
 
-  override dispatchEvent (name: EventName, event: MouseTouchEvent, other?: number): boolean {
+  override checkEventOn (event: MouseTouchEvent): boolean {
+    // 在绘制模式下，OverlayView 总是接收事件
     if (this.getWidget().getPane().getChart().getChartStore().getOverlayStore().isDrawing()) {
-      return this.onEvent(name, event, other)
+      return true
     }
-    return super.dispatchEvent(name, event, other)
-  }
-
-  override checkEventOn (): boolean {
-    return true
+    // 否则检查子元素
+    return super.checkEventOn(event)
   }
 
   override drawImp (ctx: CanvasRenderingContext2D): void {
