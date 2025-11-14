@@ -13,12 +13,11 @@
  */
 
 import type Nullable from '../common/Nullable'
-import type VisibleData from '../common/VisibleData'
 import type BarSpace from '../common/BarSpace'
 import { ActionType } from '../common/Action'
 import { CandleType, type CandleBarColor, type RectStyle, PolygonType } from '../common/Styles'
 import type ChartStore from '../store/ChartStore'
-import { type FigureCreate } from '../component/Figure'
+import { type Figure, type FigureCreate } from '../component/Figure'
 import { FigureGroup } from '../component/FigureGroup'
 import { type RectAttrs } from '../extension/figure/rect'
 import View from './View'
@@ -26,6 +25,9 @@ import { PaneIdConstants } from '../pane/types'
 import { isValid } from '../common/utils/typeChecks'
 import type DualYPane from '../pane/DualYPane'
 import { createFigure } from '../extension/figure'
+import type DrawWidget from '../widget/DrawWidget'
+import type Pane from '../pane/Pane'
+import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 
 export interface CandleBarOptions {
   type: Exclude<CandleType, CandleType.Area>
@@ -33,14 +35,47 @@ export interface CandleBarOptions {
 }
 
 export default class CandleBarView extends View {
-  private readonly _boundCandleBarClickEvent = (data: VisibleData) => () => {
-    this.getWidget().getPane().getChart().getChartStore().getActionStore().execute(ActionType.OnCandleBarClick, data)
-    return false
+  constructor (widget: DrawWidget<Pane>) {
+    super(widget)
+    this._initEvent()
+  }
+
+  private _initEvent (): void {
+    const pane = this.getWidget().getPane()
+    const isMain = pane.getId() === PaneIdConstants.CANDLE
+
+    if (isMain) {
+      this.registerEvent('mouseClickEvent', (e: MouseTouchEvent) => {
+        const chartStore = pane.getChart().getChartStore()
+        const visibleDataList = chartStore.getVisibleDataList()
+        const target = e.path?.[0]
+
+        let _data
+        if (target) {
+          const dataIndex = (target as Figure<any, any, number>).data
+          if (dataIndex != null) {
+            const data = visibleDataList[dataIndex]
+            if (data != null) {
+              _data = data
+            }
+          }
+        }
+        if (_data == null) {
+          console.warn('_data should not be null')
+        }
+        this.getWidget().getPane().getChart().getChartStore().getActionStore().execute(ActionType.OnCandleBarClick, _data)
+
+        return false
+      })
+    }
+  }
+
+  override dispatchEvent (name: EventName, event: MouseTouchEvent, other?: number): boolean {
+    return this.onEvent(name, event, other)
   }
 
   override drawImp (ctx: CanvasRenderingContext2D): void {
     const pane = this.getWidget().getPane()
-    const isMain = pane.getId() === PaneIdConstants.CANDLE
     const chartStore = pane.getChart().getChartStore()
     const candleBarOptions = this.getCandleBarOptions(chartStore)
     if (candleBarOptions !== null) {
@@ -152,19 +187,12 @@ export default class CandleBarView extends View {
             const { attrs, styles } = rect
             const attrsArr = Array.isArray(attrs) ? attrs : [attrs]
             const figureInstance = createFigure(rect.name)
-            figureInstance.setAttrs(attrsArr).setStyles(styles)
-            group.addFigure(figureInstance)
+            figureInstance.setAttrs(attrsArr).setStyles(styles).setData(data.dataIndex)
+            group.addChild(figureInstance)
           }
 
-          // 绘制组内所有图形
           group.draw(ctx)
-
-          // 在 group 层级绑定事件，避免重复触发
-          if (isMain) {
-            this.bindFigureEvent(group, {
-              mouseClickEvent: this._boundCandleBarClickEvent(data)
-            })
-          }
+          this.addChild(group)
         }
       })
     }

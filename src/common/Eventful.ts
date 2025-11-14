@@ -12,8 +12,6 @@
  * limitations under the License.
  */
 
-import { isValid } from './utils/typeChecks'
-
 import { type EventName, type MouseTouchEvent, type MouseTouchEventCallback } from './SyntheticEvent'
 
 export interface EventDispatcher {
@@ -32,7 +30,11 @@ export default abstract class Eventful implements EventDispatcher {
 
   onEvent (name: EventName, event: MouseTouchEvent, other?: number): boolean {
     const callback = this._callbacks.get(name)
-    if (isValid(callback) && this.checkEventOn(event)) {
+    if (callback != null && this.checkEventOn(event)) {
+      if (event.path == null) {
+        event.path = []
+      }
+      event.path.push(this)
       return callback(event, other)
     }
     return false
@@ -41,6 +43,10 @@ export default abstract class Eventful implements EventDispatcher {
   checkEventOn (event: MouseTouchEvent): boolean {
     for (let i = this._children.length - 1; i >= 0; i--) {
       if (this._children[i].checkEventOn(event)) {
+        if (event.path == null) {
+          event.path = []
+        }
+        event.path.push(this._children[i])
         return true
       }
     }
@@ -48,14 +54,12 @@ export default abstract class Eventful implements EventDispatcher {
   }
 
   dispatchEvent (name: EventName, event: MouseTouchEvent, other?: number): boolean {
-    const start = this._children.length - 1
-    if (start > -1) {
-      for (let i = start; i > -1; i--) {
-        if (this._children[i].dispatchEvent(name, event, other)) {
-          return true
-        }
+    for (let i = this._children.length - 1; i >= 0; i--) {
+      if (this._children[i].dispatchEvent(name, event, other)) {
+        return true
       }
     }
+
     return this.onEvent(name, event, other)
   }
 

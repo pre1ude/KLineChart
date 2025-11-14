@@ -31,9 +31,10 @@ export interface FigureApi<A = any, S = any> {
 export type FigureTemplate<A = any, S = any> = Pick<FigureApi<A, S>, 'name' | 'draw' | 'checkEventOn'>
 export type FigureCreate<A = any, S = any> = Pick<FigureApi<A, S>, 'name' | 'attrs' | 'styles'>
 
-export class Figure<A = any, S = any> extends Eventful {
+export class Figure<A = any, S = any, T = any> extends Eventful {
   attrs: A
   styles: S
+  data: T
 
   private readonly _figure: FigureTemplate
 
@@ -53,6 +54,11 @@ export class Figure<A = any, S = any> extends Eventful {
 
   setStyles (styles: S): this {
     this.styles = styles
+    return this
+  }
+
+  setData (data: T): this {
+    this.data = data
     return this
   }
 

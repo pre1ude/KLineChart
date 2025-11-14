@@ -22,6 +22,7 @@
  */
 
 import type Coordinate from './Coordinate'
+import type Eventful from './Eventful'
 
 import type Nullable from './Nullable'
 import { setScale } from './utils/canvas'
@@ -68,6 +69,7 @@ export interface EventHandler {
 export type EventName = keyof EventHandler
 
 export interface MouseTouchEvent extends Coordinate {
+  path?: Eventful[]
   pageX: number
   pageY: number
   isTouch?: boolean
