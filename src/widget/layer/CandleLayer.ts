@@ -1,0 +1,77 @@
+/**
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+
+ * http://www.apache.org/licenses/LICENSE-2.0
+
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import type { Layer } from './Layer'
+import type DrawWidget from '../DrawWidget'
+import type DualYPane from '../../pane/DualYPane'
+import CandleBarView from '../../view/CandleBarView'
+import CandleAreaView from '../../view/CandleAreaView'
+import CandleHighLowPriceView from '../../view/CandleHighLowPriceView'
+import CandleLastPriceLineView from '../../view/CandleLastPriceLineView'
+import CandleZeroPriceLineView from '../../view/CandleZeroPriceLineView'
+import { CandleType } from '../../common/Styles'
+
+/**
+ * 蜡烛图图层
+ * 负责绘制蜡烛图相关的所有内容
+ */
+export class CandleLayer implements Layer {
+  readonly name = 'candle'
+  private _widget?: DrawWidget<DualYPane>
+  private _candleBarView?: CandleBarView
+  private _candleAreaView?: CandleAreaView
+  private _candleHighLowPriceView?: CandleHighLowPriceView
+  private _candleLastPriceLineView?: CandleLastPriceLineView
+  private _candleZeroPriceLineView?: CandleZeroPriceLineView
+
+  init = (widget: DrawWidget<DualYPane>): void => {
+    this._widget = widget
+    this._candleBarView = new CandleBarView(widget)
+    this._candleAreaView = new CandleAreaView(widget)
+    this._candleHighLowPriceView = new CandleHighLowPriceView(widget)
+    this._candleLastPriceLineView = new CandleLastPriceLineView(widget)
+    this._candleZeroPriceLineView = new CandleZeroPriceLineView(widget)
+  }
+
+  drawMain = (ctx: CanvasRenderingContext2D): void => {
+    if (this._widget == null) return
+
+    const chart = this._widget.getPane().getChart()
+    const chartStore = chart.getChartStore()
+    const candleStyles = chart.getStyles().candle
+
+    if (candleStyles.type !== CandleType.Area) {
+      this._candleBarView?.draw(ctx)
+      this._candleHighLowPriceView?.draw(ctx)
+      this._candleAreaView?.stopAnimation()
+    } else {
+      this._candleAreaView?.draw(ctx)
+    }
+
+    if (chartStore.getIsTimeShare()) {
+      this._candleZeroPriceLineView?.draw(ctx)
+    } else {
+      this._candleLastPriceLineView?.draw(ctx)
+    }
+  }
+
+  destroy = (): void => {
+    this._widget = undefined
+    this._candleBarView = undefined
+    this._candleAreaView = undefined
+    this._candleHighLowPriceView = undefined
+    this._candleLastPriceLineView = undefined
+    this._candleZeroPriceLineView = undefined
+  }
+}

@@ -12,12 +12,12 @@
  * limitations under the License.
  */
 
+import { CandleWidget } from '../widget/CandleWidget'
 import type DrawWidget from '../widget/DrawWidget'
-import CandleWidget from '../widget/CandleWidget'
 import DualYPane from './DualYPane'
 
 export default class CandlePane extends DualYPane {
   override createMainWidget (container: HTMLElement): DrawWidget<DualYPane> {
-    return new CandleWidget(container, this)
+    return CandleWidget(container, this)
   }
 }

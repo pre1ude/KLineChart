@@ -13,55 +13,24 @@
  */
 
 import type DualYPane from '../pane/DualYPane'
-import { WidgetNameConstants } from './types'
-import DrawWidget from './DrawWidget'
-import GridView from '../view/GridView'
-import IndicatorView from '../view/IndicatorView'
-import CrosshairLineView from '../view/CrosshairLineView'
-import IndicatorTooltipView from '../view/IndicatorTooltipView'
-import OverlayView from '../view/OverlayView'
+import MainWidget from './MainWidget'
+import {
+  IndicatorLayer,
+  GridLayer,
+  OverlayLayer,
+  CrosshairLayer,
+  TooltipLayer
+} from './layer'
 
-export default class IndicatorWidget extends DrawWidget<DualYPane> {
-  private readonly _gridView = new GridView(this)
-  private readonly _indicatorView = new IndicatorView(this)
-  private readonly _crosshairLineView = new CrosshairLineView(this)
-  private readonly _tooltipView = this.createTooltipView()
-  protected readonly _overlayView = new OverlayView(this)
-
-  constructor (rootContainer: HTMLElement, pane: DualYPane) {
-    super(rootContainer, pane)
-    this.initChildren()
-    this.getContainer().style.cursor = 'crosshair'
-    this.registerEvent('mouseMoveEvent', () => {
-      pane.getChart().getChartStore().getTooltipStore().setActiveIcon()
-      return false
-    })
-  }
-
-  protected initChildren (): void {
-    this.addChild(this._overlayView)
-    this.addChild(this._tooltipView)
-  }
-
-  getName (): string {
-    return WidgetNameConstants.MAIN
-  }
-
-  protected updateMain (ctx: CanvasRenderingContext2D): void {
-    this.updateMainContent(ctx)
-    this._indicatorView.draw(ctx)
-    this._gridView.draw(ctx)
-  }
-
-  protected createTooltipView (): IndicatorTooltipView {
-    return new IndicatorTooltipView(this)
-  }
-
-  protected updateMainContent (_ctx: CanvasRenderingContext2D): void {}
-
-  override updateOverlay (ctx: CanvasRenderingContext2D): void {
-    this._overlayView.draw(ctx)
-    this._crosshairLineView.draw(ctx)
-    this._tooltipView.draw(ctx)
-  }
+export function IndicatorWidget (
+  rootContainer: HTMLElement,
+  pane: DualYPane
+): MainWidget {
+  return new MainWidget(rootContainer, pane, [
+    new GridLayer(),
+    new IndicatorLayer(),
+    new OverlayLayer(),
+    new CrosshairLayer(),
+    new TooltipLayer('indicator')
+  ])
 }

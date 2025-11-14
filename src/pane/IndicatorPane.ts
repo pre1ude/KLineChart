@@ -13,11 +13,11 @@
  */
 
 import type DrawWidget from '../widget/DrawWidget'
-import IndicatorWidget from '../widget/IndicatorWidget'
+import { IndicatorWidget } from '../widget/IndicatorWidget'
 import DualYPane from './DualYPane'
 
 export default class IndicatorPane extends DualYPane {
   override createMainWidget (container: HTMLElement): DrawWidget<DualYPane> {
-    return new IndicatorWidget(container, this)
+    return IndicatorWidget(container, this)
   }
 }
