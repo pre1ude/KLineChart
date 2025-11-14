@@ -12,7 +12,6 @@
  * limitations under the License.
  */
 
-import type Nullable from '../common/Nullable'
 import { CandleType, type SmoothLineStyle, type IndicatorStyle } from '../common/Styles'
 import { formatValue } from '../common/utils/format'
 import { isNumber, isValid } from '../common/utils/typeChecks'
@@ -24,13 +23,15 @@ import type DualYPane from '../pane/DualYPane'
 import type XAxisWidget from '../widget/XAxisWidget'
 import { drawStaticFigure } from '../extension/figure'
 import type YAxisImp from '../component/YAxis'
+import { PaneIdConstants } from '../pane/types'
 
 export default class IndicatorView extends CandleBarView {
-  override getCandleBarOptions (chartStore: ChartStore): Nullable<CandleBarOptions> {
+  override getCandleBarOptions (chartStore: ChartStore): CandleBarOptions | undefined {
     const pane = this.getWidget().getPane()
-    const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
-    if (!yAxis.isInCandle()) {
-      const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
+    const paneId = pane.getId()
+    const isMain = paneId === PaneIdConstants.CANDLE
+    if (!isMain) {
+      const indicators = chartStore.getIndicatorStore().getInstances(paneId)
       for (const indicator of indicators) {
         if (indicator.shouldOhlc && indicator.visible) {
           const indicatorStyles = indicator.styles
@@ -55,13 +56,14 @@ export default class IndicatorView extends CandleBarView {
         }
       }
     }
-    return null
+    return undefined
   }
 
   override drawImp (ctx: CanvasRenderingContext2D): void {
     super.drawImp(ctx)
     const widget = this.getWidget()
     const pane = widget.getPane()
+    const isMain = pane.getId() === PaneIdConstants.CANDLE
     const chart = pane.getChart()
     const bounding = widget.getBounding()
     const xAxis = (chart.getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
@@ -80,7 +82,7 @@ export default class IndicatorView extends CandleBarView {
     const breakOnCrossDays = chartStore.getTimeShareBreakOnCrossDays()
 
     ctx.save()
-    if (yLeftAxis.isInCandle()) {
+    if (isMain) {
       // 在主图
       drawForAxis(paneIndicators, yLeftAxis)
     } else {

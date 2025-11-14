@@ -12,7 +12,6 @@
  * limitations under the License.
  */
 
-import type Nullable from '../common/Nullable'
 import type BarSpace from '../common/BarSpace'
 import { ActionType } from '../common/Action'
 import { CandleType, type CandleBarColor, type RectStyle, PolygonType } from '../common/Styles'
@@ -78,7 +77,7 @@ export default class CandleBarView extends View {
     const pane = this.getWidget().getPane()
     const chartStore = pane.getChart().getChartStore()
     const candleBarOptions = this.getCandleBarOptions(chartStore)
-    if (candleBarOptions !== null) {
+    if (candleBarOptions != null) {
       let ohlcSize = 0
       let halfOhlcSize = 0
       if (candleBarOptions.type === CandleType.Ohlc) {
@@ -198,7 +197,7 @@ export default class CandleBarView extends View {
     }
   }
 
-  protected getCandleBarOptions (chartStore: ChartStore): Nullable<CandleBarOptions> {
+  protected getCandleBarOptions (chartStore: ChartStore): CandleBarOptions | undefined {
     const candleStyles = chartStore.getStyles().candle
     return {
       type: candleStyles.type as Exclude<CandleType, CandleType.Area>,
