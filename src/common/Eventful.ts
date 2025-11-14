@@ -21,7 +21,7 @@ export interface EventDispatcher {
 }
 
 export default abstract class Eventful implements EventDispatcher {
-  private _children: Eventful[] = []
+  private readonly _children: Eventful[] = []
 
   private readonly _callbacks = new Map<EventName, MouseTouchEventCallback>()
 
@@ -39,8 +39,8 @@ export default abstract class Eventful implements EventDispatcher {
   }
 
   checkEventOn (event: MouseTouchEvent): boolean {
-    for (const eventful of this._children) {
-      if (eventful.checkEventOn(event)) {
+    for (let i = this._children.length - 1; i >= 0; i--) {
+      if (this._children[i].checkEventOn(event)) {
         return true
       }
     }
@@ -65,7 +65,7 @@ export default abstract class Eventful implements EventDispatcher {
   }
 
   clear (): void {
-    this._children = []
+    this._children.length = 0
   }
 
   protected getChildren (): Eventful[] {

@@ -1,5 +1,5 @@
 import Eventful from '../common/Eventful'
-import { type MouseTouchEvent } from '../common/SyntheticEvent'
+import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 import { Figure } from './Figure'
 
 /**
@@ -7,9 +7,6 @@ import { Figure } from './Figure'
  * 子 Figure 的事件会冒泡到 Group 层级
  */
 export class FigureGroup extends Eventful {
-  private _lastCheckEvent: any = null
-  private _lastCheckResult = false
-
   addFigure (figure: Figure<any, any>): this {
     return this.addChild(figure)
   }
@@ -23,19 +20,7 @@ export class FigureGroup extends Eventful {
     }
   }
 
-  override checkEventOn (event: MouseTouchEvent): boolean {
-    if (this._lastCheckEvent === event) {
-      return this._lastCheckResult
-    }
-
-    this._lastCheckEvent = event
-    this._lastCheckResult = super.checkEventOn(event)
-    return this._lastCheckResult
-  }
-
-  override clear (): void {
-    super.clear()
-    this._lastCheckEvent = null
-    this._lastCheckResult = false
+  override dispatchEvent (name: EventName, event: MouseTouchEvent, other?: number): boolean {
+    return this.onEvent(name, event, other)
   }
 }
