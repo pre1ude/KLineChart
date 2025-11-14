@@ -21,7 +21,6 @@ import CandleZeroPriceLineView from '../view/CandleZeroPriceLineView'
 import type IndicatorTooltipView from '../view/IndicatorTooltipView'
 import CandleTooltipView from '../view/CandleTooltipView'
 import { CandleType } from '../common/Styles'
-import type AxisPane from '../pane/DualYPane'
 
 export default class CandleWidget extends IndicatorWidget {
   private readonly _candleBarView = new CandleBarView(this)
@@ -30,9 +29,9 @@ export default class CandleWidget extends IndicatorWidget {
   private readonly _candleLastPriceLineView = new CandleLastPriceLineView(this)
   private readonly _candleZeroPriceLineView = new CandleZeroPriceLineView(this)
 
-  constructor (rootContainer: HTMLElement, pane: AxisPane) {
-    super(rootContainer, pane)
+  protected override initChildren (): void {
     this.addChild(this._candleBarView)
+    super.initChildren()
   }
 
   override updateMainContent (ctx: CanvasRenderingContext2D): void {

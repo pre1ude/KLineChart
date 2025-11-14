@@ -26,17 +26,21 @@ export default class IndicatorWidget extends DrawWidget<DualYPane> {
   private readonly _indicatorView = new IndicatorView(this)
   private readonly _crosshairLineView = new CrosshairLineView(this)
   private readonly _tooltipView = this.createTooltipView()
-  private readonly _overlayView = new OverlayView(this)
+  protected readonly _overlayView = new OverlayView(this)
 
   constructor (rootContainer: HTMLElement, pane: DualYPane) {
     super(rootContainer, pane)
-    this.addChild(this._tooltipView)
-    this.addChild(this._overlayView)
+    this.initChildren()
     this.getContainer().style.cursor = 'crosshair'
     this.registerEvent('mouseMoveEvent', () => {
       pane.getChart().getChartStore().getTooltipStore().setActiveIcon()
       return false
     })
+  }
+
+  protected initChildren (): void {
+    this.addChild(this._overlayView)
+    this.addChild(this._tooltipView)
   }
 
   getName (): string {
