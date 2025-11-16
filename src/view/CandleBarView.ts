@@ -13,20 +13,16 @@
  */
 
 import type BarSpace from '../common/BarSpace'
-import { ActionType } from '../common/Action'
 import { CandleType, type CandleBarColor, type RectStyle, PolygonType } from '../common/Styles'
 import type ChartStore from '../store/ChartStore'
-import { type Figure, type FigureCreate } from '../component/Figure'
+import { type FigureCreate } from '../component/Figure'
 import { FigureGroup } from '../component/FigureGroup'
 import { type RectAttrs } from '../extension/figure/rect'
 import View from './View'
-import { PaneIdConstants } from '../pane/types'
 import { isValid } from '../common/utils/typeChecks'
 import type DualYPane from '../pane/DualYPane'
 import { createFigure } from '../extension/figure'
-import type DrawWidget from '../widget/DrawWidget'
-import type Pane from '../pane/Pane'
-import { type MouseTouchEvent } from '../common/SyntheticEvent'
+import { PaneIdConstants } from '../pane/types'
 
 export interface CandleBarOptions {
   type: Exclude<CandleType, CandleType.Area>
@@ -34,41 +30,6 @@ export interface CandleBarOptions {
 }
 
 export default class CandleBarView extends View {
-  constructor (widget: DrawWidget<Pane>) {
-    super(widget)
-    this._initEvent()
-  }
-
-  private _initEvent (): void {
-    const pane = this.getWidget().getPane()
-    const isMain = pane.getId() === PaneIdConstants.CANDLE
-
-    if (isMain) {
-      this.addEventListener('mouseClickEvent', (e: MouseTouchEvent) => {
-        const chartStore = pane.getChart().getChartStore()
-        const dataList = chartStore.getDataList()
-        const target = e.target
-
-        let _data
-        if (target) {
-          const dataIndex = (target as Figure<any, any, number>).data
-          if (dataIndex != null) {
-            const data = dataList[dataIndex]
-            if (data != null) {
-              _data = data
-            }
-          }
-        }
-        if (_data == null) {
-          console.warn('_data should not be null')
-        }
-        this.getWidget().getPane().getChart().getChartStore().getActionStore().execute(ActionType.OnCandleBarClick, _data)
-
-        return false
-      })
-    }
-  }
-
   override drawImp (ctx: CanvasRenderingContext2D): void {
     const pane = this.getWidget().getPane()
     const chartStore = pane.getChart().getChartStore()
@@ -194,11 +155,48 @@ export default class CandleBarView extends View {
   }
 
   protected getCandleBarOptions (chartStore: ChartStore): CandleBarOptions | undefined {
-    const candleStyles = chartStore.getStyles().candle
-    return {
-      type: candleStyles.type as Exclude<CandleType, CandleType.Area>,
-      styles: candleStyles.bar
+    const pane = this.getWidget().getPane()
+    const paneId = pane.getId()
+    const isMain = paneId === PaneIdConstants.CANDLE
+
+    if (isMain) {
+      // 主图：使用蜡烛图样式
+      const candleStyles = chartStore.getStyles().candle
+      return {
+        type: candleStyles.type as Exclude<CandleType, CandleType.Area>,
+        styles: candleStyles.bar
+      }
+    } else {
+      // 副图：检查是否有指标需要 OHLC
+      const indicators = chartStore.getIndicatorStore().getInstances(paneId)
+      for (const indicator of indicators) {
+        if (indicator.shouldOhlc && indicator.visible) {
+          const defaultOhlcStyles = chartStore.getStyles().indicator.ohlc
+          const ohlcStyles = {
+            ...defaultOhlcStyles,
+            ...indicator.styles?.ohlc
+          }
+          const upColor = ohlcStyles.upColor
+          const downColor = ohlcStyles.downColor
+          const noChangeColor = ohlcStyles.noChangeColor
+          return {
+            type: CandleType.Ohlc,
+            styles: {
+              upColor,
+              downColor,
+              noChangeColor,
+              upBorderColor: upColor,
+              downBorderColor: downColor,
+              noChangeBorderColor: noChangeColor,
+              upWickColor: upColor,
+              downWickColor: downColor,
+              noChangeWickColor: noChangeColor
+            }
+          }
+        }
+      }
     }
+    return undefined
   }
 
   private _createSolidBar (x: number, priceY: number[], barSpace: BarSpace, colors: string[]): Array<FigureCreate<RectAttrs | RectAttrs[], Partial<RectStyle>>> {

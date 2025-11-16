@@ -62,7 +62,7 @@ export default abstract class Eventful {
     }
 
     // 叶子节点：检查自己是否命中
-    if (this.checkEventOn(event)) {
+    if (this.checkEventOn(event, name, other)) {
       // 设置目标元素
       event.target = this
 
@@ -107,7 +107,7 @@ export default abstract class Eventful {
     }
   }
 
-  checkEventOn (_event: MouseTouchEvent): boolean {
+  checkEventOn (_event: MouseTouchEvent, _name: EventName, _other?: unknown): boolean {
     return false
   }
 

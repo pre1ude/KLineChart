@@ -19,7 +19,6 @@ import type VisibleData from '../common/VisibleData'
 import type DeepPartial from '../common/DeepPartial'
 import { getDefaultStyles, type Styles, type TooltipLegend } from '../common/Styles'
 import { isArray, isNumber, isString, isValid, merge } from '../common/utils/typeChecks'
-import { formatValue } from '../common/utils/format'
 import type LoadDataCallback from '../common/LoadDataCallback'
 import { type LoadDataParams, LoadDataType } from '../common/LoadDataCallback'
 import type LoadMoreCallback from '../common/LoadMoreCallback'
@@ -336,7 +335,7 @@ export default class ChartStore {
       const dataCount = this._dataList.length
       // Determine where individual data should be added
       const timestamp = data.timestamp
-      const lastDataTimestamp = formatValue(this._dataList[dataCount - 1], 'timestamp', 0) as number
+      const lastDataTimestamp = this._dataList[dataCount - 1]?.timestamp ?? 0
       if (timestamp > lastDataTimestamp) {
         this._dataList.push(data)
         const nextOffsetRight = this._timeScaleStore.getOffsetRightDistance() - this._timeScaleStore.getBarSpace().bar

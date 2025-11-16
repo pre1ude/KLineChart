@@ -21,6 +21,11 @@ import CandleHighLowPriceView from '../../view/CandleHighLowPriceView'
 import CandleLastPriceLineView from '../../view/CandleLastPriceLineView'
 import CandleZeroPriceLineView from '../../view/CandleZeroPriceLineView'
 import { CandleType } from '../../common/Styles'
+import { ActionType } from '../../common/Action'
+import { PaneIdConstants } from '../../pane/types'
+import type { MouseTouchEvent } from '../../common/SyntheticEvent'
+import type { Figure } from '../../component/Figure'
+import type KLineData from '../../common/KLineData'
 
 /**
  * 蜡烛图图层
@@ -42,7 +47,37 @@ export class CandleLayer implements Layer {
     this._candleHighLowPriceView = new CandleHighLowPriceView(widget)
     this._candleLastPriceLineView = new CandleLastPriceLineView(widget)
     this._candleZeroPriceLineView = new CandleZeroPriceLineView(widget)
+
+    // 初始化事件处理
+    this._initEvent()
+
     widget.addChild(this._candleBarView)
+  }
+
+  private _initEvent (): void {
+    const pane = this._widget?.getPane()
+    if (pane?.getId() === PaneIdConstants.CANDLE) {
+      this._candleBarView?.addEventListener('mouseClickEvent', (e: MouseTouchEvent) => {
+        const chartStore = pane.getChart().getChartStore()
+        const dataList = chartStore.getDataList()
+        const target = e.target
+
+        let data: KLineData | undefined
+        if (target != null) {
+          const dataIndex = (target as Figure<any, any, number>).data
+          if (dataIndex != null) {
+            data = dataList[dataIndex]
+          }
+        }
+
+        if (data == null) {
+          console.warn('Candle bar click data should not be null')
+        }
+
+        chartStore.getActionStore().execute(ActionType.OnCandleBarClick, data)
+        return false
+      })
+    }
   }
 
   drawMain = (ctx: CanvasRenderingContext2D): void => {

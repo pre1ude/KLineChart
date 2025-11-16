@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Indicator Click Interaction Test</title>
+  <script src="../../../dist/umd/klinecharts.js"></script>
+  <style>
+    body { margin: 20px; font-family: Arial, sans-serif; }
+    #chart { width: 800px; height: 600px; border: 1px solid #ddd; }
+
+    /* 可拖动的日志弹层 */
+    #log-panel {
+      position: fixed;
+      top: calc(100vh - 320px); /* 初始位置：距离底部 20px */
+      left: calc(100vw - 420px); /* 初始位置：距离右边 20px */
+      width: 400px;
+      height: 300px;
+      min-width: 300px;
+      min-height: 200px;
+      max-width: 800px;
+      max-height: 600px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    /* 调整大小手柄 */
+    #resize-handle {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 20px;
+      height: 20px;
+      cursor: nwse-resize;
+      z-index: 10;
+    }
+
+    #resize-handle::after {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 12px;
+      height: 12px;
+      border-right: 2px solid #999;
+      border-bottom: 2px solid #999;
+    }
+
+    #log-header {
+      padding: 12px 16px;
+      background: #f5f5f5;
+      border-bottom: 1px solid #ddd;
+      border-radius: 8px 8px 0 0;
+      cursor: move;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    #log-header h3 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    #log-controls {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 4px 12px;
+      font-size: 12px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: #f0f0f0;
+      border-color: #999;
+    }
+
+    .btn:active {
+      transform: scale(0.95);
+    }
+
+    #log-content-wrapper {
+      overflow-y: auto;
+      padding: 12px;
+      flex: 1;
+      min-height: 100px;
+    }
+
+    .log-entry {
+      padding: 8px;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      background: #f9f9f9;
+      border-left: 3px solid #ddd;
+    }
+
+    .log-entry:last-child {
+      margin-bottom: 0;
+    }
+
+    .log-time {
+      color: #666;
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .log-data {
+      color: #333;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .log-data strong {
+      color: #0066cc;
+    }
+  </style>
+</head>
+<body>
+  <h2>指标点击交互测试</h2>
+  <p>点击图表中的指标图形（圆点、柱状图等）查看交互效果</p>
+  <div id="chart"></div>
+
+  <!-- 可拖动的日志弹层 -->
+  <div id="log-panel">
+    <div id="log-header">
+      <h3>点击日志</h3>
+      <div id="log-controls">
+        <button class="btn" onclick="clearLog()">清除</button>
+        <button class="btn" onclick="toggleLog()">收起</button>
+      </div>
+    </div>
+    <div id="log-content-wrapper">
+      <div id="log-content"></div>
+    </div>
+    <div id="resize-handle"></div>
+  </div>
+
+  <script>
+    const logContainer = document.getElementById('log-content');
+    const logPanel = document.getElementById('log-panel');
+    const logHeader = document.getElementById('log-header');
+    const logContentWrapper = document.getElementById('log-content-wrapper');
+    const resizeHandle = document.getElementById('resize-handle');
+
+    let isCollapsed = false;
+    let isDragging = false;
+    let isResizing = false;
+    let currentX;
+    let currentY;
+    let initialX;
+    let initialY;
+    let xOffset = 0;
+    let yOffset = 0;
+
+    // 拖动功能
+    logHeader.addEventListener('mousedown', dragStart);
+    document.addEventListener('mousemove', drag);
+    document.addEventListener('mouseup', dragEnd);
+
+    function dragStart(e) {
+      initialX = e.clientX - xOffset;
+      initialY = e.clientY - yOffset;
+
+      if (e.target === logHeader || e.target.tagName === 'H3') {
+        isDragging = true;
+      }
+    }
+
+    function drag(e) {
+      if (isDragging) {
+        e.preventDefault();
+        currentX = e.clientX - initialX;
+        currentY = e.clientY - initialY;
+        xOffset = currentX;
+        yOffset = currentY;
+
+        logPanel.style.transform = `translate(${currentX}px, ${currentY}px)`;
+      }
+    }
+
+    function dragEnd(e) {
+      initialX = currentX;
+      initialY = currentY;
+      isDragging = false;
+    }
+
+    // 调整大小功能
+    let startWidth, startHeight, startX, startY;
+
+    resizeHandle.addEventListener('mousedown', resizeStart);
+
+    function resizeStart(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = parseInt(getComputedStyle(logPanel).width, 10);
+      startHeight = parseInt(getComputedStyle(logPanel).height, 10);
+
+      document.addEventListener('mousemove', resize);
+      document.addEventListener('mouseup', resizeEnd);
+    }
+
+    function resize(e) {
+      if (isResizing) {
+        // 左上角固定，右下角跟随鼠标
+        // 向右拖动 → 宽度增加
+        // 向下拖动 → 高度增加
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+
+        const newWidth = startWidth + deltaX;
+        const newHeight = startHeight + deltaY;
+
+        // 应用最小和最大尺寸限制
+        if (newWidth >= 300 && newWidth <= 800) {
+          logPanel.style.width = newWidth + 'px';
+        }
+        if (newHeight >= 200 && newHeight <= 600) {
+          logPanel.style.height = newHeight + 'px';
+        }
+      }
+    }
+
+    function resizeEnd() {
+      isResizing = false;
+      document.removeEventListener('mousemove', resize);
+      document.removeEventListener('mouseup', resizeEnd);
+    }
+
+    // 清除日志
+    function clearLog() {
+      logContainer.innerHTML = '';
+    }
+
+    // 收起/展开日志
+    function toggleLog() {
+      isCollapsed = !isCollapsed;
+      const btn = document.querySelector('#log-controls .btn:last-child');
+
+      if (isCollapsed) {
+        logContentWrapper.style.display = 'none';
+        resizeHandle.style.display = 'none';
+        btn.textContent = '展开';
+        logPanel.style.height = 'auto';
+      } else {
+        logContentWrapper.style.display = 'block';
+        resizeHandle.style.display = 'block';
+        btn.textContent = '收起';
+        logPanel.style.height = '300px';
+      }
+    }
+
+    function log(title, data) {
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+
+      const time = document.createElement('div');
+      time.className = 'log-time';
+      time.textContent = new Date().toLocaleTimeString();
+
+      const content = document.createElement('div');
+      content.className = 'log-data';
+      content.innerHTML = `<strong>${title}</strong><br><pre style="margin: 4px 0 0 0; font-size: 11px;">${JSON.stringify(data, null, 2)}</pre>`;
+
+      entry.appendChild(time);
+      entry.appendChild(content);
+      logContainer.insertBefore(entry, logContainer.firstChild);
+
+      // 只保留最近20条
+      while (logContainer.children.length > 20) {
+        logContainer.removeChild(logContainer.lastChild);
+      }
+    }
+
+    // 生成测试数据
+    const data = [];
+    let timestamp = Date.now() - 50 * 60000;
+    let basePrice = 100;
+
+    for (let i = 0; i < 50; i++) {
+      const change = (Math.random() - 0.5) * 4;
+      basePrice += change;
+
+      data.push({
+        timestamp,
+        open: basePrice,
+        high: basePrice + Math.random() * 3,
+        low: basePrice - Math.random() * 3,
+        close: basePrice + (Math.random() - 0.5) * 2,
+        volume: 1000 + Math.random() * 500
+      });
+      timestamp += 60000;
+    }
+
+    // 初始化图表
+    const chart = klinecharts.init('chart');
+    chart.applyNewData(data);
+
+    // 注册自定义指标 - 带点击交互的 MA
+    const maIndicator = {
+      name: 'MA_CLICKABLE',
+      shortName: 'MA',
+      calcParams: [5, 10, 20],
+      figures: [
+        {
+          key: 'ma5',
+          type: 'circle',
+          styles: () => ({ color: '#FF6B6B' }),
+          onClick: (event, {dataIndex, indicator}) => {
+            log('MA5 Circle Clicked', {
+              dataIndex: dataIndex,
+              x: event.x,
+              y: event.y,
+              indicator: indicator.name
+            });
+            return false;
+          },
+          onMouseEnter: (event, {dataIndex, indicator}) => {
+            log('MA5 Circle onMouseEnter', {
+              dataIndex: dataIndex,
+              x: event.x,
+              y: event.y,
+              indicator: indicator.name
+            });
+            return false;
+          },
+          onMouseLeave: (event, {dataIndex, indicator}) => {
+            log('MA5 Circle onMouseLeave', {
+              dataIndex: dataIndex,
+              x: event.x,
+              y: event.y,
+              indicator: indicator.name
+            });
+            return false;
+          }
+        },
+        {
+          key: 'ma10',
+          type: 'circle',
+          styles: () => ({ color: '#4ECDC4' }),
+          onClick: (event, {dataIndex, indicator}) => {
+            log('MA10 Circle Clicked', {
+              dataIndex: dataIndex,
+              x: event.x,
+              y: event.y,
+              indicator: indicator.name
+            });
+            return false;
+          }
+        },
+        {
+          key: 'ma20',
+          type: 'circle',
+          styles: () => ({ color: '#95E1D3' }),
+          onClick: (event, {dataIndex, indicator}) => {
+            log('MA20 Circle Clicked', {
+              dataIndex: dataIndex,
+              x: event.x,
+              y: event.y,
+              indicator: indicator.name
+            });
+            return false;
+          }
+        }
+      ],
+      calc: (dataList, { calcParams }) => {
+        const [p1, p2, p3] = calcParams;
+        return dataList.map((klineData, i) => {
+          const ma5 = calculateMA(dataList, i, p1);
+          const ma10 = calculateMA(dataList, i, p2);
+          const ma20 = calculateMA(dataList, i, p3);
+          return { ma5, ma10, ma20 };
+        });
+      },
+      onClick: (event, {dataIndex, figure}) => {
+        log('Indicator onClick', {
+          dataIndex: dataIndex,
+          figureKey: figure.figureKey,
+          x: event.x,
+          y: event.y
+        });
+      }
+    };
+
+    function calculateMA(dataList, index, period) {
+      if (index < period - 1) return null;
+      let sum = 0;
+      for (let i = 0; i < period; i++) {
+        sum += dataList[index - i].close;
+      }
+      return sum / period;
+    }
+
+    // 注册并创建指标
+    klinecharts.registerIndicator(maIndicator);
+    chart.createIndicator('MA_CLICKABLE', false, { id: 'candle_pane' });
+
+    // 创建副图指标 - VOL 带点击交互
+    const volIndicator = {
+      name: 'VOL_CLICKABLE',
+      shortName: 'VOL',
+      figures: [{
+        key: 'volume',
+        type: 'bar',
+        baseValue: 0,
+        styles: (dataIndex, indicator, dataList) => {
+          const klineData = dataList[dataIndex];
+          const color = klineData.close >= klineData.open ? '#26A69A' : '#EF5350';
+          return { color };
+        },
+        onClick: (event, { dataIndex, dataList }) => {
+          const klineData = dataList[dataIndex];
+          log('Volume Bar Clicked', {
+            dataIndex: dataIndex,
+            volume: klineData.volume,
+            close: klineData.close,
+            open: klineData.open,
+            direction: klineData.close >= klineData.open ? 'up' : 'down'
+          });
+          return false;
+        }
+      }],
+      calc: (dataList) => {
+        return dataList.map(klineData => ({
+          volume: klineData.volume
+        }));
+      },
+      onClick: (event, {dataIndex, figure}) => {
+        log('VOL Indicator onFigureClick', {
+          dataIndex: dataIndex,
+          figureKey: figure.figureKey
+        });
+      }
+    };
+
+    klinecharts.registerIndicator(volIndicator);
+    chart.createIndicator('VOL_CLICKABLE');
+
+    log('Chart Initialized', {
+      message: 'Click on any indicator figure to see the interaction',
+      dataPoints: data.length
+    });
+  </script>
+</body>
+</html>

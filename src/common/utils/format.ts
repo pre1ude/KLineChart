@@ -24,6 +24,7 @@ const rePropName = RegExp(
   '(?=(?:\\.|\\[\\])(?:\\.|\\[\\]|$))'
   , 'g')
 
+// todo: @deprecated
 export function formatValue (data: unknown, key: string, defaultValue?: unknown): unknown {
   if (isValid(data)) {
     const path: string[] = []

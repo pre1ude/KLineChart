@@ -12,55 +12,30 @@
  * limitations under the License.
  */
 
-import { CandleType, type SmoothLineStyle, type IndicatorStyle } from '../common/Styles'
-import { formatValue } from '../common/utils/format'
+import { type SmoothLineStyle, type IndicatorStyle } from '../common/Styles'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import type Coordinate from '../common/Coordinate'
-import type ChartStore from '../store/ChartStore'
 import { getFigureBaseStyles, getMergedDefaultStyles, type Indicator, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
-import CandleBarView, { type CandleBarOptions } from './CandleBarView'
 import type DualYPane from '../pane/DualYPane'
 import type XAxisWidget from '../widget/XAxisWidget'
-import { drawStaticFigure } from '../extension/figure'
+import { createFigure, drawStaticFigure } from '../extension/figure'
 import type YAxisImp from '../component/YAxis'
 import { PaneIdConstants } from '../pane/types'
+import View from './View'
+import type { EventName, MouseTouchEvent } from '../common/SyntheticEvent'
 
-export default class IndicatorView extends CandleBarView {
-  override getCandleBarOptions (chartStore: ChartStore): CandleBarOptions | undefined {
-    const pane = this.getWidget().getPane()
-    const paneId = pane.getId()
-    const isMain = paneId === PaneIdConstants.CANDLE
-    if (!isMain) {
-      const indicators = chartStore.getIndicatorStore().getInstances(paneId)
-      for (const indicator of indicators) {
-        if (indicator.shouldOhlc && indicator.visible) {
-          const indicatorStyles = indicator.styles
-          const defaultStyles = chartStore.getStyles().indicator
-          const upColor = formatValue(indicatorStyles, 'ohlc.upColor', defaultStyles.ohlc.upColor) as string
-          const downColor = formatValue(indicatorStyles, 'ohlc.downColor', defaultStyles.ohlc.downColor) as string
-          const noChangeColor = formatValue(indicatorStyles, 'ohlc.noChangeColor', defaultStyles.ohlc.noChangeColor) as string
-          return {
-            type: CandleType.Ohlc,
-            styles: {
-              upColor,
-              downColor,
-              noChangeColor,
-              upBorderColor: upColor,
-              downBorderColor: downColor,
-              noChangeBorderColor: noChangeColor,
-              upWickColor: upColor,
-              downWickColor: downColor,
-              noChangeWickColor: noChangeColor
-            }
-          }
-        }
-      }
-    }
-    return undefined
+export default class IndicatorView extends View {
+  private _lastHoverFigure: any = null
+
+  setLastHoverFigure (figure: any): void {
+    this._lastHoverFigure = figure
+  }
+
+  override checkEventOn (_event: MouseTouchEvent, name: EventName): boolean {
+    return name === 'mouseMoveEvent' && this._lastHoverFigure != null
   }
 
   override drawImp (ctx: CanvasRenderingContext2D): void {
-    super.drawImp(ctx)
     const widget = this.getWidget()
     const pane = widget.getPane()
     const isMain = pane.getId() === PaneIdConstants.CANDLE
@@ -81,17 +56,7 @@ export default class IndicatorView extends CandleBarView {
     const ticksPerDay = timeShareTicks.length
     const breakOnCrossDays = chartStore.getTimeShareBreakOnCrossDays()
 
-    ctx.save()
-    if (isMain) {
-      // 在主图
-      drawForAxis(paneIndicators, yLeftAxis)
-    } else {
-      // 在副图
-      drawForAxis(filterIndicatorsByAxis(paneIndicators, yLeftAxis), yLeftAxis)
-      drawForAxis(filterIndicatorsByAxis(paneIndicators, yRightAxis), yRightAxis)
-    }
-    ctx.restore()
-
+    // 定义辅助函数
     function filterIndicatorsByAxis (paneIndicators: Indicator[], yAxis: YAxisImp): Indicator[] {
       let indicators: Array<Indicator<any>> = []
       const indicatorNames = yAxis.getIndicatorNames()
@@ -103,23 +68,6 @@ export default class IndicatorView extends CandleBarView {
         }
       }
       return indicators
-    }
-
-    function drawForAxis (indicators: Indicator[], yAxis: YAxisImp): void {
-      indicators.forEach(indicator => {
-        if (!indicator.visible) return
-
-        setCompositeOperation(indicator.zLevel)
-
-        const mergedDefaultStyles = getMergedDefaultStyles(indicator, chartStore.getStyles().indicator)
-
-        const customDrawCovered = tryCustomDraw(indicator, yAxis, mergedDefaultStyles)
-        if (customDrawCovered) return
-
-        for (let i = 0; i < indicator.figures.length; i++) {
-          drawSingleFigure(indicator.figures[i], i, indicator, mergedDefaultStyles, yAxis)
-        }
-      })
     }
 
     function setCompositeOperation (zLevel: number): void {
@@ -146,13 +94,30 @@ export default class IndicatorView extends CandleBarView {
       return isCover
     }
 
-    function drawSingleFigure (
+    const drawForAxis = (indicators: Indicator[], yAxis: YAxisImp): void => {
+      indicators.forEach(indicator => {
+        if (!indicator.visible) return
+
+        setCompositeOperation(indicator.zLevel)
+
+        const mergedDefaultStyles = getMergedDefaultStyles(indicator, chartStore.getStyles().indicator)
+
+        const customDrawCovered = tryCustomDraw(indicator, yAxis, mergedDefaultStyles)
+        if (customDrawCovered) return
+
+        for (let i = 0; i < indicator.figures.length; i++) {
+          drawSingleFigure(indicator.figures[i], i, indicator, mergedDefaultStyles, yAxis)
+        }
+      })
+    }
+
+    const drawSingleFigure = (
       figure: IndicatorFigure,
       figureIndex: number,
       indicator: Indicator,
       mergedDefaultStyles: IndicatorStyle,
       yAxis: YAxisImp
-    ): void {
+    ): void => {
       const type = figure.type ?? 'line'
       const baseStyles = getFigureBaseStyles(type, figureIndex, mergedDefaultStyles)
       const createFigureStyles = (dataIndex: number): IndicatorFigureStyle => {
@@ -164,7 +129,7 @@ export default class IndicatorView extends CandleBarView {
         // 线段类型：流式绘制
         drawLineStreaming(figure, createFigureStyles, indicator, yAxis)
       } else {
-        // 其他类型：逐个绘制
+        // 其他类型：逐个绘制，创建 Figure 实例以支持交互
         for (const data of visibleDataList) {
           const { dataIndex, x } = data
           if (!isValid(indicator.result[dataIndex]?.[figure.key])) continue
@@ -175,10 +140,20 @@ export default class IndicatorView extends CandleBarView {
             computeDefaultAttrs(figure, type, dataIndex, x, indicator.result, yAxis)
 
           if (isValid<IndicatorFigureAttrs>(attrs)) {
-            drawStaticFigure(ctx, type === 'bar' ? 'rect' : type, {
-              attrs,
-              styles: figureStyles
-            })
+            const figureType = type === 'bar' ? 'rect' : type
+            const figureInstance = createFigure(figureType)
+
+            figureInstance
+              .setAttrs(attrs)
+              .setStyles(figureStyles)
+              .setData({
+                dataIndex,
+                indicator,
+                figure
+              })
+
+            figureInstance.draw(ctx)
+            this.addChild(figureInstance)
           }
         }
       }
@@ -296,6 +271,18 @@ export default class IndicatorView extends CandleBarView {
 
       return undefined
     }
+
+    // 执行绘制
+    ctx.save()
+    if (isMain) {
+      // 在主图
+      drawForAxis(paneIndicators, yLeftAxis)
+    } else {
+      // 在副图
+      drawForAxis(filterIndicatorsByAxis(paneIndicators, yLeftAxis), yLeftAxis)
+      drawForAxis(filterIndicatorsByAxis(paneIndicators, yRightAxis), yRightAxis)
+    }
+    ctx.restore()
   }
 }
 

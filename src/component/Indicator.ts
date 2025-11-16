@@ -26,6 +26,7 @@ import { isValid, clone, isNumber, isFunction, isString, isBoolean, isArray, mer
 import { type ArcAttrs } from '../extension/figure/arc'
 import { type RectAttrs } from '../extension/figure/rect'
 import { type TextAttrs } from '../extension/figure/text'
+import { type MouseTouchEvent } from '../common/SyntheticEvent'
 
 // 用于区分使用什么精度
 export enum IndicatorSeries {
@@ -54,6 +55,13 @@ export type IndicatorFigureStylesCallback<D> = (
   defaultStyles: IndicatorStyle
 ) => IndicatorFigureStyle
 
+interface InteractionContext<D = any> {
+  dataList: KLineData[]
+  dataIndex: number
+  figure: IndicatorFigure<D>
+  indicator: Indicator<D>
+}
+
 export interface IndicatorFigure<D = any> {
   key: string
   title?: string
@@ -61,6 +69,10 @@ export interface IndicatorFigure<D = any> {
   baseValue?: number
   attrs?: IndicatorFigureAttrsCallback<D>
   styles?: IndicatorFigureStylesCallback<D>
+
+  onClick?: (event: MouseTouchEvent, context: InteractionContext) => void
+  onMouseEnter?: (event: MouseTouchEvent, context: InteractionContext) => void
+  onMouseLeave?: (event: MouseTouchEvent, context: InteractionContext) => void
 }
 
 export type IndicatorRegenerateFiguresCallback<D = any> = (calcParams: any[]) => Array<IndicatorFigure<D>>
@@ -195,6 +207,10 @@ export interface IndicatorApi<D = any> {
    * Calculation result
    */
   result: D[]
+
+  onClick?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
+  onMouseEnter?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
+  onMouseLeave?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
 }
 
 export type IndicatorTemplate<D = any> = ExcludePickPartial<Omit<IndicatorApi<D>, 'result'>, 'name' | 'calc'>
@@ -227,12 +243,16 @@ export class Indicator<D = any> implements IndicatorApi<D> {
 
   private _lockSeriesPrecision: boolean = false
 
+  onClick?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
+  onMouseEnter?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
+  onMouseLeave?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
+
   constructor (indicator: IndicatorTemplate) {
     const {
       name, shortName, series, calcParams, figures, precision,
       shouldOhlc, shouldFormatBigNumber, visible, zLevel,
       minValue, maxValue, styles, extendData,
-      regenerateFigures, createTooltipDataSource, draw, calc
+      regenerateFigures, createTooltipDataSource, draw, calc, onClick, onMouseEnter, onMouseLeave
     } = indicator
     this.name = name
     this.shortName = shortName ?? name
@@ -252,6 +272,9 @@ export class Indicator<D = any> implements IndicatorApi<D> {
     this.createTooltipDataSource = createTooltipDataSource ?? null
     this.draw = draw ?? null
     this.calc = calc
+    this.onClick = onClick
+    this.onMouseEnter = onMouseEnter
+    this.onMouseLeave = onMouseLeave
   }
 
   shouldUpdate (next: Partial<Indicator>): [boolean, boolean, boolean] {
