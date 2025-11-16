@@ -44,16 +44,16 @@ export default class CandleBarView extends View {
     const isMain = pane.getId() === PaneIdConstants.CANDLE
 
     if (isMain) {
-      this.registerEvent('mouseClickEvent', (e: MouseTouchEvent) => {
+      this.addEventListener('mouseClickEvent', (e: MouseTouchEvent) => {
         const chartStore = pane.getChart().getChartStore()
-        const visibleDataList = chartStore.getVisibleDataList()
-        const target = e.path?.[0]
+        const dataList = chartStore.getDataList()
+        const target = e.target
 
         let _data
         if (target) {
           const dataIndex = (target as Figure<any, any, number>).data
           if (dataIndex != null) {
-            const data = visibleDataList[dataIndex]
+            const data = dataList[dataIndex]
             if (data != null) {
               _data = data
             }

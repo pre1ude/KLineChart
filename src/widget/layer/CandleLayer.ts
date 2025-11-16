@@ -42,6 +42,7 @@ export class CandleLayer implements Layer {
     this._candleHighLowPriceView = new CandleHighLowPriceView(widget)
     this._candleLastPriceLineView = new CandleLastPriceLineView(widget)
     this._candleZeroPriceLineView = new CandleZeroPriceLineView(widget)
+    widget.addChild(this._candleBarView)
   }
 
   drawMain = (ctx: CanvasRenderingContext2D): void => {

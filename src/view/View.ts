@@ -38,7 +38,7 @@ export default abstract class View extends Eventful {
   registerFigureEvents (eventful: Eventful, events: EventHandler): void {
     for (const name in events) {
       if (Object.prototype.hasOwnProperty.call(events, name)) {
-        eventful.registerEvent(name as EventName, events[name] as MouseTouchEventCallback)
+        eventful.addEventListener(name as EventName, events[name] as MouseTouchEventCallback)
       }
     }
   }

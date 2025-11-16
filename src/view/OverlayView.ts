@@ -49,7 +49,7 @@ export default class OverlayView extends View {
     const pane = this.getWidget().getPane()
     const paneId = pane.getId()
     const overlayStore = pane.getChart().getChartStore().getOverlayStore()
-    this.registerEvent('mouseMoveEvent', (event: MouseTouchEvent) => {
+    this.addEventListener('mouseMoveEvent', (event: MouseTouchEvent) => {
       const progressInstanceInfo = overlayStore.getProgressInstanceInfo()
       if (progressInstanceInfo !== null) {
         const overlay = progressInstanceInfo.instance
@@ -76,7 +76,7 @@ export default class OverlayView extends View {
         paneId, instance: null, figureType: EventOverlayInfoFigureType.None, figureKey: '', figureIndex: -1, attrsIndex: -1
       }, event)
       return false
-    }).registerEvent('mouseClickEvent', (event: MouseTouchEvent) => {
+    }).addEventListener('mouseClickEvent', (event: MouseTouchEvent) => {
       const progressInstanceInfo = overlayStore.getProgressInstanceInfo()
       if (progressInstanceInfo !== null) {
         const overlay = progressInstanceInfo.instance
@@ -108,7 +108,7 @@ export default class OverlayView extends View {
         paneId, instance: null, figureType: EventOverlayInfoFigureType.None, figureKey: '', figureIndex: -1, attrsIndex: -1
       }, event)
       return false
-    }).registerEvent('mouseDoubleClickEvent', (event: MouseTouchEvent) => {
+    }).addEventListener('mouseDoubleClickEvent', (event: MouseTouchEvent) => {
       const progressInstanceInfo = overlayStore.getProgressInstanceInfo()
       if (progressInstanceInfo !== null) {
         const overlay = progressInstanceInfo.instance
@@ -132,7 +132,7 @@ export default class OverlayView extends View {
         )(event)
       }
       return false
-    }).registerEvent('mouseRightClickEvent', (event: MouseTouchEvent) => {
+    }).addEventListener('mouseRightClickEvent', (event: MouseTouchEvent) => {
       const progressInstanceInfo = overlayStore.getProgressInstanceInfo()
       if (progressInstanceInfo !== null) {
         const overlay = progressInstanceInfo.instance
@@ -148,7 +148,7 @@ export default class OverlayView extends View {
         }
       }
       return false
-    }).registerEvent('mouseUpEvent', (event: MouseTouchEvent) => {
+    }).addEventListener('mouseUpEvent', (event: MouseTouchEvent) => {
       const { instance, figureIndex, figureKey } = overlayStore.getPressedInstanceInfo()
       if (instance !== null) {
         instance.onPressedMoveEnd?.({ overlay: instance, figureKey, figureIndex, ...event })
@@ -157,7 +157,7 @@ export default class OverlayView extends View {
         paneId, instance: null, figureType: EventOverlayInfoFigureType.None, figureKey: '', figureIndex: -1, attrsIndex: -1
       })
       return false
-    }).registerEvent('pressedMouseMoveEvent', (event: MouseTouchEvent) => {
+    }).addEventListener('pressedMouseMoveEvent', (event: MouseTouchEvent) => {
       const { instance, figureType, figureIndex, figureKey } = overlayStore.getPressedInstanceInfo()
       if (instance !== null) {
         if (!instance.lock) {

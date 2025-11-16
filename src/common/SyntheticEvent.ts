@@ -23,14 +23,19 @@
 
 import type Coordinate from './Coordinate'
 import type Eventful from './Eventful'
-
 import type Nullable from './Nullable'
 import { setScale } from './utils/canvas'
-
 import { isFF, isIOS } from './utils/platform'
 import { isValid } from './utils/typeChecks'
 
-export type MouseTouchEventCallback = (event: MouseTouchEvent, other?: number) => boolean
+export const enum EventPhase {
+  NONE = 0,
+  CAPTURING_PHASE = 1,
+  AT_TARGET = 2,
+  BUBBLING_PHASE = 3
+}
+
+export type MouseTouchEventCallback = (event: MouseTouchEvent<MouseEvent | TouchEvent>, other?: unknown) => boolean
 
 export interface EventHandler {
   pinchStartEvent?: MouseTouchEventCallback
@@ -68,12 +73,19 @@ export interface EventHandler {
 
 export type EventName = keyof EventHandler
 
-export interface MouseTouchEvent extends Coordinate {
-  path?: Eventful[]
+export interface MouseTouchEvent<TSourceEvent = MouseEvent | TouchEvent> extends Coordinate {
   pageX: number
   pageY: number
   isTouch?: boolean
   preventDefault?: () => void
+  nativeEvent: TSourceEvent
+  target?: Eventful
+  currentTarget?: Eventful
+  eventPhase: EventPhase
+  propagationStopped: boolean
+  isImmediate: boolean
+  stopPropagation: () => void
+  stopImmediatePropagation: () => void
 }
 
 export interface EventOptions {
@@ -699,7 +711,25 @@ export default class SyntheticEvent {
           return
         }
 
-        this._handler.mouseDownOutsideEvent({ x: 0, y: 0, pageX: 0, pageY: 0 })
+        const _event = {
+          x: 0,
+          y: 0,
+          pageX: 0,
+          pageY: 0,
+          nativeEvent: event,
+          eventPhase: EventPhase.NONE,
+          propagationStopped: false,
+          isImmediate: false,
+          stopPropagation: () => {
+            _event.propagationStopped = true
+          },
+          stopImmediatePropagation: () => {
+            _event.isImmediate = true
+            _event.propagationStopped = true
+          }
+        }
+
+        this._handler.mouseDownOutsideEvent(_event)
       }
 
       this._unsubscribeOutsideTouchEvents = () => {
@@ -755,7 +785,7 @@ export default class SyntheticEvent {
 
     this._target.addEventListener(
       'touchstart',
-      (event: TouchEvent) => { this._checkPinchState(event.touches) },
+      (event: TouchEvent) => { this._checkPinchState(event) },
       { passive: true }
     )
 
@@ -768,7 +798,23 @@ export default class SyntheticEvent {
         if (isValid(this._handler.pinchEvent)) {
           const currentDistance = this._getTouchDistance(event.touches[0], event.touches[1])
           const scale = currentDistance / this._startPinchDistance
-          this._handler.pinchEvent({ ...this._startPinchMiddleCoordinate, pageX: 0, pageY: 0 }, scale)
+          const _event = {
+            ...this._startPinchMiddleCoordinate,
+            pageX: 0,
+            pageY: 0,
+            nativeEvent: event,
+            eventPhase: EventPhase.NONE,
+            propagationStopped: false,
+            isImmediate: false,
+            stopPropagation: () => {
+              _event.propagationStopped = true
+            },
+            stopImmediatePropagation: () => {
+              _event.isImmediate = true
+              _event.propagationStopped = true
+            }
+          }
+          this._handler.pinchEvent(_event, scale)
           this._preventDefault(event)
         }
       },
@@ -776,23 +822,25 @@ export default class SyntheticEvent {
     )
 
     this._target.addEventListener('touchend', (event: TouchEvent) => {
-      this._checkPinchState(event.touches)
+      this._checkPinchState(event)
     })
   }
 
-  private _checkPinchState (touches: TouchList): void {
+  private _checkPinchState (event: TouchEvent): void {
+    const touches = event.touches
     if (touches.length === 1) {
       this._pinchPrevented = false
     }
 
     if (touches.length !== 2 || this._pinchPrevented || this._longTapActive) {
-      this._stopPinch()
+      this._stopPinch(event)
     } else {
-      this._startPinch(touches)
+      this._startPinch(event)
     }
   }
 
-  private _startPinch (touches: TouchList): void {
+  private _startPinch (event: TouchEvent): void {
+    const touches = event.touches
     const box = this._target.getBoundingClientRect() ?? { left: 0, top: 0 }
     this._startPinchMiddleCoordinate = {
       x: ((touches[0].clientX - box.left) + (touches[1].clientX - box.left)) / 2,
@@ -802,13 +850,30 @@ export default class SyntheticEvent {
     this._startPinchDistance = this._getTouchDistance(touches[0], touches[1])
 
     if (isValid(this._handler.pinchStartEvent)) {
-      this._handler.pinchStartEvent({ x: 0, y: 0, pageX: 0, pageY: 0 })
+      const _event = {
+        x: 0,
+        y: 0,
+        pageX: 0,
+        pageY: 0,
+        nativeEvent: event,
+        eventPhase: EventPhase.NONE,
+        propagationStopped: false,
+        isImmediate: false,
+        stopPropagation: () => {
+          _event.propagationStopped = true
+        },
+        stopImmediatePropagation: () => {
+          _event.isImmediate = true
+          _event.propagationStopped = true
+        }
+      }
+      this._handler.pinchStartEvent(_event)
     }
 
     this._clearLongTapTimeout()
   }
 
-  private _stopPinch (): void {
+  private _stopPinch (event: TouchEvent): void {
     if (this._startPinchMiddleCoordinate === null) {
       return
     }
@@ -816,7 +881,24 @@ export default class SyntheticEvent {
     this._startPinchMiddleCoordinate = null
 
     if (isValid(this._handler.pinchEndEvent)) {
-      this._handler.pinchEndEvent({ x: 0, y: 0, pageX: 0, pageY: 0 })
+      const _event = {
+        x: 0,
+        y: 0,
+        pageX: 0,
+        pageY: 0,
+        nativeEvent: event,
+        eventPhase: EventPhase.NONE,
+        propagationStopped: false,
+        isImmediate: false,
+        stopPropagation: () => {
+          _event.propagationStopped = true
+        },
+        stopImmediatePropagation: () => {
+          _event.isImmediate = true
+          _event.propagationStopped = true
+        }
+      }
+      this._handler.pinchEndEvent(_event)
     }
   }
 
@@ -866,16 +948,16 @@ export default class SyntheticEvent {
     return this._eventTimeStamp(e) < this._lastTouchEventTimeStamp + Delay.PreventFiresTouchEvents
   }
 
-  private _processEvent (event: MouseTouchEvent, callback?: MouseTouchEventCallback): void {
+  private _processEvent (event: MouseTouchEvent<MouseEvent | TouchEvent>, callback?: MouseTouchEventCallback): void {
     callback?.call(this._handler, event)
   }
 
-  private _makeCompatEvent (event: MouseEvent | TouchEvent, touch?: Touch): MouseTouchEvent {
+  private _makeCompatEvent<T extends MouseEvent | TouchEvent> (event: T, touch?: Touch): MouseTouchEvent<T> {
     // TouchEvent has no clientX/Y coordinates:
     // We have to use the last Touch instead
     const eventLike = touch ?? (event as MouseEvent)
     const box = this._target.getBoundingClientRect() ?? { left: 0, top: 0 }
-    return {
+    const _event: MouseTouchEvent<T> = {
       x: (eventLike.clientX - box.left) * this._target.offsetWidth / box.width,
       y: (eventLike.clientY - box.top) * this._target.offsetHeight / box.height,
 
@@ -888,8 +970,20 @@ export default class SyntheticEvent {
           // touchstart is passive and cannot be prevented
           this._preventDefault(event)
         }
+      },
+      nativeEvent: event,
+      eventPhase: EventPhase.NONE,
+      propagationStopped: false,
+      isImmediate: false,
+      stopPropagation: () => {
+        _event.propagationStopped = true
+      },
+      stopImmediatePropagation: () => {
+        _event.isImmediate = true
+        _event.propagationStopped = true
       }
     }
+    return _event
   }
 
   private _getTouchDistance (p1: Touch, p2: Touch): number {

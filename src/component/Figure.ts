@@ -43,7 +43,7 @@ export class Figure<A = any, S = any, T = any> extends Eventful {
     this._figure = figure
   }
 
-  checkEventOn (event: MouseTouchEvent): boolean {
+  override checkEventOn (event: MouseTouchEvent): boolean {
     return this._figure.checkEventOn(event, this.attrs, this.styles)
   }
 
