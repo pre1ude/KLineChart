@@ -41,7 +41,9 @@ export type IndicatorFigureAttrs = Partial<ArcAttrs> & Partial<LineStyle> & Part
 
 export type IndicatorFigureAttrsCallback<D> = (
   dataIndex: number,
-  result: D[],
+  indicator: Indicator<D>,
+  kLineDataList: KLineData[],
+  x: number,
   bounding: Bounding,
   barSpace: BarSpace,
   xAxis: XAxis,
@@ -67,6 +69,7 @@ export interface IndicatorFigure<D = any> {
   title?: string
   type?: string
   baseValue?: number
+
   attrs?: IndicatorFigureAttrsCallback<D>
   styles?: IndicatorFigureStylesCallback<D>
 

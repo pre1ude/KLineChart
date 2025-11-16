@@ -136,8 +136,8 @@ export default class IndicatorView extends View {
 
           const figureStyles = createFigureStyles(dataIndex)
 
-          const attrs = figure.attrs?.(dataIndex, indicator.result, bounding, barSpace, xAxis, yAxis) ??
-            computeDefaultAttrs(figure, type, dataIndex, x, indicator.result, yAxis)
+          const attrs = figure.attrs?.(dataIndex, indicator, dataList, x, bounding, barSpace, xAxis, yAxis) ??
+            computeDefaultAttrs(figure, dataIndex, indicator.result, x, yAxis)
 
           if (isValid<IndicatorFigureAttrs>(attrs)) {
             const figureType = type === 'bar' ? 'rect' : type
@@ -237,14 +237,14 @@ export default class IndicatorView extends View {
 
     function computeDefaultAttrs (
       figure: IndicatorFigure,
-      type: string,
       dataIndex: number,
-      x: number,
       result: any[],
+      x: number,
       yAxis: YAxisImp
     ): IndicatorFigureAttrs | undefined {
+      const type = figure.type ?? 'line'
       const value = result[dataIndex]?.[figure.key]
-      if (!isNumber(value)) return undefined
+      if (!isNumber(value)) return
 
       const { halfGapBar } = barSpace
       const valueY = yAxis.convertToPixel(value)
