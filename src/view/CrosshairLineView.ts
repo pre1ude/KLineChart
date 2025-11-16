@@ -13,7 +13,7 @@
  */
 
 import type Coordinate from '../common/Coordinate'
-import { CandleType, type CrosshairDirectionStyle } from '../common/Styles'
+import { CandleType, PolygonType, type CrosshairDirectionStyle } from '../common/Styles'
 import { isNumber, isString } from '../common/utils/typeChecks'
 import { drawStaticFigure } from '../extension/figure'
 import type DualYPane from '../pane/DualYPane'
@@ -72,7 +72,7 @@ export default class CrosshairLineView extends View {
           const r = 3
           drawStaticFigure(ctx, 'circle', {
             attrs: { x, y, r },
-            styles: { color: '#fff' }
+            styles: { color: '#fff', borderColor: candleAreaStyle.lineColor, style: PolygonType.StrokeFill, borderSize: candleAreaStyle.lineSize }
           })
         }
       }
