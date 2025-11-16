@@ -13,20 +13,25 @@
  */
 
 import type Coordinate from '../common/Coordinate'
-import { type CrosshairDirectionStyle } from '../common/Styles'
-import { isString } from '../common/utils/typeChecks'
+import { CandleType, type CrosshairDirectionStyle } from '../common/Styles'
+import { isNumber, isString } from '../common/utils/typeChecks'
 import { drawStaticFigure } from '../extension/figure'
+import type DualYPane from '../pane/DualYPane'
+import { PaneIdConstants } from '../pane/types'
 import View from './View'
 
 export default class CrosshairLineView extends View {
   override drawImp (ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
+    const isMain = pane.getId() === PaneIdConstants.CANDLE
     const bounding = widget.getBounding()
-    const chartStore = widget.getPane().getChart().getChartStore()
+    const chart = pane.getChart()
+    const chartStore = chart.getChartStore()
     const crosshair = chartStore.getTooltipStore().getCrosshair()
-    const styles = chartStore.getStyles().crosshair
-    if (isString(crosshair.paneId) && styles.show) {
+    const styles = chartStore.getStyles()
+    const crosshairStyles = styles.crosshair
+    if (isString(crosshair.paneId) && crosshairStyles.show) {
       if (crosshair.paneId === pane.getId()) {
         const y = crosshair.y!
         this._drawLine(
@@ -35,7 +40,7 @@ export default class CrosshairLineView extends View {
             { x: 0, y },
             { x: bounding.width, y }
           ],
-          styles.horizontal
+          crosshairStyles.horizontal
         )
       }
       const x = crosshair.realX!
@@ -45,8 +50,32 @@ export default class CrosshairLineView extends View {
           { x, y: 0 },
           { x, y: bounding.height }
         ],
-        styles.vertical
+        crosshairStyles.vertical
       )
+    }
+    const candleStyles = styles.candle
+    const candleAreaStyle = candleStyles.area
+    if (isMain && candleStyles.type === CandleType.Area) {
+      // draw dot
+      const chartStore = chart.getChartStore()
+      // const barSpace = chartStore.getTimeScaleStore().getBarSpace()
+      const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+
+      const crosshair = chartStore.getTooltipStore().getCrosshair()
+
+      if (crosshair.kLineData && crosshair.dataIndex === crosshair.realDataIndex && crosshair.paneId != null) {
+        const x = crosshair.realX!
+        const value = crosshair.kLineData?.[candleAreaStyle.value]
+
+        if (isNumber(value)) {
+          const y = yAxis.convertToPixel(value)
+          const r = 3
+          drawStaticFigure(ctx, 'circle', {
+            attrs: { x, y, r },
+            styles: { color: '#fff' }
+          })
+        }
+      }
     }
   }
 
