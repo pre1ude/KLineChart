@@ -464,7 +464,7 @@ function getDefaultCandleStyle (): CandleStyle {
       noChangeWickColor: noChangeColor
     },
     area: {
-      lineSize: 1,
+      lineSize: 2,
       lineColor: '#4D97FF',
       smooth: false,
       value: 'close',
