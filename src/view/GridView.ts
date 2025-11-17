@@ -50,12 +50,19 @@ export default class GridView extends View {
       const verticalShow = verticalStyles.show
       if (verticalShow) {
         const xAxis = (chart.getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
+        const chartStore = chart.getChartStore()
+        const isTimeShare = chartStore.getIsTimeShare()
+        const timeShareDays = chartStore.getTimeShareDays()
         const attrs: LineAttrs[] = xAxis.getTicks().map(tick => ({
           coordinates: [
             { x: tick.coord, y: 0 },
             { x: tick.coord, y: bounding.height }
           ]
         }))
+        if (isTimeShare && timeShareDays > 1) {
+          // N日分时跳过第一根线绘制
+          attrs.shift()
+        }
         drawStaticFigure(ctx, 'line', {
           attrs,
           styles: verticalStyles
