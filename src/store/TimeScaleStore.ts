@@ -125,7 +125,7 @@ export default class TimeScaleStore {
     const timeShareDays = this._chartStore.getTimeShareDays()
     const tickCount = timeShareTicks.length * timeShareDays
     if (tickCount === 0) {
-      console.warn('Time share ticks is empty, cannot adjust for time share.')
+      console.error('Time share ticks is empty, cannot adjust for time share.')
       return
     }
     const barWidth = mainWidth / tickCount
@@ -135,11 +135,13 @@ export default class TimeScaleStore {
     } else {
       const lastData = dataList[totalBarCount - 1]
       const hhmm = formatToHHmm(lastData.timestamp)
-      const offset = (timeShareDays - 1) * timeShareTicks.length
-      const idx = timeShareTicks.indexOf(hhmm) + offset
-      if (idx === -1) {
-        console.warn('Last data timestamp not found in time share ticks:', hhmm, lastData)
+      const tickIndex = timeShareTicks.indexOf(hhmm)
+      if (tickIndex === -1) {
+        console.error('Last data timestamp not found in time share ticks:', hhmm, lastData)
+        return
       } else {
+        const dayIndex = Math.floor((totalBarCount - 1) / timeShareTicks.length)
+        const idx = dayIndex * timeShareTicks.length + tickIndex
         offsetRight = (tickCount - idx - 1) * barWidth
       }
     }
