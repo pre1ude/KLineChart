@@ -30,10 +30,11 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
     if (isTimeShare) {
       // 分时图模式下，检查是否在时间轴范围内（而不是实际数据范围）
       const timeShareTicks = chartStore.getTimeShareTicks()
-      const timeShareDays = chartStore.getTimeShareDays()
+      const totalBarCount = chartStore.getDataList().length
+      const validDays = Math.floor((totalBarCount - 1) / timeShareTicks.length) + 1
       const realIndex = crosshair.realDataIndex ?? -1
-      // 只要在时间轴的理论范围内就显示标签
-      if (realIndex < 0 || realIndex >= timeShareTicks.length * timeShareDays) {
+      // 不能超出可预知的时间范围
+      if (realIndex < 0 || realIndex >= timeShareTicks.length * validDays) {
         return false
       }
       return true
@@ -52,13 +53,7 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
     let timestamp = crosshair.kLineData?.timestamp
     if (isTimeShare) {
       const timeShareTicks = chartStore.getTimeShareTicks()
-      const timeShareDays = chartStore.getTimeShareDays()
       const realIndex = crosshair.realDataIndex ?? 0
-
-      // 检查是否在时间轴范围内
-      if (realIndex < 0 || realIndex >= timeShareTicks.length * timeShareDays) {
-        return ''
-      }
 
       // 获取时间文本
       const text = timeShareTicks[realIndex % timeShareTicks.length]
