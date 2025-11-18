@@ -30,12 +30,13 @@ import verticalSegment from './verticalSegment'
 import verticalStraightLine from './verticalStraightLine'
 import simpleAnnotation from './simpleAnnotation'
 import simpleTag from './simpleTag'
+import a from './advanced'
 
 const extensions = [
   fibonacciLine, horizontalRayLine, horizontalSegment, horizontalStraightLine,
   parallelStraightLine, priceChannelLine, priceLine, rayLine, segment,
   straightLine, verticalRayLine, verticalSegment, verticalStraightLine,
-  simpleAnnotation, simpleTag
+  simpleAnnotation, simpleTag, ...a
 ]
 
 const overlayTemplateManager = new TemplateManager<OverlayTemplate>(extensions)
