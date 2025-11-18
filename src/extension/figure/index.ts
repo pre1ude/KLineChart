@@ -20,10 +20,9 @@ import line from './line'
 import polygon from './polygon'
 import rect from './rect'
 import text from './text'
-import rectText from './rectText'
 import arc from './arc'
 
-const extensions = [circle, line, polygon, rect, text, rectText, arc]
+const extensions = [circle, line, polygon, rect, text, arc]
 
 const figureTemplateManager = new TemplateManager<FigureTemplate<any, any>>(extensions)
 
