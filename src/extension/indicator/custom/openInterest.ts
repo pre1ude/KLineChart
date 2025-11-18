@@ -12,14 +12,14 @@
  * limitations under the License.
  */
 
-import type KLineData from '../../common/KLineData'
-import { type IndicatorTemplate, IndicatorSeries } from '../../component/Indicator'
+import type KLineData from '../../../common/KLineData'
+import { type IndicatorTemplate, IndicatorSeries } from '../../../component/Indicator'
 
-interface Vol {
+interface OI {
   openInterest?: number
 }
 
-const openInterest: IndicatorTemplate<Vol> = {
+const openInterest: IndicatorTemplate<OI> = {
   name: 'OPEN_INTEREST',
   shortName: '',
   series: IndicatorSeries.Volume,

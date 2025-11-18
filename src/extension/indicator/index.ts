@@ -42,10 +42,11 @@ import tripleExponentiallySmoothedAverage from './tripleExponentiallySmoothedAve
 import volume from './volume'
 import volumeRatio from './volumeRatio'
 import williamsR from './williamsR'
-/** indicator for minute period */
-import waPrice from './waPrice'
-import openInterest from './openInterest'
-import volumeMinute from './volumeMinute'
+/** indicator for timeshare */
+import waPrice from './timeshare/waPrice'
+import volumeMinute from './timeshare/volumeMinute'
+/** indicator customized */
+import openInterest from './custom/openInterest'
 
 const extensions = [
   averagePrice, awesomeOscillator, bias, bollingerBands, brar,
@@ -53,7 +54,7 @@ const extensions = [
   directionalMovementIndex, easeOfMovementValue, exponentialMovingAverage, momentum,
   movingAverage, movingAverageConvergenceDivergence, onBalanceVolume, priceAndVolumeTrend,
   psychologicalLine, rateOfChange, relativeStrengthIndex, simpleMovingAverage,
-  stoch, stopAndReverse, tripleExponentiallySmoothedAverage, volume, waPrice, volumeMinute, openInterest, volumeRatio, williamsR
+  stoch, stopAndReverse, tripleExponentiallySmoothedAverage, volume, volumeRatio, williamsR, waPrice, volumeMinute, openInterest
 ]
 
 const indicatorTemplateManager = new TemplateManager<IndicatorTemplate>(extensions)

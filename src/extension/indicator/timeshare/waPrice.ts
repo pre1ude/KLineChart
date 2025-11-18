@@ -12,8 +12,8 @@
  * limitations under the License.
  */
 
-import type KLineData from '../../common/KLineData'
-import { type IndicatorTemplate, IndicatorSeries } from '../../component/Indicator'
+import type KLineData from '../../../common/KLineData'
+import { type IndicatorTemplate, IndicatorSeries } from '../../../component/Indicator'
 
 interface WaPrice {
   waPrice?: number
