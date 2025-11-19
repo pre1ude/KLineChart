@@ -22,6 +22,7 @@ import CrosshairVerticalLabelView from '../view/CrosshairVerticalLabelView'
 import { isString, isValid } from '../common/utils/typeChecks'
 import { getXAxisClass } from '../extension/x-axis'
 import type { PaneAxisOptions, PaneOptions } from '../pane/types'
+import { setCursor } from '../common/utils/cursor'
 
 // ? XAxisWidget can only be used in SingleWidgetPane
 export default class XAxisWidget extends DrawWidget<SingleWidgetPane> {
@@ -37,7 +38,8 @@ export default class XAxisWidget extends DrawWidget<SingleWidgetPane> {
 
   constructor (rootContainer: HTMLElement, pane: SingleWidgetPane, options: PaneOptions) {
     super(rootContainer, pane)
-    this.getContainer().style.cursor = 'ew-resize'
+
+    setCursor(this.getContainer(), 'ew-resize')
     this.addChild(this._overlayXAxisView)
     this.setOptions(options.axisOptions ?? { name: 'default', scrollZoomEnabled: true })
   }

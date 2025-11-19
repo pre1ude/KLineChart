@@ -31,6 +31,7 @@ import { createDom } from '../common/utils/dom'
 import { getPixelRatio } from '../common/utils/canvas'
 import type PickPartial from '../common/PickPartial'
 import { YAxisPosition, YAxisType } from '../common/Styles'
+import { setCursor } from '../common/utils/cursor'
 
 // todo should support two axisWidget
 export default abstract class DualYPane extends Pane {
@@ -70,12 +71,12 @@ export default abstract class DualYPane extends Pane {
     const scrollZoomEnabled = this._options.axisOptions?.scrollZoomEnabled ?? true
     if (this.getId() === PaneIdConstants.X_AXIS) {
       const container = this.getMainWidget().getContainer()
-      container.style.cursor = scrollZoomEnabled ? 'ew-resize' : 'default'
+      setCursor(container, scrollZoomEnabled ? 'ew-resize' : 'default')
     } else {
       const leftContainer = this._yLeftAxisWidget.getContainer()
       const rightContainer = this._yRightAxisWidget.getContainer()
-      leftContainer.style.cursor = scrollZoomEnabled ? 'ns-resize' : 'default'
-      rightContainer.style.cursor = scrollZoomEnabled ? 'ns-resize' : 'default'
+      setCursor(leftContainer, scrollZoomEnabled ? 'ns-resize' : 'default')
+      setCursor(rightContainer, scrollZoomEnabled ? 'ns-resize' : 'default')
     }
   }
 

@@ -16,6 +16,7 @@ import type DualYPane from '../pane/DualYPane'
 import { WidgetNameConstants } from './types'
 import DrawWidget from './DrawWidget'
 import type { Layer } from './layer/Layer'
+import { setCursor } from '../common/utils/cursor'
 
 /**
  * 主 Widget - 使用 Layer 组合模式
@@ -40,7 +41,7 @@ export default class MainWidget extends DrawWidget<DualYPane> {
     })
 
     // 设置通用样式和事件
-    this.getContainer().style.cursor = 'crosshair'
+    setCursor(this.getContainer(), 'crosshair')
     this.addEventListener('mouseMoveEvent', () => {
       pane.getChart().getChartStore().getTooltipStore().setActiveIcon()
       return false

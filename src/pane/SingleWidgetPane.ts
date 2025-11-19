@@ -24,6 +24,7 @@ import type Chart from '../Chart'
 import { createDom } from '../common/utils/dom'
 import { getPixelRatio } from '../common/utils/canvas'
 import type PickPartial from '../common/PickPartial'
+import { setCursor } from '../common/utils/cursor'
 
 export default abstract class SingleWidgetPane extends Pane {
   private readonly _mainWidget: DrawWidget<SingleWidgetPane>
@@ -48,7 +49,8 @@ export default abstract class SingleWidgetPane extends Pane {
     merge(this._options, options)
     if (this.getId() === PaneIdConstants.X_AXIS) {
       const container = this.getMainWidget().getContainer()
-      container.style.cursor = (options.axisOptions?.scrollZoomEnabled ?? true) ? 'ew-resize' : 'default'
+      const cursor = (options.axisOptions?.scrollZoomEnabled ?? true) ? 'ew-resize' : 'default'
+      setCursor(container, cursor)
     }
     return this
   }

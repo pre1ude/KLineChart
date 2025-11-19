@@ -28,6 +28,7 @@ import type YAxisWidget from './widget/YAxisWidget'
 import type XAxisWidget from './widget/XAxisWidget'
 import { isPointInBounding } from './common/Bounding'
 import type VisibleRange from './common/VisibleRange'
+import { setCursor } from './common/utils/cursor'
 
 interface EventTriggerWidgetInfo {
   pane: Nullable<Pane>
@@ -200,7 +201,7 @@ export default class Event implements EventHandler {
           if (consumed && chartStore.getTooltipStore().getActiveIcon() !== null) {
             crosshair = undefined
             if (widget !== null) {
-              widget.getContainer().style.cursor = 'pointer'
+              setCursor(widget.getContainer(), 'pointer')
             }
           }
           this._chart.getChartStore().getTooltipStore().setCrosshair(crosshair)
