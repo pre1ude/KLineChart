@@ -38,6 +38,7 @@ import { WidgetNameConstants } from '../widget/types'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import type ChartStore from '../store/ChartStore'
+import type DualYPane from '../pane/DualYPane'
 
 export default class OverlayView extends View {
   constructor (widget: DrawWidget<Pane>) {
@@ -289,14 +290,16 @@ export default class OverlayView extends View {
     const paneId = pane.getId()
     const chartStore = chart.getChartStore()
     if (this.coordinateToPointTimestampDataIndexFlag()) {
-      const xAxis = (widget as XAxisWidget).getAxisComponent()
+      const xAxisWidget = chart.getXAxisPane().getMainWidget() as XAxisWidget
+      const xAxis = xAxisWidget.getAxisComponent()
       const dataIndex = xAxis.convertFromPixel(coordinate.x)
       const timestamp = chartStore.dataIndexToTimestamp(dataIndex) ?? undefined
       point.dataIndex = dataIndex
       point.timestamp = timestamp
     }
     if (this.coordinateToPointValueFlag()) {
-      const yAxis = (widget as YAxisWidget).getAxisComponent()
+      const mainAxisWidget = (pane as DualYPane).getMainAxisWidget()
+      const yAxis = mainAxisWidget.getAxisComponent()
       let value = yAxis.convertFromPixel(coordinate.y)
       if (overlay.mode !== OverlayMode.Normal && paneId === PaneIdConstants.CANDLE && isNumber(point.dataIndex)) {
         const kLineData = chartStore.getDataByDataIndex(point.dataIndex)
