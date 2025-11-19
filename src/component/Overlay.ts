@@ -361,10 +361,13 @@ export class Overlay implements OverlayApi {
   }
 
   shouldUpdate (next: Partial<OverlayCreate>): [boolean, boolean] {
-    const needSort = shouldSort(next)
-    const needUpdate = shouldUpdate(next)
+    const shouldSort = (next: Partial<OverlayCreate>): boolean => {
+      return (
+        (isNumber(next.zLevel) && this.zLevel !== next.zLevel)
+      )
+    }
 
-    function shouldUpdate (next: Partial<OverlayCreate>): boolean {
+    const shouldUpdate = (next: Partial<OverlayCreate>): boolean => {
       return (
         needSort ||
         (isBoolean(next.visible) && this.visible !== next.visible) ||
@@ -373,11 +376,9 @@ export class Overlay implements OverlayApi {
         (isValid(next.extendData) && JSON.stringify(this.extendData) !== JSON.stringify(next.extendData))
       )
     }
-    function shouldSort (next: Partial<OverlayCreate>): boolean {
-      return (
-        (isNumber(next.zLevel) && this.zLevel !== next.zLevel)
-      )
-    }
+
+    const needSort = shouldSort(next)
+    const needUpdate = shouldUpdate(next)
 
     return [needUpdate, needSort]
   }
