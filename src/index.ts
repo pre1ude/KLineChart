@@ -37,6 +37,7 @@ import {
 } from './common/utils/typeChecks'
 import { formatValue, formatPrecision, formatBigNumber, formatDate, formatThousands, formatFoldDecimal } from './common/utils/format'
 import { calcTextWidth } from './common/utils/canvas'
+import { setCursor } from './common/utils/cursor'
 import { ActionType } from './common/Action'
 import { LoadDataType } from './common/LoadDataCallback'
 
@@ -160,7 +161,8 @@ const utils = {
   drawLine,
   drawPolygon,
   drawRect,
-  drawText
+  drawText,
+  setCursor
 }
 
 export {
