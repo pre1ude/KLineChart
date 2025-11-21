@@ -28,6 +28,9 @@ import { type RectAttrs, drawRect } from './rect'
 // 默认省略号
 const DEFAULT_ELLIPSIS = '...'
 
+// 缓存 Layout 信息，使用 WeakMap 避免内存泄漏
+const layoutCache = new WeakMap<TextBoxAttrs, TextLayout>()
+
 interface LineLayout {
   // 该行文本内容的起始和结束索引
   startIndex: number
@@ -382,16 +385,16 @@ export interface TextBoxAttrs {
   text: string
   width?: number
   height?: number
-  // 缓存的 Layout 信息（包含矩形和其他布局数据）
-  cachedLayout?: TextLayout
 }
 
 // 获取或创建 Layout（带缓存）
 function getOrCreateLayout (attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLayout {
-  if (!attrs.cachedLayout) {
-    attrs.cachedLayout = layoutText(attrs, styles)
+  let layout = layoutCache.get(attrs)
+  if (!layout) {
+    layout = layoutText(attrs, styles)
+    layoutCache.set(attrs, layout)
   }
-  return attrs.cachedLayout
+  return layout
 }
 
 // 碰撞检测
