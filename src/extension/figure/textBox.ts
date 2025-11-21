@@ -86,7 +86,7 @@ function calculateStartX (x: number, width: number, textAlign: CanvasTextAlign =
     case 'right':
     case 'end':
       return x + width
-    default:
+    default: // center
       return x + width / 2
   }
 }
@@ -95,6 +95,7 @@ interface VerticalLayoutInfo {
   lineHeight: number
   hangingline: number
   baseline: number
+  ideographicline: number
 }
 
 function calculateStartY (y: number, info: VerticalLayoutInfo, testBaseline: CanvasTextBaseline = 'top'): number {
@@ -105,10 +106,11 @@ function calculateStartY (y: number, info: VerticalLayoutInfo, testBaseline: Can
       return y + info.hangingline
     case 'bottom':
       return y + info.lineHeight
-    case 'ideographic':
     case 'alphabetic':
       return y + info.baseline
-    default:
+    case 'ideographic':
+      return y + info.ideographicline
+    default: // middle
       return y + info.lineHeight / 2
   }
 }
@@ -120,6 +122,7 @@ function createVerticalLayoutInfo (fontSize: number): VerticalLayoutInfo {
   return {
     lineHeight: 1.4 * fontSize,
     baseline: 1.1 * fontSize,
+    ideographicline: 1.2 * fontSize,
     hangingline: 0.2 * fontSize
   }
 }
@@ -311,7 +314,6 @@ function layoutText (attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLa
   }
 }
 
-// Paint 阶段：根据 Layout 信息绘制文本
 function paintText (
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -327,7 +329,6 @@ function paintText (
     drawRect(ctx, bounds, { ...styles, color: styles.backgroundColor })
   }
 
-  // if (ctx.textAlign !== textAlign) ctx.textAlign = textAlign
   if (ctx.textBaseline !== textBaseline) ctx.textBaseline = textBaseline
   if (ctx.font !== font) ctx.font = font
   if (ctx.fillStyle !== color) ctx.fillStyle = color
@@ -340,23 +341,16 @@ function paintText (
     const y = bounds.y + line.y
     ctx.fillText(lineText, x, y)
     // draw helper line
-    /* ctx.strokeStyle = 'red'
-    ctx.beginPath()
-    ctx.moveTo(bounds.x + 4, bounds.y + 4)
-    ctx.lineTo(bounds.x + 4 + line.width, bounds.y + 4)
-    ctx.stroke() */
-
-    ctx.strokeStyle = 'green'
+    /* ctx.strokeStyle = 'green'
     ctx.beginPath()
     ctx.moveTo(bounds.x + 4, bounds.y + 4)
     ctx.lineTo(bounds.x - 4 + bounds.width, bounds.y + 4)
     ctx.stroke()
 
-    ctx.strokeStyle = 'green'
     ctx.beginPath()
     ctx.moveTo(bounds.x + 4, bounds.y + 4 + line.height)
     ctx.lineTo(bounds.x - 4 + bounds.width, bounds.y + 4 + line.height)
-    ctx.stroke()
+    ctx.stroke() */
 
     // 如果该行被截断，添加省略号
     if (line.isTruncated) {
