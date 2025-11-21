@@ -193,7 +193,9 @@ const line: FigureTemplate<LineAttrs | LineAttrs[], Partial<SmoothLineStyle>> = 
   name: 'line',
   checkEventOn: checkCoordinateOnLine,
   draw: (ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineAttrs[], styles: Partial<SmoothLineStyle>) => {
+    ctx.save()
     drawLine(ctx, attrs, styles)
+    ctx.restore()
   }
 }
 

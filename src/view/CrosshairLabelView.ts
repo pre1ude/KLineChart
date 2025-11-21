@@ -16,7 +16,7 @@ import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
 import { type CrosshairStyle, type CrosshairDirectionStyle, type StateTextStyle } from '../common/Styles'
 import { isString } from '../common/utils/typeChecks'
-import { createFont } from '../common/utils/canvas'
+import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { type TextAttrs } from '../extension/figure/text'
 import type ChartStore from '../store/ChartStore'
 import View from './View'
@@ -40,9 +40,9 @@ export default abstract class CrosshairLabelView extends View {
         const textStyles = directionStyles.text
         if (directionStyles.show && textStyles.show) {
           const text = this.getText(crosshair, chartStore)
-          ctx.font = createFont(textStyles.size, textStyles.weight, textStyles.family)
+          const textWidth = calcTextWidth(text, createFont(textStyles.size, textStyles.weight, textStyles.family))
           drawStaticFigure(ctx, 'text', {
-            attrs: this.getTextAttrs(text, ctx.measureText(text).width, crosshair, bounding, textStyles),
+            attrs: this.getTextAttrs(text, textWidth, crosshair, bounding, textStyles),
             styles: textStyles
           })
         }

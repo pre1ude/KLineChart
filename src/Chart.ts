@@ -1092,6 +1092,7 @@ export default class ChartImp implements Chart {
     const pixelRatio = getPixelRatio(canvas)
     canvas.width = width * pixelRatio
     canvas.height = height * pixelRatio
+    ctx.save()
     ctx.scale(pixelRatio, pixelRatio)
 
     ctx.fillStyle = backgroundColor ?? '#FFFFFF'
@@ -1113,6 +1114,7 @@ export default class ChartImp implements Chart {
         0, bounding.top, width, bounding.height
       )
     })
+    ctx.restore()
     return canvas.toDataURL(`image/${type ?? 'jpeg'}`)
   }
 

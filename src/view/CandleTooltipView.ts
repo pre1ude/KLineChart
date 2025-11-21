@@ -22,7 +22,7 @@ import {
   type CandleTooltipCustomCallbackData, PolygonType
 } from '../common/Styles'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
-import { createFont } from '../common/utils/canvas'
+import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { isFunction, isObject, isValid } from '../common/utils/typeChecks'
 import { type CustomApi, FormatDateType } from '../Options'
 import { PaneIdConstants } from '../pane/types'
@@ -247,12 +247,13 @@ export default class CandleTooltipView extends IndicatorTooltipView {
       let rectWidth = 0
       let rectHeight = 0
       if (isDrawCandleTooltip) {
-        ctx.font = createFont(baseTextSize, baseTextWeight, baseTextFamily)
+        const font = createFont(baseTextSize, baseTextWeight, baseTextFamily)
         candleLegends.forEach(data => {
           const title = data.title as TooltipLegendChild
           const value = data.value as TooltipLegendChild
           const text = `${title.text}${value.text}`
-          const labelWidth = ctx.measureText(text).width + baseTextMarginLeft + baseTextMarginRight
+          const textWidth = calcTextWidth(text, font)
+          const labelWidth = textWidth + baseTextMarginLeft + baseTextMarginRight
           maxTextWidth = Math.max(maxTextWidth, labelWidth)
         })
         rectHeight += ((baseTextMarginBottom + baseTextMarginTop + baseTextSize) * candleLegends.length)
@@ -269,7 +270,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
       } = indicatorTooltipStyles.text
       const indicatorLegendsArray: TooltipLegend[][] = []
       if (isDrawIndicatorTooltip) {
-        ctx.font = createFont(indicatorTextSize, indicatorTextWeight, indicatorTextFamily)
+        const font = createFont(indicatorTextSize, indicatorTextWeight, indicatorTextFamily)
         indicators.forEach(indicator => {
           const tooltipDataValues = this.getIndicatorTooltipData(dataList, crosshair, indicator, customApi, thousandsSeparator, decimalFoldThreshold, indicatorStyles).values ?? []
           indicatorLegendsArray.push(tooltipDataValues)
@@ -277,7 +278,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
             const title = data.title as TooltipLegendChild
             const value = data.value as TooltipLegendChild
             const text = `${title.text}${value.text}`
-            const textWidth = ctx.measureText(text).width + indicatorTextMarginLeft + indicatorTextMarginRight
+            const textWidth = calcTextWidth(text, font) + indicatorTextMarginLeft + indicatorTextMarginRight
             maxTextWidth = Math.max(maxTextWidth, textWidth)
             rectHeight += (indicatorTextMarginTop + indicatorTextMarginBottom + indicatorTextSize)
           })

@@ -121,7 +121,9 @@ const text: FigureTemplate<TextAttrs | TextAttrs[], Partial<TextStyle>> = {
   name: 'text',
   checkEventOn: checkCoordinateOnText,
   draw: (ctx: CanvasRenderingContext2D, attrs: TextAttrs | TextAttrs[], styles: Partial<TextStyle>) => {
+    ctx.save()
     drawText(ctx, attrs, styles)
+    ctx.restore()
   }
 }
 

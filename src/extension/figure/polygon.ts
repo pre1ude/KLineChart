@@ -93,7 +93,9 @@ const polygon: FigureTemplate<PolygonAttrs | PolygonAttrs[], Partial<PolygonStyl
   name: 'polygon',
   checkEventOn: checkCoordinateOnPolygon,
   draw: (ctx: CanvasRenderingContext2D, attrs: PolygonAttrs | PolygonAttrs[], styles: Partial<PolygonStyle>) => {
+    ctx.save()
     drawPolygon(ctx, attrs, styles)
+    ctx.restore()
   }
 }
 

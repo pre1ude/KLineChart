@@ -86,7 +86,9 @@ const circle: FigureTemplate<CircleAttrs | CircleAttrs[], Partial<PolygonStyle>>
   name: 'circle',
   checkEventOn: checkCoordinateOnCircle,
   draw: (ctx: CanvasRenderingContext2D, attrs: CircleAttrs | CircleAttrs[], styles: Partial<PolygonStyle>) => {
+    ctx.save()
     drawCircle(ctx, attrs, styles)
+    ctx.restore()
   }
 }
 

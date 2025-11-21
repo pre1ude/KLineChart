@@ -68,6 +68,7 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
     return chartStore.getCustomApi().formatDate(dateTimeFormat, timestamp, 'YYYY-MM-DD HH:mm', FormatDateType.Crosshair)
   }
 
+  // todo need optimize
   override getTextAttrs (text: string, textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs {
     const x = crosshair.realX!
     let optimalX: number

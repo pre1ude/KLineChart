@@ -109,7 +109,9 @@ const rect: FigureTemplate<RectAttrs | RectAttrs[], Partial<RectStyle>> = {
   name: 'rect',
   checkEventOn: checkCoordinateOnRect,
   draw: (ctx: CanvasRenderingContext2D, attrs: RectAttrs | RectAttrs[], styles: Partial<RectStyle>) => {
+    ctx.save()
     drawRect(ctx, attrs, styles)
+    ctx.restore()
   }
 }
 

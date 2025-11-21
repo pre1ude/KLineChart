@@ -87,6 +87,7 @@ export default class CandleAreaView extends View {
           } else {
             color = backgroundColor
           }
+          ctx.save()
           ctx.fillStyle = color
           ctx.beginPath()
           ctx.moveTo(currentPath[0].x, bounding.height)
@@ -95,6 +96,7 @@ export default class CandleAreaView extends View {
           ctx.lineTo(currentPath[currentPath.length - 1].x, bounding.height)
           ctx.closePath()
           ctx.fill()
+          ctx.restore()
         }
       }
       currentPath.length = 0

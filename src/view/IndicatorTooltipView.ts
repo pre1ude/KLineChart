@@ -19,7 +19,7 @@ import { type IndicatorStyle, type TooltipStyle, type TooltipIconStyle, type Too
 import { ActionType } from '../common/Action'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { isValid, isObject, isString, isNumber } from '../common/utils/typeChecks'
-import { createFont } from '../common/utils/canvas'
+import { calcTextWidth, createFont } from '../common/utils/canvas'
 import type Coordinate from '../common/Coordinate'
 import { type CustomApi } from '../Options'
 import { getFigureBaseStyles, getMergedDefaultStyles, type Indicator, type IndicatorTooltipData } from '../component/Indicator'
@@ -142,6 +142,7 @@ export default class IndicatorTooltipView extends View {
     return top
   }
 
+  // todo need optimize
   protected drawStandardTooltipIcons (
     ctx: CanvasRenderingContext2D,
     activeIcon: Nullable<TooltipIcon>,
@@ -162,8 +163,8 @@ export default class IndicatorTooltipView extends View {
           paddingLeft = 0, paddingTop = 0, paddingRight = 0, paddingBottom = 0,
           size, fontFamily, icon: text
         } = icon
-        ctx.font = createFont(size, 'normal', fontFamily)
-        width += (marginLeft + paddingLeft + ctx.measureText(text).width + paddingRight + marginRight)
+        const font = createFont(size, 'normal', fontFamily)
+        width += (marginLeft + paddingLeft + calcTextWidth(text, font) + paddingRight + marginRight)
         height = Math.max(height, marginTop + paddingTop + size + paddingBottom + marginBottom)
       })
       if (coordinate.x + width > maxWidth) {
@@ -197,7 +198,8 @@ export default class IndicatorTooltipView extends View {
           mouseMoveEvent: this._boundIconMouseMoveEvent({ paneId, indicatorName, iconId: icon.id })
         })
 
-        coordinate.x += (marginLeft + paddingLeft + ctx.measureText(text).width + paddingRight + marginRight)
+        const font = createFont(size, 'normal', fontFamily)
+        coordinate.x += (marginLeft + paddingLeft + calcTextWidth(text, font) + paddingRight + marginRight)
       })
     }
     return prevRowHeight
@@ -214,12 +216,12 @@ export default class IndicatorTooltipView extends View {
   ): number {
     if (legends.length > 0) {
       const { marginLeft, marginTop, marginRight, marginBottom, size, family, weight } = styles
-      ctx.font = createFont(size, weight, family)
+      const font = createFont(size, weight, family)
       legends.forEach(data => {
         const title = data.title as TooltipLegendChild
         const value = data.value as TooltipLegendChild
-        const titleTextWidth = ctx.measureText(title.text).width
-        const valueTextWidth = ctx.measureText(value.text).width
+        const titleTextWidth = calcTextWidth(title.text, font)
+        const valueTextWidth = calcTextWidth(value.text, font)
         const totalTextWidth = titleTextWidth + valueTextWidth
         const h = marginTop + size + marginBottom
         if (coordinate.x + marginLeft + totalTextWidth + marginRight > maxWidth) {

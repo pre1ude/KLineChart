@@ -73,7 +73,9 @@ const arc: FigureTemplate<ArcAttrs | ArcAttrs[], Partial<LineStyle>> = {
   name: 'arc',
   checkEventOn: checkCoordinateOnArc,
   draw: (ctx: CanvasRenderingContext2D, attrs: ArcAttrs | ArcAttrs[], styles: Partial<LineStyle>) => {
+    ctx.save()
     drawArc(ctx, attrs, styles)
+    ctx.restore()
   }
 }
 
