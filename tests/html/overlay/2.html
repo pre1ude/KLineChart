@@ -20,29 +20,30 @@ limitations under the License.
     <meta name="theme-color" content="#000000" />
     <meta name="keywords" content="kline time-line candlestick stock chart canvas k线 行情 蜡烛图 分时图 技术指标 图表"/>
     <meta name="description" content="shape test"/>
-    <script type="text/javascript" src="../../../dist/umd/klinecharts.js"></script>
-    <script type="text/javascript" src="../../js/dataSource.js"></script>
     <link rel="stylesheet" type="text/css" href="../../css/chart.css"/>
     <title>Overlay -- Use built-in overlays</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="chart"></div>
-    <script>
+    <script type="module">
+      import { init } from '../../../dist/index.js'
+      import { generated } from '../../js/dataSource.js'
+
       window.onload = function () {
-        var chart = klinecharts.init('chart')
+        var chart = init('chart')
         var kdjPaneId = chart.createIndicator('KDJ')
         var dataList = generated()
         chart.applyNewData(dataList)
         // Create on main
         chart.createOverlay({
-          name: 'simpleAnnotation',
-          extendData: '1111111111',
+          name: 'textLog',
+          extendData: '优化了构建脚本 - 移除了不必要的 clean 命令，因为 Vite 配置中已有 emptyOutDir: tr',
           points: [{ timestamp: dataList[dataList.length - 20].timestamp, value: dataList[dataList.length - 20].high }]
         })
          // Create on sub
         chart.createOverlay({
-          name: 'simpleAnnotation',
+          name: 'textLog',
           extendData: '22222222222',
           points: [{ timestamp: dataList[dataList.length - 20].timestamp, value: 40 }]
         }, kdjPaneId)

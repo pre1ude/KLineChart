@@ -8017,7 +8017,7 @@ var kLineDataList = [
   ]
 ]
 
-function generated () {
+export function generated () {
   return kLineDataList.map(function (data) {
     return {
       timestamp: new Date(data[0]).getTime(),
