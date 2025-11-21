@@ -15,14 +15,15 @@
 import type Nullable from '../../common/Nullable'
 import { Figure, type FigureTemplate } from '../../component/Figure'
 import { TemplateManager } from '../../common/TemplateManager'
+import arc from './arc'
 import circle from './circle'
 import line from './line'
 import polygon from './polygon'
 import rect from './rect'
 import text from './text'
-import arc from './arc'
+import textBox from './textBox'
 
-const extensions = [circle, line, polygon, rect, text, arc]
+const extensions = [arc, circle, line, polygon, rect, text, textBox]
 
 const figureTemplateManager = new TemplateManager<FigureTemplate<any, any>>(extensions)
 

@@ -93,21 +93,25 @@ export interface TextStyle extends Padding {
   backgroundColor: string | CanvasGradient
 }
 
-/**
- * @deprecated
- * Starting from v10, it will be deleted
- */
-export type RectTextStyle = TextStyle
+export interface TextBoxStyle extends TextStyle {
+  textAlign?: CanvasTextAlign
+  textBaseline?: CanvasTextBaseline
+  // constraint 约束
+  // 可选：每行的最大宽度（像素）
+  maxWidth?: number
+  // 可选：内容区域最大高度（像素）
+  maxHeight?: number
+  // 可选：最大行数（不设置则不限制行数）
+  maxLines?: number
+  // 可选：最大字符数（不设置则不限制字符数）
+  maxChars?: number
+  // 可选：截断时显示的文本（默认 '...'）
+  ellipsis?: string
+}
 
 export interface StateTextStyle extends TextStyle {
   show: boolean
 }
-
-/**
- * @deprecated
- * Starting from v10, it will be deleted
- */
-export type StateRectTextStyle = StateTextStyle
 
 export type LastValueMarkTextStyle = Omit<StateTextStyle, 'backgroundColor'>
 
@@ -380,11 +384,7 @@ export interface OverlayStyle {
   circle: PolygonStyle
   arc: LineStyle
   text: TextStyle
-  /**
-   * @deprecated
-   * Starting from v10, it will be deleted
-   */
-  rectText: TextStyle
+  textBox: TextBoxStyle
   [key: string]: any
 }
 
@@ -726,25 +726,6 @@ function getDefaultCrosshairStyle (): CrosshairStyle {
 }
 
 function getDefaultOverlayStyle (): OverlayStyle {
-  function text (): TextStyle {
-    return {
-      style: PolygonType.Fill,
-      color: '#000000',
-      size: 12,
-      family: 'Helvetica Neue',
-      weight: 'normal',
-      borderStyle: LineType.Solid,
-      borderDashedValue: [2, 2],
-      borderSize: 1,
-      borderRadius: 2,
-      borderColor: '#FFC62B',
-      paddingLeft: 4,
-      paddingRight: 4,
-      paddingTop: 4,
-      paddingBottom: 4,
-      backgroundColor: '#FFC62B'
-    }
-  }
   return {
     point: {
       color: '#FFC62B',
@@ -794,8 +775,52 @@ function getDefaultOverlayStyle (): OverlayStyle {
       size: 1,
       dashedValue: [2, 2]
     },
-    text: text(),
-    rectText: text()
+    text: {
+      style: PolygonType.Fill,
+      color: '#000000',
+      size: 12,
+      family: 'Helvetica Neue',
+      weight: 'normal',
+      borderStyle: LineType.Solid,
+      borderDashedValue: [2, 2],
+      borderSize: 1,
+      borderRadius: 2,
+      borderColor: '#FFC62B',
+      paddingLeft: 4,
+      paddingRight: 4,
+      paddingTop: 4,
+      paddingBottom: 4,
+      backgroundColor: '#FFC62B'
+    },
+    textBox: {
+      style: PolygonType.Fill,
+      color: '#000000',
+      size: 12,
+      family: 'Helvetica Neue',
+      weight: 'normal',
+      borderStyle: LineType.Solid,
+      borderDashedValue: [2, 2],
+      borderSize: 1,
+      borderRadius: 2,
+      borderColor: '#FFC62B',
+      paddingLeft: 4,
+      paddingRight: 4,
+      paddingTop: 4,
+      paddingBottom: 4,
+      backgroundColor: '#FFC62B',
+      // textAlign: 'left',
+      textAlign: 'center',
+      // textAlign: 'right',
+      // textBaseline: 'hanging',
+      // textBaseline: 'middle',
+      // textBaseline: 'bottom',
+      // textBaseline: 'ideographic',
+      // textBaseline: 'alphabetic',
+      maxWidth: 100,
+      // maxChars: 20
+      maxLines: 2
+      // maxHeight: 50
+    }
   }
 }
 

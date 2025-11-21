@@ -12,12 +12,12 @@
  * limitations under the License.
  */
 
-import { type OverlayTemplate } from '../../component/Overlay'
-import { isFunction, isValid } from '../../common/utils/typeChecks'
-import { LineType } from '../../common/Styles'
+import { type OverlayTemplate } from '../../../component/Overlay'
+import { isFunction, isValid } from '../../../common/utils/typeChecks'
+import { LineType } from '../../../common/Styles'
 
-const simpleAnnotation: OverlayTemplate = {
-  name: 'simpleAnnotation',
+const textLog: OverlayTemplate = {
+  name: 'textLog',
   totalStep: 2,
   styles: {
     line: { style: LineType.Dashed }
@@ -32,7 +32,7 @@ const simpleAnnotation: OverlayTemplate = {
       }
     }
     const startX = coordinates[0].x
-    const startY = coordinates[0].y - 6 // 距离像素 y 值往上 6px
+    const startY = coordinates[0].y
     const lineEndY = startY - 50
     const arrowEndY = lineEndY - 5
     return [
@@ -42,17 +42,17 @@ const simpleAnnotation: OverlayTemplate = {
         ignoreEvent: true
       },
       {
-        type: 'polygon',
+        type: 'polygon', // 三角形
         attrs: { coordinates: [{ x: startX, y: lineEndY }, { x: startX - 4, y: arrowEndY }, { x: startX + 4, y: arrowEndY }] },
         ignoreEvent: true
       },
       {
-        type: 'text',
-        attrs: { x: startX, y: arrowEndY, text: text ?? '', align: 'center', baseline: 'bottom' },
+        type: 'textBox',
+        attrs: { x: startX, y: arrowEndY, text: text ?? '' },
         ignoreEvent: true
       }
     ]
   }
 }
 
-export default simpleAnnotation
+export default textLog
