@@ -1,5 +1,4 @@
 
-
 import type KLineData from '../../../common/KLineData'
 import { type IndicatorTemplate, IndicatorSeries, type IndicatorFigure } from '../../../component/Indicator'
 
@@ -7,7 +6,7 @@ interface Vol {
   volume?: number
 }
 
-function getVolumeFigure (): IndicatorFigure<Vol> {
+function getVolumeFigure(): IndicatorFigure<Vol> {
   return {
     key: 'volume',
     // title: 'VOLUME: ',

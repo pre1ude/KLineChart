@@ -13,7 +13,7 @@ export interface LogScaleOptions {
   base?: number
 }
 
-export function createLog ({ domain, base = Math.E, range, ...rest }: LogScaleOptions): LogScale {
+export function createLog({ domain, base = Math.E, range, ...rest }: LogScaleOptions): LogScale {
   const transform = (x: number): number => Math.log(x)
   let linear = createLinear({ domain: domain.map(transform) as [number, number], range, ...rest })
   const scale = (x: number): number => linear(transform(x))

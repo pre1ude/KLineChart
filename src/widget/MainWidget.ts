@@ -1,5 +1,4 @@
 
-
 import type DualYPane from '../pane/DualYPane'
 import { WidgetNameConstants } from './types'
 import DrawWidget from './DrawWidget'
@@ -15,7 +14,7 @@ import { setCursor } from '../common/utils/cursor'
 export default class MainWidget extends DrawWidget<DualYPane> {
   private readonly _layers: Layer[] = []
 
-  constructor (
+  constructor(
     rootContainer: HTMLElement,
     pane: DualYPane,
     layers: Layer[]
@@ -36,25 +35,25 @@ export default class MainWidget extends DrawWidget<DualYPane> {
     })
   }
 
-  getName (): string {
+  getName(): string {
     return WidgetNameConstants.MAIN
   }
 
-  protected updateMain (ctx: CanvasRenderingContext2D): void {
+  protected updateMain(ctx: CanvasRenderingContext2D): void {
     // 按顺序绘制所有 main layers
     this._layers.forEach(layer => {
       layer.drawMain?.(ctx)
     })
   }
 
-  protected updateOverlay (ctx: CanvasRenderingContext2D): void {
+  protected updateOverlay(ctx: CanvasRenderingContext2D): void {
     // 按顺序绘制所有 overlay layers
     this._layers.forEach(layer => {
       layer.drawOverlay?.(ctx)
     })
   }
 
-  override destroy (): void {
+  override destroy(): void {
     // 清理所有 layers
     this._layers.forEach(layer => {
       layer.destroy?.()

@@ -1,5 +1,4 @@
 
-
 import { formatPrecision } from '../../common/utils/format'
 
 import { type OverlayTemplate } from '../../component/Overlay'

@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../common/Nullable'
 import { UpdateLevel } from '../common/Updater'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
@@ -77,11 +76,11 @@ export default class OverlayStore {
     attrsIndex: -1
   }
 
-  constructor (chartStore: ChartStore) {
+  constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
   }
 
-  getInstanceById (id: string): Nullable<Overlay> {
+  getInstanceById(id: string): Nullable<Overlay> {
     for (const entry of this._instances) {
       const paneShapes = entry[1]
       const overlay = paneShapes.find(s => s.id === id)
@@ -97,7 +96,7 @@ export default class OverlayStore {
     return null
   }
 
-  private _sort (paneId?: string): void {
+  private _sort(paneId?: string): void {
     if (isString(paneId)) {
       this._instances.get(paneId)?.sort((o1, o2) => o1.zLevel - o2.zLevel)
     } else {
@@ -107,7 +106,7 @@ export default class OverlayStore {
     }
   }
 
-  addInstances (overlays: OverlayCreate[], paneId: string, appointPaneFlag: boolean): Array<Nullable<string>> {
+  addInstances(overlays: OverlayCreate[], paneId: string, appointPaneFlag: boolean): Array<Nullable<string>> {
     const ids = overlays.map(overlay => {
       const id = overlay.id ?? createId(OVERLAY_ID_PREFIX)
       if (this.getInstanceById(id) === null) {
@@ -144,11 +143,11 @@ export default class OverlayStore {
     return ids
   }
 
-  getProgressInstanceInfo (): Nullable<ProgressOverlayInfo> {
+  getProgressInstanceInfo(): Nullable<ProgressOverlayInfo> {
     return this._progressInstanceInfo
   }
 
-  progressInstanceComplete (): void {
+  progressInstanceComplete(): void {
     if (this._progressInstanceInfo !== null) {
       const { instance, paneId } = this._progressInstanceInfo
       if (!instance.isDrawing) {
@@ -162,7 +161,7 @@ export default class OverlayStore {
     }
   }
 
-  updateProgressInstanceInfo (paneId: string, appointPaneFlag?: boolean): void {
+  updateProgressInstanceInfo(paneId: string, appointPaneFlag?: boolean): void {
     if (this._progressInstanceInfo !== null) {
       if (isBoolean(appointPaneFlag) && appointPaneFlag) {
         this._progressInstanceInfo.appointPaneFlag = appointPaneFlag
@@ -172,7 +171,7 @@ export default class OverlayStore {
     }
   }
 
-  getInstances (paneId?: string): Overlay[] {
+  getInstances(paneId?: string): Overlay[] {
     if (!isString(paneId)) {
       let instances: Overlay[] = []
       this._instances.forEach(paneInstances => {
@@ -183,7 +182,7 @@ export default class OverlayStore {
     return this._instances.get(paneId) ?? []
   }
 
-  override (overlay: Partial<OverlayCreate>): void {
+  override(overlay: Partial<OverlayCreate>): void {
     const { id, groupId, name } = overlay
     let updateFlag = false
     let sortFlag = false
@@ -233,23 +232,19 @@ export default class OverlayStore {
     }
   }
 
-  removeInstance (overlayRemove?: OverlayRemove): void {
+  removeInstance(overlayRemove?: OverlayRemove): void {
     const match: ((remove: OverlayRemove, overlay: Overlay) => boolean) = (remove: OverlayRemove, overlay: Overlay) => {
       if (isString(remove.id)) {
         if (overlay.id !== remove.id) {
           return false
         }
-      } else {
-        if (isString(remove.groupId)) {
-          if (overlay.groupId !== remove.groupId) {
-            return false
-          }
-        } else {
-          if (isString(remove.name)) {
-            if (overlay.name !== remove.name) {
-              return false
-            }
-          }
+      } else if (isString(remove.groupId)) {
+        if (overlay.groupId !== remove.groupId) {
+          return false
+        }
+      } else if (isString(remove.name)) {
+        if (overlay.name !== remove.name) {
+          return false
         }
       }
       return true
@@ -305,15 +300,15 @@ export default class OverlayStore {
     }
   }
 
-  setPressedInstanceInfo (info: EventOverlayInfo): void {
+  setPressedInstanceInfo(info: EventOverlayInfo): void {
     this._pressedInstanceInfo = info
   }
 
-  getPressedInstanceInfo (): EventOverlayInfo {
+  getPressedInstanceInfo(): EventOverlayInfo {
     return this._pressedInstanceInfo
   }
 
-  updatePointPosition (dataChangeLength: number, type?: LoadDataType): void {
+  updatePointPosition(dataChangeLength: number, type?: LoadDataType): void {
     if (dataChangeLength > 0) {
       const dataList = this._chartStore.getDataList()
       this._instances.forEach(overlays => {
@@ -333,7 +328,7 @@ export default class OverlayStore {
     }
   }
 
-  setHoverInstanceInfo (info: EventOverlayInfo, event: MouseTouchEvent): void {
+  setHoverInstanceInfo(info: EventOverlayInfo, event: MouseTouchEvent): void {
     const { instance, figureType, figureKey, figureIndex } = this._hoverInstanceInfo
     if (
       instance?.id !== info.instance?.id ||
@@ -369,11 +364,11 @@ export default class OverlayStore {
     }
   }
 
-  getHoverInstanceInfo (): EventOverlayInfo {
+  getHoverInstanceInfo(): EventOverlayInfo {
     return this._hoverInstanceInfo
   }
 
-  setClickInstanceInfo (info: EventOverlayInfo, event: MouseTouchEvent): void {
+  setClickInstanceInfo(info: EventOverlayInfo, event: MouseTouchEvent): void {
     const { paneId, instance, figureType, figureKey, figureIndex } = this._clickInstanceInfo
     if (!(info.instance?.isDrawing ?? false)) {
       info.instance?.onClick?.({ overlay: info.instance, figureKey: info.figureKey, figureIndex: info.figureIndex, ...event })
@@ -393,15 +388,15 @@ export default class OverlayStore {
     }
   }
 
-  getClickInstanceInfo (): EventOverlayInfo {
+  getClickInstanceInfo(): EventOverlayInfo {
     return this._clickInstanceInfo
   }
 
-  isEmpty (): boolean {
+  isEmpty(): boolean {
     return this._instances.size === 0 && this._progressInstanceInfo === null
   }
 
-  isDrawing (): boolean {
+  isDrawing(): boolean {
     return this._progressInstanceInfo !== null && (this._progressInstanceInfo?.instance.isDrawing ?? false)
   }
 }

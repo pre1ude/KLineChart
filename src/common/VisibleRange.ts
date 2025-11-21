@@ -1,5 +1,4 @@
 
-
 export default interface VisibleRange {
   readonly from: number
   readonly to: number
@@ -9,10 +8,10 @@ export default interface VisibleRange {
   readonly domainTo: number
 }
 
-export function getDefaultVisibleRange (): VisibleRange {
+export function getDefaultVisibleRange(): VisibleRange {
   return { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
 }
 
-export function createDefaultTimeShareVisibleRange (timeTickLength: number): VisibleRange {
+export function createDefaultTimeShareVisibleRange(timeTickLength: number): VisibleRange {
   return { from: 0, to: 0, domainFrom: 0, domainTo: timeTickLength }
 }

@@ -1,5 +1,4 @@
 
-
 import type KLineData from '../../common/KLineData'
 import { type Indicator, type IndicatorTemplate } from '../../component/Indicator'
 import { getMaxMin } from '../../common/utils/number'

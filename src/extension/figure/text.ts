@@ -1,5 +1,4 @@
 
-
 import type Coordinate from '../../common/Coordinate'
 import { type TextStyle } from '../../common/Styles'
 
@@ -9,7 +8,7 @@ import { type FigureTemplate } from '../../component/Figure'
 
 import { type RectAttrs, drawRect } from './rect'
 
-export function getTextRect (attrs: TextAttrs, styles: Partial<TextStyle>): RectAttrs {
+export function getTextRect(attrs: TextAttrs, styles: Partial<TextStyle>): RectAttrs {
   const { size = 12, paddingLeft = 0, paddingTop = 0, paddingRight = 0, paddingBottom = 0, weight = 'normal', family } = styles
   const { x, y, text, align = 'left', baseline = 'top', width: w, height: h } = attrs
   const width = w ?? (paddingLeft + calcTextWidth(text, createFont(size, weight, family)) + paddingRight)
@@ -52,7 +51,7 @@ export function getTextRect (attrs: TextAttrs, styles: Partial<TextStyle>): Rect
   return { x: startX, y: startY, width, height }
 }
 
-export function checkCoordinateOnText (coordinate: Coordinate, attrs: TextAttrs | TextAttrs[], styles: Partial<TextStyle>): boolean {
+export function checkCoordinateOnText(coordinate: Coordinate, attrs: TextAttrs | TextAttrs[], styles: Partial<TextStyle>): boolean {
   let texts: TextAttrs[] = []
   texts = texts.concat(attrs)
   for (let i = 0; i < texts.length; i++) {
@@ -69,7 +68,7 @@ export function checkCoordinateOnText (coordinate: Coordinate, attrs: TextAttrs 
   return false
 }
 
-export function drawText (ctx: CanvasRenderingContext2D, attrs: TextAttrs | TextAttrs[], styles: Partial<TextStyle>): void {
+export function drawText(ctx: CanvasRenderingContext2D, attrs: TextAttrs | TextAttrs[], styles: Partial<TextStyle>): void {
   let texts: TextAttrs[] = []
   texts = texts.concat(attrs)
   const {

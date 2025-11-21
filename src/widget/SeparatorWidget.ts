@@ -1,5 +1,4 @@
 
-
 import type Bounding from '../common/Bounding'
 import { UpdateLevel } from '../common/Updater'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
@@ -21,35 +20,35 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
   private _topPaneHeight = 0
   private _bottomPaneHeight = 0
 
-  constructor (rootContainer: HTMLElement, pane: SeparatorPane) {
+  constructor(rootContainer: HTMLElement, pane: SeparatorPane) {
     super(rootContainer, pane)
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
     this.addEventListener('touchStartEvent', this._mouseDownEvent.bind(this))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
       .addEventListener('touchMoveEvent', this._pressedMouseMoveEvent.bind(this))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
       .addEventListener('touchEndEvent', this._mouseUpEvent.bind(this))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
       .addEventListener('mouseDownEvent', this._mouseDownEvent.bind(this))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
       .addEventListener('mouseUpEvent', this._mouseUpEvent.bind(this))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
       .addEventListener('pressedMouseMoveEvent', this._pressedMouseMoveEvent.bind(this))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
       .addEventListener('mouseEnterEvent', this._mouseEnterEvent.bind(this))
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
       .addEventListener('mouseLeaveEvent', this._mouseLeaveEvent.bind(this))
   }
 
-  override getName (): string {
+  override getName(): string {
     return WidgetNameConstants.SEPARATOR
   }
 
-  override checkEventOn (): boolean {
+  override checkEventOn(): boolean {
     return true
   }
 
-  private _mouseDownEvent (event: MouseTouchEvent): boolean {
+  private _mouseDownEvent(event: MouseTouchEvent): boolean {
     this._dragFlag = true
     this._dragStartY = event.pageY
     const pane = this.getPane()
@@ -58,15 +57,14 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
     return true
   }
 
-  private _mouseUpEvent (): boolean {
+  private _mouseUpEvent(): boolean {
     this._dragFlag = false
     return this._mouseLeaveEvent()
   }
 
-  // eslint-disable-next-line @typescript-eslint/unbound-method
   private readonly _pressedMouseMoveEvent = throttle(this._pressedTouchMouseMoveEvent, 20)
 
-  private _pressedTouchMouseMoveEvent (event: MouseTouchEvent): boolean {
+  private _pressedTouchMouseMoveEvent(event: MouseTouchEvent): boolean {
     const dragDistance = event.pageY - this._dragStartY
     const currentPane = this.getPane()
     const topPane = currentPane.getTopPane() as DualYPane
@@ -105,7 +103,7 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
     return true
   }
 
-  private _mouseEnterEvent (): boolean {
+  private _mouseEnterEvent(): boolean {
     const pane = this.getPane()
     const bottomPane = pane.getBottomPane() as DualYPane
     if (bottomPane?.getOptions().dragEnabled ?? false) {
@@ -117,7 +115,7 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
     return false
   }
 
-  private _mouseLeaveEvent (): boolean {
+  private _mouseLeaveEvent(): boolean {
     if (!this._dragFlag) {
       this.getContainer().style.background = ''
       return true
@@ -125,7 +123,7 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
     return false
   }
 
-  override createContainer (): HTMLElement {
+  override createContainer(): HTMLElement {
     return createDom('div', {
       width: '100%',
       height: `${REAL_SEPARATOR_HEIGHT}px`,
@@ -139,7 +137,7 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
     })
   }
 
-  override updateImp (container: HTMLElement, _bounding: Bounding, level: UpdateLevel): void {
+  override updateImp(container: HTMLElement, _bounding: Bounding, level: UpdateLevel): void {
     if (level === UpdateLevel.All || level === UpdateLevel.Separator) {
       const styles = this.getPane().getChart().getStyles().separator
       container.style.top = `${-Math.floor((REAL_SEPARATOR_HEIGHT - styles.size) / 2)}px`

@@ -1,5 +1,4 @@
 
-
 import { type OverlayTemplate } from '../../component/Overlay'
 
 const horizontalStraightLine: OverlayTemplate = {

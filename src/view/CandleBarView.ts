@@ -1,5 +1,4 @@
 
-
 import type BarSpace from '../common/BarSpace'
 import { CandleType, type CandleBarColor, type RectStyle, PolygonType } from '../common/Styles'
 import type ChartStore from '../store/ChartStore'
@@ -18,7 +17,7 @@ export interface CandleBarOptions {
 }
 
 export default class CandleBarView extends View {
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const pane = this.getWidget().getPane()
     const chartStore = pane.getChart().getChartStore()
     const candleBarOptions = this.getCandleBarOptions(chartStore)
@@ -39,7 +38,7 @@ export default class CandleBarView extends View {
       const visibleDataList = chartStore.getVisibleDataList()
       const barSpace = chartStore.getTimeScaleStore().getBarSpace()
 
-      visibleDataList.forEach((data) => {
+      visibleDataList.forEach(data => {
         const { data: kLineData, x } = data
         if (isValid(kLineData)) {
           const { open, high, low, close } = kLineData
@@ -142,7 +141,7 @@ export default class CandleBarView extends View {
     }
   }
 
-  protected getCandleBarOptions (chartStore: ChartStore): CandleBarOptions | undefined {
+  protected getCandleBarOptions(chartStore: ChartStore): CandleBarOptions | undefined {
     const pane = this.getWidget().getPane()
     const paneId = pane.getId()
     const isMain = paneId === PaneIdConstants.CANDLE
@@ -154,40 +153,40 @@ export default class CandleBarView extends View {
         type: candleStyles.type as Exclude<CandleType, CandleType.Area>,
         styles: candleStyles.bar
       }
-    } else {
-      // 副图：检查是否有指标需要 OHLC
-      const indicators = chartStore.getIndicatorStore().getInstances(paneId)
-      for (const indicator of indicators) {
-        if (indicator.shouldOhlc && indicator.visible) {
-          const defaultOhlcStyles = chartStore.getStyles().indicator.ohlc
-          const ohlcStyles = {
-            ...defaultOhlcStyles,
-            ...indicator.styles?.ohlc
-          }
-          const upColor = ohlcStyles.upColor
-          const downColor = ohlcStyles.downColor
-          const noChangeColor = ohlcStyles.noChangeColor
-          return {
-            type: CandleType.Ohlc,
-            styles: {
-              upColor,
-              downColor,
-              noChangeColor,
-              upBorderColor: upColor,
-              downBorderColor: downColor,
-              noChangeBorderColor: noChangeColor,
-              upWickColor: upColor,
-              downWickColor: downColor,
-              noChangeWickColor: noChangeColor
-            }
+    }
+    // 副图：检查是否有指标需要 OHLC
+    const indicators = chartStore.getIndicatorStore().getInstances(paneId)
+    for (const indicator of indicators) {
+      if (indicator.shouldOhlc && indicator.visible) {
+        const defaultOhlcStyles = chartStore.getStyles().indicator.ohlc
+        const ohlcStyles = {
+          ...defaultOhlcStyles,
+          ...indicator.styles?.ohlc
+        }
+        const upColor = ohlcStyles.upColor
+        const downColor = ohlcStyles.downColor
+        const noChangeColor = ohlcStyles.noChangeColor
+        return {
+          type: CandleType.Ohlc,
+          styles: {
+            upColor,
+            downColor,
+            noChangeColor,
+            upBorderColor: upColor,
+            downBorderColor: downColor,
+            noChangeBorderColor: noChangeColor,
+            upWickColor: upColor,
+            downWickColor: downColor,
+            noChangeWickColor: noChangeColor
           }
         }
       }
     }
+
     return undefined
   }
 
-  private _createSolidBar (x: number, priceY: number[], barSpace: BarSpace, colors: string[]): Array<FigureCreate<RectAttrs | RectAttrs[], Partial<RectStyle>>> {
+  private _createSolidBar(x: number, priceY: number[], barSpace: BarSpace, colors: string[]): Array<FigureCreate<RectAttrs | RectAttrs[], Partial<RectStyle>>> {
     return [
       {
         name: 'rect',
@@ -216,7 +215,7 @@ export default class CandleBarView extends View {
     ]
   }
 
-  private _createStrokeBar (x: number, priceY: number[], barSpace: BarSpace, colors: string[]): Array<FigureCreate<RectAttrs | RectAttrs[], Partial<RectStyle>>> {
+  private _createStrokeBar(x: number, priceY: number[], barSpace: BarSpace, colors: string[]): Array<FigureCreate<RectAttrs | RectAttrs[], Partial<RectStyle>>> {
     return [
       {
         name: 'rect',

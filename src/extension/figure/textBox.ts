@@ -1,5 +1,4 @@
 
-
 import type Coordinate from '../../common/Coordinate'
 import { type TextBoxStyle } from '../../common/Styles'
 
@@ -69,7 +68,7 @@ interface TextLayout {
 }
 
 // 提取公共的对齐计算逻辑
-function calculateStartX (x: number, width: number, textAlign: CanvasTextAlign = 'left'): number {
+function calculateStartX(x: number, width: number, textAlign: CanvasTextAlign = 'left'): number {
   switch (textAlign) {
     case 'left':
     case 'start':
@@ -89,7 +88,7 @@ interface VerticalLayoutInfo {
   ideographicline: number
 }
 
-function calculateStartY (y: number, info: VerticalLayoutInfo, testBaseline: CanvasTextBaseline = 'top'): number {
+function calculateStartY(y: number, info: VerticalLayoutInfo, testBaseline: CanvasTextBaseline = 'top'): number {
   switch (testBaseline) {
     case 'top':
       return y
@@ -106,7 +105,7 @@ function calculateStartY (y: number, info: VerticalLayoutInfo, testBaseline: Can
   }
 }
 
-function createVerticalLayoutInfo (fontSize: number): VerticalLayoutInfo {
+function createVerticalLayoutInfo(fontSize: number): VerticalLayoutInfo {
   // 简易排版模型：
   // 真正的精准排版需要 TextMetrics 的 fontBoundingBoxAscent，但会有性能损耗。
   // 这里使用常见的倍率估算。
@@ -119,7 +118,7 @@ function createVerticalLayoutInfo (fontSize: number): VerticalLayoutInfo {
 }
 
 // Layout 阶段：计算文本的布局信息（不涉及绘制）
-function layoutText (attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLayout {
+function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLayout {
   const text = attrs.text
 
   // 提取样式参数
@@ -305,7 +304,7 @@ function layoutText (attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLa
   }
 }
 
-function paintText (
+function paintText(
   ctx: CanvasRenderingContext2D,
   text: string,
   layout: TextLayout,
@@ -353,7 +352,7 @@ function paintText (
 }
 
 // 主渲染函数：先 Layout，后 Paint
-export function drawText (
+export function drawText(
   ctx: CanvasRenderingContext2D,
   attrs: TextBoxAttrs,
   styles: Partial<TextBoxStyle>
@@ -376,7 +375,7 @@ export interface TextBoxAttrs {
 }
 
 // 获取或创建 Layout（带缓存）
-function getOrCreateLayout (attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLayout {
+function getOrCreateLayout(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLayout {
   let layout = layoutCache.get(attrs)
   if (!layout) {
     layout = layoutText(attrs, styles)
@@ -386,7 +385,7 @@ function getOrCreateLayout (attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>):
 }
 
 // 碰撞检测
-function isPointInBounds (coordinate: Coordinate, bounds: TextLayout['bounds']): boolean {
+function isPointInBounds(coordinate: Coordinate, bounds: TextLayout['bounds']): boolean {
   return (
     coordinate.x >= bounds.x &&
     coordinate.x <= bounds.x + bounds.width &&

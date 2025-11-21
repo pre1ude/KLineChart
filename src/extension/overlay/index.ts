@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../../common/Nullable'
 import { TemplateManager } from '../../common/TemplateManager'
 import { type OverlayTemplate } from '../../component/Overlay'
@@ -30,15 +29,15 @@ const extensions = [
 
 const overlayTemplateManager = new TemplateManager<OverlayTemplate>(extensions)
 
-function registerOverlay (template: OverlayTemplate): void {
+function registerOverlay(template: OverlayTemplate): void {
   overlayTemplateManager.add(template)
 }
 
-function getOverlayTemplate (name: string): Nullable<OverlayTemplate> {
+function getOverlayTemplate(name: string): Nullable<OverlayTemplate> {
   return overlayTemplateManager.get(name)
 }
 
-function getSupportedOverlays (): string[] {
+function getSupportedOverlays(): string[] {
   return overlayTemplateManager.keys()
 }
 

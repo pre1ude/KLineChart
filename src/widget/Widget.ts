@@ -1,5 +1,4 @@
 
-
 import type Bounding from '../common/Bounding'
 import { createDefaultBounding } from '../common/Bounding'
 import type Updater from '../common/Updater'
@@ -26,7 +25,7 @@ export default abstract class Widget<P extends Pane = Pane> extends Eventful imp
 
   private readonly _bounding: Bounding = createDefaultBounding()
 
-  constructor (rootContainer: HTMLElement, pane: P) {
+  constructor(rootContainer: HTMLElement, pane: P) {
     super()
     this._pane = pane
     this._rootContainer = rootContainer
@@ -34,32 +33,32 @@ export default abstract class Widget<P extends Pane = Pane> extends Eventful imp
     rootContainer.appendChild(this._container)
   }
 
-  setBounding (bounding: Partial<Bounding>): this {
+  setBounding(bounding: Partial<Bounding>): this {
     merge(this._bounding, bounding)
     return this
   }
 
-  getContainer (): HTMLElement { return this._container }
+  getContainer(): HTMLElement { return this._container }
 
-  getBounding (): Bounding {
+  getBounding(): Bounding {
     return this._bounding
   }
 
-  getPane (): P {
+  getPane(): P {
     return this._pane
   }
 
-  update (level?: UpdateLevel): void {
+  update(level?: UpdateLevel): void {
     this.updateImp(this._container, this._bounding, level ?? UpdateLevel.Drawer)
   }
 
-  destroy (): void {
+  destroy(): void {
     this._rootContainer.removeChild(this._container)
   }
 
-  abstract getName (): string
+  abstract getName(): string
 
-  protected abstract createContainer (): HTMLElement
+  protected abstract createContainer(): HTMLElement
 
-  protected abstract updateImp (container: HTMLElement, bounding: Bounding, level: UpdateLevel): void
+  protected abstract updateImp(container: HTMLElement, bounding: Bounding, level: UpdateLevel): void
 }

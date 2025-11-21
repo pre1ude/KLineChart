@@ -1,5 +1,4 @@
 
-
 import { EventPhase, type EventName, type MouseTouchEvent, type MouseTouchEventCallback } from './SyntheticEvent'
 
 export default abstract class Eventful {
@@ -7,7 +6,7 @@ export default abstract class Eventful {
   private readonly _bubbleCallbacks = new Map<EventName, MouseTouchEventCallback[]>()
   private readonly _captureCallbacks = new Map<EventName, MouseTouchEventCallback[]>()
 
-  addEventListener (name: EventName, callback: MouseTouchEventCallback, useCapture = false): this {
+  addEventListener(name: EventName, callback: MouseTouchEventCallback, useCapture = false): this {
     const callbacks = useCapture ? this._captureCallbacks : this._bubbleCallbacks
     if (!callbacks.has(name)) {
       callbacks.set(name, [])
@@ -16,7 +15,7 @@ export default abstract class Eventful {
     return this
   }
 
-  removeEventListener (name: EventName, callback: MouseTouchEventCallback, useCapture = false): this {
+  removeEventListener(name: EventName, callback: MouseTouchEventCallback, useCapture = false): this {
     const callbacks = useCapture ? this._captureCallbacks : this._bubbleCallbacks
     const handlers = callbacks.get(name)
     if (handlers) {
@@ -28,11 +27,11 @@ export default abstract class Eventful {
     return this
   }
 
-  dispatchEvent (name: EventName, event: MouseTouchEvent, other?: unknown): boolean {
+  dispatchEvent(name: EventName, event: MouseTouchEvent, other?: unknown): boolean {
     return this._dispatchEvent([], name, event, other)
   }
 
-  private _dispatchEvent (path: Eventful[], name: EventName, event: MouseTouchEvent, other?: unknown): boolean {
+  private _dispatchEvent(path: Eventful[], name: EventName, event: MouseTouchEvent, other?: unknown): boolean {
     path.push(this)
 
     // 递归查找命中的子元素
@@ -78,7 +77,7 @@ export default abstract class Eventful {
     return false
   }
 
-  private triggerCallbacks (
+  private triggerCallbacks(
     callbacksMap: Map<EventName, MouseTouchEventCallback[]>,
     name: EventName,
     event: MouseTouchEvent,
@@ -95,20 +94,20 @@ export default abstract class Eventful {
     }
   }
 
-  checkEventOn (_event: MouseTouchEvent, _name: EventName, _other?: unknown): boolean {
+  checkEventOn(_event: MouseTouchEvent, _name: EventName, _other?: unknown): boolean {
     return false
   }
 
-  addChild (eventful: Eventful): this {
+  addChild(eventful: Eventful): this {
     this._children.push(eventful)
     return this
   }
 
-  clear (): void {
+  clear(): void {
     this._children.length = 0
   }
 
-  protected getChildren (): Eventful[] {
+  protected getChildren(): Eventful[] {
     return this._children
   }
 }

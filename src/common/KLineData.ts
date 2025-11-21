@@ -1,5 +1,4 @@
 
-
 export default interface KLineData {
   timestamp: number
   open: number

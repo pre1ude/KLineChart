@@ -1,14 +1,13 @@
 
-
 let measureCtx: CanvasRenderingContext2D
 
 let scale: number = 1
 
-export function setScale (v: number): void {
+export function setScale(v: number): void {
   scale = v
 }
 
-export function getScale (): number {
+export function getScale(): number {
   return scale
 }
 
@@ -17,18 +16,18 @@ export function getScale (): number {
  * @param canvas
  * @returns {number}
  */
-export function getPixelRatio (canvas: HTMLCanvasElement): number {
+export function getPixelRatio(canvas: HTMLCanvasElement): number {
   const scale = getScale()
   let dpr = (canvas.ownerDocument?.defaultView?.devicePixelRatio ?? 1) * scale
   dpr = Math.round(dpr * 100) / 100
   return dpr < 1 ? 1 : dpr > 3 ? 3 : dpr
 }
 
-export function createFont (size?: number, weight?: string | number, family?: string): string {
+export function createFont(size?: number, weight?: string | number, family?: string): string {
   return `${weight ?? 'normal'} ${size ?? 12}px ${family ?? 'Helvetica Neue'}`
 }
 
-export function getMeasureContext (): CanvasRenderingContext2D {
+export function getMeasureContext(): CanvasRenderingContext2D {
   if (!measureCtx) {
     const canvas = document.createElement('canvas')
     measureCtx = canvas.getContext('2d')!
@@ -44,7 +43,7 @@ export function getMeasureContext (): CanvasRenderingContext2D {
  * @param font - font string (e.g., "12px Arial" or "bold 14px sans-serif")
  * @returns {number}
  */
-export function calcTextWidth (text: string, font: string): number {
+export function calcTextWidth(text: string, font: string): number {
   const measureCtx = getMeasureContext()
   measureCtx.font = font
   return Math.round(measureCtx.measureText(text).width)
@@ -58,7 +57,7 @@ const breakCharSet = new Set(['?', '-', ' ', ',', '.', '!', ';', ':', '/', '\\',
  * @param ch 字符
  * @returns 是否是断词字符
  */
-function isWordBreakChar (ch: string): boolean {
+function isWordBreakChar(ch: string): boolean {
   const code = ch.charCodeAt(0)
   // 拉丁字符范围内，检查是否在断词字符集合中
   if (code < 0x2e80) {
@@ -73,7 +72,7 @@ function isWordBreakChar (ch: string): boolean {
  * @param text 文本
  * @returns 断词位置数组（索引）
  */
-function findBreakPoints (text: string): number[] {
+function findBreakPoints(text: string): number[] {
   const breakPoints: number[] = [0] // 起始位置
 
   for (let i = 0; i < text.length; i++) {
@@ -102,7 +101,7 @@ function findBreakPoints (text: string): number[] {
  * @param ellipsisWidth - 省略号宽度（用于最后一行预留空间）
  * @returns { breakIndex: 换行断点数组, lineWidths: 每行的宽度数组 }
  */
-export function calcBreakIndex (
+export function calcBreakIndex(
   text: string,
   fitWidth: number,
   font: string,

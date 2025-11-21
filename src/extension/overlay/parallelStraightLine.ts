@@ -1,5 +1,4 @@
 
-
 import type Coordinate from '../../common/Coordinate'
 import type Bounding from '../../common/Bounding'
 
@@ -14,7 +13,7 @@ import { type LineAttrs, getLinearSlopeIntercept } from '../figure/line'
  * @param extendParallelLineCount
  * @returns {Array}
  */
-export function getParallelLines (coordinates: Coordinate[], bounding: Bounding, extendParallelLineCount?: number): LineAttrs[] {
+export function getParallelLines(coordinates: Coordinate[], bounding: Bounding, extendParallelLineCount?: number): LineAttrs[] {
   const count = extendParallelLineCount ?? 0
   const lines: LineAttrs[] = []
   if (coordinates.length > 1) {

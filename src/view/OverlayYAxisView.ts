@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../common/Nullable'
 import type Coordinate from '../common/Coordinate'
 import type Bounding from '../common/Bounding'
@@ -16,11 +15,11 @@ import OverlayView from './OverlayView'
 import type YAxisWidget from '../widget/YAxisWidget'
 
 export default class OverlayYAxisView extends OverlayView {
-  override coordinateToPointTimestampDataIndexFlag (): boolean {
+  override coordinateToPointTimestampDataIndexFlag(): boolean {
     return false
   }
 
-  override drawDefaultFigures (
+  override drawDefaultFigures(
     ctx: CanvasRenderingContext2D,
     overlay: Overlay,
     coordinates: Coordinate[],
@@ -44,7 +43,7 @@ export default class OverlayYAxisView extends OverlayView {
     )
   }
 
-  protected getDefaultFigures (
+  protected getDefaultFigures(
     overlay: Overlay,
     coordinates: Coordinate[],
     bounding: Bounding,
@@ -86,7 +85,7 @@ export default class OverlayYAxisView extends OverlayView {
     return figures
   }
 
-  override getFigures (
+  override getFigures(
     overlay: Overlay,
     coordinates: Coordinate[],
     bounding: Bounding,

@@ -1,5 +1,4 @@
 
-
 import { WidgetNameConstants } from './types'
 import DrawWidget from './DrawWidget'
 import type SingleWidgetPane from '../pane/SingleWidgetPane'
@@ -24,7 +23,7 @@ export default class XAxisWidget extends DrawWidget<SingleWidgetPane> {
   private readonly _overlayXAxisView = new OverlayXAxisView(this)
   private readonly _crosshairVerticalLabelView = new CrosshairVerticalLabelView(this)
 
-  constructor (rootContainer: HTMLElement, pane: SingleWidgetPane, options: PaneOptions) {
+  constructor(rootContainer: HTMLElement, pane: SingleWidgetPane, options: PaneOptions) {
     super(rootContainer, pane)
 
     setCursor(this.getContainer(), 'ew-resize')
@@ -32,11 +31,11 @@ export default class XAxisWidget extends DrawWidget<SingleWidgetPane> {
     this.setOptions(options.axisOptions ?? { name: 'default', scrollZoomEnabled: true })
   }
 
-  getOptions (): PaneAxisOptions {
+  getOptions(): PaneAxisOptions {
     return this._axisOptions
   }
 
-  setOptions (options: PaneAxisOptions): void {
+  setOptions(options: PaneAxisOptions): void {
     const name = options?.name
     if (
       (this._axisOptions.name !== name && isString(name)) ||
@@ -47,24 +46,24 @@ export default class XAxisWidget extends DrawWidget<SingleWidgetPane> {
     this._axisOptions = options
   }
 
-  createAxisComponent (name: string): XAxis {
+  createAxisComponent(name: string): XAxis {
     const XAxisClass = getXAxisClass(name)
     return new XAxisClass(this)
   }
 
-  getAxisComponent (): XAxis {
+  getAxisComponent(): XAxis {
     return this._axis
   }
 
-  override getName (): string {
+  override getName(): string {
     return WidgetNameConstants.X_AXIS
   }
 
-  override updateMain (ctx: CanvasRenderingContext2D): void {
+  override updateMain(ctx: CanvasRenderingContext2D): void {
     this._xAxisView.draw(ctx)
   }
 
-  override updateOverlay (ctx: CanvasRenderingContext2D): void {
+  override updateOverlay(ctx: CanvasRenderingContext2D): void {
     this._overlayXAxisView.draw(ctx)
     this._crosshairVerticalLabelView.draw(ctx)
   }

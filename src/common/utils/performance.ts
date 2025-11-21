@@ -1,6 +1,5 @@
 
-
-export function throttle (func: (...args: any[]) => any, wait?: number): () => void {
+export function throttle(func: (...args: any[]) => any, wait?: number): () => void {
   let previous = 0
   return function () {
     const now = Date.now()

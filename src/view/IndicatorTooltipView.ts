@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../common/Nullable'
 import type KLineData from '../common/KLineData'
 import type Crosshair from '../common/Crosshair'
@@ -31,7 +30,7 @@ export default class IndicatorTooltipView extends View {
     return true
   }
 
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
     const chartStore = pane.getChart().getChartStore()
@@ -55,7 +54,7 @@ export default class IndicatorTooltipView extends View {
     }
   }
 
-  protected drawIndicatorTooltip (
+  protected drawIndicatorTooltip(
     ctx: CanvasRenderingContext2D,
     paneId: string,
     dataList: KLineData[],
@@ -131,7 +130,7 @@ export default class IndicatorTooltipView extends View {
   }
 
   // todo need optimize
-  protected drawStandardTooltipIcons (
+  protected drawStandardTooltipIcons(
     ctx: CanvasRenderingContext2D,
     activeIcon: Nullable<TooltipIcon>,
     icons: TooltipIconStyle[],
@@ -193,7 +192,7 @@ export default class IndicatorTooltipView extends View {
     return prevRowHeight
   }
 
-  protected drawStandardTooltipLegends (
+  protected drawStandardTooltipLegends(
     ctx: CanvasRenderingContext2D,
     legends: TooltipLegend[],
     coordinate: Coordinate,
@@ -235,13 +234,13 @@ export default class IndicatorTooltipView extends View {
     return prevRowHeight
   }
 
-  protected isDrawTooltip (crosshair: Crosshair, styles: TooltipStyle): boolean {
+  protected isDrawTooltip(crosshair: Crosshair, styles: TooltipStyle): boolean {
     const showRule = styles.showRule
     return showRule === TooltipShowRule.Always ||
       (showRule === TooltipShowRule.FollowCross && isString(crosshair.paneId))
   }
 
-  protected getIndicatorTooltipData (
+  protected getIndicatorTooltipData(
     dataList: KLineData[],
     crosshair: Crosshair,
     indicator: Indicator,
@@ -346,7 +345,7 @@ export default class IndicatorTooltipView extends View {
     return tooltipData
   }
 
-  protected classifyTooltipIcons (icons: TooltipIconStyle[]): TooltipIconStyle[][] {
+  protected classifyTooltipIcons(icons: TooltipIconStyle[]): TooltipIconStyle[][] {
     const leftIcons: TooltipIconStyle[] = []
     const middleIcons: TooltipIconStyle[] = []
     const rightIcons: TooltipIconStyle[] = []

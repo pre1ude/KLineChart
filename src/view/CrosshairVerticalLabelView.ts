@@ -1,5 +1,4 @@
 
-
 import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
 import { type CrosshairStyle, type CrosshairDirectionStyle, type StateTextStyle } from '../common/Styles'
@@ -11,7 +10,7 @@ import { type TextAttrs } from '../extension/figure/text'
 import { genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 
 export default class CrosshairVerticalLabelView extends CrosshairLabelView {
-  override compare (crosshair: Crosshair): boolean {
+  override compare(crosshair: Crosshair): boolean {
     const chartStore = this.getWidget().getPane().getChart().getChartStore()
     const isTimeShare = chartStore.getIsTimeShare()
 
@@ -31,11 +30,11 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
     return isValid(crosshair.kLineData) && crosshair.dataIndex === crosshair.realDataIndex
   }
 
-  override getDirectionStyles (styles: CrosshairStyle): CrosshairDirectionStyle {
+  override getDirectionStyles(styles: CrosshairStyle): CrosshairDirectionStyle {
     return styles.vertical
   }
 
-  override getText (crosshair: Crosshair, chartStore: ChartStore): string {
+  override getText(crosshair: Crosshair, chartStore: ChartStore): string {
     const isTimeShare = chartStore.getIsTimeShare()
 
     let timestamp = crosshair.kLineData?.timestamp
@@ -57,7 +56,7 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
   }
 
   // todo need optimize
-  override getTextAttrs (text: string, textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs {
+  override getTextAttrs(text: string, textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs {
     const x = crosshair.realX!
     let optimalX: number
     let align: CanvasTextAlign = 'center'

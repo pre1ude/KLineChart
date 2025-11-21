@@ -16,13 +16,13 @@ export default abstract class Pane implements Updater {
 
   private readonly _bounding: Bounding = createDefaultBounding()
 
-  constructor (rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string) {
+  constructor(rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string) {
     this._chart = chart
     this._id = id
     this._init(rootContainer, afterElement)
   }
 
-  private _init (rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>): void {
+  private _init(rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>): void {
     this._rootContainer = rootContainer
     this._container = createDom('div', {
       width: '100%',
@@ -39,36 +39,36 @@ export default abstract class Pane implements Updater {
     }
   }
 
-  getContainer (): HTMLElement {
+  getContainer(): HTMLElement {
     return this._container
   }
 
-  getId (): string {
+  getId(): string {
     return this._id
   }
 
-  getChart (): Chart {
+  getChart(): Chart {
     return this._chart
   }
 
-  getBounding (): Bounding {
+  getBounding(): Bounding {
     return this._bounding
   }
 
-  update (level?: UpdateLevel): void {
+  update(level?: UpdateLevel): void {
     if (this._bounding.height !== this._container.clientHeight) {
       this._container.style.height = `${this._bounding.height}px`
     }
     this.updateImp(level ?? UpdateLevel.Drawer, this._container, this._bounding)
   }
 
-  destroy (): void {
+  destroy(): void {
     this._rootContainer.removeChild(this._container)
   }
 
-  abstract setBounding (...bounding: Array<Partial<Bounding>>): Pane
+  abstract setBounding(...bounding: Array<Partial<Bounding>>): Pane
 
-  abstract getImage (includeOverlay: boolean): HTMLCanvasElement
+  abstract getImage(includeOverlay: boolean): HTMLCanvasElement
 
-  abstract updateImp (level: UpdateLevel, container: HTMLElement, bounding: Bounding): void
+  abstract updateImp(level: UpdateLevel, container: HTMLElement, bounding: Bounding): void
 }

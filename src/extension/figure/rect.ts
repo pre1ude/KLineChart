@@ -1,5 +1,4 @@
 
-
 import type Coordinate from '../../common/Coordinate'
 import { type RectStyle, PolygonType, LineType } from '../../common/Styles'
 import { isTransparent } from '../../common/utils/color'
@@ -7,7 +6,7 @@ import { isString } from '../../common/utils/typeChecks'
 
 import { type FigureTemplate, DEVIATION } from '../../component/Figure'
 
-export function checkCoordinateOnRect (coordinate: Coordinate, attrs: RectAttrs | RectAttrs[]): boolean {
+export function checkCoordinateOnRect(coordinate: Coordinate, attrs: RectAttrs | RectAttrs[]): boolean {
   let rects: RectAttrs[] = []
   rects = rects.concat(attrs)
   for (let i = 0; i < rects.length; i++) {
@@ -36,7 +35,7 @@ export function checkCoordinateOnRect (coordinate: Coordinate, attrs: RectAttrs 
   return false
 }
 
-export function drawRect (ctx: CanvasRenderingContext2D, attrs: RectAttrs | RectAttrs[], styles: Partial<RectStyle>): void {
+export function drawRect(ctx: CanvasRenderingContext2D, attrs: RectAttrs | RectAttrs[], styles: Partial<RectStyle>): void {
   let rects: RectAttrs[] = []
   rects = rects.concat(attrs)
   const {
@@ -48,7 +47,7 @@ export function drawRect (ctx: CanvasRenderingContext2D, attrs: RectAttrs | Rect
     borderRadius: r = 0,
     borderDashedValue = [2, 2]
   } = styles
-  // eslint-disable-next-line @typescript-eslint/unbound-method
+
   const draw = ctx.roundRect ?? ctx.rect
   const solid = (style === PolygonType.Fill || styles.style === PolygonType.StrokeFill) && (!isString(color) || !isTransparent(color))
   if (solid) {
@@ -77,10 +76,8 @@ export function drawRect (ctx: CanvasRenderingContext2D, attrs: RectAttrs | Rect
         draw.call(ctx, x + correction, y + correction, w - doubleCorrection, h - doubleCorrection, r)
         ctx.closePath()
         ctx.stroke()
-      } else {
-        if (!solid) {
-          ctx.fillRect(x, y, w, h)
-        }
+      } else if (!solid) {
+        ctx.fillRect(x, y, w, h)
       }
     })
   }

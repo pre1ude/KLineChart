@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../common/Nullable'
 import type Coordinate from '../common/Coordinate'
 import type Point from '../common/Point'
@@ -29,12 +28,12 @@ import type ChartStore from '../store/ChartStore'
 import type DualYPane from '../pane/DualYPane'
 
 export default class OverlayView extends View {
-  constructor (widget: DrawWidget<Pane>) {
+  constructor(widget: DrawWidget<Pane>) {
     super(widget)
     this._initEvent()
   }
 
-  private _initEvent (): void {
+  private _initEvent(): void {
     const pane = this.getWidget().getPane()
     const paneId = pane.getId()
     const overlayStore = pane.getChart().getChartStore().getOverlayStore()
@@ -165,7 +164,7 @@ export default class OverlayView extends View {
     })
   }
 
-  private _createFigureEvents (
+  private _createFigureEvents(
     overlay: Overlay,
     figureType: EventOverlayInfoFigureType,
     figureKey: string,
@@ -219,7 +218,7 @@ export default class OverlayView extends View {
     return eventHandler
   }
 
-  private _figureMouseMoveEvent (overlay: Overlay, figureType: EventOverlayInfoFigureType, figureKey: string, figureIndex: number, attrsIndex: number): MouseTouchEventCallback {
+  private _figureMouseMoveEvent(overlay: Overlay, figureType: EventOverlayInfoFigureType, figureKey: string, figureIndex: number, attrsIndex: number): MouseTouchEventCallback {
     return (event: MouseTouchEvent) => {
       const pane = this.getWidget().getPane()
       const overlayStore = pane.getChart().getChartStore().getOverlayStore()
@@ -230,7 +229,7 @@ export default class OverlayView extends View {
     }
   }
 
-  private _figureMouseDownEvent (overlay: Overlay, figureType: EventOverlayInfoFigureType, figureKey: string, figureIndex: number, attrsIndex: number): MouseTouchEventCallback {
+  private _figureMouseDownEvent(overlay: Overlay, figureType: EventOverlayInfoFigureType, figureKey: string, figureIndex: number, attrsIndex: number): MouseTouchEventCallback {
     return (event: MouseTouchEvent) => {
       const pane = this.getWidget().getPane()
       const paneId = pane.getId()
@@ -242,7 +241,7 @@ export default class OverlayView extends View {
     }
   }
 
-  private _figureMouseClickEvent (overlay: Overlay, figureType: EventOverlayInfoFigureType, figureKey: string, figureIndex: number, attrsIndex: number): MouseTouchEventCallback {
+  private _figureMouseClickEvent(overlay: Overlay, figureType: EventOverlayInfoFigureType, figureKey: string, figureIndex: number, attrsIndex: number): MouseTouchEventCallback {
     return (event: MouseTouchEvent) => {
       const pane = this.getWidget().getPane()
       const paneId = pane.getId()
@@ -252,14 +251,14 @@ export default class OverlayView extends View {
     }
   }
 
-  private _figureMouseDoubleClickEvent (overlay: Overlay, _figureType: EventOverlayInfoFigureType, figureKey: string, figureIndex: number, _attrsIndex: number): MouseTouchEventCallback {
+  private _figureMouseDoubleClickEvent(overlay: Overlay, _figureType: EventOverlayInfoFigureType, figureKey: string, figureIndex: number, _attrsIndex: number): MouseTouchEventCallback {
     return (event: MouseTouchEvent) => {
       overlay.onDoubleClick?.({ ...event, figureIndex, figureKey, overlay })
       return true
     }
   }
 
-  private _figureMouseRightClickEvent (overlay: Overlay, _figureType: EventOverlayInfoFigureType, figureKey: string, figureIndex: number, _attrsIndex: number): MouseTouchEventCallback {
+  private _figureMouseRightClickEvent(overlay: Overlay, _figureType: EventOverlayInfoFigureType, figureKey: string, figureIndex: number, _attrsIndex: number): MouseTouchEventCallback {
     return (event: MouseTouchEvent) => {
       if (!(overlay.onRightClick?.({ overlay, figureIndex, figureKey, ...event }) ?? false)) {
         const pane = this.getWidget().getPane()
@@ -270,7 +269,7 @@ export default class OverlayView extends View {
     }
   }
 
-  private _coordinateToPoint (overlay: Overlay, coordinate: Coordinate): Partial<Point> {
+  private _coordinateToPoint(overlay: Overlay, coordinate: Coordinate): Partial<Point> {
     const point: Partial<Point> = {}
     const widget = this.getWidget()
     const pane = widget.getPane()
@@ -341,15 +340,15 @@ export default class OverlayView extends View {
     return point
   }
 
-  protected coordinateToPointValueFlag (): boolean {
+  protected coordinateToPointValueFlag(): boolean {
     return true
   }
 
-  protected coordinateToPointTimestampDataIndexFlag (): boolean {
+  protected coordinateToPointTimestampDataIndexFlag(): boolean {
     return true
   }
 
-  override checkEventOn (event: MouseTouchEvent, name: EventName, other?: unknown): boolean {
+  override checkEventOn(event: MouseTouchEvent, name: EventName, other?: unknown): boolean {
     // 在绘制模式下，OverlayView 总是接收事件
     if (this.getWidget().getPane().getChart().getChartStore().getOverlayStore().isDrawing()) {
       return true
@@ -358,7 +357,7 @@ export default class OverlayView extends View {
     return super.checkEventOn(event, name, other)
   }
 
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget() as YAxisWidget
     const pane = widget.getPane()
     const paneId = pane.getId()
@@ -429,7 +428,7 @@ export default class OverlayView extends View {
     }
   }
 
-  private _drawOverlay (
+  private _drawOverlay(
     ctx: CanvasRenderingContext2D,
     overlay: Overlay,
     bounding: Bounding,
@@ -464,10 +463,8 @@ export default class OverlayView extends View {
               coordinate.y = yAxis?.convertToPixel(v) ?? 0
             }
           }
-        } else {
-          if (isNumber(point.value)) {
-            coordinate.y = yAxis?.convertToPixel(point.value) ?? 0
-          }
+        } else if (isNumber(point.value)) {
+          coordinate.y = yAxis?.convertToPixel(point.value) ?? 0
         }
       }
       return coordinate
@@ -503,7 +500,7 @@ export default class OverlayView extends View {
     )
   }
 
-  protected drawFigures (ctx: CanvasRenderingContext2D, overlay: Overlay, figures: OverlayFigure[], defaultStyles: OverlayStyle): void {
+  protected drawFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, figures: OverlayFigure[], defaultStyles: OverlayStyle): void {
     for (let i = 0; i < figures.length; i++) {
       const figure = figures[i]
       const { type, styles, attrs, ignoreEvent } = figure
@@ -518,18 +515,18 @@ export default class OverlayView extends View {
     }
   }
 
-  protected getCompleteOverlays (overlayStore: OverlayStore, paneId: string): Overlay[] {
+  protected getCompleteOverlays(overlayStore: OverlayStore, paneId: string): Overlay[] {
     return overlayStore.getInstances(paneId)
   }
 
-  protected getProgressOverlay (info: ProgressOverlayInfo, paneId: string): Nullable<Overlay> {
+  protected getProgressOverlay(info: ProgressOverlayInfo, paneId: string): Nullable<Overlay> {
     if (info.paneId === paneId) {
       return info.instance
     }
     return null
   }
 
-  protected getFigures (
+  protected getFigures(
     overlay: Overlay,
     coordinates: Coordinate[],
     bounding: Bounding,
@@ -545,7 +542,7 @@ export default class OverlayView extends View {
     return overlay.createPointFigures?.({ overlay, coordinates, bounding, barSpace, precision, thousandsSeparator, decimalFoldThreshold, dateTimeFormat, defaultStyles, xAxis, yAxis }) ?? []
   }
 
-  protected drawDefaultFigures (
+  protected drawDefaultFigures(
     ctx: CanvasRenderingContext2D,
     overlay: Overlay,
     coordinates: Coordinate[],

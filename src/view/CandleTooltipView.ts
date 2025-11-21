@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../common/Nullable'
 import type Bounding from '../common/Bounding'
 import type KLineData from '../common/KLineData'
@@ -23,7 +22,7 @@ import { drawStaticFigure } from '../extension/figure'
 import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
 
 export default class CandleTooltipView extends IndicatorTooltipView {
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
     const paneId = pane.getId()
@@ -118,7 +117,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     }
   }
 
-  private _drawCandleStandardTooltip (
+  private _drawCandleStandardTooltip(
     ctx: CanvasRenderingContext2D,
     dataList: KLineData[],
     paneId: string,
@@ -173,7 +172,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     return coordinate.y + prevRowHeight
   }
 
-  private _drawRectTooltip (
+  private _drawRectTooltip(
     ctx: CanvasRenderingContext2D,
     dataList: KLineData[],
     indicators: Indicator[],
@@ -287,17 +286,15 @@ export default class CandleTooltipView extends IndicatorTooltipView {
           } else {
             rectX = realX + rectOffsetLeft
           }
+        } else if (isLeft) {
+          rectX = rectOffsetLeft + offsetLeft
+          if (styles.yAxis.inside) {
+            rectX += yLeftAxisBounding.width
+          }
         } else {
-          if (isLeft) {
-            rectX = rectOffsetLeft + offsetLeft
-            if (styles.yAxis.inside) {
-              rectX += yLeftAxisBounding.width
-            }
-          } else {
-            rectX = bounding.width - rectOffsetRight - rectWidth - offsetRight
-            if (styles.yAxis.inside) {
-              rectX -= yRightAxisBounding.width
-            }
+          rectX = bounding.width - rectOffsetRight - rectWidth - offsetRight
+          if (styles.yAxis.inside) {
+            rectX -= yRightAxisBounding.width
           }
         }
 
@@ -409,7 +406,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     }
   }
 
-  private _getCandleTooltipLegends (
+  private _getCandleTooltipLegends(
     data: CandleTooltipCustomCallbackData,
     precision: Precision,
     dateTimeFormat: Intl.DateTimeFormat,

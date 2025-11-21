@@ -1,5 +1,4 @@
 
-
 import { isFunction } from './utils/typeChecks'
 
 export type ActionCallback = (data?: any) => void
@@ -18,14 +17,14 @@ export enum ActionType {
 export default class Delegate {
   private _callbacks: ActionCallback[] = []
 
-  subscribe (callback: ActionCallback): void {
+  subscribe(callback: ActionCallback): void {
     const index = this._callbacks.indexOf(callback) ?? -1
     if (index < 0) {
       this._callbacks.push(callback)
     }
   }
 
-  unsubscribe (callback?: ActionCallback): void {
+  unsubscribe(callback?: ActionCallback): void {
     if (isFunction(callback)) {
       const index = this._callbacks.indexOf(callback) ?? -1
       if (index > -1) {
@@ -36,13 +35,13 @@ export default class Delegate {
     }
   }
 
-  execute (data?: any): void {
+  execute(data?: any): void {
     this._callbacks.forEach(callback => {
       callback(data)
     })
   }
 
-  isEmpty (): boolean {
+  isEmpty(): boolean {
     return this._callbacks.length === 0
   }
 }

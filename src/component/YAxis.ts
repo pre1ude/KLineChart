@@ -1,5 +1,4 @@
 
-
 import { YAxisType, CandleType } from '../common/Styles'
 import type Bounding from '../common/Bounding'
 import { isNumber, isValid } from '../common/utils/typeChecks'
@@ -32,14 +31,14 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   private readonly _indicatorNames: string[] = []
   private _hasValidData = true
 
-  isMainAxis (): boolean {
+  isMainAxis(): boolean {
     const parent = this.getParent()
     const pane = parent.getPane() as DualYPane
     const mainAxisWidget = pane.getMainAxisWidget()
     return parent === mainAxisWidget
   }
 
-  buildTicks (force: boolean): boolean {
+  buildTicks(force: boolean): boolean {
     if (this._autoCalcTickFlag) {
       this._range = this.calcRange()
     }
@@ -130,28 +129,28 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     return false
   }
 
-  getTicks (): AxisTick[] {
+  getTicks(): AxisTick[] {
     return this._ticks
   }
 
-  setRange (range: VisibleRange): void {
+  setRange(range: VisibleRange): void {
     this._autoCalcTickFlag = false
     this._range = range
   }
 
-  getRange (): VisibleRange { return this._range }
+  getRange(): VisibleRange { return this._range }
 
-  setAutoCalcTickFlag (flag: boolean): void {
+  setAutoCalcTickFlag(flag: boolean): void {
     this._autoCalcTickFlag = flag
   }
 
-  getAutoCalcTickFlag (): boolean { return this._autoCalcTickFlag }
+  getAutoCalcTickFlag(): boolean { return this._autoCalcTickFlag }
 
-  addToCollect (name: string): void {
+  addToCollect(name: string): void {
     this._indicatorNames.push(name)
   }
 
-  removeFromCollect (name: string): boolean {
+  removeFromCollect(name: string): boolean {
     const index = this._indicatorNames.indexOf(name)
     if (index >= 0) {
       this._indicatorNames.splice(index, 1)
@@ -160,15 +159,15 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     return false
   }
 
-  clearCollect (): void {
+  clearCollect(): void {
     this._indicatorNames.length = 0
   }
 
-  getIndicatorNames (): string[] {
+  getIndicatorNames(): string[] {
     return this._indicatorNames
   }
 
-  protected calcRange (): VisibleRange {
+  protected calcRange(): VisibleRange {
     const pane = this.getParent().getPane()
     const chart = pane.getChart()
     const chartStore = chart.getChartStore()
@@ -220,10 +219,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       } else {
         precision = pricePrecision
       }
-    } else {
-      if (indicatorPrecision !== Number.MAX_SAFE_INTEGER) {
-        precision = indicatorPrecision
-      }
+    } else if (indicatorPrecision !== Number.MAX_SAFE_INTEGER) {
+      precision = indicatorPrecision
     }
     const visibleDataList = chartStore.getVisibleDataList()
     const candleStyles = chart.getStyles().candle
@@ -368,7 +365,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
    * @return {number}
    * @private
    */
-  _innerConvertToPixel (value: number): number {
+  _innerConvertToPixel(value: number): number {
     // todo should get the pane height
     const height = this.getParent()?.getBounding().height ?? 0
     const { from, to } = this.getRange()
@@ -380,7 +377,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
    * 是否是蜡烛图轴
    * @return {boolean}
    */
-  isInCandle (): boolean {
+  isInCandle(): boolean {
     const pane = this.getParent().getPane()
     return pane.getId() === PaneIdConstants.CANDLE
   }
@@ -389,7 +386,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
    * y轴类型
    * @return {YAxisType}
    */
-  getType (): YAxisType {
+  getType(): YAxisType {
     const yAxisWidget = this.getParent() as YAxisWidget
     return yAxisWidget.getOptions().type
   }
@@ -398,7 +395,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
    * 是否反转
    * @return {boolean}
    */
-  isReverse (): boolean {
+  isReverse(): boolean {
     if (this.isInCandle()) {
       const chart = this.getParent().getPane().getChart()
       return chart.getStyles().yAxis.reverse
@@ -406,7 +403,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     return false
   }
 
-  protected optimalTicks (ticks: AxisTick[]): AxisTick[] {
+  protected optimalTicks(ticks: AxisTick[]): AxisTick[] {
     const widget = this.getParent()
     const pane = widget.getPane()
     const height = widget?.getBounding().height ?? 0
@@ -460,10 +457,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     return optimalTicks
   }
 
-  private _commonYTicksLayout (ticks: AxisTick[], textHeight: number, height: number): AxisTick[] {
+  private _commonYTicksLayout(ticks: AxisTick[], textHeight: number, height: number): AxisTick[] {
     const optimalTicks: AxisTick[] = []
     let validY: number
-    ticks.forEach((tick) => {
+    ticks.forEach(tick => {
       const y = tick.coord
       const validYNumber = isNumber(validY)
       if (
@@ -477,7 +474,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     return optimalTicks
   }
 
-  override getAutoSize (): number {
+  override getAutoSize(): number {
     const pane = this.getParent().getPane()
     const chart = pane.getChart()
     const styles = chart.getStyles()
@@ -559,7 +556,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     return Math.max(yAxisWidth, crosshairVerticalTextWidth)
   }
 
-  private _calcTimeShareTicks (): AxisTick[] {
+  private _calcTimeShareTicks(): AxisTick[] {
     const { from, to } = this._range
     const mid = (from + to) / 2
 
@@ -597,10 +594,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         }
       }
     }
-    return arrV.map(e => ({ text: e + '', coord: 0, value: e, colorHint: e > mid ? 1 : e < mid ? -1 : 0 }))
+    return arrV.map(e => ({ text: `${e  }`, coord: 0, value: e, colorHint: e > mid ? 1 : e < mid ? -1 : 0 }))
   }
 
-  private _calcTicks (): AxisTick[] {
+  private _calcTicks(): AxisTick[] {
     const { from, to } = this._range
     const ticks: AxisTick[] = []
 
@@ -623,17 +620,17 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     return ticks
   }
 
-  private _calcTickInterval (range: number): number[] {
+  private _calcTickInterval(range: number): number[] {
     const interval = nice(range / 8.0)
     const precision = getPrecision(interval)
     return [interval, precision]
   }
 
-  getSelfBounding (): Bounding {
+  getSelfBounding(): Bounding {
     return this.getParent().getBounding()
   }
 
-  convertFromPixel (pixel: number): number {
+  convertFromPixel(pixel: number): number {
     const height = this.getParent().getBounding().height ?? 0
     const { from, to } = this.getRange()
     const rate = this.isReverse() ? pixel / height : 1 - pixel / height
@@ -668,7 +665,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     }
   }
 
-  convertToRealValue (value: number): number {
+  convertToRealValue(value: number): number {
     let v = value
     if (this.getType() === YAxisType.Log) {
       v = index10(value)
@@ -676,7 +673,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     return v
   }
 
-  convertToPixel (value: number): number {
+  convertToPixel(value: number): number {
     let v = value
     switch (this.getType()) {
       case YAxisType.MinutePercentage: {
@@ -710,15 +707,15 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     return this._innerConvertToPixel(v)
   }
 
-  convertToNicePixel (value: number): number {
+  convertToNicePixel(value: number): number {
     const height = this.getParent()?.getBounding().height ?? 0
     const pixel = this.convertToPixel(value)
     return Math.round(Math.max(height * 0.05, Math.min(pixel, height * 0.98)))
   }
 
-  static extend (template: AxisTemplate): YAxisConstructor {
+  static extend(template: AxisTemplate): YAxisConstructor {
     class Custom extends YAxisImp {
-      createTicks (params: AxisCreateTicksParams): AxisTick[] {
+      createTicks(params: AxisCreateTicksParams): AxisTick[] {
         return template.createTicks(params)
       }
     }

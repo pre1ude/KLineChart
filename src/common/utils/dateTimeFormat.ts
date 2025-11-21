@@ -4,7 +4,7 @@ import { isString } from './typeChecks'
 
 let _dateTimeFormat: Intl.DateTimeFormat = buildDateTimeFormat()!
 
-export function buildDateTimeFormat (timezone?: string): Nullable<Intl.DateTimeFormat> {
+export function buildDateTimeFormat(timezone?: string): Nullable<Intl.DateTimeFormat> {
   const options: Intl.DateTimeFormatOptions = {
     hour12: false,
     year: 'numeric',
@@ -26,19 +26,19 @@ export function buildDateTimeFormat (timezone?: string): Nullable<Intl.DateTimeF
   return dateTimeFormat
 }
 
-export function getDateTimeFormat (): Intl.DateTimeFormat {
+export function getDateTimeFormat(): Intl.DateTimeFormat {
   return _dateTimeFormat
 }
 
-export function setTimezone (timezone: string): void {
+export function setTimezone(timezone: string): void {
   _dateTimeFormat = buildDateTimeFormat(timezone)!
 }
 
-export function getTimezone (): string {
+export function getTimezone(): string {
   return _dateTimeFormat.resolvedOptions().timeZone
 }
 
-export function genTimeStamp (text: string, hintTs: number): number {
+export function genTimeStamp(text: string, hintTs: number): number {
   const [hour, minute] = text.split(':').map(Number)
   const date = new Date(hintTs)
   date.setHours(hour, minute, 0, 0)

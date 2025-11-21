@@ -1,5 +1,4 @@
 
-
 import { isNumber, isValid } from './typeChecks'
 
 const reEscapeChar = /\\(\\)?/g
@@ -13,7 +12,7 @@ const rePropName = RegExp(
   , 'g')
 
 // todo: @deprecated
-export function formatValue (data: unknown, key: string, defaultValue?: unknown): unknown {
+export function formatValue(data: unknown, key: string, defaultValue?: unknown): unknown {
   if (isValid(data)) {
     const path: string[] = []
     key.replace(rePropName, (subString: string, ...args: any[]) => {
@@ -37,7 +36,7 @@ export function formatValue (data: unknown, key: string, defaultValue?: unknown)
   return defaultValue ?? '--'
 }
 
-export function formatDate (dateTimeFormat: Intl.DateTimeFormat, timestamp: number, format: string): string {
+export function formatDate(dateTimeFormat: Intl.DateTimeFormat, timestamp: number, format: string): string {
   const date: Record<string, string> = {}
   dateTimeFormat.formatToParts(new Date(timestamp)).forEach(({ type, value }) => {
     switch (type) {
@@ -70,7 +69,7 @@ export function formatDate (dateTimeFormat: Intl.DateTimeFormat, timestamp: numb
   return format.replace(/YYYY|MM|DD|HH|mm|ss/g, key => date[key])
 }
 
-export function formatPrecision (value: string | number, precision?: number): string {
+export function formatPrecision(value: string | number, precision?: number): string {
   const v = +value
   if (isNumber(v)) {
     return v.toFixed(precision ?? 2)
@@ -78,7 +77,7 @@ export function formatPrecision (value: string | number, precision?: number): st
   return `${value}`
 }
 
-export function formatBigNumber (value: string | number): string {
+export function formatBigNumber(value: string | number): string {
   const v = +value
   if (isNumber(v)) {
     if (v > 1000000000) {
@@ -94,7 +93,7 @@ export function formatBigNumber (value: string | number): string {
   return `${value}`
 }
 
-export function formatThousands (value: string | number, sign: string): string {
+export function formatThousands(value: string | number, sign: string): string {
   const vl = `${value}`
   if (sign.length === 0) {
     return vl
@@ -106,9 +105,9 @@ export function formatThousands (value: string | number, sign: string): string {
   return vl.replace(/(\d)(?=(\d{3})+$)/g, $1 => `${$1}${sign}`)
 }
 
-export function formatFoldDecimal (value: string | number, threshold: number): string {
+export function formatFoldDecimal(value: string | number, threshold: number): string {
   const vl = `${value}`
-  const reg = new RegExp('\\.0{' + threshold + ',}[1-9][0-9]*$')
+  const reg = new RegExp(`\\.0{${  threshold  },}[1-9][0-9]*$`)
   if (reg.test(vl)) {
     const result = vl.split('.')
     const v = result[result.length - 1]
@@ -122,7 +121,7 @@ export function formatFoldDecimal (value: string | number, threshold: number): s
   return vl
 }
 
-export function formatToHHmm (timestamp: number): string {
+export function formatToHHmm(timestamp: number): string {
   const date = new Date(timestamp)
   const h = date.getHours().toString().padStart(2, '0')
   const m = date.getMinutes().toString().padStart(2, '0')

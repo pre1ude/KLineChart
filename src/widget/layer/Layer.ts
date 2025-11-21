@@ -1,5 +1,4 @@
 
-
 import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
 

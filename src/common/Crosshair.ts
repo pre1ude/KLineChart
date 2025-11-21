@@ -1,5 +1,4 @@
 
-
 import type Coordinate from './Coordinate'
 import type KLineData from './KLineData'
 

@@ -1,5 +1,4 @@
 
-
 import { getLinearYFromCoordinates } from '../figure/line'
 
 import { type OverlayTemplate } from '../../component/Overlay'

@@ -1,5 +1,4 @@
 
-
 import type DualYPane from '../pane/DualYPane'
 import { WidgetNameConstants } from './types'
 import DrawWidget from './DrawWidget'
@@ -37,7 +36,7 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
   private readonly _overlayYAxisView = new OverlayYAxisView(this)
   private readonly _crosshairHorizontalLabelView = new CrosshairHorizontalLabelView(this)
 
-  constructor (rootContainer: HTMLElement, pane: DualYPane, options: PaneOptions, position: Exclude<YAxisPosition, 'both'>) {
+  constructor(rootContainer: HTMLElement, pane: DualYPane, options: PaneOptions, position: Exclude<YAxisPosition, 'both'>) {
     super(rootContainer, pane)
     setCursor(this.getContainer(), 'ns-resize')
     this.addChild(this._overlayYAxisView)
@@ -51,11 +50,11 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     })
   }
 
-  getOptions (): YAxisOptions {
+  getOptions(): YAxisOptions {
     return this._axisOptions
   }
 
-  setOptions (options: YAxisOptions): void {
+  setOptions(options: YAxisOptions): void {
     const name = options?.name
     if (
       (this._axisOptions.name !== name && isString(name)) ||
@@ -66,16 +65,16 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     this._axisOptions = options
   }
 
-  createAxisComponent (name: string): YAxis {
+  createAxisComponent(name: string): YAxis {
     const YAxisClass = getYAxisClass(name)
     return new YAxisClass(this)
   }
 
-  isInCandle (): boolean {
+  isInCandle(): boolean {
     return this.getPane().getId() === PaneIdConstants.CANDLE
   }
 
-  isAlignLeft (): boolean {
+  isAlignLeft(): boolean {
     const position = this._axisOptions.position
     const yAxisStyles = this.getPane().getChart().getStyles().yAxis
     const inside = yAxisStyles.inside
@@ -85,19 +84,19 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     )
   }
 
-  getAxisType (): YAxisType {
+  getAxisType(): YAxisType {
     return this._axisOptions.type
   }
 
-  getAxisComponent (): YAxis {
+  getAxisComponent(): YAxis {
     return this._axis
   }
 
-  override getName (): string {
+  override getName(): string {
     return WidgetNameConstants.Y_AXIS
   }
 
-  override updateMain (ctx: CanvasRenderingContext2D): void {
+  override updateMain(ctx: CanvasRenderingContext2D): void {
     const chart = this.getPane().getChart()
     const chartStore = chart.getChartStore()
     this._yAxisView.draw(ctx)
@@ -110,7 +109,7 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     this._indicatorLastValueView.draw(ctx)
   }
 
-  override updateOverlay (ctx: CanvasRenderingContext2D): void {
+  override updateOverlay(ctx: CanvasRenderingContext2D): void {
     this._overlayYAxisView.draw(ctx)
     this._crosshairHorizontalLabelView.draw(ctx)
   }

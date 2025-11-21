@@ -8,7 +8,7 @@ const fibonacciCircle: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick: function () {
+  onRightClick() {
     return true
   },
   createPointFigures: ({ coordinates }) => {
@@ -19,7 +19,7 @@ const fibonacciCircle: OverlayTemplate = {
       const percents = [0.236, 0.382, 0.5, 0.618, 0.786, 1]
       const circles: CircleAttrs[] = []
       const texts: TextAttrs[] = []
-      percents.forEach((percent) => {
+      percents.forEach(percent => {
         const r = radius * percent
         circles.push({ ...coordinates[0], r })
         texts.push({

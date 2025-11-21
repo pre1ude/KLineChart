@@ -1,5 +1,4 @@
 
-
 // todo it is infact widgetType not widgetName
 export const WidgetNameConstants = {
   MAIN: 'main',

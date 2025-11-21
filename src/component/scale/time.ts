@@ -11,7 +11,7 @@ export interface TimeScaleOptions {
   range: [number, number]
 }
 
-export function createTime ({ domain, range, ...rest }: TimeScaleOptions): TimeScale {
+export function createTime({ domain, range, ...rest }: TimeScaleOptions): TimeScale {
   const transform = (x: Date): number => x.getTime()
   const transformedDomain: [number, number] = domain.map(transform) as [number, number]
   const linear = createLinear({ domain: transformedDomain, range, ...rest })

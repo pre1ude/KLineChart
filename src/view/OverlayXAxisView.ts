@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../common/Nullable'
 import type Coordinate from '../common/Coordinate'
 import type Bounding from '../common/Bounding'
@@ -16,23 +15,23 @@ import type OverlayStore from '../store/OverlayStore'
 import OverlayYAxisView from './OverlayYAxisView'
 
 export default class OverlayXAxisView extends OverlayYAxisView {
-  override coordinateToPointTimestampDataIndexFlag (): boolean {
+  override coordinateToPointTimestampDataIndexFlag(): boolean {
     return true
   }
 
-  override coordinateToPointValueFlag (): boolean {
+  override coordinateToPointValueFlag(): boolean {
     return false
   }
 
-  override getCompleteOverlays (overlayStore: OverlayStore): Overlay[] {
+  override getCompleteOverlays(overlayStore: OverlayStore): Overlay[] {
     return overlayStore.getInstances()
   }
 
-  override getProgressOverlay (info: ProgressOverlayInfo): Overlay {
+  override getProgressOverlay(info: ProgressOverlayInfo): Overlay {
     return info.instance
   }
 
-  override getDefaultFigures (
+  override getDefaultFigures(
     overlay: Overlay,
     coordinates: Coordinate[],
     bounding: Bounding,
@@ -65,7 +64,7 @@ export default class OverlayXAxisView extends OverlayYAxisView {
     return figures
   }
 
-  override getFigures (
+  override getFigures(
     overlay: Overlay,
     coordinates: Coordinate[],
     bounding: Bounding,

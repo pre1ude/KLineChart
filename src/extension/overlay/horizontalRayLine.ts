@@ -1,5 +1,4 @@
 
-
 import { isValid } from '../../common/utils/typeChecks'
 import { type OverlayTemplate } from '../../component/Overlay'
 

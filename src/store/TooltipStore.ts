@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../common/Nullable'
 import type KLineData from '../common/KLineData'
 import type Crosshair from '../common/Crosshair'
@@ -19,7 +18,7 @@ export default class TooltipStore {
   private _crosshair: Crosshair = {}
   private _activeIcon: Nullable<TooltipIcon> = null
 
-  constructor (chartStore: ChartStore) {
+  constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
   }
 
@@ -28,7 +27,7 @@ export default class TooltipStore {
     * @param crosshair
     * @param options
     */
-  setCrosshair (crosshair?: Crosshair, options?: { notInvalidate?: boolean, notExecuteAction?: boolean }): void {
+  setCrosshair(crosshair?: Crosshair, options?: { notInvalidate?: boolean, notExecuteAction?: boolean }): void {
     const { notInvalidate, notExecuteAction } = options ?? {}
     const dataList = this._chartStore.getDataList()
     const cr = crosshair ?? {}
@@ -86,7 +85,7 @@ export default class TooltipStore {
    * 重新计算十字光标
    * @param notInvalidate
    */
-  recalculateCrosshair (notInvalidate: boolean): void {
+  recalculateCrosshair(notInvalidate: boolean): void {
     this.setCrosshair(this._crosshair, { notInvalidate })
   }
 
@@ -94,19 +93,19 @@ export default class TooltipStore {
    * 获取crosshair信息
    * @returns
    */
-  getCrosshair (): Crosshair {
+  getCrosshair(): Crosshair {
     return this._crosshair
   }
 
-  setActiveIcon (icon?: TooltipIcon): void {
+  setActiveIcon(icon?: TooltipIcon): void {
     this._activeIcon = icon ?? null
   }
 
-  getActiveIcon (): Nullable<TooltipIcon> {
+  getActiveIcon(): Nullable<TooltipIcon> {
     return this._activeIcon
   }
 
-  clear (): void {
+  clear(): void {
     this.setCrosshair({}, { notInvalidate: true })
     this.setActiveIcon()
   }

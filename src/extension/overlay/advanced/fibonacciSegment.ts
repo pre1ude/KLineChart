@@ -7,7 +7,7 @@ const fibonacciSegment: OverlayTemplate = {
   totalStep: 3,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
-  onRightClick: function () {
+  onRightClick() {
     return true
   },
   needDefaultYAxisFigure: false,
@@ -22,7 +22,7 @@ const fibonacciSegment: OverlayTemplate = {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       const valueDif = points[0].value - points[1].value
-      percents.forEach((percent) => {
+      percents.forEach(percent => {
         const y = coordinates[1].y + yDif * percent
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error

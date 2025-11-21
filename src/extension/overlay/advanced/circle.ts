@@ -8,7 +8,7 @@ const circle: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick: function () {
+  onRightClick() {
     return true
   },
   createPointFigures: ({ coordinates }) => {

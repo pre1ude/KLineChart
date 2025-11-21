@@ -1,5 +1,4 @@
 
-
 import { YAxisType } from '../common/Styles'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { isValid } from '../common/utils/typeChecks'
@@ -8,7 +7,7 @@ import type YAxisWidget from '../widget/YAxisWidget'
 import { drawStaticFigure } from '../extension/figure'
 
 export default class CandleLastPriceLabelView extends View {
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget() as unknown as YAxisWidget
     const pane = widget.getPane()
     const bounding = widget.getBounding()

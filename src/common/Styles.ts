@@ -1,5 +1,4 @@
 
-
 import type Nullable from './Nullable'
 import type KLineData from './KLineData'
 
@@ -404,12 +403,12 @@ const noChangeColor = '#9CA3AD'
 const indicatorUpColor = 'rgba(255, 102, 0, 0.6)'
 const indicatorDownColor = 'rgba(52, 199, 52, 0.6)'
 
-function getAlphaBlue (alpha: number): string {
+function getAlphaBlue(alpha: number): string {
   return `rgba(22, 119, 255, ${alpha})`
 }
 
-function getDefaultGridStyle (): GridStyle {
-  function item (): StateLineStyle {
+function getDefaultGridStyle(): GridStyle {
+  function item(): StateLineStyle {
     return {
       show: true,
       size: 1,
@@ -429,7 +428,7 @@ function getDefaultGridStyle (): GridStyle {
  * Get default candle style
  * @type {{area: {backgroundColor: [{offset: number, color: string}, {offset: number, color: string}], lineColor: string, lineSize: number, value: string}, bar: {noChangeColor: string, upColor: string, downColor: string}, tooltip: {rect: {offsetTop: number, fillColor: string, borderColor: string, paddingBottom: number, borderRadius: number, paddingRight: number, borderSize: number, offsetLeft: number, paddingTop: number, paddingLeft: number, offsetRight: number}, showRule: string, values: null, showType: string, text: {marginRight: number, size: number, color: string, weight: string, marginBottom: number, family: string, marginTop: number, marginLeft: number}, labels: string[]}, type: string, priceMark: {high: {textMargin: number, textSize: number, color: string, textFamily: string, show: boolean, textWeight: string}, last: {noChangeColor: string, upColor: string, line: {dashValue: number[], size: number, show: boolean, style: string}, show: boolean, text: {paddingBottom: number, size: number, color: string, paddingRight: number, show: boolean, weight: string, paddingTop: number, family: string, paddingLeft: number}, downColor: string}, low: {textMargin: number, textSize: number, color: string, textFamily: string, show: boolean, textWeight: string}, show: boolean}}}
  */
-function getDefaultCandleStyle (): CandleStyle {
+function getDefaultCandleStyle(): CandleStyle {
   const highLow = {
     show: true,
     color: '#B8CAE6',
@@ -557,9 +556,9 @@ function getDefaultCandleStyle (): CandleStyle {
 /**
  * Get default indicator style
  */
-function getDefaultIndicatorStyle (): IndicatorStyle {
+function getDefaultIndicatorStyle(): IndicatorStyle {
   const lines = ['#FDD75D', '#FF9379', '#0BE6CE', '#CF8FFF', '#23B6FF'].map(
-    (color) => ({
+    color => ({
       style: LineType.Solid,
       smooth: false,
       size: 1,
@@ -639,7 +638,7 @@ function getDefaultIndicatorStyle (): IndicatorStyle {
   }
 }
 
-function getDefaultXAxisStyle (): XAxisStyle {
+function getDefaultXAxisStyle(): XAxisStyle {
   return {
     show: true,
     size: 'auto',
@@ -666,7 +665,7 @@ function getDefaultXAxisStyle (): XAxisStyle {
   }
 }
 
-function getDefaultYAxisStyle (): YAxisStyle {
+function getDefaultYAxisStyle(): YAxisStyle {
   const style = getDefaultXAxisStyle() as YAxisStyle
   style.position = YAxisPosition.Left
   style.inside = false
@@ -674,8 +673,8 @@ function getDefaultYAxisStyle (): YAxisStyle {
   return style
 }
 
-function getDefaultCrosshairStyle (): CrosshairStyle {
-  function item (): CrosshairDirectionStyle {
+function getDefaultCrosshairStyle(): CrosshairStyle {
+  function item(): CrosshairDirectionStyle {
     return {
       show: true,
       line: {
@@ -713,7 +712,7 @@ function getDefaultCrosshairStyle (): CrosshairStyle {
   }
 }
 
-function getDefaultOverlayStyle (): OverlayStyle {
+function getDefaultOverlayStyle(): OverlayStyle {
   return {
     point: {
       color: '#FFC62B',
@@ -812,7 +811,7 @@ function getDefaultOverlayStyle (): OverlayStyle {
   }
 }
 
-function getDefaultSeparatorStyle (): SeparatorStyle {
+function getDefaultSeparatorStyle(): SeparatorStyle {
   return {
     size: 1,
     color: axisLineColor,
@@ -821,7 +820,7 @@ function getDefaultSeparatorStyle (): SeparatorStyle {
   }
 }
 
-export function getDefaultStyles (): Styles {
+export function getDefaultStyles(): Styles {
   return {
     grid: getDefaultGridStyle(),
     candle: getDefaultCandleStyle(),

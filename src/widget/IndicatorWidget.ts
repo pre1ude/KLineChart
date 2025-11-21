@@ -1,5 +1,4 @@
 
-
 import type DualYPane from '../pane/DualYPane'
 import MainWidget from './MainWidget'
 import {
@@ -10,7 +9,7 @@ import {
   TooltipLayer
 } from './layer'
 
-export function IndicatorWidget (
+export function IndicatorWidget(
   rootContainer: HTMLElement,
   pane: DualYPane
 ): MainWidget {

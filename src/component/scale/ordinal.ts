@@ -5,7 +5,7 @@ export interface OrdinalScaleOptions {
   range: any[]
 }
 
-export function createOrdinal ({ domain, range }: OrdinalScaleOptions): OrdinalScale {
+export function createOrdinal({ domain, range }: OrdinalScaleOptions): OrdinalScale {
   const key = JSON.stringify
   const indexMap = new Map(domain.map((d: any, i: number) => [key(d), i]))
   return (x: any): any => {

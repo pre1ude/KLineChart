@@ -1,5 +1,4 @@
 
-
 import type { Layer } from './Layer'
 import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
@@ -14,7 +13,7 @@ export class TooltipLayer implements Layer {
   readonly name = 'tooltip'
   private _tooltipView?: IndicatorTooltipView | CandleTooltipView
 
-  constructor (private readonly _type: 'candle' | 'indicator' = 'indicator') {}
+  constructor(private readonly _type: 'candle' | 'indicator' = 'indicator') {}
 
   init = (widget: DrawWidget<DualYPane>): void => {
     if (this._type === 'candle') {

@@ -1,5 +1,4 @@
 
-
 import { type OverlayTemplate } from '../../component/Overlay'
 
 import { type LineAttrs } from '../figure/line'

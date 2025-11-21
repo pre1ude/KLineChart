@@ -1,5 +1,4 @@
 
-
 import { type YAxisPosition, type YAxisType } from '../common/Styles'
 import type CandlePane from './CandlePane'
 import type IndicatorPane from './IndicatorPane'

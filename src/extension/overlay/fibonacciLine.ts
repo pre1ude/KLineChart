@@ -1,5 +1,4 @@
 
-
 import { formatThousands, formatFoldDecimal } from '../../common/utils/format'
 import { isNumber } from '../../common/utils/typeChecks'
 

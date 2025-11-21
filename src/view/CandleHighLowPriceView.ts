@@ -1,5 +1,4 @@
 
-
 import type Coordinate from '../common/Coordinate'
 import type VisibleData from '../common/VisibleData'
 import type BarSpace from '../common/BarSpace'
@@ -17,7 +16,7 @@ export type EachChildCallback = (
 ) => void
 
 export default class CandleHighLowPriceView extends View {
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
     const chartStore = pane.getChart().getChartStore()
@@ -72,7 +71,7 @@ export default class CandleHighLowPriceView extends View {
     }
   }
 
-  private _drawMark (
+  private _drawMark(
     ctx: CanvasRenderingContext2D,
     text: string,
     coordinate: Coordinate,

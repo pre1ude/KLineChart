@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../common/Nullable'
 import type KLineData from '../common/KLineData'
 import type Precision from '../common/Precision'
@@ -131,12 +130,12 @@ export default class ChartStore {
    */
   private _visibleDataList: VisibleData[] = []
 
-  constructor (chart: Chart, options?: Options) {
+  constructor(chart: Chart, options?: Options) {
     this._chart = chart
     this.setOptions(options)
   }
 
-  setOptions (options?: Options): this {
+  setOptions(options?: Options): this {
     if (isValid(options)) {
       const { locale, timezone, styles, customApi, thousandsSeparator, decimalFoldThreshold } = options
       if (isString(locale)) {
@@ -192,91 +191,91 @@ export default class ChartStore {
     return this
   }
 
-  getStyles (): Styles {
+  getStyles(): Styles {
     return this._styles
   }
 
-  getLocale (): string {
+  getLocale(): string {
     return this._locale
   }
 
-  getIsTimeShare (): boolean {
+  getIsTimeShare(): boolean {
     return this._isTimeShare
   }
 
-  getTimeShareDays (): number {
+  getTimeShareDays(): number {
     return this._timeShareDays
   }
 
-  setTimeShareDays (days: number): this {
+  setTimeShareDays(days: number): this {
     this._timeShareDays = days
     return this
   }
 
-  getTimeShareTicks (): string[] {
+  getTimeShareTicks(): string[] {
     return this._timeShareTicks
   }
 
-  getTimeShareBreakOnCrossDays (): boolean {
+  getTimeShareBreakOnCrossDays(): boolean {
     return this._timeShareBreakOnCrossDays
   }
 
-  getPreferXTicks (): string[] | undefined {
+  getPreferXTicks(): string[] | undefined {
     return this._preferXTicks
   }
 
-  getCustomApi (): CustomApi {
+  getCustomApi(): CustomApi {
     return this._customApi
   }
 
-  getThousandsSeparator (): string {
+  getThousandsSeparator(): string {
     return this._thousandsSeparator
   }
 
-  getDecimalFoldThreshold (): number {
+  getDecimalFoldThreshold(): number {
     return this._decimalFoldThreshold
   }
 
-  getPrecision (): Precision {
+  getPrecision(): Precision {
     return this._precision
   }
 
-  setPrecision (precision: Precision): this {
+  setPrecision(precision: Precision): this {
     this._precision = precision
     this._indicatorStore.synchronizeSeriesPrecision()
     return this
   }
 
-  getDataList (): KLineData[] {
+  getDataList(): KLineData[] {
     return this._dataList
   }
 
-  getDataByDataIndex (index: number): Nullable<KLineData> {
+  getDataByDataIndex(index: number): Nullable<KLineData> {
     return this._dataList[index] ?? null
   }
 
-  dataIndexToTimestamp (index: number): Nullable<number> {
+  dataIndexToTimestamp(index: number): Nullable<number> {
     const data = this.getDataByDataIndex(index)
     return data?.timestamp ?? null
   }
 
   // todo
-  timestampToDataIndex (timestamp: number): number {
+  timestampToDataIndex(timestamp: number): number {
     if (this._dataList.length === 0) {
       return 0
     }
     return binarySearchNearest(this._dataList, 'timestamp', timestamp)
   }
 
-  getVisibleFirstData (): Nullable<KLineData> {
+  getVisibleFirstData(): Nullable<KLineData> {
     return this._dataList[0] ?? null
   }
 
-  getVisibleDataList (): VisibleData[] {
+  getVisibleDataList(): VisibleData[] {
     return this._visibleDataList
   }
 
-  adjustVisibleDataList (): void {
+  adjustVisibleDataList(): void {
     this._visibleDataList = []
     // if is timeshare, we should accord the time ticks
 
@@ -290,7 +289,7 @@ export default class ChartStore {
     }
   }
 
-  async addData (data: KLineData | KLineData[], type?: LoadDataType, more?: boolean): Promise<void> {
+  async addData(data: KLineData | KLineData[], type?: LoadDataType, more?: boolean): Promise<void> {
     let success = false
     let adjustFlag = false
     let dataLengthChange = 0
@@ -351,22 +350,22 @@ export default class ChartStore {
     }
   }
 
-  setLoadMoreCallback (callback: LoadMoreCallback): void {
+  setLoadMoreCallback(callback: LoadMoreCallback): void {
     this._loadMoreCallback = callback
   }
 
-  executeLoadMoreCallback (timestamp: Nullable<number>): void {
+  executeLoadMoreCallback(timestamp: Nullable<number>): void {
     if (this._forwardMore && !this._loading && isValid(this._loadMoreCallback)) {
       this._loading = true
       this._loadMoreCallback(timestamp)
     }
   }
 
-  setLoadDataCallback (callback: LoadDataCallback): void {
+  setLoadDataCallback(callback: LoadDataCallback): void {
     this._loadDataCallback = callback
   }
 
-  executeLoadDataCallback (params: Omit<LoadDataParams, 'callback'>): void {
+  executeLoadDataCallback(params: Omit<LoadDataParams, 'callback'>): void {
     if (
       !this._loading &&
       isValid(this._loadDataCallback) &&
@@ -383,7 +382,7 @@ export default class ChartStore {
     }
   }
 
-  clear (): void {
+  clear(): void {
     this._forwardMore = true
     this._backwardMore = true
     this._loading = true
@@ -393,27 +392,27 @@ export default class ChartStore {
     this._tooltipStore.clear()
   }
 
-  getTimeScaleStore (): TimeScaleStore {
+  getTimeScaleStore(): TimeScaleStore {
     return this._timeScaleStore
   }
 
-  getIndicatorStore (): IndicatorStore {
+  getIndicatorStore(): IndicatorStore {
     return this._indicatorStore
   }
 
-  getOverlayStore (): OverlayStore {
+  getOverlayStore(): OverlayStore {
     return this._overlayStore
   }
 
-  getTooltipStore (): TooltipStore {
+  getTooltipStore(): TooltipStore {
     return this._tooltipStore
   }
 
-  getActionStore (): ActionStore {
+  getActionStore(): ActionStore {
     return this._actionStore
   }
 
-  getChart (): Chart {
+  getChart(): Chart {
     return this._chart
   }
 }

@@ -1,5 +1,4 @@
 
-
 import type { Layer } from './Layer'
 import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
@@ -40,7 +39,7 @@ export class IndicatorLayer implements Layer {
     }
   }
 
-  private _initEvent (widget: DrawWidget<DualYPane>): void {
+  private _initEvent(widget: DrawWidget<DualYPane>): void {
     let lastHoverFigureData: IndicatorFigureData | null = null
 
     // 鼠标移动事件 - 处理 onMouseEnter 和 onMouseLeave

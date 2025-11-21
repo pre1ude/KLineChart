@@ -1,5 +1,4 @@
 
-
 import { type Locales } from '../../Options'
 
 const zhCN: Locales = {

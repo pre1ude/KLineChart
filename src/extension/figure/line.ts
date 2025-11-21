@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../../common/Nullable'
 import type Coordinate from '../../common/Coordinate'
 import { type SmoothLineStyle, LineType } from '../../common/Styles'
@@ -7,7 +6,7 @@ import { type SmoothLineStyle, LineType } from '../../common/Styles'
 import { type FigureTemplate, DEVIATION } from '../../component/Figure'
 import { isNumber } from '../../common/utils/typeChecks'
 
-export function checkCoordinateOnLine (coordinate: Coordinate, attrs: LineAttrs | LineAttrs[]): boolean {
+export function checkCoordinateOnLine(coordinate: Coordinate, attrs: LineAttrs | LineAttrs[]): boolean {
   let lines: LineAttrs[] = []
   lines = lines.concat(attrs)
 
@@ -41,7 +40,7 @@ export function checkCoordinateOnLine (coordinate: Coordinate, attrs: LineAttrs 
   return false
 }
 
-export function getLinearYFromSlopeIntercept (kb: Nullable<number[]>, coordinate: Coordinate): number {
+export function getLinearYFromSlopeIntercept(kb: Nullable<number[]>, coordinate: Coordinate): number {
   if (kb !== null) {
     return coordinate.x * kb[0] + kb[1]
   }
@@ -54,12 +53,12 @@ export function getLinearYFromSlopeIntercept (kb: Nullable<number[]>, coordinate
  * @param coordinate2
  * @param targetCoordinate
  */
-export function getLinearYFromCoordinates (coordinate1: Coordinate, coordinate2: Coordinate, targetCoordinate: Coordinate): number {
+export function getLinearYFromCoordinates(coordinate1: Coordinate, coordinate2: Coordinate, targetCoordinate: Coordinate): number {
   const kb = getLinearSlopeIntercept(coordinate1, coordinate2)
   return getLinearYFromSlopeIntercept(kb, targetCoordinate)
 }
 
-export function getLinearSlopeIntercept (coordinate1: Coordinate, coordinate2: Coordinate): Nullable<number[]> {
+export function getLinearSlopeIntercept(coordinate1: Coordinate, coordinate2: Coordinate): Nullable<number[]> {
   const difX = coordinate1.x - coordinate2.x
   if (difX !== 0) {
     const k = (coordinate1.y - coordinate2.y) / difX
@@ -69,7 +68,7 @@ export function getLinearSlopeIntercept (coordinate1: Coordinate, coordinate2: C
   return null
 }
 
-export function lineTo (ctx: CanvasRenderingContext2D, coordinates: Coordinate[], smooth: number | boolean): void {
+export function lineTo(ctx: CanvasRenderingContext2D, coordinates: Coordinate[], smooth: number | boolean): void {
   const length = coordinates.length
   const smoothParam = isNumber(smooth) ? (smooth > 0 && smooth < 1 ? smooth : 0) : (smooth ? 0.5 : 0)
   if ((smoothParam > 0) && length > 2) {
@@ -126,7 +125,7 @@ export function lineTo (ctx: CanvasRenderingContext2D, coordinates: Coordinate[]
   }
 }
 
-export function drawLine (ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineAttrs[], styles: Partial<SmoothLineStyle>): void {
+export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineAttrs[], styles: Partial<SmoothLineStyle>): void {
   let lines: LineAttrs[] = []
   lines = lines.concat(attrs)
   const { style = LineType.Solid, smooth = false, size = 1, color = 'currentColor', dashedValue = [2, 2] } = styles

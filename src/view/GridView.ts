@@ -1,5 +1,4 @@
 
-
 import { drawStaticFigure } from '../extension/figure'
 import { type LineAttrs } from '../extension/figure/line'
 import type DualYPane from '../pane/DualYPane'
@@ -7,7 +6,7 @@ import type XAxisWidget from '../widget/XAxisWidget'
 import View from './View'
 
 export default class GridView extends View {
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = this.getWidget().getPane()
     const chart = pane.getChart()

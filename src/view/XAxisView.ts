@@ -1,5 +1,4 @@
 
-
 import type Bounding from '../common/Bounding'
 import { type AxisStyle, type Styles } from '../common/Styles'
 import { type LineAttrs } from '../extension/figure/line'
@@ -9,11 +8,11 @@ import AxisView from './AxisView'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
 
 export default class XAxisView extends AxisView {
-  override getAxisStyles (styles: Styles): AxisStyle {
+  override getAxisStyles(styles: Styles): AxisStyle {
     return styles.xAxis
   }
 
-  override createAxisLine (bounding: Bounding): LineAttrs {
+  override createAxisLine(bounding: Bounding): LineAttrs {
     return {
       coordinates: [
         { x: 0, y: 0 },
@@ -22,7 +21,7 @@ export default class XAxisView extends AxisView {
     }
   }
 
-  override createTickLines (ticks: AxisTick[], _bounding: Bounding, styles: AxisStyle): LineAttrs[] {
+  override createTickLines(ticks: AxisTick[], _bounding: Bounding, styles: AxisStyle): LineAttrs[] {
     const tickLineStyles = styles.tickLine
     const axisLineSize = styles.axisLine.size
     return ticks.map(tick => ({
@@ -33,7 +32,7 @@ export default class XAxisView extends AxisView {
     }))
   }
 
-  override createTickTexts (ticks: AxisTick[], _bounding: Bounding, styles: AxisStyle): TextAttrs[] {
+  override createTickTexts(ticks: AxisTick[], _bounding: Bounding, styles: AxisStyle): TextAttrs[] {
     const tickTickStyles = styles.tickText
     const axisLineSize = styles.axisLine.size
     const tickLineLength = styles.tickLine.length

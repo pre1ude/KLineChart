@@ -1,5 +1,4 @@
 
-
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import View from './View'
@@ -8,7 +7,7 @@ import { drawStaticFigure } from '../extension/figure'
 import { getFigureBaseStyles, getMergedDefaultStyles } from '../component/Indicator'
 
 export default class IndicatorLastValueView extends View {
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget() as unknown as YAxisWidget
     const pane = widget.getPane()
     const bounding = widget.getBounding()

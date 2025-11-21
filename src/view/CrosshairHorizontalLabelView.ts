@@ -1,5 +1,4 @@
 
-
 import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
 import { type CrosshairStyle, type CrosshairDirectionStyle, YAxisType, type StateTextStyle } from '../common/Styles'
@@ -10,7 +9,7 @@ import CrosshairLabelView from './CrosshairLabelView'
 import type YAxisWidget from '../widget/YAxisWidget'
 
 export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
-  protected compare (crosshair: Crosshair, paneId: string): boolean {
+  protected compare(crosshair: Crosshair, paneId: string): boolean {
     // 当没有有效数据时（kLineData 为 undefined），不显示水平标签
     if (crosshair.kLineData === undefined) {
       return false
@@ -18,11 +17,11 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
     return crosshair.paneId === paneId
   }
 
-  protected getDirectionStyles (styles: CrosshairStyle): CrosshairDirectionStyle {
+  protected getDirectionStyles(styles: CrosshairStyle): CrosshairDirectionStyle {
     return styles.horizontal
   }
 
-  protected getText (crosshair: Crosshair, chartStore: ChartStore): string {
+  protected getText(crosshair: Crosshair, chartStore: ChartStore): string {
     const widget = this.getWidget() as unknown as YAxisWidget
     const axisType = widget.getAxisType()
     const yAxis = widget.getAxisComponent()
@@ -32,12 +31,10 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
       const fromData = chartStore.getVisibleFirstData()
       if (!fromData) {
         text = ''
+      } else if (axisType === YAxisType.MinutePercentage) {
+        text = `${((value - fromData.prevClose) / fromData.prevClose * 100).toFixed(2)}%`
       } else {
-        if (axisType === YAxisType.MinutePercentage) {
-          text = `${((value - fromData.prevClose) / fromData.prevClose * 100).toFixed(2)}%`
-        } else {
-          text = `${((value - fromData.close) / fromData.close * 100).toFixed(2)}%`
-        }
+        text = `${((value - fromData.close) / fromData.close * 100).toFixed(2)}%`
       }
     } else {
       const indicators = chartStore.getIndicatorStore().getInstances(crosshair.paneId!)
@@ -61,7 +58,7 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
     return formatFoldDecimal(formatThousands(text, chartStore.getThousandsSeparator()), chartStore.getDecimalFoldThreshold())
   }
 
-  protected getTextAttrs (text: string, _textWidth: number, crosshair: Crosshair, bounding: Bounding, _styles: StateTextStyle): TextAttrs {
+  protected getTextAttrs(text: string, _textWidth: number, crosshair: Crosshair, bounding: Bounding, _styles: StateTextStyle): TextAttrs {
     const widget = this.getWidget() as unknown as YAxisWidget
     const isAlignLeft = widget.isAlignLeft()
     const align = isAlignLeft ? 'left' : 'right'

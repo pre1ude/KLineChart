@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../common/Nullable'
 import type ChartStore from './ChartStore'
 import { type IndicatorCreate, Indicator, IndicatorSeries } from '../component/Indicator'
@@ -10,11 +9,11 @@ export default class IndicatorStore {
   private readonly _chartStore: ChartStore
   private readonly _instances = new Map<string, Indicator[]>()
 
-  constructor (chartStore: ChartStore) {
+  constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
   }
 
-  private _sort (paneId?: string): void {
+  private _sort(paneId?: string): void {
     if (isString(paneId)) {
       this._instances.get(paneId)?.sort((i1, i2) => i1.zLevel - i2.zLevel)
     } else {
@@ -24,7 +23,7 @@ export default class IndicatorStore {
     }
   }
 
-  async addInstance (indicator: IndicatorCreate, paneId: string, isStack: boolean): Promise<boolean> {
+  async addInstance(indicator: IndicatorCreate, paneId: string, isStack: boolean): Promise<boolean> {
     const { name } = indicator
     let paneInstances = this._instances.get(paneId)
     if (isValid(paneInstances)) {
@@ -50,11 +49,11 @@ export default class IndicatorStore {
     return await indicatorInstance.calcIndicator(this._chartStore.getDataList())
   }
 
-  getInstances (paneId: string): Indicator[] {
+  getInstances(paneId: string): Indicator[] {
     return this._instances.get(paneId) ?? []
   }
 
-  removeInstance (paneId: string, name?: string): boolean {
+  removeInstance(paneId: string, name?: string): boolean {
     let removed = false
     const paneInstances = this._instances.get(paneId)
     if (isValid(paneInstances)) {
@@ -75,11 +74,11 @@ export default class IndicatorStore {
     return removed
   }
 
-  hasInstances (paneId: string): boolean {
+  hasInstances(paneId: string): boolean {
     return this._instances.has(paneId)
   }
 
-  async calcInstance (name?: string, paneId?: string): Promise<boolean> {
+  async calcInstance(name?: string, paneId?: string): Promise<boolean> {
     const tasks: Array<Promise<boolean>> = []
     if (isString(name)) {
       if (isString(paneId)) {
@@ -109,7 +108,7 @@ export default class IndicatorStore {
     return result.includes(true)
   }
 
-  getInstanceByPaneId (paneId?: string, name?: string): Nullable<Indicator> | Nullable<Map<string, Indicator>> | Map<string, Map<string, Indicator>> {
+  getInstanceByPaneId(paneId?: string, name?: string): Nullable<Indicator> | Nullable<Map<string, Indicator>> | Map<string, Map<string, Indicator>> {
     const createMapping: ((instances: Indicator[]) => Map<string, Indicator>) = (instances: Indicator[]) => {
       const mapping = new Map<string, Indicator>()
       instances.forEach(ins => {
@@ -132,7 +131,7 @@ export default class IndicatorStore {
     return mapping
   }
 
-  synchronizeSeriesPrecision (indicator?: Indicator): void {
+  synchronizeSeriesPrecision(indicator?: Indicator): void {
     const { price: pricePrecision, volume: volumePrecision } = this._chartStore.getPrecision()
     const synchronize = (indicator: Indicator): void => {
       switch (indicator.series) {
@@ -159,7 +158,7 @@ export default class IndicatorStore {
     }
   }
 
-  async override (indicator: IndicatorCreate, paneId: Nullable<string>): Promise<[boolean, boolean]> {
+  async override(indicator: IndicatorCreate, paneId: Nullable<string>): Promise<[boolean, boolean]> {
     const { name } = indicator
     let instances = new Map<string, Indicator[]>()
     if (paneId !== null) {
@@ -181,10 +180,8 @@ export default class IndicatorStore {
         sortFlag = needSort
         if (needCalc) {
           tasks.push(instance.calcIndicator(this._chartStore.getDataList()))
-        } else {
-          if (needUpdate) {
-            onlyUpdateFlag = true
-          }
+        } else if (needUpdate) {
+          onlyUpdateFlag = true
         }
       }
     })

@@ -6,7 +6,7 @@ import { Figure } from './Figure'
  * 子 Figure 的事件会冒泡到 Group 层级
  */
 export class FigureGroup extends Eventful {
-  draw (ctx: CanvasRenderingContext2D): void {
+  draw(ctx: CanvasRenderingContext2D): void {
     const children = this.getChildren()
     for (const child of children) {
       if (child instanceof Figure || child instanceof FigureGroup) {

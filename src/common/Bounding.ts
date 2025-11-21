@@ -1,5 +1,4 @@
 
-
 import { isValid, merge } from './utils/typeChecks'
 
 export default interface Bounding {
@@ -9,7 +8,7 @@ export default interface Bounding {
   top: number
 }
 
-export function createDefaultBounding (bounding?: Partial<Bounding>): Bounding {
+export function createDefaultBounding(bounding?: Partial<Bounding>): Bounding {
   const defaultBounding: Bounding = {
     width: 0,
     height: 0,
@@ -22,7 +21,7 @@ export function createDefaultBounding (bounding?: Partial<Bounding>): Bounding {
   return defaultBounding
 }
 
-export function isPointInBounding (bounding: Bounding, { x, y }: { x: number, y: number }): boolean {
+export function isPointInBounding(bounding: Bounding, { x, y }: { x: number, y: number }): boolean {
   return x >= bounding.left &&
            x <= bounding.left + bounding.width &&
            y >= bounding.top &&

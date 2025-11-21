@@ -7,6 +7,6 @@ export interface PointScaleOptions extends Omit<BandScaleOptions, 'padding'> {
   padding?: number
 }
 
-export function createPoint (options: PointScaleOptions): PointScale {
+export function createPoint(options: PointScaleOptions): PointScale {
   return createBand({ ...options, padding: 1 })
 }

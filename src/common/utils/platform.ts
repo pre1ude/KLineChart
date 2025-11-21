@@ -1,13 +1,12 @@
 
-
-export function isFF (): boolean {
+export function isFF(): boolean {
   if (typeof window === 'undefined') {
     return false
   }
   return (window.navigator.userAgent.toLowerCase().indexOf('firefox') ?? -1) > -1
 }
 
-export function isIOS (): boolean {
+export function isIOS(): boolean {
   if (typeof window === 'undefined') {
     return false
   }

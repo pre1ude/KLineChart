@@ -1,5 +1,4 @@
 
-
 import type Coordinate from '../common/Coordinate'
 import { CandleType, PolygonType, type CrosshairDirectionStyle } from '../common/Styles'
 import { isNumber, isString } from '../common/utils/typeChecks'
@@ -9,7 +8,7 @@ import { PaneIdConstants } from '../pane/types'
 import View from './View'
 
 export default class CrosshairLineView extends View {
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
     const isMain = pane.getId() === PaneIdConstants.CANDLE
@@ -67,7 +66,7 @@ export default class CrosshairLineView extends View {
     }
   }
 
-  private _drawLine (ctx: CanvasRenderingContext2D, coordinates: Coordinate[], styles: CrosshairDirectionStyle): void {
+  private _drawLine(ctx: CanvasRenderingContext2D, coordinates: Coordinate[], styles: CrosshairDirectionStyle): void {
     if (styles.show) {
       const lineStyles = styles.line
       if (lineStyles.show) {

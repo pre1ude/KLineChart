@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../common/Nullable'
 import type DeepPartial from '../common/DeepPartial'
 import type ExcludePickPartial from '../common/ExcludePickPartial'
@@ -217,11 +216,11 @@ export class Overlay implements OverlayApi {
   private _prevPressedPoint: Nullable<Partial<Point>> = null
   private _prevPressedPoints: Array<Partial<Point>> = []
 
-  constructor (overlay: OverlayTemplate) {
+  constructor(overlay: OverlayTemplate) {
     Object.assign(this, defaultTemplate, overlay)
   }
 
-  setPoints (points: Array<Partial<Point>>): void {
+  setPoints(points: Array<Partial<Point>>): void {
     if (points.length === 0) return
 
     this.points = [...points]
@@ -255,25 +254,25 @@ export class Overlay implements OverlayApi {
     }
   }
 
-  get isDrawing (): boolean {
+  get isDrawing(): boolean {
     return this.currentStep !== OverlayDrawStep.FINISHED
   }
 
-  get isStart (): boolean {
+  get isStart(): boolean {
     return this.currentStep === OverlayDrawStep.START
   }
 
-  nextStep (): void {
+  nextStep(): void {
     this.currentStep = this.currentStep === this.totalStep - 1
       ? OverlayDrawStep.FINISHED
       : this.currentStep + 1
   }
 
-  forceComplete (): void {
+  forceComplete(): void {
     this.currentStep = OverlayDrawStep.FINISHED
   }
 
-  eventMoveForDrawing (point: Partial<Point>): void {
+  eventMoveForDrawing(point: Partial<Point>): void {
     const pointIndex = this.currentStep - 1
     const newPoint: Partial<Point> = {}
 
@@ -292,7 +291,7 @@ export class Overlay implements OverlayApi {
     })
   }
 
-  eventPressedPointMove (point: Partial<Point>, pointIndex: number): void {
+  eventPressedPointMove(point: Partial<Point>, pointIndex: number): void {
     const targetPoint = this.points[pointIndex]
 
     if (isNumber(point.dataIndex)) {
@@ -312,12 +311,12 @@ export class Overlay implements OverlayApi {
     })
   }
 
-  startPressedMove (point: Partial<Point>): void {
+  startPressedMove(point: Partial<Point>): void {
     this._prevPressedPoint = { ...point }
     this._prevPressedPoints = clone(this.points)
   }
 
-  eventPressedOtherMove (point: Partial<Point>, chartStore: ChartStore): void {
+  eventPressedOtherMove(point: Partial<Point>, chartStore: ChartStore): void {
     if (!this._prevPressedPoint) return
 
     const difDataIndex = isNumber(point.dataIndex) && isNumber(this._prevPressedPoint.dataIndex)
@@ -348,7 +347,7 @@ export class Overlay implements OverlayApi {
     })
   }
 
-  shouldUpdate (next: Partial<OverlayCreate>): [boolean, boolean] {
+  shouldUpdate(next: Partial<OverlayCreate>): [boolean, boolean] {
     const shouldSort = (next: Partial<OverlayCreate>): boolean => {
       return (
         (isNumber(next.zLevel) && this.zLevel !== next.zLevel)
@@ -371,7 +370,7 @@ export class Overlay implements OverlayApi {
     return [needUpdate, needSort]
   }
 
-  overrideOverlay (next: Partial<Overlay>): void {
+  overrideOverlay(next: Partial<Overlay>): void {
     const {
       id, name, currentStep: _, points, styles, ...others
     } = next

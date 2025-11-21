@@ -1,5 +1,4 @@
 
-
 import { type AxisTemplate } from '../../component/Axis'
 
 const defaultXAxis: AxisTemplate = {

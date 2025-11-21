@@ -1,5 +1,4 @@
 
-
 import type Coordinate from '../common/Coordinate'
 import type VisibleData from '../common/VisibleData'
 import { type GradientColor } from '../common/Styles'
@@ -17,13 +16,13 @@ export default class CandleAreaView extends View {
 
   private _animationFrameTime = 0
 
-  private readonly _animation = new Animation({ iterationCount: Infinity }).doFrame((time) => {
+  private readonly _animation = new Animation({ iterationCount: Infinity }).doFrame(time => {
     this._animationFrameTime = time
     const pane = this.getWidget().getPane()
     pane.getChart().updatePane(UpdateLevel.Main, pane.getId())
   })
 
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
     const chart = pane.getChart()
@@ -158,7 +157,7 @@ export default class CandleAreaView extends View {
     }
   }
 
-  stopAnimation (): void {
+  stopAnimation(): void {
     this._animation.stop()
   }
 }

@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-
 
 /**
  * This file uses most of the logic of lightweight-charts/mouse-event-handler.ts(https://github.com/tradingview/lightweight-charts) for reference.
@@ -86,20 +84,20 @@ export interface EventOptions {
 const enum Delay {
   ResetClick = 500,
   LongTap = 500,
-  PreventFiresTouchEvents = 500,
+  PreventFiresTouchEvents = 500
 }
 
 const enum ManhattanDistance {
   CancelClick = 5,
   CancelTap = 5,
   DoubleClick = 5,
-  DoubleTap = 30,
+  DoubleTap = 30
 }
 
 const enum MouseEventButton {
   Left = 0,
   Middle = 1,
-  Right = 2,
+  Right = 2
 }
 
 export const TOUCH_MIN_RADIUS = 10
@@ -168,7 +166,7 @@ export default class SyntheticEvent {
   // see _mouseEnterHandler, _mouseMoveHandler, _mouseLeaveHandler
   private _acceptMouseLeave: boolean = !isIOS()
 
-  constructor (
+  constructor(
     target: HTMLElement,
     handler: EventHandler,
     options: EventOptions
@@ -181,7 +179,7 @@ export default class SyntheticEvent {
     this._init()
   }
 
-  destroy (): void {
+  destroy(): void {
     if (this._unsubscribeOutsideMouseEvents !== null) {
       this._unsubscribeOutsideMouseEvents()
       this._unsubscribeOutsideMouseEvents = null
@@ -226,7 +224,7 @@ export default class SyntheticEvent {
     this._resetClickTimeout()
   }
 
-  private _mouseEnterHandler (enterEvent: MouseEvent): void {
+  private _mouseEnterHandler(enterEvent: MouseEvent): void {
     this._unsubscribeMousemove?.()
     this._unsubscribeMouseWheel?.()
     this._unsubscribeContextMenu?.()
@@ -257,7 +255,7 @@ export default class SyntheticEvent {
     this._acceptMouseLeave = true
   }
 
-  private _resetClickTimeout (): void {
+  private _resetClickTimeout(): void {
     if (this._clickTimeoutId !== null) {
       clearTimeout(this._clickTimeoutId)
     }
@@ -267,7 +265,7 @@ export default class SyntheticEvent {
     this._clickCoordinate = { x: Number.NEGATIVE_INFINITY, y: Number.POSITIVE_INFINITY }
   }
 
-  private _resetTapTimeout (): void {
+  private _resetTapTimeout(): void {
     if (this._tapTimeoutId !== null) {
       clearTimeout(this._tapTimeoutId)
     }
@@ -277,7 +275,7 @@ export default class SyntheticEvent {
     this._tapCoordinate = { x: Number.NEGATIVE_INFINITY, y: Number.POSITIVE_INFINITY }
   }
 
-  private _mouseMoveHandler (moveEvent: MouseEvent): void {
+  private _mouseMoveHandler(moveEvent: MouseEvent): void {
     if (this._mousePressed || this._touchMoveStartCoordinate !== null) {
       return
     }
@@ -290,7 +288,7 @@ export default class SyntheticEvent {
     this._acceptMouseLeave = true
   }
 
-  private _mouseWheelHandler (wheelEvent: WheelEvent): void {
+  private _mouseWheelHandler(wheelEvent: WheelEvent): void {
     if (Math.abs(wheelEvent.deltaX) > Math.abs(wheelEvent.deltaY)) {
       if (!isValid(this._handler.mouseWheelHortEvent)) {
         return
@@ -327,11 +325,11 @@ export default class SyntheticEvent {
     }
   }
 
-  private _contextMenuHandler (mouseEvent: MouseEvent): void {
+  private _contextMenuHandler(mouseEvent: MouseEvent): void {
     this._preventDefault(mouseEvent)
   }
 
-  private _touchMoveHandler (moveEvent: TouchEvent): void {
+  private _touchMoveHandler(moveEvent: TouchEvent): void {
     const touch = this._touchWithId(moveEvent.changedTouches, this._activeTouchId)
     if (touch === null) {
       return
@@ -391,7 +389,7 @@ export default class SyntheticEvent {
     }
   }
 
-  private _mouseMoveWithDownHandler (moveEvent: MouseEvent): void {
+  private _mouseMoveWithDownHandler(moveEvent: MouseEvent): void {
     if (moveEvent.button !== MouseEventButton.Left) {
       return
     }
@@ -410,7 +408,7 @@ export default class SyntheticEvent {
     }
   }
 
-  private _mouseTouchMoveWithDownInfo (currentCoordinate: Coordinate, startCoordinate: Coordinate): MouseTouchMoveWithDownInfo {
+  private _mouseTouchMoveWithDownInfo(currentCoordinate: Coordinate, startCoordinate: Coordinate): MouseTouchMoveWithDownInfo {
     const xOffset = Math.abs(startCoordinate.x - currentCoordinate.x)
     const yOffset = Math.abs(startCoordinate.y - currentCoordinate.y)
 
@@ -459,8 +457,7 @@ export default class SyntheticEvent {
     }
   }
 
-  // eslint-disable-next-line complexity
-  private _touchEndHandler (touchEndEvent: TouchEvent): void {
+  private _touchEndHandler(touchEndEvent: TouchEvent): void {
     let touch = this._touchWithId(touchEndEvent.changedTouches, this._activeTouchId)
     if (touch === null && touchEndEvent.touches.length === 0) {
       // something went wrong, somehow we missed the required touchend event
@@ -493,15 +490,13 @@ export default class SyntheticEvent {
         this._processEvent(compatEvent, this._handler.doubleTapEvent)
       }
       this._resetTapTimeout()
-    } else {
-      if (!this._cancelTap) {
-        this._processEvent(compatEvent, this._handler.tapEvent)
+    } else if (!this._cancelTap) {
+      this._processEvent(compatEvent, this._handler.tapEvent)
 
-        // do not fire mouse events if tap handler was executed
-        // prevent click event on new dom element (who appeared after tap)
-        if (isValid(this._handler.tapEvent)) {
-          this._preventDefault(touchEndEvent)
-        }
+      // do not fire mouse events if tap handler was executed
+      // prevent click event on new dom element (who appeared after tap)
+      if (isValid(this._handler.tapEvent)) {
+        this._preventDefault(touchEndEvent)
       }
     }
 
@@ -520,7 +515,7 @@ export default class SyntheticEvent {
     }
   }
 
-  private _mouseUpHandler (mouseUpEvent: MouseEvent): void {
+  private _mouseUpHandler(mouseUpEvent: MouseEvent): void {
     if (mouseUpEvent.button !== MouseEventButton.Left) {
       return
     }
@@ -554,14 +549,12 @@ export default class SyntheticEvent {
         this._processEvent(compatEvent, this._handler.mouseDoubleClickEvent)
       }
       this._resetClickTimeout()
-    } else {
-      if (!this._cancelClick) {
-        this._processEvent(compatEvent, this._handler.mouseClickEvent)
-      }
+    } else if (!this._cancelClick) {
+      this._processEvent(compatEvent, this._handler.mouseClickEvent)
     }
   }
 
-  private _clearLongTapTimeout (): void {
+  private _clearLongTapTimeout(): void {
     if (this._longTapTimeoutId === null) {
       return
     }
@@ -570,7 +563,7 @@ export default class SyntheticEvent {
     this._longTapTimeoutId = null
   }
 
-  private _touchStartHandler (downEvent: TouchEvent): void {
+  private _touchStartHandler(downEvent: TouchEvent): void {
     if (this._activeTouchId !== null) {
       return
     }
@@ -617,7 +610,7 @@ export default class SyntheticEvent {
     }
   }
 
-  private _mouseDownHandler (downEvent: MouseEvent): void {
+  private _mouseDownHandler(downEvent: MouseEvent): void {
     if (downEvent.button === MouseEventButton.Right) {
       this._preventDefault(downEvent)
       this._processEvent(this._makeCompatEvent(downEvent), this._handler.mouseRightClickEvent)
@@ -670,14 +663,14 @@ export default class SyntheticEvent {
     }
   }
 
-  private _calcScale (): void {
+  private _calcScale(): void {
     const box = this._target.getBoundingClientRect() ?? { left: 0, top: 0 }
 
     const scale = box.width / this._target.offsetWidth
     setScale(scale)
   }
 
-  private _init (): void {
+  private _init(): void {
     this._target.addEventListener('mouseenter', this._mouseEnterHandler.bind(this))
 
     // Do not show context menu when something went wrong
@@ -763,7 +756,7 @@ export default class SyntheticEvent {
     this._target.addEventListener('touchmove', () => {}, { passive: false })
   }
 
-  private _initPinch (): void {
+  private _initPinch(): void {
     if (!isValid(this._handler.pinchStartEvent) &&
       !isValid(this._handler.pinchEvent) &&
       !isValid(this._handler.pinchEndEvent)
@@ -814,7 +807,7 @@ export default class SyntheticEvent {
     })
   }
 
-  private _checkPinchState (event: TouchEvent): void {
+  private _checkPinchState(event: TouchEvent): void {
     const touches = event.touches
     if (touches.length === 1) {
       this._pinchPrevented = false
@@ -827,7 +820,7 @@ export default class SyntheticEvent {
     }
   }
 
-  private _startPinch (event: TouchEvent): void {
+  private _startPinch(event: TouchEvent): void {
     const touches = event.touches
     const box = this._target.getBoundingClientRect() ?? { left: 0, top: 0 }
     this._startPinchMiddleCoordinate = {
@@ -861,7 +854,7 @@ export default class SyntheticEvent {
     this._clearLongTapTimeout()
   }
 
-  private _stopPinch (event: TouchEvent): void {
+  private _stopPinch(event: TouchEvent): void {
     if (this._startPinchMiddleCoordinate === null) {
       return
     }
@@ -890,7 +883,7 @@ export default class SyntheticEvent {
     }
   }
 
-  private _mouseLeaveHandler (event: MouseEvent): void {
+  private _mouseLeaveHandler(event: MouseEvent): void {
     this._unsubscribeMousemove?.()
     this._unsubscribeMouseWheel?.()
     this._unsubscribeContextMenu?.()
@@ -911,7 +904,7 @@ export default class SyntheticEvent {
     this._acceptMouseLeave = !isIOS()
   }
 
-  private _longTapHandler (event: TouchEvent): void {
+  private _longTapHandler(event: TouchEvent): void {
     const touch = this._touchWithId(event.touches, this._activeTouchId)
     if (touch === null) {
       return
@@ -924,7 +917,7 @@ export default class SyntheticEvent {
     this._longTapActive = true
   }
 
-  private _firesTouchEvents (e: MouseEvent): boolean {
+  private _firesTouchEvents(e: MouseEvent): boolean {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error
     if (isValid(e.sourceCapabilities?.firesTouchEvents)) {
@@ -936,11 +929,11 @@ export default class SyntheticEvent {
     return this._eventTimeStamp(e) < this._lastTouchEventTimeStamp + Delay.PreventFiresTouchEvents
   }
 
-  private _processEvent (event: MouseTouchEvent<MouseEvent | TouchEvent>, callback?: MouseTouchEventCallback): void {
+  private _processEvent(event: MouseTouchEvent<MouseEvent | TouchEvent>, callback?: MouseTouchEventCallback): void {
     callback?.call(this._handler, event)
   }
 
-  private _makeCompatEvent<T extends MouseEvent | TouchEvent> (event: T, touch?: Touch): MouseTouchEvent<T> {
+  private _makeCompatEvent<T extends MouseEvent | TouchEvent>(event: T, touch?: Touch): MouseTouchEvent<T> {
     // TouchEvent has no clientX/Y coordinates:
     // We have to use the last Touch instead
     const eventLike = touch ?? (event as MouseEvent)
@@ -974,31 +967,31 @@ export default class SyntheticEvent {
     return _event
   }
 
-  private _getTouchDistance (p1: Touch, p2: Touch): number {
+  private _getTouchDistance(p1: Touch, p2: Touch): number {
     const xDiff = p1.clientX - p2.clientX
     const yDiff = p1.clientY - p2.clientY
     return Math.sqrt(xDiff * xDiff + yDiff * yDiff)
   }
 
-  private _preventDefault (event: Event): void {
+  private _preventDefault(event: Event): void {
     if (event.cancelable) {
       event.preventDefault()
     }
   }
 
-  private _getCoordinate (eventLike: Touch | MouseEvent): Coordinate {
+  private _getCoordinate(eventLike: Touch | MouseEvent): Coordinate {
     return {
       x: eventLike.pageX,
       y: eventLike.pageY
     }
   }
 
-  private _eventTimeStamp (e: TouchEvent | MouseEvent): number {
+  private _eventTimeStamp(e: TouchEvent | MouseEvent): number {
     // for some reason e.timestamp is always 0 on iPad with magic mouse, so we use performance.now() as a fallback
     return e.timeStamp ?? performance.now()
   }
 
-  private _touchWithId (touches: TouchList, id: Nullable<number>): Nullable<Touch> {
+  private _touchWithId(touches: TouchList, id: Nullable<number>): Nullable<Touch> {
     for (let i = 0; i < touches.length; ++i) {
       if (touches[i].identifier === id) {
         return touches[i]

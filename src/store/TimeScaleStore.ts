@@ -1,5 +1,4 @@
 
-
 import type BarSpace from '../common/BarSpace'
 import type VisibleRange from '../common/VisibleRange'
 import { createDefaultTimeShareVisibleRange, getDefaultVisibleRange } from '../common/VisibleRange'
@@ -37,13 +36,13 @@ export default class TimeScaleStore {
 
   private _xScale: LinearScale
 
-  constructor (chartStore: ChartStore) {
+  constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
     this._xScale = createScale(this._visibleRange, this._chartStore.mainWidth)
     this._kWidth = getKWidth(this._barWidth)
   }
 
-  public initBarSpaceLimit (isTimeShare: boolean): void {
+  public initBarSpaceLimit(isTimeShare: boolean): void {
     if (isTimeShare) {
       this._barSpaceLimit = { min: 0.1, max: 50 }
     } else {
@@ -51,7 +50,7 @@ export default class TimeScaleStore {
     }
   }
 
-  private calcMinRemainWidth (): void {
+  private calcMinRemainWidth(): void {
     if (this._calcMode === 'DISTANCE_MODE') {
       if (this._maxOffsetLeftDistance != null) {
         this._minRemainWidth.right = this._chartStore.mainWidth - this._maxOffsetLeftDistance
@@ -69,7 +68,7 @@ export default class TimeScaleStore {
     }
   }
 
-  private computeVisibleRange (): VisibleRange {
+  private computeVisibleRange(): VisibleRange {
     const isTimeShare = this._chartStore.getIsTimeShare()
     const timeShareTicks = this._chartStore.getTimeShareTicks()
     const timeShareDays = this._chartStore.getTimeShareDays()
@@ -104,7 +103,7 @@ export default class TimeScaleStore {
     return visibleRange
   }
 
-  adjustForTimeShare (): void {
+  adjustForTimeShare(): void {
     // console.log('adjustForTimeShare')
     const mainWidth = this._chartStore.mainWidth
     const dataList = this._chartStore.getDataList()
@@ -127,18 +126,18 @@ export default class TimeScaleStore {
       if (tickIndex === -1) {
         console.error('Last data timestamp not found in time share ticks:', hhmm, lastData)
         return
-      } else {
-        const dayIndex = Math.floor((totalBarCount - 1) / timeShareTicks.length)
-        const idx = dayIndex * timeShareTicks.length + tickIndex
-        offsetRight = (tickCount - idx - 1) * barWidth
       }
+      const dayIndex = Math.floor((totalBarCount - 1) / timeShareTicks.length)
+      const idx = dayIndex * timeShareTicks.length + tickIndex
+      offsetRight = (tickCount - idx - 1) * barWidth
+
     }
     this._barWidth = clamp(barWidth, this._barSpaceLimit.min, this._barSpaceLimit.max)
     this._kWidth = getKWidth(this._barWidth)
     this._offsetRight = offsetRight
   }
 
-  adjustVisibleRange (): void {
+  adjustVisibleRange(): void {
     const isTimeShare = this._chartStore.getIsTimeShare()
     if (isTimeShare) {
       this.adjustForTimeShare()
@@ -169,7 +168,7 @@ export default class TimeScaleStore {
     }
   }
 
-  getBarSpace (): BarSpace {
+  getBarSpace(): BarSpace {
     return {
       bar: this._barWidth,
       halfBar: this._barWidth / 2,
@@ -178,7 +177,7 @@ export default class TimeScaleStore {
     }
   }
 
-  setBarSpace (barWidth: number): void {
+  setBarSpace(barWidth: number): void {
     if (this._barWidth === barWidth) {
       return
     }
@@ -189,7 +188,7 @@ export default class TimeScaleStore {
     this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
   }
 
-  setOffsetRightDistance (distance: number, update?: boolean): this {
+  setOffsetRightDistance(distance: number, update?: boolean): this {
     this._offsetRight = distance
     if (update ?? false) {
       this.adjustVisibleRange()
@@ -199,47 +198,47 @@ export default class TimeScaleStore {
     return this
   }
 
-  resetOffsetRightDistance (): void {
+  resetOffsetRightDistance(): void {
     this.setOffsetRightDistance(DEFAULT_OFFSET_RIGHT)
   }
 
-  getInitialOffsetRightDistance (): number {
+  getInitialOffsetRightDistance(): number {
     return DEFAULT_OFFSET_RIGHT
   }
 
-  getOffsetRightDistance (): number {
+  getOffsetRightDistance(): number {
     return this._offsetRight
   }
 
-  setMaxOffsetLeftDistance (distance: number): void {
+  setMaxOffsetLeftDistance(distance: number): void {
     this._maxOffsetLeftDistance = distance
     this._calcMode = 'DISTANCE_MODE'
   }
 
-  setMaxOffsetRightDistance (distance: number): void {
+  setMaxOffsetRightDistance(distance: number): void {
     this._maxOffsetRightDistance = distance
     this._calcMode = 'DISTANCE_MODE'
   }
 
-  setLeftMinVisibleBarCount (barCount: number): void {
+  setLeftMinVisibleBarCount(barCount: number): void {
     this._leftMinVisibleBarCount = barCount
     this._calcMode = 'BARCOUNT_MODE'
   }
 
-  setRightMinVisibleBarCount (barCount: number): void {
+  setRightMinVisibleBarCount(barCount: number): void {
     this._rightMinVisibleBarCount = barCount
     this._calcMode = 'BARCOUNT_MODE'
   }
 
-  getVisibleRange (): VisibleRange {
+  getVisibleRange(): VisibleRange {
     return this._visibleRange
   }
 
-  getXScale (): LinearScale {
+  getXScale(): LinearScale {
     return this._xScale
   }
 
-  scroll (distance: number): void {
+  scroll(distance: number): void {
     if (!this._scrollEnabled) {
       return
     }
@@ -255,18 +254,18 @@ export default class TimeScaleStore {
   }
 
   // map from [domainFrom, domainTo] -> [0, mainWidth]
-  dataIndexToCoordinate (dataIndex: number): number {
+  dataIndexToCoordinate(dataIndex: number): number {
     return this._xScale(dataIndex)
   }
 
-  coordinateToDataIndex (x: number): number {
+  coordinateToDataIndex(x: number): number {
     const dataCount = this._chartStore.getDataList().length
     // * math explain: (dataCount - index) * bar = (mainWidth - offsetRight - x)
     const index = dataCount - (this._chartStore.mainWidth - this._offsetRight - x) / this._barWidth
     return Math.floor(index)
   }
 
-  zoom (scaleDelta: number, xCoord?: number): void {
+  zoom(scaleDelta: number, xCoord?: number): void {
     if (!this._zoomEnabled) {
       return
     }
@@ -300,20 +299,20 @@ export default class TimeScaleStore {
     }
   }
 
-  get zoomEnabled (): boolean { return this._zoomEnabled }
+  get zoomEnabled(): boolean { return this._zoomEnabled }
 
-  set zoomEnabled (enabled: boolean) { this._zoomEnabled = enabled }
+  set zoomEnabled(enabled: boolean) { this._zoomEnabled = enabled }
 
-  get scrollEnabled (): boolean { return this._scrollEnabled }
+  get scrollEnabled(): boolean { return this._scrollEnabled }
 
-  set scrollEnabled (enabled: boolean) { this._scrollEnabled = enabled }
+  set scrollEnabled(enabled: boolean) { this._scrollEnabled = enabled }
 
-  clear (): void {
+  clear(): void {
     this._visibleRange = getDefaultVisibleRange()
   }
 }
 
-function getKWidth (barWidth: number): number {
+function getKWidth(barWidth: number): number {
   let kWidth: number
   if (barWidth > 3) {
     kWidth = Math.floor(barWidth * K_BAR_RATIO)
@@ -330,7 +329,7 @@ function getKWidth (barWidth: number): number {
   return kWidth
 }
 
-function createScale ({ domainFrom, domainTo }: VisibleRange, mainWidth: number): LinearScale {
+function createScale({ domainFrom, domainTo }: VisibleRange, mainWidth: number): LinearScale {
   return createLinear({
     domain: [domainFrom - 0.5, domainTo - 0.5],
     range: [0, mainWidth]

@@ -1,5 +1,4 @@
 
-
 import type DeepRequired from '../common/DeepRequired'
 import type Nullable from '../common/Nullable'
 import { type UpdateLevel } from '../common/Updater'
@@ -40,7 +39,7 @@ export default abstract class DualYPane extends Pane {
     }
   }
 
-  constructor (rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string, options: Omit<PaneOptions, 'id' | 'height'>) {
+  constructor(rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string, options: Omit<PaneOptions, 'id' | 'height'>) {
     super(rootContainer, afterElement, chart, id)
     const container = this.getContainer()
     this._mainWidget = this.createMainWidget(container)
@@ -50,12 +49,12 @@ export default abstract class DualYPane extends Pane {
     this.setContainerCursorStyle()
   }
 
-  setOptions (options: Omit<PaneOptions, 'id' | 'height'>): this {
+  setOptions(options: Omit<PaneOptions, 'id' | 'height'>): this {
     merge(this._options, options)
     return this
   }
 
-  setContainerCursorStyle (): void {
+  setContainerCursorStyle(): void {
     const scrollZoomEnabled = this._options.axisOptions?.scrollZoomEnabled ?? true
     if (this.getId() === PaneIdConstants.X_AXIS) {
       const container = this.getMainWidget().getContainer()
@@ -68,9 +67,9 @@ export default abstract class DualYPane extends Pane {
     }
   }
 
-  getOptions (): PickPartial<DeepRequired<Omit<PaneOptions, 'id' | 'height'>>, 'position'> { return this._options }
+  getOptions(): PickPartial<DeepRequired<Omit<PaneOptions, 'id' | 'height'>>, 'position'> { return this._options }
 
-  override setBounding (rootBounding: Partial<Bounding>, mainBounding?: Partial<Bounding>, yLeftAxisBounding?: Partial<Bounding>, yRightAxisBounding?: Partial<Bounding>): this {
+  override setBounding(rootBounding: Partial<Bounding>, mainBounding?: Partial<Bounding>, yLeftAxisBounding?: Partial<Bounding>, yRightAxisBounding?: Partial<Bounding>): this {
     merge(this.getBounding(), rootBounding)
     const contentBounding: Partial<Bounding> = {}
     if (isValid(rootBounding.height)) {
@@ -94,9 +93,9 @@ export default abstract class DualYPane extends Pane {
     return this
   }
 
-  getMainWidget (): DrawWidget<DualYPane> { return this._mainWidget }
+  getMainWidget(): DrawWidget<DualYPane> { return this._mainWidget }
 
-  getMainAxisWidget (): YAxisWidget {
+  getMainAxisWidget(): YAxisWidget {
     // get style options
     const yAxisStyles = this.getChart().getStyles().yAxis
     const position = yAxisStyles.position
@@ -104,13 +103,13 @@ export default abstract class DualYPane extends Pane {
       return this._yLeftAxisWidget
     } else if (position === YAxisPosition.Right) {
       return this._yRightAxisWidget
-    } else {
-      // default to left if both are enabled
-      return this._yLeftAxisWidget
     }
+    // default to left if both are enabled
+    return this._yLeftAxisWidget
+
   }
 
-  getAxisWidget (position: string): YAxisWidget {
+  getAxisWidget(position: string): YAxisWidget {
     if (position === 'left') {
       return this._yLeftAxisWidget
     } else if (position === 'right') {
@@ -119,23 +118,23 @@ export default abstract class DualYPane extends Pane {
     throw new Error(`Invalid axis position: ${position}. Use 'left' or 'right'.`)
   }
 
-  getYLeftAxisWidget (): YAxisWidget { return this._yLeftAxisWidget }
-  getYRightAxisWidget (): YAxisWidget { return this._yRightAxisWidget }
+  getYLeftAxisWidget(): YAxisWidget { return this._yLeftAxisWidget }
+  getYRightAxisWidget(): YAxisWidget { return this._yRightAxisWidget }
 
-  override updateImp (level: UpdateLevel): void {
+  override updateImp(level: UpdateLevel): void {
     this._mainWidget.update(level)
     this._yLeftAxisWidget?.update(level)
     this._yRightAxisWidget?.update(level)
   }
 
-  destroy (): void {
+  destroy(): void {
     super.destroy()
     this._mainWidget.destroy()
     this._yLeftAxisWidget?.destroy()
     this._yRightAxisWidget?.destroy()
   }
 
-  override getImage (includeOverlay: boolean): HTMLCanvasElement {
+  override getImage(includeOverlay: boolean): HTMLCanvasElement {
     const { width, height } = this.getBounding()
     const canvas = createDom('canvas', {
       width: `${width}px`,
@@ -167,7 +166,7 @@ export default abstract class DualYPane extends Pane {
     return canvas
   }
 
-  protected createYAxisWidget (container: HTMLElement, options: PaneOptions, position: Exclude<YAxisPosition, 'both'>): YAxisWidget { return new YAxisWidget(container, this, options, position) }
+  protected createYAxisWidget(container: HTMLElement, options: PaneOptions, position: Exclude<YAxisPosition, 'both'>): YAxisWidget { return new YAxisWidget(container, this, options, position) }
 
-  protected abstract createMainWidget (container: HTMLElement): DrawWidget<DualYPane>
+  protected abstract createMainWidget(container: HTMLElement): DrawWidget<DualYPane>
 }

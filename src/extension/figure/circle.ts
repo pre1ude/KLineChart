@@ -1,5 +1,4 @@
 
-
 import type Coordinate from '../../common/Coordinate'
 import { type PolygonStyle, PolygonType, LineType } from '../../common/Styles'
 import { isString } from '../../common/utils/typeChecks'
@@ -7,7 +6,7 @@ import { isTransparent } from '../../common/utils/color'
 
 import { type FigureTemplate } from '../../component/Figure'
 
-export function checkCoordinateOnCircle (coordinate: Coordinate, attrs: CircleAttrs | CircleAttrs[]): boolean {
+export function checkCoordinateOnCircle(coordinate: Coordinate, attrs: CircleAttrs | CircleAttrs[]): boolean {
   let circles: CircleAttrs[] = []
   circles = circles.concat(attrs)
 
@@ -22,7 +21,7 @@ export function checkCoordinateOnCircle (coordinate: Coordinate, attrs: CircleAt
   return false
 }
 
-export function drawCircle (ctx: CanvasRenderingContext2D, attrs: CircleAttrs | CircleAttrs[], styles: Partial<PolygonStyle>): void {
+export function drawCircle(ctx: CanvasRenderingContext2D, attrs: CircleAttrs | CircleAttrs[], styles: Partial<PolygonStyle>): void {
   let circles: CircleAttrs[] = []
   circles = circles.concat(attrs)
 

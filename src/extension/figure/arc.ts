@@ -1,5 +1,4 @@
 
-
 import type Coordinate from '../../common/Coordinate'
 import { getDistance } from '../../common/Coordinate'
 import { type LineStyle, LineType } from '../../common/Styles'
@@ -8,7 +7,7 @@ import { type FigureTemplate, DEVIATION } from '../../component/Figure'
 
 import { type CircleAttrs } from './circle'
 
-export function checkCoordinateOnArc (coordinate: Coordinate, attrs: ArcAttrs | ArcAttrs[]): boolean {
+export function checkCoordinateOnArc(coordinate: Coordinate, attrs: ArcAttrs | ArcAttrs[]): boolean {
   let arcs: ArcAttrs[] = []
   arcs = arcs.concat(attrs)
   for (let i = 0; i < arcs.length; i++) {
@@ -33,7 +32,7 @@ export function checkCoordinateOnArc (coordinate: Coordinate, attrs: ArcAttrs | 
   return false
 }
 
-export function drawArc (ctx: CanvasRenderingContext2D, attrs: ArcAttrs | ArcAttrs[], styles: Partial<LineStyle>): void {
+export function drawArc(ctx: CanvasRenderingContext2D, attrs: ArcAttrs | ArcAttrs[], styles: Partial<LineStyle>): void {
   let arcs: ArcAttrs[] = []
   arcs = arcs.concat(attrs)
   const { style = LineType.Solid, size = 1, color = 'currentColor', dashedValue = [2, 2] } = styles

@@ -1,5 +1,4 @@
 
-
 import { getPixelRatio, getScale } from './utils/canvas'
 import { createDom } from './utils/dom'
 import { isValid } from './utils/typeChecks'
@@ -7,7 +6,7 @@ import { requestAnimationFrame, DEFAULT_REQUEST_ID } from './utils/compatible'
 
 type DrawListener = () => void
 
-async function isSupportedDevicePixelContentBox (): Promise<boolean> {
+async function isSupportedDevicePixelContentBox(): Promise<boolean> {
   return await new Promise((resolve: (val: boolean) => void) => {
     const ro = new ResizeObserver((entries: ResizeObserverEntry[]) => {
       resolve(entries.every(entry => 'devicePixelContentBoxSize' in entry))
@@ -46,7 +45,7 @@ export default class Canvas {
     this._resetPixelRatio()
   }
 
-  constructor (style: Partial<CSSStyleDeclaration>, listener: DrawListener) {
+  constructor(style: Partial<CSSStyleDeclaration>, listener: DrawListener) {
     this._listener = listener
     this._element = createDom('canvas', style)
     this._ctx = this._element.getContext('2d', { willReadFrequently: true })!
@@ -73,7 +72,7 @@ export default class Canvas {
     }).catch(_ => false)
   }
 
-  private _resetPixelRatio (): void {
+  private _resetPixelRatio(): void {
     this._executeListener(() => {
       const width = this._element.clientWidth
       const height = this._element.clientHeight
@@ -89,7 +88,7 @@ export default class Canvas {
     })
   }
 
-  private _executeListener (fn?: () => void): void {
+  private _executeListener(fn?: () => void): void {
     if (this._requestAnimationId === DEFAULT_REQUEST_ID) {
       this._requestAnimationId = requestAnimationFrame(() => {
         this._ctx.clearRect(0, 0, this._width, this._height)
@@ -100,7 +99,7 @@ export default class Canvas {
     }
   }
 
-  update (w: number, h: number): void {
+  update(w: number, h: number): void {
     if (this._width !== w || this._height !== h) {
       this._element.style.width = `${w}px`
       this._element.style.height = `${h}px`
@@ -115,15 +114,15 @@ export default class Canvas {
     }
   }
 
-  getElement (): HTMLCanvasElement {
+  getElement(): HTMLCanvasElement {
     return this._element
   }
 
-  getContext (): CanvasRenderingContext2D {
+  getContext(): CanvasRenderingContext2D {
     return this._ctx
   }
 
-  destroy (): void {
+  destroy(): void {
     if (isValid(this._resizeObserver)) {
       this._resizeObserver.unobserve(this._element)
     }

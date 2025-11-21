@@ -1,5 +1,4 @@
 
-
 import type Nullable from './Nullable'
 
 /**

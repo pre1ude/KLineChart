@@ -9,7 +9,7 @@ const arrow: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick: function () {
+  onRightClick() {
     return true
   },
   createPointFigures: ({ coordinates }) => {
@@ -19,12 +19,10 @@ const arrow: OverlayTemplate = {
       let offsetAngle: number
       if (kb) {
         offsetAngle = Math.atan(kb[0]) + Math.PI * flag
+      } else if (coordinates[1].y > coordinates[0].y) {
+        offsetAngle = Math.PI / 2
       } else {
-        if (coordinates[1].y > coordinates[0].y) {
-          offsetAngle = Math.PI / 2
-        } else {
-          offsetAngle = (Math.PI / 2) * 3
-        }
+        offsetAngle = (Math.PI / 2) * 3
       }
       const rotateCoordinate1 = getRotateCoordinate(
         { x: coordinates[1].x - 8, y: coordinates[1].y + 4 },

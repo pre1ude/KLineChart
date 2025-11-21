@@ -34,26 +34,26 @@ export default abstract class AxisImp implements Pick<AxisTemplate, 'createTicks
   private readonly _parent: XAxisWidget | YAxisWidget
 
   // todo parent should be the axisWidget
-  constructor (parent: XAxisWidget | YAxisWidget) {
+  constructor(parent: XAxisWidget | YAxisWidget) {
     this._parent = parent
   }
 
-  getParent (): XAxisWidget | YAxisWidget { return this._parent }
+  getParent(): XAxisWidget | YAxisWidget { return this._parent }
 
-  getScrollZoomEnabled (): boolean {
+  getScrollZoomEnabled(): boolean {
     return this.getParent().getPane().getOptions().axisOptions?.scrollZoomEnabled ?? true
   }
 
-  protected abstract calcRange (): VisibleRange
+  protected abstract calcRange(): VisibleRange
 
-  protected abstract optimalTicks (ticks: AxisTick[]): AxisTick[]
+  protected abstract optimalTicks(ticks: AxisTick[]): AxisTick[]
 
-  abstract createTicks (params: AxisCreateTicksParams): AxisTick[]
+  abstract createTicks(params: AxisCreateTicksParams): AxisTick[]
 
-  abstract getAutoSize (): number
+  abstract getAutoSize(): number
 
-  abstract getSelfBounding (): Bounding
+  abstract getSelfBounding(): Bounding
 
-  abstract convertToPixel (value: number): number
-  abstract convertFromPixel (px: number): number
+  abstract convertToPixel(value: number): number
+  abstract convertFromPixel(px: number): number
 }

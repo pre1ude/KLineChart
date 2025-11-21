@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../common/Nullable'
 import type Bounding from '../common/Bounding'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
@@ -22,7 +21,7 @@ export default abstract class XAxisImp extends AxisImp {
   private _prevRange: VisibleRange = { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
   private _ticks: AxisTick[] = []
 
-  buildTicks (force: boolean): boolean {
+  buildTicks(force: boolean): boolean {
     if (this._autoCalcTickFlag) {
       this._range = this.calcRange()
     }
@@ -44,11 +43,11 @@ export default abstract class XAxisImp extends AxisImp {
     return false
   }
 
-  getTicks (): AxisTick[] {
+  getTicks(): AxisTick[] {
     return this._ticks
   }
 
-  protected _calcMinuteTicks (): AxisTick[] {
+  protected _calcMinuteTicks(): AxisTick[] {
     const chart = this.getParent().getPane().getChart()
     const chartStore = chart.getChartStore()
     const timeShareTicks = chartStore.getTimeShareTicks()
@@ -70,10 +69,10 @@ export default abstract class XAxisImp extends AxisImp {
       // tmpTicks.push(timeShareTicks.length - 1)
     }
 
-    return tmpTicks.map(v => ({ text: v + '', coord: 0, value: v }))
+    return tmpTicks.map(v => ({ text: `${v  }`, coord: 0, value: v }))
   }
 
-  protected _calcTicks (): AxisTick[] {
+  protected _calcTicks(): AxisTick[] {
     const xScale = this.getXScale()
     const _ticks = xScale.ticks()
     let ticks = _ticks
@@ -92,20 +91,20 @@ export default abstract class XAxisImp extends AxisImp {
         ticks = tmpTicks
       }
     }
-    return ticks.map(v => ({ text: v + '', coord: 0, value: v }))
+    return ticks.map(v => ({ text: `${v  }`, coord: 0, value: v }))
   }
 
-  protected getXScale (): LinearScale {
+  protected getXScale(): LinearScale {
     const timeScaleStore = this.getParent().getPane().getChart().getChartStore().getTimeScaleStore()
     return timeScaleStore.getXScale()
   }
 
-  protected calcRange (): VisibleRange {
+  protected calcRange(): VisibleRange {
     const chartStore = this.getParent().getPane().getChart().getChartStore()
     return chartStore.getTimeScaleStore().getVisibleRange()
   }
 
-  protected optimalTicks (ticks: AxisTick[]): AxisTick[] {
+  protected optimalTicks(ticks: AxisTick[]): AxisTick[] {
     const chart = this.getParent().getPane().getChart()
     const chartStore = chart.getChartStore()
     const formatDate = chartStore.getCustomApi().formatDate
@@ -169,7 +168,7 @@ export default abstract class XAxisImp extends AxisImp {
     return optimalTicks
   }
 
-  protected optimalMinuteTicks (ticks: AxisTick[]): AxisTick[] {
+  protected optimalMinuteTicks(ticks: AxisTick[]): AxisTick[] {
     const chart = this.getParent().getPane().getChart()
     const chartStore = chart.getChartStore()
     const timeShareTicks = chartStore.getTimeShareTicks()
@@ -230,7 +229,7 @@ export default abstract class XAxisImp extends AxisImp {
   }
 
   // should only call once
-  private _optimalTickLabel (formatDate: FormatDate, dateTimeFormat: Intl.DateTimeFormat, timestamp: number, comparedTimestamp: number): Nullable<string> {
+  private _optimalTickLabel(formatDate: FormatDate, dateTimeFormat: Intl.DateTimeFormat, timestamp: number, comparedTimestamp: number): Nullable<string> {
     const year = formatDate(dateTimeFormat, timestamp, 'YYYY', FormatDateType.XAxis)
     const month = formatDate(dateTimeFormat, timestamp, 'YYYY-MM', FormatDateType.XAxis)
     const day = formatDate(dateTimeFormat, timestamp, 'MM-DD', FormatDateType.XAxis)
@@ -244,7 +243,7 @@ export default abstract class XAxisImp extends AxisImp {
     return null
   }
 
-  override getAutoSize (): number {
+  override getAutoSize(): number {
     const styles = this.getParent().getPane().getChart().getStyles()
     const xAxisStyles = styles.xAxis
     const height = xAxisStyles.size
@@ -280,49 +279,49 @@ export default abstract class XAxisImp extends AxisImp {
     return Math.max(xAxisHeight, crosshairVerticalTextHeight)
   }
 
-  getSelfBounding (): Bounding {
+  getSelfBounding(): Bounding {
     return this.getParent().getBounding()
   }
 
-  setRange (range: VisibleRange): void {
+  setRange(range: VisibleRange): void {
     this._autoCalcTickFlag = false
     this._range = range
   }
 
-  getRange (): VisibleRange { return this._range }
+  getRange(): VisibleRange { return this._range }
 
-  setAutoCalcTickFlag (flag: boolean): void {
+  setAutoCalcTickFlag(flag: boolean): void {
     this._autoCalcTickFlag = flag
   }
 
-  getAutoCalcTickFlag (): boolean { return this._autoCalcTickFlag }
+  getAutoCalcTickFlag(): boolean { return this._autoCalcTickFlag }
 
   // todo should just use the timeScaleStore
-  convertTimestampFromPixel (pixel: number): Nullable<number> {
+  convertTimestampFromPixel(pixel: number): Nullable<number> {
     const chartStore = this.getParent().getPane().getChart().getChartStore()
     const timeScaleStore = chartStore.getTimeScaleStore()
     const dataIndex = timeScaleStore.coordinateToDataIndex(pixel)
     return chartStore.dataIndexToTimestamp(dataIndex)
   }
 
-  convertTimestampToPixel (timestamp: number): number {
+  convertTimestampToPixel(timestamp: number): number {
     const chartStore = this.getParent().getPane().getChart().getChartStore()
     const timeScaleStore = chartStore.getTimeScaleStore()
     const dataIndex = chartStore.timestampToDataIndex(timestamp)
     return timeScaleStore.dataIndexToCoordinate(dataIndex)
   }
 
-  convertFromPixel (pixel: number): number {
+  convertFromPixel(pixel: number): number {
     return this.getParent().getPane().getChart().getChartStore().getTimeScaleStore().coordinateToDataIndex(pixel)
   }
 
-  convertToPixel (value: number): number {
+  convertToPixel(value: number): number {
     return this.getParent().getPane().getChart().getChartStore().getTimeScaleStore().dataIndexToCoordinate(value)
   }
 
-  static extend (template: AxisTemplate): XAxisConstructor {
+  static extend(template: AxisTemplate): XAxisConstructor {
     class Custom extends XAxisImp {
-      createTicks (params: AxisCreateTicksParams): AxisTick[] {
+      createTicks(params: AxisCreateTicksParams): AxisTick[] {
         return template.createTicks(params)
       }
     }
@@ -330,7 +329,7 @@ export default abstract class XAxisImp extends AxisImp {
   }
 }
 
-function getIndexArr (timeShareTicks: string[], preferXTicks: string[]): number[] {
+function getIndexArr(timeShareTicks: string[], preferXTicks: string[]): number[] {
   const indexArr: number[] = []
   for (let i = 0; i < timeShareTicks.length; i++) {
     if (preferXTicks.includes(timeShareTicks[i])) {

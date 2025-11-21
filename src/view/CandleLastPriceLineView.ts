@@ -1,11 +1,10 @@
 
-
 import type DualYPane from '../pane/DualYPane'
 import { drawStaticFigure } from '../extension/figure'
 import View from './View'
 
 export default class CandleLastPriceView extends View {
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
     const bounding = widget.getBounding()

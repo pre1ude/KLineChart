@@ -8,7 +8,7 @@ const fibonacciExtension: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick: function () {
+  onRightClick() {
     return true
   },
   createPointFigures: ({ coordinates, overlay, precision }) => {
@@ -22,7 +22,7 @@ const fibonacciExtension: OverlayTemplate = {
       const yDif = coordinates[1].y - coordinates[0].y
       const percents = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]
       const textX = coordinates[2].x > coordinates[1].x ? coordinates[1].x : coordinates[2].x
-      percents.forEach((percent) => {
+      percents.forEach(percent => {
         const y = coordinates[2].y + yDif * percent
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-expect-error

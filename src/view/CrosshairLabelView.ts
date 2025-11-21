@@ -1,5 +1,4 @@
 
-
 import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
 import { type CrosshairStyle, type CrosshairDirectionStyle, type StateTextStyle } from '../common/Styles'
@@ -15,7 +14,7 @@ import { drawStaticFigure } from '../extension/figure'
  * 提供通用的绘制框架，子类实现具体的标签逻辑
  */
 export default abstract class CrosshairLabelView extends View {
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
     const bounding = widget.getBounding()
@@ -41,20 +40,20 @@ export default abstract class CrosshairLabelView extends View {
   /**
    * 比较十字光标是否应该在当前面板显示
    */
-  protected abstract compare (crosshair: Crosshair, paneId: string): boolean
+  protected abstract compare(crosshair: Crosshair, paneId: string): boolean
 
   /**
    * 获取方向样式（水平或垂直）
    */
-  protected abstract getDirectionStyles (styles: CrosshairStyle): CrosshairDirectionStyle
+  protected abstract getDirectionStyles(styles: CrosshairStyle): CrosshairDirectionStyle
 
   /**
    * 获取要显示的文本内容
    */
-  protected abstract getText (crosshair: Crosshair, chartStore: ChartStore): string
+  protected abstract getText(crosshair: Crosshair, chartStore: ChartStore): string
 
   /**
    * 获取文本绘制属性
    */
-  protected abstract getTextAttrs (text: string, textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs
+  protected abstract getTextAttrs(text: string, textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs
 }

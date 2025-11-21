@@ -1,5 +1,4 @@
 
-
 import type Bounding from '../common/Bounding'
 import { UpdateLevel } from '../common/Updater'
 import Canvas from '../common/Canvas'
@@ -14,7 +13,7 @@ export default abstract class DrawWidget<P extends Pane> extends Widget<P> {
   private readonly _mainCanvas: Canvas
   private readonly _overlayCanvas: Canvas
 
-  constructor (rootContainer: HTMLElement, pane: P) {
+  constructor(rootContainer: HTMLElement, pane: P) {
     super(rootContainer, pane)
     this._mainCanvas = new Canvas({
       position: 'absolute',
@@ -39,7 +38,7 @@ export default abstract class DrawWidget<P extends Pane> extends Widget<P> {
     container.appendChild(this._overlayCanvas.getElement())
   }
 
-  override createContainer (): HTMLElement {
+  override createContainer(): HTMLElement {
     return createDom('div', {
       margin: '0',
       padding: '0',
@@ -51,7 +50,7 @@ export default abstract class DrawWidget<P extends Pane> extends Widget<P> {
     })
   }
 
-  override updateImp (container: HTMLElement, bounding: Bounding, level: UpdateLevel): void {
+  override updateImp(container: HTMLElement, bounding: Bounding, level: UpdateLevel): void {
     const { width, height, left } = bounding
     container.style.left = `${left}px`
 
@@ -81,12 +80,12 @@ export default abstract class DrawWidget<P extends Pane> extends Widget<P> {
     }
   }
 
-  destroy (): void {
+  destroy(): void {
     this._mainCanvas.destroy()
     this._overlayCanvas.destroy()
   }
 
-  getImage (includeOverlay: boolean): HTMLCanvasElement {
+  getImage(includeOverlay: boolean): HTMLCanvasElement {
     const { width, height } = this.getBounding()
     const canvas = createDom('canvas', {
       width: `${width}px`,
@@ -107,6 +106,6 @@ export default abstract class DrawWidget<P extends Pane> extends Widget<P> {
     return canvas
   }
 
-  protected abstract updateMain (ctx: CanvasRenderingContext2D): void
-  protected abstract updateOverlay (ctx: CanvasRenderingContext2D): void
+  protected abstract updateMain(ctx: CanvasRenderingContext2D): void
+  protected abstract updateOverlay(ctx: CanvasRenderingContext2D): void
 }

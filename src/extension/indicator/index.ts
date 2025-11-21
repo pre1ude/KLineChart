@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../../common/Nullable'
 import { TemplateManager } from '../../common/TemplateManager'
 import type { IndicatorTemplate } from '../../component/Indicator'
@@ -47,15 +46,15 @@ const extensions = [
 
 const indicatorTemplateManager = new TemplateManager<IndicatorTemplate>(extensions)
 
-function registerIndicator<D> (template: IndicatorTemplate<D>): void {
+function registerIndicator<D>(template: IndicatorTemplate<D>): void {
   indicatorTemplateManager.add(template)
 }
 
-function getIndicatorTemplate (name: string): Nullable<IndicatorTemplate> {
+function getIndicatorTemplate(name: string): Nullable<IndicatorTemplate> {
   return indicatorTemplateManager.get(name)
 }
 
-function getSupportedIndicators (): string[] {
+function getSupportedIndicators(): string[] {
   return indicatorTemplateManager.keys()
 }
 

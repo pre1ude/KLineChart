@@ -1,5 +1,4 @@
 
-
 import type DeepPartial from './common/DeepPartial'
 import { type Styles } from './common/Styles'
 import { formatDate, formatBigNumber } from './common/utils/format'
@@ -22,7 +21,7 @@ export interface CustomApi {
   formatBigNumber: FormatBigNumber
 }
 
-export function getDefaultCustomApi (): CustomApi {
+export function getDefaultCustomApi(): CustomApi {
   return {
     formatDate,
     formatBigNumber

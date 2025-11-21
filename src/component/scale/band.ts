@@ -19,7 +19,7 @@ interface BandResult {
   bandRange: number[]
 }
 
-export function createBand (options: BandScaleOptions): BandScale {
+export function createBand(options: BandScaleOptions): BandScale {
   const { bandRange, bandWidth, step } = band(options)
   const scale = createOrdinal({ ...options, range: bandRange }) as any
 
@@ -29,7 +29,7 @@ export function createBand (options: BandScaleOptions): BandScale {
   return scale as BandScale
 }
 
-function band ({ domain, range, padding = 0, margin = padding }: BandScaleOptions): BandResult {
+function band({ domain, range, padding = 0, margin = padding }: BandScaleOptions): BandResult {
   const [r0, r1] = range
   const n = domain.length
   const step = (r1 - r0) / (margin * 2 + n - padding)

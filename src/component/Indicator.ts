@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../common/Nullable'
 import type ExcludePickPartial from '../common/ExcludePickPartial'
 import type KLineData from '../common/KLineData'
@@ -238,7 +237,7 @@ export class Indicator<D = any> implements IndicatorApi<D> {
   onMouseEnter?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
   onMouseLeave?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
 
-  constructor (indicator: IndicatorTemplate) {
+  constructor(indicator: IndicatorTemplate) {
     const {
       name, shortName, series, calcParams, figures, precision,
       shouldOhlc, shouldFormatBigNumber, visible, zLevel,
@@ -268,12 +267,12 @@ export class Indicator<D = any> implements IndicatorApi<D> {
     this.onMouseLeave = onMouseLeave
   }
 
-  shouldUpdate (next: Partial<Indicator>): [boolean, boolean, boolean] {
+  shouldUpdate(next: Partial<Indicator>): [boolean, boolean, boolean] {
     const needCalc = shouldCalc(next)
     const needSort = shouldSort(next)
     const needUpdate = shouldUpdate(next)
 
-    function shouldUpdate (next: Partial<Indicator>): boolean {
+    function shouldUpdate(next: Partial<Indicator>): boolean {
       return (
         needCalc || needSort ||
         isValid(next.styles) ||
@@ -290,14 +289,14 @@ export class Indicator<D = any> implements IndicatorApi<D> {
         (isValid(next.draw) && this.draw !== next.draw)
       )
     }
-    function shouldSort (next: Partial<Indicator>): boolean {
+    function shouldSort(next: Partial<Indicator>): boolean {
       return (
         (isNumber(next.zLevel) && this.zLevel !== next.zLevel)
       )
     }
     // todo should we calc after extendData change?
     // todo should we calc after figures change?
-    function shouldCalc (next: Partial<Indicator>): boolean {
+    function shouldCalc(next: Partial<Indicator>): boolean {
       return (
         (isFunction(next.calc) && this.calc !== next.calc) ||
         (isArray(next.calcParams) && JSON.stringify(this.calcParams) !== JSON.stringify(next.calcParams)) ||
@@ -309,7 +308,7 @@ export class Indicator<D = any> implements IndicatorApi<D> {
     return [needUpdate, needCalc, needSort]
   }
 
-  overrideIndicator (next: Partial<Indicator>): void {
+  overrideIndicator(next: Partial<Indicator>): void {
     const {
       shortName, calcParams, precision, figures, styles, ...others
     } = next
@@ -336,13 +335,13 @@ export class Indicator<D = any> implements IndicatorApi<D> {
     }
   }
 
-  setSeriesPrecision (precision: number): void {
+  setSeriesPrecision(precision: number): void {
     if (!this._lockSeriesPrecision) {
       this.precision = precision
     }
   }
 
-  async calcIndicator (dataList: KLineData[]): Promise<boolean> {
+  async calcIndicator(dataList: KLineData[]): Promise<boolean> {
     try {
       const result = await this.calc(dataList, this)
       this.result = result
@@ -353,7 +352,7 @@ export class Indicator<D = any> implements IndicatorApi<D> {
   }
 }
 
-export function getMergedDefaultStyles (indicator: Indicator, defaultStyles: IndicatorStyle): IndicatorStyle {
+export function getMergedDefaultStyles(indicator: Indicator, defaultStyles: IndicatorStyle): IndicatorStyle {
   const styles = indicator.styles
 
   const merged: IndicatorStyle = {
@@ -397,7 +396,7 @@ export function getMergedDefaultStyles (indicator: Indicator, defaultStyles: Ind
   return merged
 }
 
-export function getFigureBaseStyles (type: string, index: number, styles: IndicatorStyle): IndicatorFigureStyle {
+export function getFigureBaseStyles(type: string, index: number, styles: IndicatorStyle): IndicatorFigureStyle {
   switch (type) {
     case 'circle': {
       const style = styles.circles[index % styles.circles.length]

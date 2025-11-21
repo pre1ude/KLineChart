@@ -1,5 +1,4 @@
 
-
 import type { Layer } from './Layer'
 import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
@@ -42,7 +41,7 @@ export class CandleLayer implements Layer {
     widget.addChild(this._candleBarView)
   }
 
-  private _initEvent (): void {
+  private _initEvent(): void {
     const pane = this._widget?.getPane()
     if (pane?.getId() === PaneIdConstants.CANDLE) {
       this._candleBarView?.addEventListener('mouseClickEvent', (e: MouseTouchEvent) => {

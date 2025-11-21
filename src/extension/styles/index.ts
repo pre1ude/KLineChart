@@ -1,5 +1,4 @@
 
-
 import type Nullable from '../../common/Nullable'
 import type DeepPartial from '../../common/DeepPartial'
 import { type Styles } from '../../common/Styles'
@@ -14,11 +13,11 @@ const styles: Record<string, DeepPartial<Styles>> = {
   black
 }
 
-function registerStyles (name: string, ss: DeepPartial<Styles>): void {
+function registerStyles(name: string, ss: DeepPartial<Styles>): void {
   styles[name] = ss
 }
 
-function getStyles (name: string): Nullable<DeepPartial<Styles>> {
+function getStyles(name: string): Nullable<DeepPartial<Styles>> {
   return styles[name] ?? null
 }
 

@@ -1,5 +1,4 @@
 
-
 import Action, { type ActionType, type ActionCallback } from '../common/Action'
 import { isValid } from '../common/utils/typeChecks'
 
@@ -9,11 +8,11 @@ export default class ActionStore {
    */
   private readonly _actions = new Map<ActionType, Action>()
 
-  execute (type: ActionType, data?: any): void {
+  execute(type: ActionType, data?: any): void {
     this._actions.get(type)?.execute(data)
   }
 
-  subscribe (type: ActionType, callback: ActionCallback): void {
+  subscribe(type: ActionType, callback: ActionCallback): void {
     if (!this._actions.has(type)) {
       this._actions.set(type, new Action())
     }
@@ -26,7 +25,7 @@ export default class ActionStore {
    * @param callback
    * @return {boolean}
    */
-  unsubscribe (type: ActionType, callback?: ActionCallback): void {
+  unsubscribe(type: ActionType, callback?: ActionCallback): void {
     const action = this._actions.get(type)
     if (isValid(action)) {
       action.unsubscribe(callback)
@@ -36,7 +35,7 @@ export default class ActionStore {
     }
   }
 
-  has (type: ActionType): boolean {
+  has(type: ActionType): boolean {
     const action = this._actions.get(type)
     return isValid(action) && !action.isEmpty()
   }

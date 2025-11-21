@@ -1,5 +1,4 @@
 
-
 import type Coordinate from '../common/Coordinate'
 
 import Eventful from '../common/Eventful'
@@ -26,31 +25,31 @@ export class Figure<A = any, S = any, T = any> extends Eventful {
 
   private readonly _figure: FigureTemplate
 
-  constructor (figure: FigureTemplate) {
+  constructor(figure: FigureTemplate) {
     super()
     this._figure = figure
   }
 
-  override checkEventOn (event: MouseTouchEvent): boolean {
+  override checkEventOn(event: MouseTouchEvent): boolean {
     return this._figure.checkEventOn(event, this.attrs, this.styles)
   }
 
-  setAttrs (attrs: A): this {
+  setAttrs(attrs: A): this {
     this.attrs = attrs
     return this
   }
 
-  setStyles (styles: S): this {
+  setStyles(styles: S): this {
     this.styles = styles
     return this
   }
 
-  setData (data: T): this {
+  setData(data: T): this {
     this.data = data
     return this
   }
 
-  draw (ctx: CanvasRenderingContext2D): void {
+  draw(ctx: CanvasRenderingContext2D): void {
     this._figure.draw(ctx, this.attrs, this.styles)
   }
 }

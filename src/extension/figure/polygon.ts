@@ -1,5 +1,4 @@
 
-
 import type Coordinate from '../../common/Coordinate'
 import { type PolygonStyle, PolygonType, LineType } from '../../common/Styles'
 import { isString } from '../../common/utils/typeChecks'
@@ -7,7 +6,7 @@ import { isTransparent } from '../../common/utils/color'
 
 import { type FigureTemplate } from '../../component/Figure'
 
-export function checkCoordinateOnPolygon (coordinate: Coordinate, attrs: PolygonAttrs | PolygonAttrs[]): boolean {
+export function checkCoordinateOnPolygon(coordinate: Coordinate, attrs: PolygonAttrs | PolygonAttrs[]): boolean {
   let polygons: PolygonAttrs[] = []
   polygons = polygons.concat(attrs)
   for (let i = 0; i < polygons.length; i++) {
@@ -28,7 +27,7 @@ export function checkCoordinateOnPolygon (coordinate: Coordinate, attrs: Polygon
   return false
 }
 
-export function drawPolygon (ctx: CanvasRenderingContext2D, attrs: PolygonAttrs | PolygonAttrs[], styles: Partial<PolygonStyle>): void {
+export function drawPolygon(ctx: CanvasRenderingContext2D, attrs: PolygonAttrs | PolygonAttrs[], styles: Partial<PolygonStyle>): void {
   let polygons: PolygonAttrs[] = []
   polygons = polygons.concat(attrs)
   const {

@@ -12,7 +12,7 @@ export interface LinearScaleOptions {
   interpolate?: (t: number, start: number, stop: number) => number
 }
 
-export function createLinear ({
+export function createLinear({
   domain: [d0, d1],
   range: [r0, r1],
   interpolate = interpolateNumber

@@ -1,5 +1,4 @@
 
-
 import type Bounding from '../common/Bounding'
 import { type AxisStyle, type Styles } from '../common/Styles'
 import { type LineAttrs } from '../extension/figure/line'
@@ -12,7 +11,7 @@ import { drawStaticFigure } from '../extension/figure'
 import { PaneIdConstants } from '../pane/types'
 
 export default abstract class AxisView extends View {
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget() as XAxisWidget | YAxisWidget
     const pane = widget.getPane()
     const chartStore = pane.getChart().getChartStore()
@@ -64,9 +63,9 @@ export default abstract class AxisView extends View {
     }
   }
 
-  protected abstract getAxisStyles (styles: Styles): AxisStyle
+  protected abstract getAxisStyles(styles: Styles): AxisStyle
 
-  protected abstract createAxisLine (bounding: Bounding, styles: AxisStyle): LineAttrs
-  protected abstract createTickLines (ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): LineAttrs[]
-  protected abstract createTickTexts (tick: AxisTick[], bounding: Bounding, styles: AxisStyle): TextAttrs[]
+  protected abstract createAxisLine(bounding: Bounding, styles: AxisStyle): LineAttrs
+  protected abstract createTickLines(ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): LineAttrs[]
+  protected abstract createTickTexts(tick: AxisTick[], bounding: Bounding, styles: AxisStyle): TextAttrs[]
 }

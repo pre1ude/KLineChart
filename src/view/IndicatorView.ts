@@ -1,5 +1,4 @@
 
-
 import { type SmoothLineStyle, type IndicatorStyle } from '../common/Styles'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import type Coordinate from '../common/Coordinate'
@@ -15,15 +14,15 @@ import type { EventName, MouseTouchEvent } from '../common/SyntheticEvent'
 export default class IndicatorView extends View {
   private _lastHoverFigure: any = null
 
-  setLastHoverFigure (figure: any): void {
+  setLastHoverFigure(figure: any): void {
     this._lastHoverFigure = figure
   }
 
-  override checkEventOn (_event: MouseTouchEvent, name: EventName): boolean {
+  override checkEventOn(_event: MouseTouchEvent, name: EventName): boolean {
     return name === 'mouseMoveEvent' && this._lastHoverFigure != null
   }
 
-  override drawImp (ctx: CanvasRenderingContext2D): void {
+  override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
     const isMain = pane.getId() === PaneIdConstants.CANDLE
@@ -45,7 +44,7 @@ export default class IndicatorView extends View {
     const breakOnCrossDays = chartStore.getTimeShareBreakOnCrossDays()
 
     // 定义辅助函数
-    function filterIndicatorsByAxis (paneIndicators: Indicator[], yAxis: YAxisImp): Indicator[] {
+    function filterIndicatorsByAxis(paneIndicators: Indicator[], yAxis: YAxisImp): Indicator[] {
       let indicators: Array<Indicator<any>> = []
       const indicatorNames = yAxis.getIndicatorNames()
       if (indicatorNames.length > 0) {
@@ -58,11 +57,11 @@ export default class IndicatorView extends View {
       return indicators
     }
 
-    function setCompositeOperation (zLevel: number): void {
+    function setCompositeOperation(zLevel: number): void {
       ctx.globalCompositeOperation = zLevel < 0 ? 'destination-over' : 'source-over'
     }
 
-    function tryCustomDraw (indicator: Indicator, yAxis: YAxisImp, defaultStyles: IndicatorStyle): boolean {
+    function tryCustomDraw(indicator: Indicator, yAxis: YAxisImp, defaultStyles: IndicatorStyle): boolean {
       if (indicator.draw == null) return false
 
       ctx.save()
@@ -147,7 +146,7 @@ export default class IndicatorView extends View {
       }
     }
 
-    function drawLineStreaming (
+    function drawLineStreaming(
       figure: IndicatorFigure,
       createFigureStyles: (dataIndex: number) => IndicatorFigureStyle,
       indicator: Indicator,
@@ -223,7 +222,7 @@ export default class IndicatorView extends View {
       drawCurrentPath()
     }
 
-    function computeDefaultAttrs (
+    function computeDefaultAttrs(
       figure: IndicatorFigure,
       dataIndex: number,
       result: any[],
@@ -274,7 +273,7 @@ export default class IndicatorView extends View {
   }
 }
 
-function isSameStyle (a: SmoothLineStyle, b: SmoothLineStyle): boolean {
+function isSameStyle(a: SmoothLineStyle, b: SmoothLineStyle): boolean {
   return a === b || (
     a.style === b.style &&
     a.color === b.color &&

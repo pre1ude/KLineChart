@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-
 
 import { requestIdleCallback, cancelIdleCallback, DEFAULT_REQUEST_ID } from './utils/compatible'
 
@@ -13,12 +11,12 @@ export default class TaskScheduler {
 
   private _requestIdleCallbackId = DEFAULT_REQUEST_ID
 
-  constructor (tasks?: Task[]) {
+  constructor(tasks?: Task[]) {
     this._tasks = tasks ?? []
     this._operateTasks()
   }
 
-  private _operateTasks (fn?: () => void): void {
+  private _operateTasks(fn?: () => void): void {
     if (this._requestIdleCallbackId !== DEFAULT_REQUEST_ID) {
       cancelIdleCallback(this._requestIdleCallbackId)
       this._requestIdleCallbackId = DEFAULT_REQUEST_ID
@@ -27,7 +25,7 @@ export default class TaskScheduler {
     this._requestIdleCallbackId = requestIdleCallback(deadline => { this._runTasks(deadline) })
   }
 
-  private _runTasks (deadline: IdleDeadline): void {
+  private _runTasks(deadline: IdleDeadline): void {
     while (deadline.timeRemaining() > 0 && this._tasks.length > 0) {
       const task = this._tasks.shift()
       task?.handler()
@@ -37,7 +35,7 @@ export default class TaskScheduler {
     }
   }
 
-  addTask (task: Task): this {
+  addTask(task: Task): this {
     this._operateTasks(() => {
       const index = this._tasks.findIndex(t => t.id === task.id)
       if (index > -1) {
@@ -49,7 +47,7 @@ export default class TaskScheduler {
     return this
   }
 
-  removeTask (id: string): this {
+  removeTask(id: string): this {
     this._operateTasks(() => {
       const index = this._tasks.findIndex(t => t.id === id)
       if (index > -1) {

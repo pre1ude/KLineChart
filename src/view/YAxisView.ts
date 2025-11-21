@@ -1,5 +1,4 @@
 
-
 import type Bounding from '../common/Bounding'
 import { type AxisStyle, type Styles } from '../common/Styles'
 import { type LineAttrs } from '../extension/figure/line'
@@ -9,11 +8,11 @@ import AxisView from './AxisView'
 import type YAxisWidget from '../widget/YAxisWidget'
 
 export default class YAxisView extends AxisView {
-  override getAxisStyles (styles: Styles): AxisStyle {
+  override getAxisStyles(styles: Styles): AxisStyle {
     return styles.yAxis
   }
 
-  override createAxisLine (bounding: Bounding, styles: AxisStyle): LineAttrs {
+  override createAxisLine(bounding: Bounding, styles: AxisStyle): LineAttrs {
     const widget = this.getWidget() as unknown as YAxisWidget
     const isAlignLeft = widget.isAlignLeft()
     const size = styles.axisLine.size
@@ -31,7 +30,7 @@ export default class YAxisView extends AxisView {
     }
   }
 
-  override createTickLines (ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): LineAttrs[] {
+  override createTickLines(ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): LineAttrs[] {
     const widget = this.getWidget() as unknown as YAxisWidget
     const isAlignLeft = widget.isAlignLeft()
     const axisLineStyles = styles.axisLine
@@ -60,7 +59,7 @@ export default class YAxisView extends AxisView {
     }))
   }
 
-  override createTickTexts (ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): TextAttrs[] {
+  override createTickTexts(ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): TextAttrs[] {
     const widget = this.getWidget() as unknown as YAxisWidget
     const isAlignLeft = widget.isAlignLeft()
     const axisLineStyles = styles.axisLine
