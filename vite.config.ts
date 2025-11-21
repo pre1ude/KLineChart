@@ -9,10 +9,6 @@ const pkg = JSON.parse(
 )
 const version = pkg.version
 
-// 环境变量
-const isDev = process.env.NODE_ENV === 'development'
-const isProd = process.env.NODE_ENV === 'production'
-
 // License Banner
 const banner = `
 /**
@@ -22,22 +18,31 @@ const banner = `
  * Licensed under Apache License 2.0 https://www.apache.org/licenses/LICENSE-2.0
  */`.trim()
 
-export default defineConfig({
-  // 插件配置
-  plugins: [
-    dts({
-      insertTypesEntry: true,
-      rollupTypes: false,
-      copyDtsFiles: true,
-      exclude: ['**/*.spec.ts', '**/*.test.ts', '**/tests/**'],
-      staticImport: true,
-      clearPureImport: true,
-      logLevel: 'error'
-    })
-  ],
+export default defineConfig(({ mode }) => {
+  const isDev = mode === 'development'
+  const isProd = mode === 'production'
 
-  // 构建配置
-  build: {
+  return {
+    // 定义全局常量替换
+    define: {
+      'process.env.NODE_ENV': JSON.stringify(mode)
+    },
+
+    // 插件配置
+    plugins: [
+      dts({
+        insertTypesEntry: true,
+        rollupTypes: false,
+        copyDtsFiles: true,
+        exclude: ['**/*.spec.ts', '**/*.test.ts', '**/tests/**'],
+        staticImport: true,
+        clearPureImport: true,
+        logLevel: 'error'
+      })
+    ],
+
+    // 构建配置
+    build: {
     // 库模式
     lib: {
       entry: resolve(import.meta.dirname, 'src/index.ts'),
@@ -103,10 +108,11 @@ export default defineConfig({
     }
   },
 
-  // 解析配置
-  resolve: {
-    alias: {
-      '@': resolve(import.meta.dirname, 'src')
+    // 解析配置
+    resolve: {
+      alias: {
+        '@': resolve(import.meta.dirname, 'src')
+      }
     }
   }
 })
