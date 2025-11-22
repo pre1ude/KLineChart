@@ -211,7 +211,7 @@ export default class ChartImp implements Chart {
   }
 
   private _createPane<P extends DrawPane>(
-    DrawPaneClass: new (rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string, options: Omit<PaneOptions, 'id' | 'height'>) => P,
+    drawPaneClass: new (rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string, options: Omit<PaneOptions, 'id' | 'height'>) => P,
     id: string,
     options?: PaneOptions
   ): P {
@@ -222,7 +222,7 @@ export default class ChartImp implements Chart {
       case PanePosition.Top: {
         const firstPane = this._drawPanes[0]
         if (isValid(firstPane)) {
-          pane = new DrawPaneClass(this._chartContainer, firstPane.getContainer(), this, id, options ?? {})
+          pane = new drawPaneClass(this._chartContainer, firstPane.getContainer(), this, id, options ?? {})
           index = 0
         }
         break
@@ -236,7 +236,7 @@ export default class ChartImp implements Chart {
             p?.getOptions().position === PanePosition.Bottom &&
             prevP?.getOptions().position !== PanePosition.Bottom
           ) {
-            pane = new DrawPaneClass(this._chartContainer, p.getContainer(), this, id, options ?? {})
+            pane = new drawPaneClass(this._chartContainer, p.getContainer(), this, id, options ?? {})
             index = i
             break
           }
@@ -244,7 +244,7 @@ export default class ChartImp implements Chart {
       }
     }
     if (!isValid(pane)) {
-      pane = new DrawPaneClass(this._chartContainer, null, this, id, options ?? {})
+      pane = new drawPaneClass(this._chartContainer, null, this, id, options ?? {})
     }
     // insert pane and auto add SeparatorPane
     let newIndex: number

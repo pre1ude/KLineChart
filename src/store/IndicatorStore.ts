@@ -23,13 +23,13 @@ export default class IndicatorStore {
     }
   }
 
-  async addInstance(indicator: IndicatorCreate, paneId: string, isStack: boolean): Promise<boolean> {
+  addInstance(indicator: IndicatorCreate, paneId: string, isStack: boolean): Promise<boolean> {
     const { name } = indicator
     let paneInstances = this._instances.get(paneId)
     if (isValid(paneInstances)) {
       const instance = paneInstances.find(ins => ins.name === name)
       if (isValid(instance)) {
-        return await Promise.reject(new Error('Duplicate indicators.'))
+        return Promise.reject(new Error('Duplicate indicators.'))
       }
     }
     if (!isValid(paneInstances)) {
@@ -46,7 +46,7 @@ export default class IndicatorStore {
     paneInstances.push(indicatorInstance)
     this._instances.set(paneId, paneInstances)
     this._sort(paneId)
-    return await indicatorInstance.calcIndicator(this._chartStore.getDataList())
+    return indicatorInstance.calcIndicator(this._chartStore.getDataList())
   }
 
   getInstances(paneId: string): Indicator[] {

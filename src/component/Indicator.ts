@@ -218,7 +218,7 @@ export class Indicator<D = any> implements IndicatorApi<D> {
   shouldFormatBigNumber: boolean
   visible: boolean
   zLevel: number
-  extendData: any
+  extendData: unknown
   series: IndicatorSeries
   figures: Array<IndicatorFigure<D>>
   minValue: Nullable<number>
@@ -346,7 +346,7 @@ export class Indicator<D = any> implements IndicatorApi<D> {
       const result = await this.calc(dataList, this)
       this.result = result
       return true
-    } catch (e) {
+    } catch (_e) {
       return false
     }
   }

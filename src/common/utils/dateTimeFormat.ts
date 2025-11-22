@@ -20,7 +20,7 @@ export function buildDateTimeFormat(timezone?: string): Nullable<Intl.DateTimeFo
   let dateTimeFormat: Nullable<Intl.DateTimeFormat> = null
   try {
     dateTimeFormat = new Intl.DateTimeFormat('en', options)
-  } catch (e) {
+  } catch (_e) {
     logWarn('', '', 'Timezone is error!!!')
   }
   return dateTimeFormat

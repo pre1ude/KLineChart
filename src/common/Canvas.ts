@@ -6,8 +6,8 @@ import { requestAnimationFrame, DEFAULT_REQUEST_ID } from './utils/compatible'
 
 type DrawListener = () => void
 
-async function isSupportedDevicePixelContentBox(): Promise<boolean> {
-  return await new Promise((resolve: (val: boolean) => void) => {
+function isSupportedDevicePixelContentBox(): Promise<boolean> {
+  return new Promise((resolve: (val: boolean) => void) => {
     const ro = new ResizeObserver((entries: ResizeObserverEntry[]) => {
       resolve(entries.every(entry => 'devicePixelContentBoxSize' in entry))
       ro.disconnect()

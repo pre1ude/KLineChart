@@ -1,10 +1,10 @@
 
-export function throttle(func: (...args: any[]) => any, wait?: number): () => void {
+export function throttle(func: (...args: any[]) => any, wait?: number): (...args: any[]) => void {
   let previous = 0
-  return function () {
+  return function (...args: any[]) {
     const now = Date.now()
     if (now - previous > (wait ?? 20)) {
-      func.apply(this, arguments)
+      func.apply(this, args)
       previous = now
     }
   }
