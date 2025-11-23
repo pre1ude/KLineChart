@@ -172,7 +172,7 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
     const boundsHeight = attrs.height ?? paddingTop + paddingBottom
 
     const boundsX = attrs.x - boundsWidth / 2
-    const boundsY = attrs.y - boundsHeight
+    const boundsY = attrs.y - boundsHeight / 2
 
     return {
       bounds: { x: boundsX, y: boundsY, width: boundsWidth, height: boundsHeight },
@@ -232,7 +232,7 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
   const boundsWidth = attrs.width ?? paddingLeft + maxLineWidth + paddingRight
 
   const boundsX = attrs.x - boundsWidth / 2
-  const boundsY = attrs.y - boundsHeight
+  const boundsY = attrs.y - boundsHeight / 2
 
   const renderStartY = calculateStartY(paddingTop, vLInfo, textBaseline)
   const lines = tmplines.map((line, index) => {
