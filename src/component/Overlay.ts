@@ -110,7 +110,7 @@ export interface OverlayApi extends OverlayEventHandlers {
   mode: OverlayMode
   modeSensitivity: number
   points: Array<Partial<Point>>
-  extendData: any
+  extendData: unknown
   styles: Nullable<DeepPartial<OverlayStyle>>
   createPointFigures: Nullable<OverlayCreateFiguresCallback>
   createXAxisFigures: Nullable<OverlayCreateFiguresCallback>
@@ -131,93 +131,57 @@ enum OverlayDrawStep {
 export const OVERLAY_ID_PREFIX = 'overlay_'
 export const OVERLAY_FIGURE_KEY_PREFIX = 'overlay_figure_'
 
-const defaultTemplate: OverlayTemplate = {
-  name: '',
-  totalStep: 1,
-  lock: false,
-  visible: true,
-  zLevel: 0,
-  mode: OverlayMode.Normal,
-  modeSensitivity: 8,
-  extendData: undefined,
-  styles: undefined,
-
-  needDefaultPointFigure: false,
-  needDefaultXAxisFigure: false,
-  needDefaultYAxisFigure: false,
-
-  createPointFigures: null,
-  createXAxisFigures: null,
-  createYAxisFigures: null,
-
-  performEventPressedMove: null,
-  performEventMoveForDrawing: null,
-
-  onDrawStart: null,
-  onDrawing: null,
-  onDrawEnd: null,
-  onClick: null,
-  onDoubleClick: null,
-  onRightClick: null,
-  onPressedMoveStart: null,
-  onPressedMoving: null,
-  onPressedMoveEnd: null,
-  onMouseEnter: null,
-  onMouseLeave: null,
-  onRemoved: null,
-  onSelected: null,
-  onDeselected: null
-}
+// Default values are now defined directly in the class properties
 
 export class Overlay implements OverlayApi {
-  id: string
-  groupId: string
-  paneId: string
+  id: string = ''
+  groupId: string = ''
+  paneId: string = ''
   currentStep: number = OverlayDrawStep.START
   points: Array<Partial<Point>> = []
 
-  name: string
-  totalStep: number
-  lock: boolean
-  visible: boolean
-  zLevel: number
-  mode: OverlayMode
-  modeSensitivity: number
-  extendData: any
-  styles: Nullable<DeepPartial<OverlayStyle>>
+  name: string = ''
+  totalStep: number = 1
+  lock: boolean = false
+  visible: boolean = true
+  zLevel: number = 0
+  mode: OverlayMode = OverlayMode.Normal
+  modeSensitivity: number = 8
+  extendData: unknown
+  styles: Nullable<DeepPartial<OverlayStyle>> = null
 
-  needDefaultPointFigure: boolean
-  needDefaultXAxisFigure: boolean
-  needDefaultYAxisFigure: boolean
+  needDefaultPointFigure: boolean = false
+  needDefaultXAxisFigure: boolean = false
+  needDefaultYAxisFigure: boolean = false
 
-  createPointFigures: Nullable<OverlayCreateFiguresCallback>
-  createXAxisFigures: Nullable<OverlayCreateFiguresCallback>
-  createYAxisFigures: Nullable<OverlayCreateFiguresCallback>
+  createPointFigures: Nullable<OverlayCreateFiguresCallback> = null
+  createXAxisFigures: Nullable<OverlayCreateFiguresCallback> = null
+  createYAxisFigures: Nullable<OverlayCreateFiguresCallback> = null
 
-  performEventPressedMove: Nullable<(params: OverlayPerformEventParams) => void>
-  performEventMoveForDrawing: Nullable<(params: OverlayPerformEventParams) => void>
+  performEventPressedMove: Nullable<(params: OverlayPerformEventParams) => void> = null
+  performEventMoveForDrawing: Nullable<(params: OverlayPerformEventParams) => void> = null
 
   // Event callbacks
-  onDrawStart: Nullable<OverlayEventCallback>
-  onDrawing: Nullable<OverlayEventCallback>
-  onDrawEnd: Nullable<OverlayEventCallback>
-  onClick: Nullable<OverlayEventCallback>
-  onDoubleClick: Nullable<OverlayEventCallback>
-  onRightClick: Nullable<OverlayEventCallback>
-  onPressedMoveStart: Nullable<OverlayEventCallback>
-  onPressedMoving: Nullable<OverlayEventCallback>
-  onPressedMoveEnd: Nullable<OverlayEventCallback>
-  onMouseEnter: Nullable<OverlayEventCallback>
-  onMouseLeave: Nullable<OverlayEventCallback>
-  onRemoved: Nullable<OverlayEventCallback>
-  onSelected: Nullable<OverlayEventCallback>
-  onDeselected: Nullable<OverlayEventCallback>
+  onDrawStart: Nullable<OverlayEventCallback> = null
+  onDrawing: Nullable<OverlayEventCallback> = null
+  onDrawEnd: Nullable<OverlayEventCallback> = null
+  onClick: Nullable<OverlayEventCallback> = null
+  onDoubleClick: Nullable<OverlayEventCallback> = null
+  onRightClick: Nullable<OverlayEventCallback> = null
+  onPressedMoveStart: Nullable<OverlayEventCallback> = null
+  onPressedMoving: Nullable<OverlayEventCallback> = null
+  onPressedMoveEnd: Nullable<OverlayEventCallback> = null
+  onMouseEnter: Nullable<OverlayEventCallback> = null
+  onMouseLeave: Nullable<OverlayEventCallback> = null
+  onRemoved: Nullable<OverlayEventCallback> = null
+  onSelected: Nullable<OverlayEventCallback> = null
+  onDeselected: Nullable<OverlayEventCallback> = null
 
   private _prevPressedPoint: Nullable<Partial<Point>> = null
   private _prevPressedPoints: Array<Partial<Point>> = []
 
   constructor(overlay: OverlayTemplate) {
-    Object.assign(this, defaultTemplate, overlay)
+    Object.assign(this, overlay)
   }
 
   setPoints(points: Array<Partial<Point>>): void {
