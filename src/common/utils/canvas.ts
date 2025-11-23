@@ -98,6 +98,11 @@ export interface LineSegment {
   indexRange: [number, number] // [startIndex, endIndex)
 }
 
+export interface BreakResult {
+  segments: LineSegment[]
+  isTruncated: boolean // 是否有文本因为宽度或行数限制被截断
+}
+
 /**
  * 处理单行文本的宽度约束分割
  * @returns 该行的所有分割结果
@@ -211,7 +216,7 @@ function processLine(
  * @param font - font string (e.g., "12px Arial" or "bold 14px sans-serif")
  * @param maxLines - 最大行数（默认无限制）
  * @param ellipsisWidth - 省略号宽度（用于最后一行预留空间）
- * @returns LineSegment[]
+ * @returns BreakResult - 包含分割后的行段和截断信息
  */
 export function calcBreakIndex(
   text: string,
@@ -219,7 +224,7 @@ export function calcBreakIndex(
   font: string,
   maxLines: number = Number.MAX_SAFE_INTEGER,
   ellipsisWidth: number = 0
-): LineSegment[] {
+): BreakResult {
   const ctx = getMeasureContext()
   ctx.font = font
 
@@ -256,5 +261,10 @@ export function calcBreakIndex(
     globalCharIndex += line.length + 1 // +1 for \n
   }
 
-  return allSegments
+  const lastSegment = allSegments[allSegments.length - 1]
+
+  return {
+    segments: allSegments,
+    isTruncated: lastSegment.indexRange[1] < text.length
+  }
 }

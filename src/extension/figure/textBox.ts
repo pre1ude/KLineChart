@@ -158,17 +158,15 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
 
   // 场景判断与处理
   let displayText = text
-  let truncationReason: TextLayout['truncationReason'] = 'none'
   let isCharTruncated = false
 
-  // 场景 3, 6, 9, 10, 12, 13, 15, 16: 字符数约束
+  // 字符数约束
   if (maxChars !== undefined && text.length > maxChars) {
     displayText = text.slice(0, maxChars)
     isCharTruncated = true
-    truncationReason = 'maxChars'
   }
 
-  // 边界情况: 空文本 (场景18)
+  // 边界情况: 空文本
   if (displayText.length === 0) {
     const boundsWidth = attrs.width ?? paddingLeft + paddingRight
     const boundsHeight = attrs.height ?? paddingTop + paddingBottom
@@ -184,21 +182,23 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
       textBaseline,
       ellipsis,
       ellipsisWidth,
-      truncationReason
     }
   }
 
   // 计算换行（包括手动换行符处理）
   let lineSegments: Array<{ text: string, width: number, indexRange: [number, number] }>
+  let isTruncated = false
 
   if (maxWidth !== undefined) {
-    // 有宽度约束，使用 calcBreakIndex 处理（包括换行符）
-    lineSegments = calcBreakIndex(displayText, maxWidth, font, effectiveMaxLines, ellipsisWidth)
+    const result = calcBreakIndex(displayText, maxWidth, font, effectiveMaxLines, ellipsisWidth)
+    lineSegments = result.segments
+    isTruncated = result.isTruncated
   } else {
     // 无宽度约束，只按换行符分割
-    const textLines = displayText.split('\n').slice(0, effectiveMaxLines)
+    const textLines = displayText.split('\n')
+    isTruncated = textLines.length > effectiveMaxLines
     let charIndex = 0
-    lineSegments = textLines.map(line => {
+    lineSegments = textLines.slice(0, effectiveMaxLines).map(line => {
       const segment = {
         text: line,
         width: calcTextWidth(line, font),
@@ -209,33 +209,19 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
     })
   }
 
-  // 应用行数限制
-  let actualLineCount = lineSegments.length
-  let isLineTruncated = false
-  if (actualLineCount > effectiveMaxLines) {
-    actualLineCount = effectiveMaxLines
-    isLineTruncated = true
-    if (truncationReason === 'none') {
-      truncationReason = maxHeight !== undefined && maxLinesFromHeight < (maxLines ?? Infinity)
-        ? 'maxHeight'
-        : 'maxLines'
-    }
-  }
+  const actualLineCount = lineSegments.length
 
   // 计算行布局（直接使用 lineSegments 的数据）
   const tmplines: Array<Omit<LineLayout, 'x' | 'y'>> = lineSegments
-    .slice(0, actualLineCount)
     .map((segment, i) => {
       const isLastLine = i === actualLineCount - 1
-      const hasMoreLines = i < lineSegments.length - 1 || isLineTruncated
-      const isTruncated = isLastLine && (hasMoreLines || isCharTruncated)
 
       return {
         text: segment.text,
         indexRange: segment.indexRange,
         width: segment.width,
         height: vLInfo.lineHeight,
-        isTruncated
+        isTruncated: isLastLine && (isCharTruncated || isTruncated)
       }
     })
 
@@ -266,7 +252,6 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
     textBaseline,
     ellipsis,
     ellipsisWidth,
-    truncationReason
   }
 }
 
