@@ -894,7 +894,7 @@ export default class ChartImp implements Chart {
         overlayRemove = remove
       }
     }
-    this._chartStore.getOverlayStore().removeInstance(overlayRemove!)
+    this._chartStore.getOverlayStore().removeInstance(overlayRemove)
   }
 
   setPaneOptions(options: PaneOptions): void {

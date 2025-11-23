@@ -29,9 +29,7 @@ import {
   CandleType, YAxisPosition, YAxisType, CandleTooltipRectPosition
 } from './common/Styles'
 import type Nullable from './common/Nullable'
-
 import { logError, logTag, logWarn } from './common/utils/logger'
-
 import {
   clone, merge, isString, isNumber, isValid, isObject, isArray, isFunction, isBoolean
 } from './common/utils/typeChecks'
@@ -40,13 +38,9 @@ import { calcTextWidth } from './common/utils/canvas'
 import { setCursor } from './common/utils/cursor'
 import { ActionType } from './common/Action'
 import { LoadDataType } from './common/LoadDataCallback'
-
 import { IndicatorSeries } from './component/Indicator'
-import { OverlayMode } from './component/Overlay'
-
 import { type Options, FormatDateType } from './Options'
 import Chart, { DomPosition } from './Chart'
-
 import { checkCoordinateOnArc, drawArc } from './extension/figure/arc'
 import { checkCoordinateOnCircle, drawCircle } from './extension/figure/circle'
 import {
@@ -56,7 +50,6 @@ import {
 import { checkCoordinateOnPolygon, drawPolygon } from './extension/figure/polygon'
 import { checkCoordinateOnRect, drawRect } from './extension/figure/rect'
 import { checkCoordinateOnText, drawText } from './extension/figure/text'
-
 import { registerFigure, getSupportedFigures, getFigureClass } from './extension/figure/index'
 import { registerIndicator, getSupportedIndicators } from './extension/indicator/index'
 import { registerLocale, getSupportedLocales } from './extension/i18n/index'
@@ -176,7 +169,7 @@ export {
   utils,
   LineType, PolygonType, TooltipShowRule, TooltipShowType, TooltipIconPosition, CandleTooltipRectPosition,
   CandleType, YAxisPosition, YAxisType, FormatDateType,
-  DomPosition, ActionType, IndicatorSeries, OverlayMode, LoadDataType
+  DomPosition, ActionType, IndicatorSeries, LoadDataType
 }
 
 export type { Chart } from './Chart'

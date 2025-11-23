@@ -11,7 +11,7 @@ import { type CustomApi } from '../Options'
 import type XAxis from '../component/XAxis'
 import type YAxis from '../component/YAxis'
 import type { Overlay, OverlayPrecision, OverlayFigure, OverlayFigureIgnoreEventType } from '../component/Overlay'
-import { OVERLAY_FIGURE_KEY_PREFIX, OverlayMode, getAllOverlayFigureIgnoreEventTypes } from '../component/Overlay'
+import { OVERLAY_FIGURE_KEY_PREFIX, getAllOverlayFigureIgnoreEventTypes } from '../component/Overlay'
 import { type ProgressOverlayInfo, type EventOverlayInfo } from '../store/OverlayStore'
 import type OverlayStore from '../store/OverlayStore'
 import { EventOverlayInfoFigureType } from '../store/OverlayStore'
@@ -42,13 +42,13 @@ export default class OverlayView extends View {
       if (progressInstanceInfo !== null) {
         const overlay = progressInstanceInfo.instance
         let progressInstancePaneId = progressInstanceInfo.paneId
-        if (overlay.isStart) {
+        if (overlay.isStart()) {
           overlayStore.updateProgressInstanceInfo(paneId)
           progressInstancePaneId = paneId
         }
         const index = overlay.points.length - 1
         const key = `${OVERLAY_FIGURE_KEY_PREFIX}point_${index}`
-        if (overlay.isDrawing && progressInstancePaneId === paneId) {
+        if (overlay.isDrawing() && progressInstancePaneId === paneId) {
           overlay.eventMoveForDrawing(this._coordinateToPoint(progressInstanceInfo.instance, event))
           overlay.onDrawing?.({ overlay, figureKey: key, figureIndex: index, ...event })
         }
@@ -69,7 +69,7 @@ export default class OverlayView extends View {
       if (progressInstanceInfo !== null) {
         const overlay = progressInstanceInfo.instance
         let progressInstancePaneId = progressInstanceInfo.paneId
-        if (overlay.isStart) {
+        if (overlay.isStart()) {
           overlayStore.updateProgressInstanceInfo(paneId, true)
           progressInstancePaneId = paneId
         }
@@ -124,7 +124,7 @@ export default class OverlayView extends View {
       const progressInstanceInfo = overlayStore.getProgressInstanceInfo()
       if (progressInstanceInfo !== null) {
         const overlay = progressInstanceInfo.instance
-        if (overlay.isDrawing) {
+        if (overlay.isDrawing()) {
           const index = overlay.points.length - 1
           return this._figureMouseRightClickEvent(
             overlay,
@@ -288,12 +288,12 @@ export default class OverlayView extends View {
       const mainAxisWidget = (pane as DualYPane).getMainAxisWidget()
       const yAxis = mainAxisWidget.getAxisComponent()
       let value = yAxis.convertFromPixel(coordinate.y)
-      if (overlay.mode !== OverlayMode.Normal && paneId === PaneIdConstants.CANDLE && isNumber(point.dataIndex)) {
+      if (overlay.mode !== 'normal' && paneId === PaneIdConstants.CANDLE && isNumber(point.dataIndex)) {
         const kLineData = chartStore.getDataByDataIndex(point.dataIndex)
         if (kLineData !== null) {
           const modeSensitivity = overlay.modeSensitivity
           if (value > kLineData.high) {
-            if (overlay.mode === OverlayMode.WeakMagnet) {
+            if (overlay.mode === 'weak_magnet') {
               const highY = yAxis.convertToPixel(kLineData.high)
               const buffValue = yAxis.convertFromPixel(highY - modeSensitivity)
               if (value < buffValue) {
@@ -303,7 +303,7 @@ export default class OverlayView extends View {
               value = kLineData.high
             }
           } else if (value < kLineData.low) {
-            if (overlay.mode === OverlayMode.WeakMagnet) {
+            if (overlay.mode === 'weak_magnet') {
               const lowY = yAxis.convertToPixel(kLineData.low)
               const buffValue = yAxis.convertFromPixel(lowY - modeSensitivity)
               if (value > buffValue) {
