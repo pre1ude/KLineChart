@@ -75,11 +75,11 @@ export default class OverlayView extends View {
         }
         const index = overlay.points.length - 1
         const key = `${OVERLAY_FIGURE_KEY_PREFIX}point_${index}`
-        if (overlay.isDrawing && progressInstancePaneId === paneId) {
+        if (overlay.isDrawing() && progressInstancePaneId === paneId) {
           overlay.eventMoveForDrawing(this._coordinateToPoint(overlay, event))
           overlay.onDrawing?.({ overlay, figureKey: key, figureIndex: index, ...event })
           overlay.nextStep()
-          if (!overlay.isDrawing) {
+          if (!overlay.isDrawing()) {
             overlayStore.progressInstanceComplete()
             overlay.onDrawEnd?.({ overlay, figureKey: key, figureIndex: index, ...event })
           }
@@ -101,9 +101,9 @@ export default class OverlayView extends View {
       if (progressInstanceInfo !== null) {
         const overlay = progressInstanceInfo.instance
         const progressInstancePaneId = progressInstanceInfo.paneId
-        if (overlay.isDrawing && progressInstancePaneId === paneId) {
+        if (overlay.isDrawing() && progressInstancePaneId === paneId) {
           overlay.forceComplete()
-          if (!overlay.isDrawing) {
+          if (!overlay.isDrawing()) {
             overlayStore.progressInstanceComplete()
             const index = overlay.points.length - 1
             const key = `${OVERLAY_FIGURE_KEY_PREFIX}point_${index}`
@@ -173,7 +173,7 @@ export default class OverlayView extends View {
     ignoreEvent?: boolean | OverlayFigureIgnoreEventType[]
   ): EventHandler | undefined {
     let eventHandler
-    if (!overlay.isDrawing) {
+    if (!overlay.isDrawing()) {
       let eventTypes: OverlayFigureIgnoreEventType[] = []
       if (isValid(ignoreEvent)) {
         if (isBoolean(ignoreEvent)) {
@@ -193,26 +193,26 @@ export default class OverlayView extends View {
           mouseDoubleClickEvent: this._figureMouseDoubleClickEvent(overlay, figureType, figureKey, figureIndex, attrsIndex)
         }
       }
-      eventHandler = {}
+      eventHandler = {} satisfies EventHandler
       // [
       //   'mouseClickEvent', mouseDoubleClickEvent, 'mouseRightClickEvent',
       //   'tapEvent', 'doubleTapEvent', 'mouseDownEvent',
       //   'touchStartEvent', 'mouseMoveEvent', 'touchMoveEvent'
       // ]
       if (!eventTypes.includes('mouseMoveEvent') && !eventTypes.includes('touchMoveEvent')) {
-        eventHandler.mouseMoveEvent = this._figureMouseMoveEvent(overlay, figureType, figureKey, figureIndex, attrsIndex)
+        (eventHandler as any).mouseMoveEvent = this._figureMouseMoveEvent(overlay, figureType, figureKey, figureIndex, attrsIndex)
       }
       if (!eventTypes.includes('mouseDownEvent') && !eventTypes.includes('touchStartEvent')) {
-        eventHandler.mouseDownEvent = this._figureMouseDownEvent(overlay, figureType, figureKey, figureIndex, attrsIndex)
+        (eventHandler as any).mouseDownEvent = this._figureMouseDownEvent(overlay, figureType, figureKey, figureIndex, attrsIndex)
       }
       if (!eventTypes.includes('mouseClickEvent') && !eventTypes.includes('tapEvent')) {
-        eventHandler.mouseClickEvent = this._figureMouseClickEvent(overlay, figureType, figureKey, figureIndex, attrsIndex)
+        (eventHandler as any).mouseClickEvent = this._figureMouseClickEvent(overlay, figureType, figureKey, figureIndex, attrsIndex)
       }
       if (!eventTypes.includes('mouseDoubleClickEvent') && !eventTypes.includes('doubleTapEvent')) {
-        eventHandler.mouseDoubleClickEvent = this._figureMouseDoubleClickEvent(overlay, figureType, figureKey, figureIndex, attrsIndex)
+        (eventHandler as any).mouseDoubleClickEvent = this._figureMouseDoubleClickEvent(overlay, figureType, figureKey, figureIndex, attrsIndex)
       }
       if (!eventTypes.includes('mouseRightClickEvent')) {
-        eventHandler.mouseRightClickEvent = this._figureMouseRightClickEvent(overlay, figureType, figureKey, figureIndex, attrsIndex)
+        (eventHandler as any).mouseRightClickEvent = this._figureMouseRightClickEvent(overlay, figureType, figureKey, figureIndex, attrsIndex)
       }
     }
     return eventHandler
@@ -349,11 +349,17 @@ export default class OverlayView extends View {
   }
 
   override checkEventOn(event: MouseTouchEvent, name: EventName, other?: unknown): boolean {
-    // 在绘制模式下，OverlayView 总是接收事件
-    if (this.getWidget().getPane().getChart().getChartStore().getOverlayStore().isDrawing()) {
+    const overlayStore = this.getWidget().getPane().getChart().getChartStore().getOverlayStore()
+    if (overlayStore.isDrawing()) {
       return true
     }
-    // 否则检查子元素
+
+    // 如果正在拖拽 overlay，OverlayView 总是接收事件（防止图表滚动）
+    const pressedInfo = overlayStore.getPressedInstanceInfo()
+    if (pressedInfo.instance !== null) {
+      return true
+    }
+
     return super.checkEventOn(event, name, other)
   }
 

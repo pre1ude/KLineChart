@@ -216,7 +216,7 @@ export default class OverlayStore {
   progressInstanceComplete(): void {
     if (this._progressInstanceInfo !== null) {
       const { instance, paneId } = this._progressInstanceInfo
-      if (!instance.isDrawing) {
+      if (!instance.isDrawing()) {
         if (!this._instances.has(paneId)) {
           this._instances.set(paneId, [])
         }
@@ -422,7 +422,7 @@ export default class OverlayStore {
 
   setClickInstanceInfo(info: EventOverlayInfo, event: MouseTouchEvent): void {
     const { paneId, instance, figureType, figureKey, figureIndex } = this._clickInstanceInfo
-    if (!(info.instance?.isDrawing ?? false)) {
+    if (!(info.instance?.isDrawing() ?? false)) {
       info.instance?.onClick?.({ overlay: info.instance, figureKey: info.figureKey, figureIndex: info.figureIndex, ...event })
     }
     if (instance?.id !== info.instance?.id || figureType !== info.figureType || figureIndex !== info.figureIndex) {
