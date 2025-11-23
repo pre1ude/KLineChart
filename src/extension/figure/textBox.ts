@@ -19,9 +19,10 @@ const DEFAULT_ELLIPSIS = '...'
 const layoutCache = new WeakMap<TextBoxAttrs, TextLayout>()
 
 interface LineLayout {
-  // 该行文本内容的起始和结束索引
-  startIndex: number
-  endIndex: number
+  // 该行的文本内容
+  text: string
+  // 该行在原文本中的索引范围 [start, end)
+  indexRange: [number, number]
   // 该行的渲染位置
   x: number
   y: number
@@ -55,10 +56,6 @@ interface TextLayout {
   textBaseline: CanvasTextBaseline
 
   // ===== 优化信息 =====
-  // 是否是单行文本（快速路径）
-  isSingleLine: boolean
-  // 总行数
-  lineCount: number
   // 省略号文本
   ellipsis: string
   // 省略号文本宽度
@@ -185,33 +182,35 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
       font,
       textAlign,
       textBaseline,
-      isSingleLine: true,
-      lineCount: 0,
       ellipsis,
       ellipsisWidth,
       truncationReason
     }
   }
 
-  // 计算换行
-  let breakIndex: number[] = []
-  let lineWidths: number[] = []
+  // 计算换行（包括手动换行符处理）
+  let lineSegments: Array<{ text: string, width: number, indexRange: [number, number] }>
 
   if (maxWidth !== undefined) {
-    // 场景 2, 6, 7, 8, 12, 13, 14, 16, 17: 有宽度约束
-    const result = calcBreakIndex(displayText, maxWidth, font, effectiveMaxLines, ellipsisWidth)
-    breakIndex = result.breakIndex
-    lineWidths = result.lineWidths
+    // 有宽度约束，使用 calcBreakIndex 处理（包括换行符）
+    lineSegments = calcBreakIndex(displayText, maxWidth, font, effectiveMaxLines, ellipsisWidth)
   } else {
-    // 场景 1, 3, 4, 5, 9, 10, 11, 15: 无宽度约束（单行或按字符/行数/高度截断）
-    lineWidths = [calcTextWidth(displayText, font)]
+    // 无宽度约束，只按换行符分割
+    const textLines = displayText.split('\n').slice(0, effectiveMaxLines)
+    let charIndex = 0
+    lineSegments = textLines.map(line => {
+      const segment = {
+        text: line,
+        width: calcTextWidth(line, font),
+        indexRange: [charIndex, charIndex + line.length] as [number, number]
+      }
+      charIndex += line.length + 1 // +1 for \n
+      return segment
+    })
   }
 
-  // 计算实际行数和截断状态
-  const isSingleLine = breakIndex.length === 0
-  let actualLineCount = isSingleLine ? 1 : breakIndex.length + 1
-
-  // 应用行数限制（场景 4, 7, 9, 11, 12, 14, 15, 16）
+  // 应用行数限制
+  let actualLineCount = lineSegments.length
   let isLineTruncated = false
   if (actualLineCount > effectiveMaxLines) {
     actualLineCount = effectiveMaxLines
@@ -223,56 +222,25 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
     }
   }
 
-  // 计算行布局
-  const tmplines: Array<Omit<LineLayout, 'x' | 'y'>> = []
+  // 计算行布局（直接使用 lineSegments 的数据）
+  const tmplines: Array<Omit<LineLayout, 'x' | 'y'>> = lineSegments
+    .slice(0, actualLineCount)
+    .map((segment, i) => {
+      const isLastLine = i === actualLineCount - 1
+      const hasMoreLines = i < lineSegments.length - 1 || isLineTruncated
+      const isTruncated = isLastLine && (hasMoreLines || isCharTruncated)
 
-  if (isSingleLine) {
-    // 单行场景（场景 1, 3, 17, 18）
-    tmplines.push({
-      startIndex: 0,
-      endIndex: displayText.length,
-      width: lineWidths[0],
-      height: vLInfo.lineHeight,
-      isTruncated: isCharTruncated
-    })
-  } else {
-    // 多行
-    let startIdx = 0
-    for (let j = 0; j < breakIndex.length && j < actualLineCount; ++j) {
-      const endIdx = breakIndex[j] + 1
-
-      const isLastLine = j === actualLineCount - 1
-      const hasMoreText = endIdx < displayText.length || isCharTruncated || isLineTruncated
-      const isTruncated = isLastLine && hasMoreText
-
-      tmplines.push({
-        startIndex: startIdx,
-        endIndex: endIdx,
-        width: lineWidths[j],
+      return {
+        text: segment.text,
+        indexRange: segment.indexRange,
+        width: segment.width,
         height: vLInfo.lineHeight,
         isTruncated
-      })
-
-      if (isLastLine) break
-      startIdx = endIdx
-    }
-
-    // 最后一行（如果有剩余文本且未未达到行数限制）
-    if (startIdx < displayText.length && tmplines.length < actualLineCount) {
-      const lastLineWidth = lineWidths[lineWidths.length - 1]
-
-      tmplines.push({
-        startIndex: startIdx,
-        endIndex: displayText.length,
-        width: lastLineWidth,
-        height: vLInfo.lineHeight,
-        isTruncated: isCharTruncated
-      })
-    }
-  }
+      }
+    })
 
   // 计算包围盒
-  const maxLineWidth = Math.max(...tmplines.map(l => l.width + (l.isTruncated ? ellipsisWidth : 0)).slice(0, actualLineCount))
+  const maxLineWidth = Math.max(...tmplines.map(l => l.width + (l.isTruncated ? ellipsisWidth : 0)))
 
   const boundsHeight = attrs.height ?? paddingTop + vLInfo.lineHeight * actualLineCount + paddingBottom
   const boundsWidth = attrs.width ?? paddingLeft + maxLineWidth + paddingRight
@@ -296,8 +264,6 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
     font,
     textAlign,
     textBaseline,
-    isSingleLine,
-    lineCount: tmplines.length,
     ellipsis,
     ellipsisWidth,
     truncationReason
@@ -306,7 +272,6 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
 
 function paintText(
   ctx: CanvasRenderingContext2D,
-  text: string,
   layout: TextLayout,
   styles: Partial<TextBoxStyle>
 ) {
@@ -325,11 +290,10 @@ function paintText(
 
   for (let i = 0; i < lines.length; ++i) {
     const line = lines[i]
-    const lineText = text.slice(line.startIndex, line.endIndex)
 
     const x = bounds.x + line.x
     const y = bounds.y + line.y
-    ctx.fillText(lineText, x, y)
+    ctx.fillText(line.text, x, y)
     // draw helper line
     /* ctx.strokeStyle = 'green'
     ctx.beginPath()
@@ -361,7 +325,7 @@ export function drawText(
   const layout = layoutText(attrs, styles)
 
   // Phase 2: Paint（绘制）
-  paintText(ctx, attrs.text, layout, styles)
+  paintText(ctx, layout, styles)
 
   return layout.bounds
 }
@@ -402,7 +366,7 @@ const text: FigureTemplate<TextBoxAttrs, Partial<TextBoxStyle>> = {
   },
   draw: (ctx, attrs, styles) => {
     const layout = getOrCreateLayout(attrs, styles)
-    paintText(ctx, attrs.text, layout, styles)
+    paintText(ctx, layout, styles)
   }
 }
 

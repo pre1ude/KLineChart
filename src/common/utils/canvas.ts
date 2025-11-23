@@ -92,74 +92,47 @@ function findBreakPoints(text: string): number[] {
   return breakPoints
 }
 
+export interface LineSegment {
+  text: string
+  width: number
+  indexRange: [number, number] // [startIndex, endIndex)
+}
+
 /**
- * 计算 text 换行 index 和每行的宽度（支持按单词换行）
- * @param text 文本, 至少长度为 2
- * @param fitWidth 多少宽度换行
- * @param font - font string (e.g., "12px Arial" or "bold 14px sans-serif")
- * @param maxLines - 最大行数（默认无限制）
- * @param ellipsisWidth - 省略号宽度（用于最后一行预留空间）
- * @returns { breakIndex: 换行断点数组, lineWidths: 每行的宽度数组 }
+ * 处理单行文本的宽度约束分割
+ * @returns 该行的所有分割结果
  */
-export function calcBreakIndex(
-  text: string,
+function processLine(
+  ctx: CanvasRenderingContext2D,
+  line: string,
   fitWidth: number,
-  font: string,
-  maxLines: number = Number.MAX_SAFE_INTEGER,
-  ellipsisWidth: number = 0
-): { breakIndex: number[], lineWidths: number[] } {
-  const measureCtx = getMeasureContext()
-  measureCtx.font = font
+  maxLines: number,
+  ellipsisWidth: number
+): LineSegment[] {
+  const lines: LineSegment[] = []
 
-  const breakIndex: number[] = []
-  const lineWidths: number[] = []
-  let startIndex = 0
-
-  /**
-   * 二分查找最大能放入指定宽度的文本长度
-   * @param text 文本
-   * @returns [最大字符索引, 实际宽度]
-   */
-  const binarySearch = (text: string, fitWidth: number) => {
-    let left = 1
-    let right = text.length
-    let bestFitIndex = 0
-    let finalWidth = 0
-
-    while (left <= right) {
-      const mid = (left + right) >> 1
-      const testText = text.slice(0, mid)
-      const testWidth = measureCtx.measureText(testText).width
-
-      if (testWidth <= fitWidth) {
-        bestFitIndex = mid
-        finalWidth = testWidth
-        left = mid + 1
-      } else {
-        right = mid - 1
-      }
-    }
-    return [bestFitIndex, finalWidth]
+  if (line.length === 0) {
+    return [{ text: '', width: 0, indexRange: [0, 0] }]
   }
 
-  for (let lineNum = 0; lineNum < maxLines && startIndex < text.length; lineNum++) {
-    const remainingText = text.slice(startIndex)
-    const fullWidth = measureCtx.measureText(remainingText).width
-    const isLastLine = lineNum === maxLines - 1
-
-    // 最后一行需要为省略号预留空间
-    const effectiveFitWidth = isLastLine ? fitWidth - ellipsisWidth : fitWidth
-
-    // 如果剩余文本能放下，直接添加
-    if (fullWidth <= effectiveFitWidth) {
-      lineWidths.push(fullWidth)
-      break
+  /**
+   * 二分查找最佳断点位置
+   * @param text 要测量的文本
+   * @param breakPoints 可能的断点位置数组（如果为空，则使用字符级别断点）
+   * @param fitWidth 目标宽度
+   * @returns [断点位置, 实际宽度]
+   */
+  const findBestBreakPoint = (
+    text: string,
+    breakPoints: number[],
+    fitWidth: number
+  ): [number, number] => {
+    // 如果没有提供断点或第一个断点为 0，使用字符级别的断点
+    if (breakPoints.length === 0 || breakPoints[0] === 0) {
+      // 生成字符级别的断点数组：[1, 2, 3, ..., text.length]
+      breakPoints = Array.from({ length: text.length }, (_, i) => i + 1)
     }
 
-    // 找出剩余文本中所有可能的断词位置
-    const breakPoints = findBreakPoints(remainingText)
-
-    // 在断词位置上进行二分查找
     let left = 0
     let right = breakPoints.length - 1
     let bestFitIndex = 0
@@ -168,10 +141,10 @@ export function calcBreakIndex(
     while (left <= right) {
       const mid = (left + right) >> 1
       const breakPoint = breakPoints[mid]
-      const testText = remainingText.slice(0, breakPoint)
-      const testWidth = measureCtx.measureText(testText).width
+      const testText = text.slice(0, breakPoint)
+      const testWidth = ctx.measureText(testText).width
 
-      if (testWidth <= effectiveFitWidth) {
+      if (testWidth <= fitWidth) {
         bestFitIndex = mid
         bestFitWidth = testWidth
         left = mid + 1
@@ -180,31 +153,108 @@ export function calcBreakIndex(
       }
     }
 
-    // 获取最佳断点位置
-    let finalBreakPoint = breakPoints[bestFitIndex]
-    let finalWidth = bestFitWidth
-
-    // 如果 bestFitIndex 是 0，说明连第一个单词都放不下
-    // 这种情况下需要强制断开（字符级别截断）
-    if (bestFitIndex === 0 && finalBreakPoint === 0) {
-      // 回退到字符级别的二分查找
-      const res = binarySearch(remainingText, effectiveFitWidth)
-
-      finalBreakPoint = res[0]
-      finalWidth = res[1]
-    }
-
-    // 记录断点和宽度（断点是相对于原文本的位置）
-    breakIndex.push(startIndex + finalBreakPoint - 1)
-    lineWidths.push(finalWidth)
-
-    startIndex = startIndex + finalBreakPoint
-
-    // 达到最大行数，停止
-    if (lineNum === maxLines - 1) {
-      break
-    }
+    return [breakPoints[bestFitIndex] ?? 0, bestFitWidth]
   }
 
-  return { breakIndex, lineWidths }
+  // 预先计算整行的断点位置（只需计算一次）
+  const allBreakPoints = findBreakPoints(line)
+  let startIndex = 0
+
+  for (let lineNum = 0; lineNum < maxLines && startIndex < line.length; lineNum++) {
+    const remainingText = line.slice(startIndex)
+    const fullWidth = ctx.measureText(remainingText).width
+    const isLastLine = lineNum === maxLines - 1
+
+    // 最后一行需要为省略号预留空间
+    const effectiveFitWidth = isLastLine ? fitWidth - ellipsisWidth : fitWidth
+
+    // 如果剩余文本能放下，直接添加
+    if (fullWidth <= effectiveFitWidth) {
+      lines.push({
+        text: remainingText,
+        width: fullWidth,
+        indexRange: [startIndex, line.length]
+      })
+      break
+    }
+
+    // 获取当前剩余文本的断点位置（相对于 remainingText 的索引）
+    const remainingBreakPoints = allBreakPoints
+      .filter(bp => bp > startIndex)
+      .map(bp => bp - startIndex)
+
+    // 进行二分查找
+    const [finalBreakPoint, finalWidth] = findBestBreakPoint(
+      remainingText,
+      remainingBreakPoints,
+      effectiveFitWidth
+    )
+
+    // 记录该段的信息
+    const endIndex = startIndex + finalBreakPoint
+    lines.push({
+      text: remainingText.slice(0, finalBreakPoint),
+      width: finalWidth,
+      indexRange: [startIndex, endIndex]
+    })
+
+    startIndex = endIndex
+  }
+
+  return lines
+}
+
+/**
+ * 计算 text 换行 index 和每行的宽度（支持按单词换行）
+ * @param text 文本, 至少长度为 2
+ * @param fitWidth 多少宽度换行
+ * @param font - font string (e.g., "12px Arial" or "bold 14px sans-serif")
+ * @param maxLines - 最大行数（默认无限制）
+ * @param ellipsisWidth - 省略号宽度（用于最后一行预留空间）
+ * @returns LineSegment[]
+ */
+export function calcBreakIndex(
+  text: string,
+  fitWidth: number,
+  font: string,
+  maxLines: number = Number.MAX_SAFE_INTEGER,
+  ellipsisWidth: number = 0
+): LineSegment[] {
+  const ctx = getMeasureContext()
+  ctx.font = font
+
+  // 首先按换行符分割文本
+  const textLines = text.split('\n')
+
+  // 收集所有行的结果
+  const allSegments: LineSegment[] = []
+
+  let globalCharIndex = 0
+  let remainingMaxLines = maxLines
+
+  // 处理每一个手动换行的段落
+  for (let i = 0; i < textLines.length && remainingMaxLines > 0; i++) {
+    const line = textLines[i]
+
+    // 处理当前行
+    const lineSegments = processLine(ctx, line, fitWidth, remainingMaxLines, ellipsisWidth)
+
+    // 将当前行的结果添加到总结果中，转换为全局索引
+    for (const segment of lineSegments) {
+      allSegments.push({
+        text: segment.text,
+        width: segment.width,
+        indexRange: [
+          globalCharIndex + segment.indexRange[0],
+          globalCharIndex + segment.indexRange[1]
+        ]
+      })
+    }
+
+    // 更新状态
+    remainingMaxLines -= lineSegments.length
+    globalCharIndex += line.length + 1 // +1 for \n
+  }
+
+  return allSegments
 }
