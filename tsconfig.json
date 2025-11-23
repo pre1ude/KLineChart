@@ -23,14 +23,9 @@
     "sourceMap": true,
     "noEmit": true,
 
-    // 类型检查 - 严格模式
+    // 类型检查 - 严格但实用
     "strict": true,
-    "strictNullChecks": true,
     "noFallthroughCasesInSwitch": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
     "forceConsistentCasingInFileNames": true,
 

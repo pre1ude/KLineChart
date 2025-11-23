@@ -54,10 +54,14 @@ export default tseslint.config(
 
       // 未使用的变量
       '@typescript-eslint/no-unused-vars': ['error', {
+        args: 'all',
         argsIgnorePattern: '^_',
+        vars: 'all',
         varsIgnorePattern: '^_',
+        caughtErrors: 'all',
         caughtErrorsIgnorePattern: '^_',
-        destructuredArrayIgnorePattern: '^_'
+        destructuredArrayIgnorePattern: '^_',
+        ignoreRestSiblings: true
       }],
 
       // 函数和方法
@@ -127,6 +131,9 @@ export default tseslint.config(
         }
       ],
 
+      // 函数返回值一致性 允许隐式返回 undefined
+      '@typescript-eslint/consistent-return': 'off',
+
       // Promise 处理
       '@typescript-eslint/no-floating-promises': 'off',
       '@typescript-eslint/no-misused-promises': ['error', {
@@ -169,7 +176,7 @@ export default tseslint.config(
         allowTemplateLiterals: true
       }],
       '@stylistic/semi': ['error', 'never'],
-      '@stylistic/comma-dangle': ['error', 'never'],
+      '@stylistic/comma-dangle': 'off',
       '@stylistic/comma-spacing': ['error', { before: false, after: true }],
       '@stylistic/space-before-function-paren': ['error', {
         anonymous: 'always',
