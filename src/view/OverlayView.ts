@@ -262,9 +262,10 @@ export default class OverlayView extends View {
   protected drawFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, figures: OverlayFigure[], defaultStyles: OverlayStyle): void {
     for (let i = 0; i < figures.length; i++) {
       const figure = figures[i]
-      const { type, styles, attrs } = figure
+      const { type, styles, attrs, ignoreEvent } = figure
       const finalStyles = { ...defaultStyles[type], ...overlay.styles?.[type], ...styles }
       const attrsArray = Array.isArray(attrs) ? attrs : [attrs]
+
       for (let j = 0; j < attrsArray.length; j++) {
         const fig = createFigure<object[], object, OverlayFigureData>(type)
         fig.setAttrs(attrsArray[j])
@@ -277,6 +278,14 @@ export default class OverlayView extends View {
             attrsIndex: j
           })
           .draw(ctx)
+          // 优化：完全忽略事件的图形不添加到事件树
+        if (ignoreEvent === true) {
+        // 不添加到事件树，节省性能
+          continue
+        }
+
+        // 部分忽略或不忽略的图形添加到事件树
+        fig.setIgnoreEvent(ignoreEvent)
         this.addChild(fig)
       }
     }

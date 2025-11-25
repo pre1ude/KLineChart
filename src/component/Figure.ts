@@ -25,6 +25,7 @@ export class Figure<A = unknown, S = unknown, T = unknown> extends Eventful {
 
   private readonly _figure: FigureTemplate
   public readonly id: string | undefined
+  private _ignoreEvent?: boolean | string[]
 
   constructor(figure: FigureTemplate, id?: string) {
     super()
@@ -34,7 +35,18 @@ export class Figure<A = unknown, S = unknown, T = unknown> extends Eventful {
     }
   }
 
-  override checkEventOn(event: MouseTouchEvent): boolean {
+  override checkEventOn(event: MouseTouchEvent, name?: string): boolean {
+    // 完全忽略
+    if (this._ignoreEvent === true) {
+      return false
+    }
+
+    // 部分忽略
+    if (Array.isArray(this._ignoreEvent) && name && this._ignoreEvent.includes(name)) {
+      return false
+    }
+
+    // 检查坐标
     return this._figure.checkEventOn(event, this.attrs, this.styles)
   }
 
@@ -50,6 +62,11 @@ export class Figure<A = unknown, S = unknown, T = unknown> extends Eventful {
 
   setData(data: T): this {
     this.data = data
+    return this
+  }
+
+  setIgnoreEvent(ignoreEvent?: boolean | string[]): this {
+    this._ignoreEvent = ignoreEvent
     return this
   }
 
