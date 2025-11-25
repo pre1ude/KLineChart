@@ -1,21 +1,14 @@
-
 import type DeepRequired from '../common/DeepRequired'
 import type Nullable from '../common/Nullable'
 import { type UpdateLevel } from '../common/Updater'
 import type Bounding from '../common/Bounding'
-
 import { isValid, merge } from '../common/utils/typeChecks'
-
 import type DrawWidget from '../widget/DrawWidget'
 import YAxisWidget from '../widget/YAxisWidget'
-
 import Pane from './Pane'
 import { type PaneOptions, PANE_MIN_HEIGHT, PaneIdConstants } from './types'
-
 import type Chart from '../Chart'
-
-import { createDom } from '../common/utils/dom'
-import { getPixelRatio } from '../common/utils/canvas'
+import { initCanvas } from '../common/utils/canvas'
 import type PickPartial from '../common/PickPartial'
 import { YAxisPosition, YAxisType } from '../common/Styles'
 import { setCursor } from '../common/utils/cursor'
@@ -127,25 +120,17 @@ export default abstract class DualYPane extends Pane {
     this._yRightAxisWidget?.update(level)
   }
 
-  destroy(): void {
-    super.destroy()
+  override destroy(): void {
     this._mainWidget.destroy()
     this._yLeftAxisWidget?.destroy()
     this._yRightAxisWidget?.destroy()
+    super.destroy()
   }
 
   override getImage(includeOverlay: boolean): HTMLCanvasElement {
     const { width, height } = this.getBounding()
-    const canvas = createDom('canvas', {
-      width: `${width}px`,
-      height: `${height}px`,
-      boxSizing: 'border-box'
-    })
-    const ctx = canvas.getContext('2d')!
-    const pixelRatio = getPixelRatio(canvas)
-    canvas.width = width * pixelRatio
-    canvas.height = height * pixelRatio
-    ctx.scale(pixelRatio, pixelRatio)
+
+    const { ctx, canvas } = initCanvas(width, height)
 
     const mainBounding = this._mainWidget.getBounding()
     ctx.drawImage(

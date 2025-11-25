@@ -1,15 +1,10 @@
-
 import type Nullable from '../common/Nullable'
 import { UpdateLevel } from '../common/Updater'
 import type Bounding from '../common/Bounding'
 import { merge } from '../common/utils/typeChecks'
-import { createDom } from '../common/utils/dom'
-import { getPixelRatio } from '../common/utils/canvas'
-
+import { initCanvas } from '../common/utils/canvas'
 import type Chart from '../Chart'
-
 import Pane from './Pane'
-
 import SeparatorWidget from '../widget/SeparatorWidget'
 
 export default class SeparatorPane extends Pane {
@@ -54,17 +49,9 @@ export default class SeparatorPane extends Pane {
   override getImage(_includeOverlay: boolean): HTMLCanvasElement {
     const { width, height } = this.getBounding()
 
+    const { ctx, canvas } = initCanvas(width, height)
+
     const styles = this.getChart().getStyles().separator
-    const canvas = createDom('canvas', {
-      width: `${width}px`,
-      height: `${height}px`,
-      boxSizing: 'border-box'
-    })
-    const ctx = canvas.getContext('2d')!
-    const pixelRatio = getPixelRatio(canvas)
-    canvas.width = width * pixelRatio
-    canvas.height = height * pixelRatio
-    ctx.scale(pixelRatio, pixelRatio)
     ctx.fillStyle = styles.color
     ctx.fillRect(0, 0, width, height)
     return canvas

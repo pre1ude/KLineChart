@@ -33,8 +33,8 @@ export class OverlayLayer implements Layer {
     return { ...figure.data, paneId }
   }
 
-  private _isSameEventOverlayInfo(a: EventOverlayInfo | null | undefined, b: EventOverlayInfo | null | undefined): boolean {
-    return a?.overlay?.id === b?.overlay?.id && a?.interactType === b?.interactType && a?.figureIndex === b?.figureIndex
+  private _isSameEventOverlayInfo(a: EventOverlayInfo | null, b: EventOverlayInfo | null): boolean {
+    return a?.overlay.id === b?.overlay.id && a?.interactType === b?.interactType && a?.figureIndex === b?.figureIndex
   }
 
   private _initEvent(widget: DrawWidget<DualYPane>): void {
@@ -258,9 +258,5 @@ export class OverlayLayer implements Layer {
 
   drawOverlay = (ctx: CanvasRenderingContext2D): void => {
     this._overlayView.draw(ctx)
-  }
-
-  destroy = (): void => {
-    // OverlayView 的清理由 widget 管理
   }
 }

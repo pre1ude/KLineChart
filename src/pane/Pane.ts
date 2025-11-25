@@ -1,28 +1,20 @@
-
+import { UpdateLevel } from '../common/Updater'
+import { createDefaultBounding } from '../common/Bounding'
+import { createDom } from '../common/utils/dom'
 import type Nullable from '../common/Nullable'
 import type Updater from '../common/Updater'
-import { UpdateLevel } from '../common/Updater'
 import type Bounding from '../common/Bounding'
-import { createDefaultBounding } from '../common/Bounding'
-
 import type Chart from '../Chart'
-
-import { createDom } from '../common/utils/dom'
 export default abstract class Pane implements Updater {
   private _rootContainer: HTMLElement
   private _container: HTMLElement
   private readonly _id: string
   private readonly _chart: Chart
-
   private readonly _bounding: Bounding = createDefaultBounding()
 
   constructor(rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string) {
     this._chart = chart
     this._id = id
-    this._init(rootContainer, afterElement)
-  }
-
-  private _init(rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>): void {
     this._rootContainer = rootContainer
     this._container = createDom('div', {
       width: '100%',

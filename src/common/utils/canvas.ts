@@ -1,3 +1,4 @@
+import { createDom } from './dom'
 
 let measureCtx: CanvasRenderingContext2D
 
@@ -267,4 +268,21 @@ export function calcBreakIndex(
     segments: allSegments,
     isTruncated: lastSegment.indexRange[1] < text.length
   }
+}
+
+export function initCanvas(width: number, height: number) {
+  const canvas = createDom('canvas', {
+    width: `${width}px`,
+    height: `${height}px`,
+    boxSizing: 'border-box'
+  })
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    throw new Error('Get canvas context failed.')
+  }
+  const pixelRatio = getPixelRatio(canvas)
+  canvas.width = width * pixelRatio
+  canvas.height = height * pixelRatio
+  ctx.scale(pixelRatio, pixelRatio)
+  return { ctx, canvas }
 }
