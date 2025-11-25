@@ -159,6 +159,7 @@ interface OverlayInitOption {
   groupId: string
   paneId: string
   zLevel?: number
+  points?: Partial<Point>[]
   [key: string]: unknown
 }
 
@@ -225,7 +226,7 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
   private _prevPressedPoint: Nullable<Partial<Point>> = null
   private _prevPressedPoints: Array<Partial<Point>> = []
 
-  constructor(template: OverlayTemplate<E>, { id, groupId, paneId, zLevel, ...rest }: OverlayInitOption) {
+  constructor(template: OverlayTemplate<E>, { id, groupId, paneId, zLevel, points, ...rest }: OverlayInitOption) {
     Object.assign(this, template)
 
     this.id = id
@@ -234,6 +235,8 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
     if (isValid(zLevel)) {
       this.zLevel = zLevel
     }
+    this._applyPoints(points)
+
     Object.assign(this, rest)
   }
 
@@ -274,6 +277,10 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
       merge(this.styles, styles)
     }
 
+    this._applyPoints(points)
+  }
+
+  private _applyPoints(points: Partial<Point>[] | undefined) {
     if (isArray(points)) {
       const _points = points.length > this.totalStep ? points.slice(0, this.totalStep) : points
 
@@ -285,6 +292,9 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
           : OverlayState.DRAWING
 
       this.points = _points
+      for (let i = 0; i < this.currentStep; i++) {
+        this.onDrawPointUpdate?.(this.points, i, this.points[i])
+      }
     }
   }
 
