@@ -796,7 +796,7 @@ function getDefaultOverlayStyle(): OverlayStyle {
       paddingBottom: 4,
       backgroundColor: '#FFC62B',
       // textAlign: 'left',
-      textAlign: 'center',
+      textAlign: 'left',
       // textAlign: 'right',
       // textBaseline: 'hanging',
       // textBaseline: 'middle',
@@ -804,9 +804,9 @@ function getDefaultOverlayStyle(): OverlayStyle {
       // textBaseline: 'ideographic',
       // textBaseline: 'alphabetic',
       maxWidth: 100,
-      // maxChars: 20
-      maxLines: 2
-      // maxHeight: 50
+      // maxChars: 20,
+      // maxLines: 2,
+      // maxHeight: 80,
     }
   }
 }
