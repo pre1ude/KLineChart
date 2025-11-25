@@ -1,4 +1,3 @@
-
 import type { Layer } from './Layer'
 import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
@@ -21,10 +20,10 @@ interface IndicatorFigureData {
  */
 export class IndicatorLayer implements Layer {
   readonly name = 'indicator'
-  private _indicatorView?: IndicatorView
+  private _indicatorView: IndicatorView
   private _candleBarView?: CandleBarView
 
-  init = (widget: DrawWidget<DualYPane>): void => {
+  constructor(widget: DrawWidget<DualYPane>) {
     this._indicatorView = new IndicatorView(widget)
 
     // 初始化事件处理
@@ -43,7 +42,7 @@ export class IndicatorLayer implements Layer {
     let lastHoverFigureData: IndicatorFigureData | null = null
 
     // 鼠标移动事件 - 处理 onMouseEnter 和 onMouseLeave
-    this._indicatorView?.addEventListener('mouseMoveEvent', (e: MouseTouchEvent) => {
+    this._indicatorView.addEventListener('mouseMoveEvent', (e: MouseTouchEvent) => {
       const target = e.target as any
       const currentFigureData = (target?.data as IndicatorFigureData) ?? null
 
@@ -79,7 +78,7 @@ export class IndicatorLayer implements Layer {
     })
 
     // 鼠标点击事件
-    this._indicatorView?.addEventListener('mouseClickEvent', (e: MouseTouchEvent) => {
+    this._indicatorView.addEventListener('mouseClickEvent', (e: MouseTouchEvent) => {
       const chartStore = widget.getPane().getChart().getChartStore()
       const dataList = chartStore.getDataList()
       const target = e.target
@@ -105,11 +104,6 @@ export class IndicatorLayer implements Layer {
     // 先绘制 OHLC 蜡烛图（如果有）
     this._candleBarView?.draw(ctx)
     // 再绘制指标
-    this._indicatorView?.draw(ctx)
-  }
-
-  destroy = (): void => {
-    this._indicatorView = undefined
-    this._candleBarView = undefined
+    this._indicatorView.draw(ctx)
   }
 }

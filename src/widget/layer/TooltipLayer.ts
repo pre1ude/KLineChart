@@ -1,26 +1,15 @@
-
 import type { Layer } from './Layer'
 import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
 import IndicatorTooltipView from '../../view/IndicatorTooltipView'
 import CandleTooltipView from '../../view/CandleTooltipView'
 
-/**
- * 提示信息图层
- * 负责显示提示信息（Tooltip）
- */
-export class TooltipLayer implements Layer {
-  readonly name = 'tooltip'
-  private _tooltipView?: IndicatorTooltipView | CandleTooltipView
+export class IndicatorTooltipLayer implements Layer {
+  readonly name = 'indiatorTooltip'
+  private _tooltipView: IndicatorTooltipView
 
-  constructor(private readonly _type: 'candle' | 'indicator' = 'indicator') {}
-
-  init = (widget: DrawWidget<DualYPane>): void => {
-    if (this._type === 'candle') {
-      this._tooltipView = new CandleTooltipView(widget)
-    } else {
-      this._tooltipView = new IndicatorTooltipView(widget)
-    }
+  constructor(widget: DrawWidget<DualYPane>) {
+    this._tooltipView = new IndicatorTooltipView(widget)
     // TooltipView 需要添加到 widget 的 children 中以接收事件
     widget.addChild(this._tooltipView)
   }
@@ -28,8 +17,19 @@ export class TooltipLayer implements Layer {
   drawOverlay = (ctx: CanvasRenderingContext2D): void => {
     this._tooltipView?.draw(ctx)
   }
+}
 
-  destroy = (): void => {
-    this._tooltipView = undefined
+export class CandleTooltipLayer implements Layer {
+  readonly name = 'candleTooltip'
+  private _tooltipView: CandleTooltipView
+
+  constructor(widget: DrawWidget<DualYPane>) {
+    this._tooltipView = new CandleTooltipView(widget)
+    // TooltipView 需要添加到 widget 的 children 中以接收事件
+    widget.addChild(this._tooltipView)
+  }
+
+  drawOverlay = (ctx: CanvasRenderingContext2D): void => {
+    this._tooltipView?.draw(ctx)
   }
 }

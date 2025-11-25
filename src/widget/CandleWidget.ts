@@ -1,13 +1,12 @@
-
 import type DualYPane from '../pane/DualYPane'
 import MainWidget from './MainWidget'
 import {
+  GridLayer,
   CandleLayer,
   IndicatorLayer,
-  GridLayer,
   OverlayLayer,
   CrosshairLayer,
-  TooltipLayer
+  CandleTooltipLayer,
 } from './layer'
 
 export function CandleWidget(
@@ -15,11 +14,11 @@ export function CandleWidget(
   pane: DualYPane
 ): MainWidget {
   return new MainWidget(rootContainer, pane, [
-    new GridLayer(),
-    new CandleLayer(),
-    new IndicatorLayer(),
-    new OverlayLayer(),
-    new CrosshairLayer(),
-    new TooltipLayer('candle')
+    GridLayer,
+    CandleLayer,
+    IndicatorLayer,
+    OverlayLayer,
+    CrosshairLayer,
+    CandleTooltipLayer
   ])
 }

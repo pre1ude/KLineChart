@@ -15,9 +15,9 @@ import OverlayView from '../../view/OverlayView'
  */
 export class OverlayLayer implements Layer {
   readonly name = 'overlay'
-  private _overlayView?: OverlayView
+  private _overlayView: OverlayView
 
-  init = (widget: DrawWidget<DualYPane>): void => {
+  constructor(widget: DrawWidget<DualYPane>) {
     this._overlayView = new OverlayView(widget)
 
     // 初始化事件处理
@@ -44,7 +44,7 @@ export class OverlayLayer implements Layer {
     const overlayStore = chart.getChartStore().getOverlayStore()
 
     // 鼠标移动事件 - 处理 onMouseEnter 和 onMouseLeave
-    this._overlayView?.addEventListener('mouseMoveEvent', (event: MouseTouchEvent) => {
+    this._overlayView.addEventListener('mouseMoveEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
 
       // 处理绘制中的 overlay
@@ -56,7 +56,7 @@ export class OverlayLayer implements Layer {
 
         const pointIndex = progressOverlay.points.length - 1
         const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
-        if (progressOverlay.isDrawing() && progressOverlay.paneId === paneId && this._overlayView != null) {
+        if (progressOverlay.isDrawing() && progressOverlay.paneId === paneId) {
           progressOverlay.updateDrawPoint(this._overlayView.coordinateToPoint(progressOverlay, event))
           progressOverlay.onDrawing?.(event, { figureKey, pointIndex })
         }
@@ -67,7 +67,7 @@ export class OverlayLayer implements Layer {
       const hoverInfo = this._extractEventOverlayInfo(event.target, paneId)
 
       // 获取上一次 hover 的信息
-      const lastHoverInfo = this._overlayView?.getHoverInstanceInfo()
+      const lastHoverInfo = this._overlayView.getHoverInstanceInfo()
 
       // 检查是否切换了 overlay 或 figure
       if (!this._isSameEventOverlayInfo(lastHoverInfo, hoverInfo)) {
@@ -108,19 +108,19 @@ export class OverlayLayer implements Layer {
           chart.updatePane(UpdateLevel.Overlay, paneId)
         }
 
-        this._overlayView?.setHoverInstanceInfo(hoverInfo)
+        this._overlayView.setHoverInstanceInfo(hoverInfo)
       }
 
       return false
     })
 
     // 鼠标点击事件 - 处理 onClick、onSelected 和 onDeselected
-    this._overlayView?.addEventListener('mouseClickEvent', (event: MouseTouchEvent) => {
+    this._overlayView.addEventListener('mouseClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay !== null) {
         const pointIndex = progressOverlay.points.length - 1
         const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
-        if (progressOverlay.isDrawing() && progressOverlay.paneId === paneId && this._overlayView != null) {
+        if (progressOverlay.isDrawing() && progressOverlay.paneId === paneId) {
           progressOverlay.updateDrawPoint(this._overlayView.coordinateToPoint(progressOverlay, event))
           progressOverlay.onDrawing?.(event, { figureKey, pointIndex })
           progressOverlay.nextStep()
@@ -141,7 +141,7 @@ export class OverlayLayer implements Layer {
       }
 
       // 获取上一次 click 的信息
-      const lastClickInfo = this._overlayView?.getClickInstanceInfo()
+      const lastClickInfo = this._overlayView.getClickInstanceInfo()
 
       // 检查是否切换了选中的 overlay
       if (!this._isSameEventOverlayInfo(lastClickInfo, clickInfo)) {
@@ -164,16 +164,16 @@ export class OverlayLayer implements Layer {
           chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
         }
 
-        this._overlayView?.setClickInstanceInfo(clickInfo)
+        this._overlayView.setClickInstanceInfo(clickInfo)
       }
 
       return false
     })
 
     // 鼠标按下事件 - 处理 onPressedMoveStart
-    this._overlayView?.addEventListener('mouseDownEvent', (event: MouseTouchEvent) => {
+    this._overlayView.addEventListener('mouseDownEvent', (event: MouseTouchEvent) => {
       const pressedInfo = this._extractEventOverlayInfo(event.target, paneId)
-      if (pressedInfo?.overlay != null && this._overlayView != null) {
+      if (pressedInfo?.overlay != null) {
         const { overlay } = pressedInfo
         overlay.startPressedMove(this._overlayView.coordinateToPoint(overlay, event))
         overlay.onPressedMoveStart?.(event, pressedInfo)
@@ -183,7 +183,7 @@ export class OverlayLayer implements Layer {
     })
 
     // 鼠标双击事件 - 处理 onDoubleClick
-    this._overlayView?.addEventListener('mouseDoubleClickEvent', (event: MouseTouchEvent) => {
+    this._overlayView.addEventListener('mouseDoubleClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay !== null) {
         if (progressOverlay.isDrawing() && progressOverlay.paneId === paneId) {
@@ -206,7 +206,7 @@ export class OverlayLayer implements Layer {
     })
 
     // 鼠标右键事件 - 处理 onRightClick
-    this._overlayView?.addEventListener('mouseRightClickEvent', (event: MouseTouchEvent) => {
+    this._overlayView.addEventListener('mouseRightClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay !== null) {
         if (progressOverlay.isDrawing()) {
@@ -226,19 +226,19 @@ export class OverlayLayer implements Layer {
     })
 
     // 鼠标抬起事件 - 处理 onPressedMoveEnd
-    this._overlayView?.addEventListener('mouseUpEvent', (event: MouseTouchEvent) => {
-      const pressedInfo = this._overlayView?.getPressedInstanceInfo()
+    this._overlayView.addEventListener('mouseUpEvent', (event: MouseTouchEvent) => {
+      const pressedInfo = this._overlayView.getPressedInstanceInfo()
       if (pressedInfo?.overlay != null) {
         pressedInfo.overlay.onPressedMoveEnd?.(event, pressedInfo)
       }
-      this._overlayView?.setPressedInstanceInfo(null)
+      this._overlayView.setPressedInstanceInfo(null)
       return false
     })
 
     // 按住拖动事件 - 处理 onPressedMoving
-    this._overlayView?.addEventListener('pressedMouseMoveEvent', (event: MouseTouchEvent) => {
-      const pressedInfo = this._overlayView?.getPressedInstanceInfo()
-      if (pressedInfo?.overlay != null && this._overlayView != null) {
+    this._overlayView.addEventListener('pressedMouseMoveEvent', (event: MouseTouchEvent) => {
+      const pressedInfo = this._overlayView.getPressedInstanceInfo()
+      if (pressedInfo?.overlay != null) {
         const overlay = pressedInfo.overlay
         if (!overlay.lock) {
           if (!(overlay.onPressedMoving?.(event, pressedInfo) ?? false)) {
@@ -257,10 +257,10 @@ export class OverlayLayer implements Layer {
   }
 
   drawOverlay = (ctx: CanvasRenderingContext2D): void => {
-    this._overlayView?.draw(ctx)
+    this._overlayView.draw(ctx)
   }
 
   destroy = (): void => {
-    this._overlayView = undefined
+    // OverlayView 的清理由 widget 管理
   }
 }

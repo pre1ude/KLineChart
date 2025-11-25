@@ -1,4 +1,3 @@
-
 import type { Layer } from './Layer'
 import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
@@ -20,14 +19,14 @@ import type KLineData from '../../common/KLineData'
  */
 export class CandleLayer implements Layer {
   readonly name = 'candle'
-  private _widget?: DrawWidget<DualYPane>
-  private _candleBarView?: CandleBarView
-  private _candleAreaView?: CandleAreaView
-  private _candleHighLowPriceView?: CandleHighLowPriceView
-  private _candleLastPriceLineView?: CandleLastPriceLineView
-  private _candleZeroPriceLineView?: CandleZeroPriceLineView
+  private _widget: DrawWidget<DualYPane>
+  private _candleBarView: CandleBarView
+  private _candleAreaView: CandleAreaView
+  private _candleHighLowPriceView: CandleHighLowPriceView
+  private _candleLastPriceLineView: CandleLastPriceLineView
+  private _candleZeroPriceLineView: CandleZeroPriceLineView
 
-  init = (widget: DrawWidget<DualYPane>): void => {
+  constructor(widget: DrawWidget<DualYPane>) {
     this._widget = widget
     this._candleBarView = new CandleBarView(widget)
     this._candleAreaView = new CandleAreaView(widget)
@@ -42,9 +41,9 @@ export class CandleLayer implements Layer {
   }
 
   private _initEvent(): void {
-    const pane = this._widget?.getPane()
-    if (pane?.getId() === PaneIdConstants.CANDLE) {
-      this._candleBarView?.addEventListener('mouseClickEvent', (e: MouseTouchEvent) => {
+    const pane = this._widget.getPane()
+    if (pane.getId() === PaneIdConstants.CANDLE) {
+      this._candleBarView.addEventListener('mouseClickEvent', (e: MouseTouchEvent) => {
         const chartStore = pane.getChart().getChartStore()
         const dataList = chartStore.getDataList()
         const target = e.target
@@ -75,26 +74,17 @@ export class CandleLayer implements Layer {
     const candleStyles = chart.getStyles().candle
 
     if (candleStyles.type !== CandleType.Area) {
-      this._candleBarView?.draw(ctx)
-      this._candleHighLowPriceView?.draw(ctx)
-      this._candleAreaView?.stopAnimation()
+      this._candleBarView.draw(ctx)
+      this._candleHighLowPriceView.draw(ctx)
+      this._candleAreaView.stopAnimation()
     } else {
-      this._candleAreaView?.draw(ctx)
+      this._candleAreaView.draw(ctx)
     }
 
     if (chartStore.getIsTimeShare()) {
-      this._candleZeroPriceLineView?.draw(ctx)
+      this._candleZeroPriceLineView.draw(ctx)
     } else {
-      this._candleLastPriceLineView?.draw(ctx)
+      this._candleLastPriceLineView.draw(ctx)
     }
-  }
-
-  destroy = (): void => {
-    this._widget = undefined
-    this._candleBarView = undefined
-    this._candleAreaView = undefined
-    this._candleHighLowPriceView = undefined
-    this._candleLastPriceLineView = undefined
-    this._candleZeroPriceLineView = undefined
   }
 }

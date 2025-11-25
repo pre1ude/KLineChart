@@ -1,8 +1,7 @@
-
 import type DualYPane from '../pane/DualYPane'
 import { WidgetNameConstants } from './types'
 import DrawWidget from './DrawWidget'
-import type { Layer } from './layer/Layer'
+import type { Layer, LayerClass } from './layer/Layer'
 import { setCursor } from '../common/utils/cursor'
 
 /**
@@ -17,15 +16,12 @@ export default class MainWidget extends DrawWidget<DualYPane> {
   constructor(
     rootContainer: HTMLElement,
     pane: DualYPane,
-    layers: Layer[]
+    layers: LayerClass[]
   ) {
     super(rootContainer, pane)
-    this._layers = layers
 
     // 初始化所有 layers
-    this._layers.forEach(layer => {
-      layer.init?.(this)
-    })
+    this._layers = layers.map(layerClass => new layerClass(this))
 
     // 设置通用样式和事件
     setCursor(this.getContainer(), 'crosshair')
@@ -41,23 +37,15 @@ export default class MainWidget extends DrawWidget<DualYPane> {
 
   protected updateMain(ctx: CanvasRenderingContext2D): void {
     // 按顺序绘制所有 main layers
-    this._layers.forEach(layer => {
+    this._layers.forEach((layer) => {
       layer.drawMain?.(ctx)
     })
   }
 
   protected updateOverlay(ctx: CanvasRenderingContext2D): void {
     // 按顺序绘制所有 overlay layers
-    this._layers.forEach(layer => {
+    this._layers.forEach((layer) => {
       layer.drawOverlay?.(ctx)
     })
-  }
-
-  override destroy(): void {
-    // 清理所有 layers
-    this._layers.forEach(layer => {
-      layer.destroy?.()
-    })
-    super.destroy()
   }
 }

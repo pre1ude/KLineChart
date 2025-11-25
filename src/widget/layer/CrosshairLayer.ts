@@ -1,4 +1,3 @@
-
 import type { Layer } from './Layer'
 import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
@@ -10,17 +9,13 @@ import CrosshairLineView from '../../view/CrosshairLineView'
  */
 export class CrosshairLayer implements Layer {
   readonly name = 'crosshair'
-  private _crosshairLineView?: CrosshairLineView
+  private _crosshairLineView: CrosshairLineView
 
-  init = (widget: DrawWidget<DualYPane>): void => {
+  constructor(widget: DrawWidget<DualYPane>) {
     this._crosshairLineView = new CrosshairLineView(widget)
   }
 
   drawOverlay = (ctx: CanvasRenderingContext2D): void => {
-    this._crosshairLineView?.draw(ctx)
-  }
-
-  destroy = (): void => {
-    this._crosshairLineView = undefined
+    this._crosshairLineView.draw(ctx)
   }
 }
