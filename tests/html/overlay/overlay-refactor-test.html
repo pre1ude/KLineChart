@@ -1,0 +1,327 @@
+<!--
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="keywords" content="kline time-line candlestick stock chart canvas k线 行情 蜡烛图 分时图 技术指标 图表"/>
+    <meta name="description" content="Overlay refactor test - comprehensive test for OverlayView refactoring"/>
+    <link rel="stylesheet" type="text/css" href="../../css/chart.css"/>
+    <title>Overlay Refactor Test - Comprehensive Test</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+      }
+      #chart {
+        height: 600px;
+      }
+      .controls {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f5f5f5;
+        border-radius: 4px;
+      }
+      .controls h3 {
+        margin-top: 0;
+      }
+      .button-group {
+        margin: 10px 0;
+      }
+      button {
+        margin: 5px;
+        padding: 8px 16px;
+        cursor: pointer;
+        background: #1890ff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+      }
+      button:hover {
+        background: #40a9ff;
+      }
+      .status {
+        margin-top: 10px;
+        padding: 10px;
+        background: #e6f7ff;
+        border-left: 3px solid #1890ff;
+        border-radius: 2px;
+      }
+      .test-section {
+        margin: 15px 0;
+        padding: 10px;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+      }
+      .test-section h4 {
+        margin-top: 0;
+        color: #1890ff;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+
+    <div class="controls">
+      <h3>🧪 Overlay Refactor Test Suite</h3>
+      <p>测试 OverlayView 重构后的功能完整性</p>
+
+      <div class="test-section">
+        <h4>1. Main Pane Overlays (主图覆盖物)</h4>
+        <div class="button-group">
+          <button onclick="testMainPaneText()">创建文本标注</button>
+          <button onclick="testMainPaneLine()">创建趋势线</button>
+          <button onclick="testMainPaneRect()">创建矩形</button>
+          <button onclick="testMainPaneCircle()">创建圆形</button>
+          <button onclick="testHorizontalRayLine()">创建水平射线</button>
+          <button onclick="testParallelogram()">创建平行四边形</button>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>2. Sub Pane Overlays (副图覆盖物)</h4>
+        <div class="button-group">
+          <button onclick="testSubPaneText()">副图文本标注</button>
+          <button onclick="testSubPaneLine()">副图趋势线</button>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>3. Axis Overlays (坐标轴覆盖物)</h4>
+        <div class="button-group">
+          <button onclick="testXAxisOverlay()">X轴标签测试</button>
+          <button onclick="testYAxisOverlay()">Y轴标签测试</button>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>4. Interactive Tests (交互测试)</h4>
+        <div class="button-group">
+          <button onclick="testHoverEffect()">Hover 效果</button>
+          <button onclick="testClickSelect()">点击选中</button>
+          <button onclick="testDragMove()">拖拽移动</button>
+          <button onclick="testRightClick()">右键删除</button>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>5. Batch Operations (批量操作)</h4>
+        <div class="button-group">
+          <button onclick="createMultipleOverlays()">创建多个覆盖物</button>
+          <button onclick="clearAllOverlays()">清除所有覆盖物</button>
+        </div>
+      </div>
+
+      <div class="status" id="status">
+        状态: 就绪
+      </div>
+    </div>
+
+    <div id="chart"></div>
+
+    <script type="module">
+      import { init } from '../../../dist/index.js'
+      import { generated } from '../../js/dataSource.js'
+
+      let chart
+      let dataList
+      let kdjPaneId
+      let overlayCount = 0
+
+      function updateStatus(message) {
+        document.getElementById('status').textContent = '状态: ' + message
+        console.log('✅', message)
+      }
+
+      window.onload = function () {
+        chart = init('chart')
+        kdjPaneId = chart.createIndicator('KDJ')
+        dataList = generated()
+        chart.applyNewData(dataList)
+        updateStatus('图表初始化完成')
+      }
+
+      // 1. Main Pane Tests
+      window.testMainPaneText = function() {
+        const overlay = chart.createOverlay({
+          name: 'textLog',
+          extendData: {
+            text: `主图文本 #${++overlayCount}`
+          },
+          points: [{
+            timestamp: dataList[dataList.length - 20].timestamp,
+            value: dataList[dataList.length - 20].high
+          }]
+        })
+        updateStatus(`创建主图文本标注 #${overlayCount}`)
+      }
+
+      window.testMainPaneLine = function() {
+        const overlay = chart.createOverlay({
+          name: 'segment',
+          points: [
+            { timestamp: dataList[dataList.length - 30].timestamp, value: dataList[dataList.length - 30].low },
+            { timestamp: dataList[dataList.length - 10].timestamp, value: dataList[dataList.length - 10].high }
+          ]
+        })
+        updateStatus(`创建主图趋势线 #${++overlayCount}`)
+      }
+
+      window.testMainPaneRect = function() {
+        const overlay = chart.createOverlay({
+          name: 'rect',
+          points: [
+            { timestamp: dataList[dataList.length - 40].timestamp, value: dataList[dataList.length - 40].high },
+            { timestamp: dataList[dataList.length - 20].timestamp, value: dataList[dataList.length - 20].low }
+          ]
+        })
+        updateStatus(`创建主图矩形 #${++overlayCount}`)
+      }
+
+      window.testMainPaneCircle = function() {
+        const overlay = chart.createOverlay({
+          name: 'circle',
+          points: [
+            { timestamp: dataList[dataList.length - 25].timestamp, value: dataList[dataList.length - 25].close },
+            { timestamp: dataList[dataList.length - 15].timestamp, value: dataList[dataList.length - 15].close }
+          ]
+        })
+        updateStatus(`创建主图圆形 #${++overlayCount}`)
+      }
+
+      window.testHorizontalRayLine = function() {
+        const overlay = chart.createOverlay({
+          name: 'horizontalRayLine',
+          points: [
+            { timestamp: dataList[dataList.length - 35].timestamp, value: dataList[dataList.length - 35].close },
+            { timestamp: dataList[dataList.length - 25].timestamp, value: dataList[dataList.length - 25].close }
+          ]
+        })
+        updateStatus(`创建水平射线 #${++overlayCount} - 拖动任意控制点，两点会保持水平`)
+      }
+
+      window.testParallelogram = function() {
+        const overlay = chart.createOverlay({
+          name: 'parallelogram',
+          points: [
+            { timestamp: dataList[dataList.length - 50].timestamp, value: dataList[dataList.length - 50].high },
+            { timestamp: dataList[dataList.length - 40].timestamp, value: dataList[dataList.length - 40].high },
+            { timestamp: dataList[dataList.length - 35].timestamp, value: dataList[dataList.length - 35].low }
+          ]
+        })
+        updateStatus(`创建平行四边形 #${++overlayCount} - 拖动前两个控制点，第一条边会保持水平`)
+      }
+
+      // 2. Sub Pane Tests
+      window.testSubPaneText = function() {
+        const overlay = chart.createOverlay({
+          name: 'textLog',
+          extendData: `副图文本 #${++overlayCount}`,
+          points: [{ timestamp: dataList[dataList.length - 20].timestamp, value: 50 }]
+        }, kdjPaneId)
+        updateStatus(`创建副图文本标注 #${overlayCount}`)
+      }
+
+      window.testSubPaneLine = function() {
+        const overlay = chart.createOverlay({
+          name: 'segment',
+          points: [
+            { timestamp: dataList[dataList.length - 30].timestamp, value: 30 },
+            { timestamp: dataList[dataList.length - 10].timestamp, value: 70 }
+          ]
+        }, kdjPaneId)
+        updateStatus(`创建副图趋势线 #${++overlayCount}`)
+      }
+
+      // 3. Axis Tests
+      window.testXAxisOverlay = function() {
+        const overlay = chart.createOverlay({
+          name: 'segment',
+          points: [
+            { timestamp: dataList[dataList.length - 50].timestamp, value: dataList[dataList.length - 50].close },
+            { timestamp: dataList[dataList.length - 5].timestamp, value: dataList[dataList.length - 5].close }
+          ]
+        })
+        updateStatus('X轴标签应该显示在底部坐标轴上')
+      }
+
+      window.testYAxisOverlay = function() {
+        const overlay = chart.createOverlay({
+          name: 'horizontalSegment',
+          points: [
+            { timestamp: dataList[dataList.length - 30].timestamp, value: dataList[dataList.length - 30].close }
+          ]
+        })
+        updateStatus('Y轴标签应该显示在右侧坐标轴上')
+      }
+
+      // 4. Interactive Tests
+      window.testHoverEffect = function() {
+        updateStatus('请将鼠标悬停在覆盖物上，观察高亮效果')
+      }
+
+      window.testClickSelect = function() {
+        updateStatus('请点击覆盖物，观察选中状态和控制点')
+      }
+
+      window.testDragMove = function() {
+        updateStatus('请点击并拖拽覆盖物的控制点，测试移动功能')
+      }
+
+      window.testRightClick = function() {
+        updateStatus('请右键点击覆盖物，测试删除功能')
+      }
+
+      // 5. Batch Operations
+      window.createMultipleOverlays = function() {
+        for (let i = 0; i < 5; i++) {
+          const offset = 10 + i * 5
+          chart.createOverlay({
+            name: 'textLog',
+            extendData: `批量 #${i + 1}`,
+            points: [{
+              timestamp: dataList[dataList.length - offset].timestamp,
+              value: dataList[dataList.length - offset].high + i * 2
+            }]
+          })
+        }
+        overlayCount += 5
+        updateStatus(`批量创建了 5 个覆盖物，总计 ${overlayCount} 个`)
+      }
+
+      window.clearAllOverlays = function() {
+        chart.removeOverlay()
+        overlayCount = 0
+        updateStatus('已清除所有覆盖物')
+      }
+
+      // 自动运行基础测试
+      /* setTimeout(() => {
+        console.log('🚀 开始自动测试...')
+        testMainPaneText()
+        setTimeout(() => testMainPaneLine(), 500)
+        setTimeout(() => testHorizontalRayLine(), 1000)
+        setTimeout(() => testParallelogram(), 1500)
+        setTimeout(() => testSubPaneText(), 2000)
+        setTimeout(() => {
+          updateStatus('自动测试完成！请手动测试交互功能 - 尝试拖动平行四边形的前两个控制点')
+        }, 2500)
+      }, 1000) */
+    </script>
+  </body>
+</html>
