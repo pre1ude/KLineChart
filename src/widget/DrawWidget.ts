@@ -80,9 +80,10 @@ export default abstract class DrawWidget<P extends Pane> extends Widget<P> {
     }
   }
 
-  destroy(): void {
+  override destroy(): void {
     this._mainCanvas.destroy()
     this._overlayCanvas.destroy()
+    super.destroy()
   }
 
   getImage(includeOverlay: boolean): HTMLCanvasElement {
