@@ -4,14 +4,14 @@ import { type PolygonAttrs } from '../../figure/polygon'
 
 const xabcd: OverlayTemplate = {
   name: 'xabcd',
-  totalStep: 6,
+  totalStep: 5,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
   onRightClick() {
     return true
   },
-  createPointFigures: ({ coordinates }) => {
+  createFigures: ({ coordinates }) => {
     const dashedLines: LineAttrs[] = []
     const polygons: PolygonAttrs[] = []
     const tags = ['X', 'A', 'B', 'C', 'D']

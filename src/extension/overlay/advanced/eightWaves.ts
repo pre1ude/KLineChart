@@ -2,14 +2,14 @@ import { type OverlayTemplate } from '../../../component/Overlay'
 
 const eightWaves: OverlayTemplate = {
   name: 'eightWaves',
-  totalStep: 10,
+  totalStep: 9,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
   onRightClick() {
     return true
   },
-  createPointFigures: ({ coordinates }) => {
+  createFigures: ({ coordinates }) => {
     const texts = coordinates.map((coordinate, i) => ({
       ...coordinate,
       text: `(${i})`,

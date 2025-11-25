@@ -29,7 +29,7 @@ import XAxisPane from './pane/XAxisPane'
 import SeparatorPane from './pane/SeparatorPane'
 import { type PaneOptions, PanePosition, PANE_DEFAULT_HEIGHT, PaneIdConstants, type DrawPane } from './pane/types'
 import { type Indicator, type IndicatorCreate } from './component/Indicator'
-import { type Overlay, type OverlayCreate, type OverlayRemove } from './component/Overlay'
+import { type Overlay, type OverlayCreate, type OverlayFilter } from './component/Overlay'
 import { getIndicatorClass } from './extension/indicator/index'
 // import { getStyles as getExtensionStyles } from './extension/styles/index'
 import Event from './Event'
@@ -92,7 +92,7 @@ export interface Chart {
   createOverlay: (value: string | OverlayCreate | Array<string | OverlayCreate>, paneId?: string) => Nullable<string> | Array<Nullable<string>>
   getOverlayById: (id: string) => Nullable<Overlay>
   overrideOverlay: (override: Partial<OverlayCreate>) => void
-  removeOverlay: (remove?: string | OverlayRemove) => void
+  removeOverlay: (remove?: string | OverlayFilter) => void
   setPaneOptions: (options: PaneOptions) => void
   setZoomEnabled: (enabled: boolean) => void
   isZoomEnabled: () => boolean
@@ -108,7 +108,7 @@ export interface Chart {
   zoomAtTimestamp: (scale: number, timestamp: number, animationDuration?: number) => void
   convertToPixel: (points: Partial<Point> | Array<Partial<Point>>, finder: ConvertFinder) => Partial<Coordinate> | Array<Partial<Coordinate>>
   convertFromPixel: (coordinates: Array<Partial<Coordinate>>, finder: ConvertFinder) => Partial<Point> | Array<Partial<Point>>
-  executeAction: (type: ActionType, data: any) => void
+  executeAction: (type: ActionType, data: unknown) => void
   subscribeAction: (type: ActionType, callback: ActionCallback) => void
   unsubscribeAction: (type: ActionType, callback?: ActionCallback) => void
   getConvertPictureUrl: (includeOverlay?: boolean, type?: string, backgroundColor?: string) => string
@@ -865,16 +865,21 @@ export default class ChartImp implements Chart {
       const overlay = value as OverlayCreate
       overlays = [overlay]
     }
-    let appointPaneFlag = true
-    if (!isValid(paneId) || this.getDrawPaneById(paneId) === null) {
-      paneId = PaneIdConstants.CANDLE
-      appointPaneFlag = false
-    }
-    const ids = this._chartStore.getOverlayStore().addInstances(overlays, paneId, appointPaneFlag)
+
+    const validatedPaneId = this._validatePaneId(paneId)
+
+    const ids = this._chartStore.getOverlayStore().addInstances(overlays, validatedPaneId)
     if (isArray(value)) {
       return ids
     }
     return ids[0]
+  }
+
+  private _validatePaneId(paneId?: string): string {
+    if (isValid(paneId) && this.getDrawPaneById(paneId) !== null) {
+      return paneId
+    }
+    return PaneIdConstants.CANDLE
   }
 
   getOverlayById(id: string): Nullable<Overlay> {
@@ -885,16 +890,16 @@ export default class ChartImp implements Chart {
     this._chartStore.getOverlayStore().override(override)
   }
 
-  removeOverlay(remove?: string | OverlayRemove): void {
-    let overlayRemove: OverlayRemove
+  removeOverlay(remove?: string | OverlayFilter): void {
+    let OverlayFilter: OverlayFilter | undefined
     if (isValid(remove)) {
       if (isString(remove)) {
-        overlayRemove = { id: remove }
+        OverlayFilter = { id: remove }
       } else {
-        overlayRemove = remove
+        OverlayFilter = remove
       }
     }
-    this._chartStore.getOverlayStore().removeInstance(overlayRemove)
+    this._chartStore.getOverlayStore().removeInstance(OverlayFilter)
   }
 
   setPaneOptions(options: PaneOptions): void {
@@ -1048,7 +1053,7 @@ export default class ChartImp implements Chart {
     return isArray(coordinates) ? points : (points[0] ?? {})
   }
 
-  executeAction(type: ActionType, data: any): void {
+  executeAction(type: ActionType, data: unknown): void {
     switch (type) {
       case ActionType.OnCrosshairChange: {
         const crosshair: Crosshair = { ...data }

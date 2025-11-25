@@ -1,19 +1,15 @@
-
 import { formatPrecision } from '../../common/utils/format'
-
 import { type OverlayTemplate } from '../../component/Overlay'
-
 import { isFunction, isNumber, isValid } from '../../common/utils/typeChecks'
-
 import { LineType } from '../../common/Styles'
 
 const simpleTag: OverlayTemplate = {
   name: 'simpleTag',
-  totalStep: 2,
+  totalStep: 1,
   styles: {
     line: { style: LineType.Dashed }
   },
-  createPointFigures: ({ bounding, coordinates }) => {
+  createFigures: ({ bounding, coordinates }) => {
     return {
       type: 'line',
       attrs: {

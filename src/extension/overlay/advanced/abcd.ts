@@ -3,14 +3,14 @@ import { type OverlayTemplate } from '../../../component/Overlay'
 
 const abcd: OverlayTemplate = {
   name: 'abcd',
-  totalStep: 5,
+  totalStep: 4,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
   onRightClick() {
     return true
   },
-  createPointFigures: ({ coordinates }) => {
+  createFigures: ({ coordinates }) => {
     let acLineCoordinates: Coordinate[] = []
     let bdLineCoordinates: Coordinate[] = []
 

@@ -1,15 +1,13 @@
-
 import { type OverlayTemplate } from '../../component/Overlay'
-
 import { formatThousands, formatFoldDecimal } from '../../common/utils/format'
 
 const priceLine: OverlayTemplate = {
   name: 'priceLine',
-  totalStep: 2,
+  totalStep: 1,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: true,
   needDefaultYAxisFigure: true,
-  createPointFigures: ({ coordinates, bounding, precision, overlay, thousandsSeparator, decimalFoldThreshold, yAxis }) => {
+  createFigures: ({ coordinates, bounding, precision, overlay, thousandsSeparator, decimalFoldThreshold, yAxis }) => {
     const { value = 0 } = (overlay.points)[0]
     const currentPrecision = (yAxis?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax
     return [

@@ -1,7 +1,7 @@
 
 import type Nullable from '../common/Nullable'
 import type DeepPartial from '../common/DeepPartial'
-import type ExcludePickPartial from '../common/ExcludePickPartial'
+import type PartialExcept from '../common/PartialExcept'
 import type Point from '../common/Point'
 import type Coordinate from '../common/Coordinate'
 import type Bounding from '../common/Bounding'
@@ -9,19 +9,17 @@ import type BarSpace from '../common/BarSpace'
 import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
-import { clone, isArray, isNumber, isString, isValid, merge } from '../common/utils/typeChecks'
+import { clone, isArray, isFunction, isNumber, isValid, merge } from '../common/utils/typeChecks'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
 import type ChartStore from '../store/ChartStore'
 
 export type OverlayMode = 'normal' | 'weak_magnet' | 'strong_magnet'
 
-export interface OverlayPerformEventParams {
-  currentStep: number
-  mode: OverlayMode
-  points: Array<Partial<Point>>
-  performPointIndex: number
-  performPoint: Partial<Point>
+export enum OverlayState {
+  CREATED = 'created',
+  DRAWING = 'drawing',
+  COMPLETED = 'completed'
 }
 
 export type OverlayFigureIgnoreEventType = 'mouseClickEvent' | 'mouseDoubleClickEvent' | 'mouseRightClickEvent' | 'tapEvent' | 'doubleTapEvent' | 'mouseDownEvent' | 'touchStartEvent' | 'mouseMoveEvent' | 'touchMoveEvent'
@@ -35,10 +33,23 @@ export const getAllOverlayFigureIgnoreEventTypes = (): OverlayFigureIgnoreEventT
 export interface OverlayFigure {
   key?: string
   type: string
-  // todo fix type here
-  attrs: any
+  attrs: object | object[]
   styles?: object
   ignoreEvent?: boolean | OverlayFigureIgnoreEventType[]
+}
+
+export type InteractType = 'control-point' | 'body'
+
+export interface OverlayFigureData {
+  overlay: Overlay
+  interactType: InteractType
+  figureKey: string
+  figureIndex: number
+  attrsIndex: number
+}
+
+export interface EventOverlayInfo extends OverlayFigureData {
+  paneId: string
 }
 
 export interface OverlayPrecision extends Precision {
@@ -70,31 +81,42 @@ export interface OverlayEvent<E = unknown> extends Partial<MouseTouchEvent> {
   overlay: Overlay<E>
 }
 
-export type OverlayEventCallback<E = unknown> = (event: OverlayEvent<E>) => boolean
-export type OverlayCreateFiguresCallback<E = unknown> = (params: OverlayCreateFiguresCallbackParams<E>) => OverlayFigure | OverlayFigure[]
-
-export interface OverlayEventHandlers<E = unknown> {
-  onDrawStart: Nullable<OverlayEventCallback<E>>
-  onDrawing: Nullable<OverlayEventCallback<E>>
-  onDrawEnd: Nullable<OverlayEventCallback<E>>
-  onClick: Nullable<OverlayEventCallback<E>>
-  onDoubleClick: Nullable<OverlayEventCallback<E>>
-  onRightClick: Nullable<OverlayEventCallback<E>>
-  onPressedMoveStart: Nullable<OverlayEventCallback<E>>
-  onPressedMoving: Nullable<OverlayEventCallback<E>>
-  onPressedMoveEnd: Nullable<OverlayEventCallback<E>>
-  onMouseEnter: Nullable<OverlayEventCallback<E>>
-  onMouseLeave: Nullable<OverlayEventCallback<E>>
-  onRemoved: Nullable<OverlayEventCallback<E>>
-  onSelected: Nullable<OverlayEventCallback<E>>
-  onDeselected: Nullable<OverlayEventCallback<E>>
+interface DrawParams {
+  figureKey: string
+  pointIndex: number
 }
 
-export interface OverlayApi<E = unknown> extends OverlayEventHandlers<E> {
+export type DefaultCallback = () => void
+export type OverlayDrawEventCallback = (event: MouseTouchEvent, params: DrawParams) => void
+
+export type OverlayEventCallback = (event: MouseTouchEvent, params: EventOverlayInfo) => boolean
+
+export type OverlayCreateFiguresCallback<E = unknown> = (params: OverlayCreateFiguresCallbackParams<E>) => OverlayFigure | OverlayFigure[]
+
+export interface OverlayEventHandlers {
+  onDrawStart: Nullable<DefaultCallback>
+  onDrawing: Nullable<OverlayDrawEventCallback>
+  onDrawEnd: Nullable<OverlayDrawEventCallback>
+
+  onClick: Nullable<OverlayEventCallback>
+  onDoubleClick: Nullable<OverlayEventCallback>
+  onRightClick: Nullable<OverlayEventCallback>
+  onPressedMoveStart: Nullable<OverlayEventCallback>
+  onPressedMoving: Nullable<OverlayEventCallback>
+  onPressedMoveEnd: Nullable<OverlayEventCallback>
+  onMouseEnter: Nullable<OverlayEventCallback>
+  onMouseLeave: Nullable<OverlayEventCallback>
+  onRemoved: Nullable<DefaultCallback>
+  onSelected: Nullable<OverlayEventCallback>
+  onDeselected: Nullable<OverlayEventCallback>
+}
+
+export interface OverlayApi<E = unknown> extends OverlayEventHandlers {
   id: string
   groupId: string
   paneId: string
   name: string
+  state: OverlayState
   totalStep: number
   currentStep: number
   lock: boolean
@@ -108,34 +130,43 @@ export interface OverlayApi<E = unknown> extends OverlayEventHandlers<E> {
   points: Array<Partial<Point>>
   extendData: E
   styles: Nullable<DeepPartial<OverlayStyle>>
-  createPointFigures: Nullable<OverlayCreateFiguresCallback<E>>
+  createFigures: Nullable<OverlayCreateFiguresCallback<E>>
   createXAxisFigures: Nullable<OverlayCreateFiguresCallback<E>>
   createYAxisFigures: Nullable<OverlayCreateFiguresCallback<E>>
-  performEventPressedMove: Nullable<(params: OverlayPerformEventParams) => void>
-  performEventMoveForDrawing: Nullable<(params: OverlayPerformEventParams) => void>
+  onControlPointUpdate: Nullable<(points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void>
+  onDrawPointUpdate: Nullable<(points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void>
 }
 
-export type OverlayTemplate<E = unknown> = ExcludePickPartial<Omit<OverlayApi<E>, 'id' | 'groupId' | 'paneId' | 'points' | 'currentStep'>, 'name'>
-export type OverlayCreate<E = unknown> = ExcludePickPartial<Omit<OverlayApi<E>, 'currentStep' | 'totalStep' | 'createPointFigures' | 'createXAxisFigures' | 'createYAxisFigures' | 'performEventPressedMove' | 'performEventMoveForDrawing'>, 'name'>
-export type OverlayFilter<E = unknown> = Partial<Pick<OverlayApi<E>, 'id' | 'groupId' | 'name' | 'paneId'>>
+export type OverlayTemplate<E = unknown> = PartialExcept<Omit<OverlayApi<E>, 'id' | 'groupId' | 'paneId' | 'points' | 'currentStep' | 'state'>, 'name'>
+export type OverlayCreate<E = unknown> = PartialExcept<Omit<OverlayApi<E>, 'currentStep' | 'totalStep' | 'state' | 'createFigures' | 'createXAxisFigures' | 'createYAxisFigures' | 'performEventPressedMove' | 'onDrawingPointUpdate'>, 'name'>
 
-enum OverlayDrawStep {
-  START = 1,
-  FINISHED = -1
+export interface OverlayFilter {
+  id?: string
+  groupId?: string
+  name?: string
+  paneId?: string
+}
+
+interface OverlayInitOption {
+  id: string
+  groupId: string
+  paneId: string
+  zLevel?: number
 }
 
 export const OVERLAY_ID_PREFIX = 'overlay_'
 export const OVERLAY_FIGURE_KEY_PREFIX = 'overlay_figure_'
 
 export class Overlay<E = unknown> implements OverlayApi<E> {
-  id: string = ''
-  groupId: string = ''
-  paneId: string = ''
-  currentStep: number = OverlayDrawStep.START
+  id: string
+  groupId: string
+  paneId: string
+  state: OverlayState = OverlayState.CREATED
+  currentStep: number = 0
   points: Array<Partial<Point>> = []
 
   name: string = ''
-  totalStep: number = 1
+  totalStep: number = 999 // 默认无限制步骤数(适用于anywave)
   lock: boolean = false
   visible: boolean = true
   zLevel: number = 0
@@ -148,36 +179,44 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
   needDefaultXAxisFigure: boolean = false
   needDefaultYAxisFigure: boolean = false
 
-  createPointFigures: Nullable<OverlayCreateFiguresCallback<E>> = null
+  createFigures: Nullable<OverlayCreateFiguresCallback<E>> = null
   createXAxisFigures: Nullable<OverlayCreateFiguresCallback<E>> = null
   createYAxisFigures: Nullable<OverlayCreateFiguresCallback<E>> = null
 
-  performEventPressedMove: Nullable<(params: OverlayPerformEventParams) => void> = null
-  performEventMoveForDrawing: Nullable<(params: OverlayPerformEventParams) => void> = null
+  onControlPointUpdate: Nullable<(points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void> = null
+  onDrawPointUpdate: Nullable<(points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void> = null
 
   // Event callbacks
-  onDrawStart: Nullable<OverlayEventCallback<E>> = null
-  onDrawing: Nullable<OverlayEventCallback<E>> = null
-  onDrawEnd: Nullable<OverlayEventCallback<E>> = null
-  onClick: Nullable<OverlayEventCallback<E>> = null
-  onDoubleClick: Nullable<OverlayEventCallback<E>> = null
-  onRightClick: Nullable<OverlayEventCallback<E>> = null
-  onPressedMoveStart: Nullable<OverlayEventCallback<E>> = null
-  onPressedMoving: Nullable<OverlayEventCallback<E>> = null
-  onPressedMoveEnd: Nullable<OverlayEventCallback<E>> = null
-  onMouseEnter: Nullable<OverlayEventCallback<E>> = null
-  onMouseLeave: Nullable<OverlayEventCallback<E>> = null
-  onRemoved: Nullable<OverlayEventCallback<E>> = null
-  onSelected: Nullable<OverlayEventCallback<E>> = null
-  onDeselected: Nullable<OverlayEventCallback<E>> = null
+  onDrawStart: Nullable<DefaultCallback> = null
+  onDrawing: Nullable<OverlayDrawEventCallback> = null
+  onDrawEnd: Nullable<OverlayDrawEventCallback> = null
+  onClick: Nullable<OverlayEventCallback> = null
+  onDoubleClick: Nullable<OverlayEventCallback> = null
+  /** 仅当返回 Truthy 值时阻止右键点击删除 */
+  onRightClick: Nullable<OverlayEventCallback> = null
+  onPressedMoveStart: Nullable<OverlayEventCallback> = null
+  onPressedMoving: Nullable<OverlayEventCallback> = null
+  onPressedMoveEnd: Nullable<OverlayEventCallback> = null
+  onMouseEnter: Nullable<OverlayEventCallback> = null
+  onMouseLeave: Nullable<OverlayEventCallback> = null
+  onRemoved: Nullable<DefaultCallback> = null
+  onSelected: Nullable<OverlayEventCallback> = null
+  onDeselected: Nullable<OverlayEventCallback> = null
 
   private _prevOverlay: Nullable<Overlay<E>> = null
   private _prevZLevel: number = 0
   private _prevPressedPoint: Nullable<Partial<Point>> = null
   private _prevPressedPoints: Array<Partial<Point>> = []
 
-  constructor(overlay: OverlayTemplate) {
-    Object.assign(this, overlay)
+  constructor(template: OverlayTemplate<E>, { id, groupId, paneId, zLevel }: OverlayInitOption) {
+    Object.assign(this, template)
+
+    this.id = id
+    this.groupId = groupId
+    this.paneId = paneId
+    if (isValid(zLevel)) {
+      this.zLevel = zLevel
+    }
   }
 
   getPrevZLevel(): number {
@@ -193,22 +232,23 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
     this._prevOverlay = clone({ ...this, _prevOverlay: null })
 
     const {
-      id,
-      name,
-      currentStep: _,
-      points,
-      styles,
-      ...others
+      id,           // 不可修改 - 唯一标识符
+      paneId,       // 不可修改 - 会导致数据不一致
+      name,         // 不可修改 - overlay 类型
+      state,        // 不可修改 - 由内部状态机管理
+      currentStep,  // 不可修改 - 由 nextStep 管理
+      groupId,      // 可修改 - 允许重新分组
+      points,       // 特殊处理
+      styles,       // 特殊处理
+      ...others     // 其他属性可修改
     } = overlay
 
+    // 合并其他可修改的属性
     merge(this, others)
 
-    if (!isString(this.name)) {
-      this.name = name ?? ''
-    }
-
-    if (!isString(this.id) && isString(id)) {
-      this.id = id
+    // groupId 可以修改（用于重新分组）
+    if (isValid(groupId)) {
+      this.groupId = groupId
     }
 
     if (isValid(styles)) {
@@ -216,39 +256,17 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
       merge(this.styles, styles)
     }
 
-    // Handle points update
-    if (isArray(points) && points.length > 0) {
-      let repeatTotalStep = 0
-      this.points = [...points]
+    if (isArray(points)) {
+      const _points = points.length > this.totalStep ? points.slice(0, this.totalStep) : points
 
-      if (points.length >= this.totalStep - 1) {
-        this.currentStep = OverlayDrawStep.FINISHED
-        repeatTotalStep = this.totalStep - 1
-      } else {
-        this.currentStep = points.length + 1
-        repeatTotalStep = points.length
-      }
+      this.currentStep = _points.length
+      this.state = this.currentStep === this.totalStep
+        ? OverlayState.COMPLETED
+        : this.currentStep === 0
+          ? OverlayState.CREATED
+          : OverlayState.DRAWING
 
-      // Prevent wrong drawing due to wrong points
-      for (let i = 0; i < repeatTotalStep; i++) {
-        this.performEventMoveForDrawing?.({
-          currentStep: i + 2,
-          mode: this.mode,
-          points: this.points,
-          performPointIndex: i,
-          performPoint: this.points[i]
-        })
-      }
-
-      if (this.currentStep === OverlayDrawStep.FINISHED) {
-        this.performEventPressedMove?.({
-          currentStep: this.currentStep,
-          mode: this.mode,
-          points: this.points,
-          performPointIndex: this.points.length - 1,
-          performPoint: this.points[this.points.length - 1]
-        })
-      }
+      this.points = _points
     }
   }
 
@@ -268,60 +286,55 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
   }
 
   isDrawing(): boolean {
-    return this.currentStep !== OverlayDrawStep.FINISHED
+    return this.state !== OverlayState.COMPLETED
   }
 
-  isStart(): boolean {
-    return this.currentStep === OverlayDrawStep.START
+  isCreated(): boolean {
+    return this.state === OverlayState.CREATED
+  }
+
+  isCompleted(): boolean {
+    return this.state === OverlayState.COMPLETED
   }
 
   nextStep(): void {
-    this.currentStep = this.currentStep === this.totalStep - 1
-      ? OverlayDrawStep.FINISHED
-      : this.currentStep + 1
+    if (this.state === OverlayState.CREATED) {
+      this.state = OverlayState.DRAWING
+    }
+
+    this.currentStep++
+
+    if (this.currentStep >= this.totalStep) {
+      this.state = OverlayState.COMPLETED
+    }
   }
 
   forceComplete(): void {
-    this.currentStep = OverlayDrawStep.FINISHED
+    this.currentStep = this.totalStep
+    this.state = OverlayState.COMPLETED
   }
 
-  eventMoveForDrawing(point: Partial<Point>): void {
-    const pointIndex = this.currentStep - 1
-    const newPoint: Partial<Point> = {}
-
-    // Copy valid properties
-    if (isNumber(point.timestamp)) newPoint.timestamp = point.timestamp
-    if (isNumber(point.dataIndex)) newPoint.dataIndex = point.dataIndex
-    if (isNumber(point.value)) newPoint.value = point.value
-
-    this.points[pointIndex] = newPoint
-    this.performEventMoveForDrawing?.({
-      currentStep: this.currentStep,
-      mode: this.mode,
-      points: this.points,
-      performPointIndex: pointIndex,
-      performPoint: newPoint
-    })
+  updateDrawPoint(point: Partial<Point>): void {
+    if (isFunction(this.onDrawPointUpdate)) {
+      this.onDrawPointUpdate(this.points, this.currentStep, point)
+      return
+    }
+    this._updatePoint(this.points[this.currentStep] ??= {}, point)
   }
 
-  eventPressedPointMove(point: Partial<Point>, pointIndex: number): void {
-    const targetPoint = this.points[pointIndex]
-
-    if (isNumber(point.dataIndex)) {
-      targetPoint.dataIndex = point.dataIndex
-      targetPoint.timestamp = point.timestamp
+  onDragMoveControlPoint(point: Partial<Point>, pointIndex: number): void {
+    if (isFunction(this.onControlPointUpdate)) {
+      this.onControlPointUpdate(this.points, pointIndex, point)
+      return
     }
-    if (isNumber(point.value)) {
-      targetPoint.value = point.value
-    }
+    this._updatePoint(this.points[pointIndex], point)
+  }
 
-    this.performEventPressedMove?.({
-      currentStep: this.currentStep,
-      points: this.points,
-      mode: this.mode,
-      performPointIndex: pointIndex,
-      performPoint: targetPoint
-    })
+  private _updatePoint(p: Partial<Point>, np: Partial<Point>) {
+    if (isNumber(np.timestamp)) p.timestamp = np.timestamp
+    if (isNumber(np.dataIndex)) p.dataIndex = np.dataIndex
+    if (isNumber(np.value)) p.value = np.value
+    // if (isNumber(np.dataKey)) p.dataKey = np.dataKey
   }
 
   startPressedMove(point: Partial<Point>): void {
@@ -329,7 +342,7 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
     this._prevPressedPoints = clone(this.points)
   }
 
-  eventPressedOtherMove(point: Partial<Point>, chartStore: ChartStore): void {
+  onDragMoveBody(point: Partial<Point>, chartStore: ChartStore): void {
     if (!this._prevPressedPoint) return
 
     const difDataIndex = isNumber(point.dataIndex) && isNumber(this._prevPressedPoint.dataIndex)
@@ -340,7 +353,7 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
       ? point.value - this._prevPressedPoint.value
       : undefined
 
-    this.points = this._prevPressedPoints.map(p => {
+    this.points = this._prevPressedPoints.map((p) => {
       if (isNumber(p.timestamp)) {
         p.dataIndex = chartStore.timestampToDataIndex(p.timestamp)
       }

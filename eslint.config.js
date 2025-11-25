@@ -188,7 +188,7 @@ export default tseslint.config(
       '@stylistic/object-curly-spacing': ['error', 'always'],
       '@stylistic/array-bracket-spacing': ['error', 'never'],
       '@stylistic/arrow-spacing': 'error',
-      '@stylistic/arrow-parens': ['error', 'as-needed'],
+      // '@stylistic/arrow-parens': ['error', 'always'],
       '@stylistic/brace-style': ['error', '1tbs', { allowSingleLine: true }],
       '@stylistic/no-multiple-empty-lines': ['error', { max: 1, maxEOF: 0 }],
       '@stylistic/no-trailing-spaces': 'error',

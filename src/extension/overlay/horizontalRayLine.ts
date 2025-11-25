@@ -1,14 +1,13 @@
-
 import { isValid } from '../../common/utils/typeChecks'
 import { type OverlayTemplate } from '../../component/Overlay'
 
 const horizontalRayLine: OverlayTemplate = {
   name: 'horizontalRayLine',
-  totalStep: 3,
+  totalStep: 2,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: true,
   needDefaultYAxisFigure: true,
-  createPointFigures: ({ coordinates, bounding }) => {
+  createFigures: ({ coordinates, bounding }) => {
     const coordinate = { x: 0, y: coordinates[0].y }
     if (isValid(coordinates[1]) && coordinates[0].x < coordinates[1].x) {
       coordinate.x = bounding.width
@@ -20,13 +19,15 @@ const horizontalRayLine: OverlayTemplate = {
       }
     ]
   },
-  performEventPressedMove: ({ points, performPoint }) => {
-    points[0].value = performPoint.value
-    points[1].value = performPoint.value
+  onControlPointUpdate: (points, index, point) => {
+    points[index] = point
+    points[0].value = point.value
+    points[1].value = point.value
   },
-  performEventMoveForDrawing: ({ currentStep, points, performPoint }) => {
-    if (currentStep === 2) {
-      points[0].value = performPoint.value
+  onDrawPointUpdate: (points, index, point) => {
+    points[index] = point
+    if (index === 1) {
+      points[0].value = point.value
     }
   }
 }

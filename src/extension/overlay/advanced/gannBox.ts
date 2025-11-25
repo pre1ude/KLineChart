@@ -2,14 +2,14 @@ import { type OverlayTemplate } from '../../../component/Overlay'
 
 const gannBox: OverlayTemplate = {
   name: 'gannBox',
-  totalStep: 3,
+  totalStep: 2,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
   onRightClick() {
     return true
   },
-  createPointFigures: ({ coordinates }) => {
+  createFigures: ({ coordinates }) => {
     if (coordinates.length > 1) {
       const quarterYDis = (coordinates[1].y - coordinates[0].y) / 4
       const xDis = coordinates[1].x - coordinates[0].x

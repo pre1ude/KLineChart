@@ -2,14 +2,14 @@ import { type OverlayTemplate } from '../../../component/Overlay'
 
 const threeWaves: OverlayTemplate = {
   name: 'threeWaves',
-  totalStep: 5,
+  totalStep: 4,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
   onRightClick() {
     return true
   },
-  createPointFigures: ({ coordinates }) => {
+  createFigures: ({ coordinates }) => {
     const texts = coordinates.map((coordinate, i) => ({
       ...coordinate,
       text: `(${i})`,

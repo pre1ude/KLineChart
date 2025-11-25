@@ -1,13 +1,12 @@
-
 import { type OverlayTemplate } from '../../component/Overlay'
 
 const verticalRayLine: OverlayTemplate = {
   name: 'verticalRayLine',
-  totalStep: 3,
+  totalStep: 2,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: true,
   needDefaultYAxisFigure: true,
-  createPointFigures: ({ coordinates, bounding }) => {
+  createFigures: ({ coordinates, bounding }) => {
     if (coordinates.length === 2) {
       const coordinate = { x: coordinates[0].x, y: 0 }
       if (coordinates[0].y < coordinates[1].y) {
@@ -22,16 +21,18 @@ const verticalRayLine: OverlayTemplate = {
     }
     return []
   },
-  performEventPressedMove: ({ points, performPoint }) => {
-    points[0].timestamp = performPoint.timestamp
-    points[0].dataIndex = performPoint.dataIndex
-    points[1].timestamp = performPoint.timestamp
-    points[1].dataIndex = performPoint.dataIndex
+  onControlPointUpdate: (points, index, point) => {
+    points[index] = point
+    points[0].timestamp = point.timestamp
+    points[0].dataIndex = point.dataIndex
+    points[1].timestamp = point.timestamp
+    points[1].dataIndex = point.dataIndex
   },
-  performEventMoveForDrawing: ({ currentStep, points, performPoint }) => {
-    if (currentStep === 2) {
-      points[0].timestamp = performPoint.timestamp
-      points[0].dataIndex = performPoint.dataIndex
+  onDrawPointUpdate: (points, index, point) => {
+    points[index] = point
+    if (index === 1) {
+      points[0].timestamp = point.timestamp
+      points[0].dataIndex = point.dataIndex
     }
   }
 }

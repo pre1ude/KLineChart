@@ -1,8 +1,6 @@
-
 import type Nullable from '../common/Nullable'
 import { UpdateLevel } from '../common/Updater'
-import { type MouseTouchEvent } from '../common/SyntheticEvent'
-import { isFunction, isValid, isString, isBoolean, isArray } from '../common/utils/typeChecks'
+import { isValid, isString, isArray } from '../common/utils/typeChecks'
 import { createId } from '../common/utils/id'
 import { LoadDataType } from '../common/LoadDataCallback'
 import type { OverlayCreate, OverlayFilter } from '../component/Overlay'
@@ -11,24 +9,7 @@ import { getOverlayClass } from '../extension/overlay'
 import type ChartStore from './ChartStore'
 import { PaneIdConstants } from '../pane/types'
 
-export interface ProgressOverlayInfo {
-  paneId: string
-  instance: Overlay
-  appointPaneFlag: boolean
-}
-
-export const enum EventOverlayInfoFigureType {
-  None, Point, Other
-}
-
-export interface EventOverlayInfo {
-  paneId: string
-  instance: Nullable<Overlay>
-  figureType: EventOverlayInfoFigureType
-  figureKey: string
-  figureIndex: number
-  attrsIndex: number
-}
+export type ProgressOverlay = Overlay
 
 export default class OverlayStore {
   private readonly _chartStore: ChartStore
@@ -36,45 +17,9 @@ export default class OverlayStore {
   private _instances = new Map<string, Overlay[]>()
 
   /**
-   * Overlay information in painting
+   * Overlay in painting
    */
-  private _progressInstanceInfo: Nullable<ProgressOverlayInfo> = null
-
-  /**
-   * Overlay information by the mouse pressed
-   */
-  private _pressedInstanceInfo: EventOverlayInfo = {
-    paneId: '',
-    instance: null,
-    figureType: EventOverlayInfoFigureType.None,
-    figureKey: '',
-    figureIndex: -1,
-    attrsIndex: -1
-  }
-
-  /**
-   * Overlay information by hover
-   */
-  private _hoverInstanceInfo: EventOverlayInfo = {
-    paneId: '',
-    instance: null,
-    figureType: EventOverlayInfoFigureType.None,
-    figureKey: '',
-    figureIndex: -1,
-    attrsIndex: -1
-  }
-
-  /**
-   * Overlay information by the mouse click
-   */
-  private _clickInstanceInfo: EventOverlayInfo = {
-    paneId: '',
-    instance: null,
-    figureType: EventOverlayInfoFigureType.None,
-    figureKey: '',
-    figureIndex: -1,
-    attrsIndex: -1
-  }
+  private _progressOverlay: Nullable<ProgressOverlay> = null
 
   constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
@@ -88,10 +33,8 @@ export default class OverlayStore {
         return overlay
       }
     }
-    if (this._progressInstanceInfo !== null) {
-      if (this._progressInstanceInfo.instance.id === id) {
-        return this._progressInstanceInfo.instance
-      }
+    if (this._progressOverlay !== null && this._progressOverlay.id === id) {
+      return this._progressOverlay
     }
     return null
   }
@@ -121,9 +64,8 @@ export default class OverlayStore {
       })
     }
 
-    const progressInstance = this._progressInstanceInfo?.instance
-    if (isValid(progressInstance) && match(progressInstance)) {
-      overlays.push(progressInstance)
+    if (this._progressOverlay !== null && match(this._progressOverlay)) {
+      overlays.push(this._progressOverlay)
     }
 
     return overlays
@@ -139,10 +81,9 @@ export default class OverlayStore {
     }
   }
 
-  addInstances(overlays: OverlayCreate[], paneId: string | string[], appointPaneFlag: boolean | boolean[]): Array<Nullable<string>> {
+  addInstances(overlays: OverlayCreate[], paneId: string | string[]): Array<Nullable<string>> {
     const updatePaneIds: string[] = []
     const paneIds = isArray(paneId) ? paneId : overlays.map(() => paneId)
-    const appointPaneFlags = isArray(appointPaneFlag) ? appointPaneFlag : overlays.map(() => appointPaneFlag)
 
     const ids = overlays.map((overlay, index) => {
       const targetPaneId = paneIds[index] ?? PaneIdConstants.CANDLE
@@ -158,29 +99,22 @@ export default class OverlayStore {
       const overlayTemplate = getOverlayClass(overlay.name)
       if (overlayTemplate !== null) {
         const id = overlay.id ?? createId(OVERLAY_ID_PREFIX)
-        const overlayInstance = new Overlay(overlayTemplate)
+        const groupId = overlay.groupId ?? id
+        const zLevel = overlay.zLevel ?? this.getInstances(targetPaneId).length
 
-        overlay.id = id
-        overlay.groupId ??= id
-        overlay.paneId = targetPaneId
-
-        // Auto-assign zLevel if not provided
-        if (!isValid(overlay.zLevel)) {
-          overlay.zLevel = this.getInstances(targetPaneId).length
-        }
-
-        overlayInstance.override(overlay)
+        const overlayInstance = new Overlay(overlayTemplate, {
+          id,
+          groupId,
+          paneId: targetPaneId,
+          zLevel
+        })
 
         if (!updatePaneIds.includes(targetPaneId)) {
           updatePaneIds.push(targetPaneId)
         }
 
         if (overlayInstance.isDrawing()) {
-          this._progressInstanceInfo = {
-            paneId: targetPaneId,
-            instance: overlayInstance,
-            appointPaneFlag: appointPaneFlags[index]
-          }
+          this._progressOverlay = overlayInstance
         } else {
           if (!this._instances.has(targetPaneId)) {
             this._instances.set(targetPaneId, [])
@@ -188,8 +122,8 @@ export default class OverlayStore {
           this._instances.get(targetPaneId)?.push(overlayInstance)
         }
 
-        if (overlayInstance.isStart()) {
-          overlayInstance.onDrawStart?.({ overlay: overlayInstance })
+        if (overlayInstance.isCreated()) {
+          overlayInstance.onDrawStart?.()
         }
 
         return id
@@ -209,31 +143,25 @@ export default class OverlayStore {
     return ids
   }
 
-  getProgressInstanceInfo(): Nullable<ProgressOverlayInfo> {
-    return this._progressInstanceInfo
+  getProgressOverlay(): Nullable<ProgressOverlay> {
+    return this._progressOverlay
   }
 
-  progressInstanceComplete(): void {
-    if (this._progressInstanceInfo !== null) {
-      const { instance, paneId } = this._progressInstanceInfo
-      if (!instance.isDrawing()) {
-        if (!this._instances.has(paneId)) {
-          this._instances.set(paneId, [])
-        }
-        this._instances.get(paneId)?.push(instance)
-        this._sort(paneId)
-        this._progressInstanceInfo = null
+  progressOverlayComplete(): void {
+    if (this._progressOverlay !== null && !this._progressOverlay.isDrawing()) {
+      const paneId = this._progressOverlay.paneId
+      if (!this._instances.has(paneId)) {
+        this._instances.set(paneId, [])
       }
+      this._instances.get(paneId)?.push(this._progressOverlay)
+      this._sort(paneId)
+      this._progressOverlay = null
     }
   }
 
-  updateProgressInstanceInfo(paneId: string, appointPaneFlag?: boolean): void {
-    if (this._progressInstanceInfo !== null) {
-      if (isBoolean(appointPaneFlag) && appointPaneFlag) {
-        this._progressInstanceInfo.appointPaneFlag = appointPaneFlag
-      }
-      this._progressInstanceInfo.paneId = paneId
-      this._progressInstanceInfo.instance.paneId = paneId
+  updateProgressOverlayPane(paneId: string): void {
+    if (this._progressOverlay !== null) {
+      this._progressOverlay.paneId = paneId
     }
   }
 
@@ -289,16 +217,18 @@ export default class OverlayStore {
 
     if (!isValid(filter)) {
       // Remove all overlays
-      if (this._progressInstanceInfo !== null) {
-        updatePaneIds.push(this._progressInstanceInfo.paneId)
-        this._progressInstanceInfo.instance.onRemoved?.({ overlay: this._progressInstanceInfo.instance })
-        this._progressInstanceInfo = null
+      if (this._progressOverlay !== null) {
+        if (!updatePaneIds.includes(this._progressOverlay.paneId)) {
+          updatePaneIds.push(this._progressOverlay.paneId)
+        }
+        this._progressOverlay.onRemoved?.()
+        this._progressOverlay = null
       }
 
       this._instances.forEach((paneInstances, paneId) => {
         updatePaneIds.push(paneId)
         paneInstances.forEach(instance => {
-          instance.onRemoved?.({ overlay: instance })
+          instance.onRemoved?.()
         })
       })
       this._instances.clear()
@@ -310,14 +240,14 @@ export default class OverlayStore {
         const targetPaneId = instance.paneId
         const paneInstances = this.getInstances(targetPaneId)
 
-        instance.onRemoved?.({ overlay: instance })
+        instance.onRemoved?.()
 
         if (!updatePaneIds.includes(targetPaneId)) {
           updatePaneIds.push(targetPaneId)
         }
 
         if (instance.isDrawing()) {
-          this._progressInstanceInfo = null
+          this._progressOverlay = null
         } else {
           const index = paneInstances.findIndex(o => o.id === instance.id)
           if (index > -1) {
@@ -344,14 +274,6 @@ export default class OverlayStore {
     return false
   }
 
-  setPressedInstanceInfo(info: EventOverlayInfo): void {
-    this._pressedInstanceInfo = info
-  }
-
-  getPressedInstanceInfo(): EventOverlayInfo {
-    return this._pressedInstanceInfo
-  }
-
   updatePointPosition(dataChangeLength: number, type?: LoadDataType): void {
     if (dataChangeLength > 0) {
       const dataList = this._chartStore.getDataList()
@@ -372,83 +294,11 @@ export default class OverlayStore {
     }
   }
 
-  setHoverInstanceInfo(info: EventOverlayInfo, event: MouseTouchEvent): void {
-    const { instance, figureType, figureKey, figureIndex } = this._hoverInstanceInfo
-    if (
-      instance?.id !== info.instance?.id ||
-      figureType !== info.figureType ||
-      figureIndex !== info.figureIndex
-    ) {
-      this._hoverInstanceInfo = info
-      if (instance?.id !== info.instance?.id) {
-        let ignoreUpdateFlag = false
-        let sortFlag = false
-
-        // Handle mouse leave
-        if (instance !== null) {
-          instance.setPrevZLevel(instance.zLevel)
-          instance.override({ zLevel: instance.getPrevZLevel() })
-          sortFlag = true
-          if (isFunction(instance.onMouseLeave)) {
-            instance.onMouseLeave({ overlay: instance, figureKey, figureIndex, ...event })
-            ignoreUpdateFlag = true
-          }
-        }
-
-        // Handle mouse enter
-        if (info.instance !== null) {
-          info.instance.setPrevZLevel(info.instance.zLevel)
-          info.instance.override({ zLevel: Number.MAX_SAFE_INTEGER })
-          sortFlag = true
-          if (isFunction(info.instance.onMouseEnter)) {
-            info.instance.onMouseEnter({ overlay: info.instance, figureKey: info.figureKey, figureIndex: info.figureIndex, ...event })
-            ignoreUpdateFlag = true
-          }
-        }
-
-        if (sortFlag) {
-          this._sort()
-        }
-        if (!ignoreUpdateFlag) {
-          this._chartStore.getChart().updatePane(UpdateLevel.Overlay)
-        }
-      }
-    }
-  }
-
-  getHoverInstanceInfo(): EventOverlayInfo {
-    return this._hoverInstanceInfo
-  }
-
-  setClickInstanceInfo(info: EventOverlayInfo, event: MouseTouchEvent): void {
-    const { paneId, instance, figureType, figureKey, figureIndex } = this._clickInstanceInfo
-    if (!(info.instance?.isDrawing() ?? false)) {
-      info.instance?.onClick?.({ overlay: info.instance, figureKey: info.figureKey, figureIndex: info.figureIndex, ...event })
-    }
-    if (instance?.id !== info.instance?.id || figureType !== info.figureType || figureIndex !== info.figureIndex) {
-      this._clickInstanceInfo = info
-      if (instance?.id !== info.instance?.id) {
-        instance?.onDeselected?.({ overlay: instance, figureKey, figureIndex, ...event })
-        info.instance?.onSelected?.({ overlay: info.instance, figureKey: info.figureKey, figureIndex: info.figureIndex, ...event })
-        const chart = this._chartStore.getChart()
-        chart.updatePane(UpdateLevel.Overlay, info.paneId)
-        if (paneId !== info.paneId) {
-          chart.updatePane(UpdateLevel.Overlay, paneId)
-        }
-        chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
-      }
-    }
-  }
-
-  getClickInstanceInfo(): EventOverlayInfo {
-    return this._clickInstanceInfo
-  }
-
   isEmpty(): boolean {
-    return this._instances.size === 0 && this._progressInstanceInfo === null
+    return this._instances.size === 0 && this._progressOverlay === null
   }
 
   isDrawing(): boolean {
-    return this._progressInstanceInfo !== null && (this._progressInstanceInfo.instance.isDrawing() ?? false)
+    return this._progressOverlay !== null && (this._progressOverlay.isDrawing() ?? false)
   }
 }

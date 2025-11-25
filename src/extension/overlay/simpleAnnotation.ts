@@ -1,15 +1,14 @@
-
 import { type OverlayTemplate } from '../../component/Overlay'
 import { isFunction, isValid } from '../../common/utils/typeChecks'
 import { LineType } from '../../common/Styles'
 
 const simpleAnnotation: OverlayTemplate = {
   name: 'simpleAnnotation',
-  totalStep: 2,
+  totalStep: 1,
   styles: {
     line: { style: LineType.Dashed }
   },
-  createPointFigures: ({ overlay, coordinates }) => {
+  createFigures: ({ overlay, coordinates }) => {
     let text
     if (isValid(overlay.extendData)) {
       if (!isFunction(overlay.extendData)) {

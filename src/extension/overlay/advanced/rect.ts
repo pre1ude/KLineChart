@@ -2,14 +2,14 @@ import { type OverlayTemplate } from '../../../component/Overlay'
 
 const rect: OverlayTemplate = {
   name: 'rect',
-  totalStep: 3,
+  totalStep: 2,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
   onRightClick() {
     return true
   },
-  createPointFigures: ({ coordinates }) => {
+  createFigures: ({ coordinates }) => {
     if (coordinates.length > 1) {
       return [
         {

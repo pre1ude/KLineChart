@@ -4,14 +4,14 @@ import { type TextAttrs } from '../../figure/text'
 
 const fibonacciExtension: OverlayTemplate = {
   name: 'fibonacciExtension',
-  totalStep: 4,
+  totalStep: 3,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
   onRightClick() {
     return true
   },
-  createPointFigures: ({ coordinates, overlay, precision }) => {
+  createFigures: ({ coordinates, overlay, precision }) => {
     const fbLines: LineAttrs[] = []
     const texts: TextAttrs[] = []
     if (coordinates.length > 2) {

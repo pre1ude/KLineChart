@@ -1,19 +1,16 @@
-
 import { formatThousands, formatFoldDecimal } from '../../common/utils/format'
 import { isNumber } from '../../common/utils/typeChecks'
-
 import { type OverlayTemplate } from '../../component/Overlay'
-
 import { type LineAttrs } from '../figure/line'
 import { type TextAttrs } from '../figure/text'
 
 const fibonacciLine: OverlayTemplate = {
   name: 'fibonacciLine',
-  totalStep: 3,
+  totalStep: 2,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: true,
   needDefaultYAxisFigure: true,
-  createPointFigures: ({ coordinates, bounding, overlay, precision, thousandsSeparator, decimalFoldThreshold, yAxis }) => {
+  createFigures: ({ coordinates, bounding, overlay, precision, thousandsSeparator, decimalFoldThreshold, yAxis }) => {
     const points = overlay.points
     if (coordinates.length > 0) {
       const currentPrecision = (yAxis?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax

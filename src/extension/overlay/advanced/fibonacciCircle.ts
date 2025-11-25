@@ -4,14 +4,14 @@ import { type TextAttrs } from '../../figure/text'
 
 const fibonacciCircle: OverlayTemplate = {
   name: 'fibonacciCircle',
-  totalStep: 3,
+  totalStep: 2,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
   onRightClick() {
     return true
   },
-  createPointFigures: ({ coordinates }) => {
+  createFigures: ({ coordinates }) => {
     if (coordinates.length > 1) {
       const xDis = Math.abs(coordinates[0].x - coordinates[1].x)
       const yDis = Math.abs(coordinates[0].y - coordinates[1].y)

@@ -7,7 +7,7 @@ import { type MouseTouchEvent } from '../common/SyntheticEvent'
 // 扩大选区以方便点击
 export const DEVIATION = 2
 
-export interface FigureApi<A = any, S = any> {
+export interface FigureApi<A = unknown, S = unknown> {
   name: string
   attrs: A
   styles: S
@@ -15,19 +15,23 @@ export interface FigureApi<A = any, S = any> {
   checkEventOn: (coordinate: Coordinate, attrs: A, styles: S) => boolean
 }
 
-export type FigureTemplate<A = any, S = any> = Pick<FigureApi<A, S>, 'name' | 'draw' | 'checkEventOn'>
-export type FigureCreate<A = any, S = any> = Pick<FigureApi<A, S>, 'name' | 'attrs' | 'styles'>
+export type FigureTemplate<A = unknown, S = unknown> = Pick<FigureApi<A, S>, 'name' | 'draw' | 'checkEventOn'>
+export type FigureCreate<A = unknown, S = unknown> = Pick<FigureApi<A, S>, 'name' | 'attrs' | 'styles'>
 
-export class Figure<A = any, S = any, T = any> extends Eventful {
-  attrs: A
-  styles: S
-  data: T
+export class Figure<A = unknown, S = unknown, T = unknown> extends Eventful {
+  attrs: A | undefined
+  styles: S | undefined
+  data: T | undefined
 
   private readonly _figure: FigureTemplate
+  public readonly id: string | undefined
 
-  constructor(figure: FigureTemplate) {
+  constructor(figure: FigureTemplate, id?: string) {
     super()
     this._figure = figure
+    if (typeof id === 'string') {
+      this.id = id
+    }
   }
 
   override checkEventOn(event: MouseTouchEvent): boolean {

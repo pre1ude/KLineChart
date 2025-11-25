@@ -1,15 +1,13 @@
-
 import { type OverlayTemplate } from '../../component/Overlay'
-
 import { getParallelLines } from './parallelStraightLine'
 
 const priceChannelLine: OverlayTemplate = {
   name: 'priceChannelLine',
-  totalStep: 4,
+  totalStep: 3,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: true,
   needDefaultYAxisFigure: true,
-  createPointFigures: ({ coordinates, bounding }) => {
+  createFigures: ({ coordinates, bounding }) => {
     return [
       {
         type: 'line',

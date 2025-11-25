@@ -4,7 +4,7 @@ import DrawWidget from './DrawWidget'
 import type SingleWidgetPane from '../pane/SingleWidgetPane'
 import type XAxis from '../component/XAxis'
 import XAxisView from '../view/XAxisView'
-import OverlayXAxisView from '../view/OverlayXAxisView'
+import OverlayView from '../view/OverlayView'
 import CrosshairVerticalLabelView from '../view/CrosshairVerticalLabelView'
 import { isString, isValid } from '../common/utils/typeChecks'
 import { getXAxisClass } from '../extension/x-axis'
@@ -13,14 +13,14 @@ import { setCursor } from '../common/utils/cursor'
 
 // ? XAxisWidget can only be used in SingleWidgetPane
 export default class XAxisWidget extends DrawWidget<SingleWidgetPane> {
-  private _axis: XAxis
+  private _axis!: XAxis
   private _axisOptions: PaneAxisOptions = {
     name: 'default',
     scrollZoomEnabled: true
   }
 
   private readonly _xAxisView = new XAxisView(this)
-  private readonly _overlayXAxisView = new OverlayXAxisView(this)
+  private readonly _overlayXAxisView = new OverlayView(this, 'xAxis')
   private readonly _crosshairVerticalLabelView = new CrosshairVerticalLabelView(this)
 
   constructor(rootContainer: HTMLElement, pane: SingleWidgetPane, options: PaneOptions) {

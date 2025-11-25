@@ -172,4 +172,5 @@ export {
   DomPosition, ActionType, IndicatorSeries, LoadDataType
 }
 
+export { OverlayState } from './component/Overlay'
 export type { Chart } from './Chart'

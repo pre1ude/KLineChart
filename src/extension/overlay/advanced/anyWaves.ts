@@ -8,7 +8,7 @@ const anyWaves: OverlayTemplate = {
   onRightClick() {
     return true
   },
-  createPointFigures: ({ coordinates }) => {
+  createFigures: ({ coordinates }) => {
     const texts = coordinates.map((coordinate, i) => ({
       ...coordinate,
       text: `(${i})`,

@@ -1,18 +1,17 @@
 import { utils } from '../../..'
 import { type OverlayTemplate } from '../../../component/Overlay'
-
 import { getRotateCoordinate } from './utils'
 
 const arrow: OverlayTemplate = {
   name: 'arrow',
-  totalStep: 3,
+  totalStep: 2,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
   onRightClick() {
     return true
   },
-  createPointFigures: ({ coordinates }) => {
+  createFigures: ({ coordinates }) => {
     if (coordinates.length > 1) {
       const flag = coordinates[1].x > coordinates[0].x ? 0 : 1
       const kb = utils.getLinearSlopeIntercept(coordinates[0], coordinates[1])

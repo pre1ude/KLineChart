@@ -2,14 +2,14 @@ import { type OverlayTemplate } from '../../../component/Overlay'
 
 const parallelogram: OverlayTemplate = {
   name: 'parallelogram',
-  totalStep: 4,
+  totalStep: 3,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
   onRightClick() {
     return true
   },
-  createPointFigures: ({ coordinates }) => {
+  createFigures: ({ coordinates }) => {
     if (coordinates.length === 2) {
       return [
         {
@@ -30,23 +30,6 @@ const parallelogram: OverlayTemplate = {
       ]
     }
     return []
-  },
-  performEventPressedMove: ({ points, performPointIndex, performPoint }) => {
-    if (performPointIndex < 2) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      points[0].price = performPoint.price
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      points[1].price = performPoint.price
-    }
-  },
-  performEventMoveForDrawing: ({ currentStep, points, performPoint }) => {
-    if (currentStep === 2) {
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      points[0].price = performPoint.price
-    }
   }
 }
 

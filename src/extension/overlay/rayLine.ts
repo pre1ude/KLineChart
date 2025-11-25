@@ -1,9 +1,6 @@
-
 import type Coordinate from '../../common/Coordinate'
 import type Bounding from '../../common/Bounding'
-
 import { type OverlayTemplate } from '../../component/Overlay'
-
 import { getLinearYFromCoordinates, type LineAttrs } from '../figure/line'
 
 export function getRayLine(coordinates: Coordinate[], bounding: Bounding): LineAttrs | LineAttrs[] {
@@ -39,11 +36,11 @@ export function getRayLine(coordinates: Coordinate[], bounding: Bounding): LineA
 
 const rayLine: OverlayTemplate = {
   name: 'rayLine',
-  totalStep: 3,
+  totalStep: 2,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: true,
   needDefaultYAxisFigure: true,
-  createPointFigures: ({ coordinates, bounding }) => {
+  createFigures: ({ coordinates, bounding }) => {
     return [
       {
         type: 'line',

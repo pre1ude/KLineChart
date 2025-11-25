@@ -1,9 +1,6 @@
-
 import type Coordinate from '../../common/Coordinate'
 import type Bounding from '../../common/Bounding'
-
 import { type OverlayTemplate } from '../../component/Overlay'
-
 import { type LineAttrs, getLinearSlopeIntercept } from '../figure/line'
 
 /**
@@ -52,11 +49,11 @@ export function getParallelLines(coordinates: Coordinate[], bounding: Bounding, 
 
 const parallelStraightLine: OverlayTemplate = {
   name: 'parallelStraightLine',
-  totalStep: 4,
+  totalStep: 3,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: true,
   needDefaultYAxisFigure: true,
-  createPointFigures: ({ coordinates, bounding }) => {
+  createFigures: ({ coordinates, bounding }) => {
     return [
       {
         type: 'line',

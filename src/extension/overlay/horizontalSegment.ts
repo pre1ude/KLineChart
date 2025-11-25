@@ -1,15 +1,13 @@
-
 import { type OverlayTemplate } from '../../component/Overlay'
-
 import { type LineAttrs } from '../figure/line'
 
 const horizontalSegment: OverlayTemplate = {
   name: 'horizontalSegment',
-  totalStep: 3,
+  totalStep: 2,
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: true,
   needDefaultYAxisFigure: true,
-  createPointFigures: ({ coordinates }) => {
+  createFigures: ({ coordinates }) => {
     const lines: LineAttrs[] = []
     if (coordinates.length === 2) {
       lines.push({ coordinates })
@@ -21,13 +19,15 @@ const horizontalSegment: OverlayTemplate = {
       }
     ]
   },
-  performEventPressedMove: ({ points, performPoint }) => {
-    points[0].value = performPoint.value
-    points[1].value = performPoint.value
+  onControlPointUpdate: (points, index, point) => {
+    points[index] = point
+    points[0].value = point.value
+    points[1].value = point.value
   },
-  performEventMoveForDrawing: ({ currentStep, points, performPoint }) => {
-    if (currentStep === 2) {
-      points[0].value = performPoint.value
+  onDrawPointUpdate: (points, index, point) => {
+    points[index] = point
+    if (index === 1) {
+      points[0].value = point.value
     }
   }
 }
