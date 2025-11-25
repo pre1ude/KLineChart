@@ -1,6 +1,6 @@
 
 import type Nullable from '../common/Nullable'
-import type ExcludePickPartial from '../common/ExcludePickPartial'
+import type PartialExcept from '../common/PartialExcept'
 import type KLineData from '../common/KLineData'
 import type Bounding from '../common/Bounding'
 import type VisibleRange from '../common/VisibleRange'
@@ -9,7 +9,7 @@ import type Crosshair from '../common/Crosshair'
 import { type IndicatorStyle, type SmoothLineStyle, type RectStyle, type TextStyle, type TooltipIconStyle, type LineStyle, type LineType, type PolygonType, type TooltipLegend } from '../common/Styles'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
-import { isValid, clone, isNumber, isFunction, isString, isBoolean, isArray, merge } from '../common/utils/typeChecks'
+import { isValid, clone, isNumber, isFunction, merge } from '../common/utils/typeChecks'
 import { type ArcAttrs } from '../extension/figure/arc'
 import { type RectAttrs } from '../extension/figure/rect'
 import { type TextAttrs } from '../extension/figure/text'
@@ -203,9 +203,9 @@ export interface IndicatorApi<D = any> {
   onMouseLeave?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
 }
 
-export type IndicatorTemplate<D = any> = ExcludePickPartial<Omit<IndicatorApi<D>, 'result'>, 'name' | 'calc'>
+export type IndicatorTemplate<D = any> = PartialExcept<Omit<IndicatorApi<D>, 'result'>, 'name' | 'calc'>
 
-export type IndicatorCreate<D = any> = ExcludePickPartial<Omit<IndicatorApi<D>, 'result'>, 'name'> & {
+export type IndicatorCreate<D = any> = PartialExcept<Omit<IndicatorApi<D>, 'result'>, 'name'> & {
   yAxisPosition?: 'left' | 'right'
 }
 
@@ -213,7 +213,7 @@ export class Indicator<D = any> implements IndicatorApi<D> {
   name: string
   shortName: string
   precision: number
-  calcParams: any[]
+  calcParams: unknown[]
   shouldOhlc: boolean
   shouldFormatBigNumber: boolean
   visible: boolean
@@ -232,6 +232,7 @@ export class Indicator<D = any> implements IndicatorApi<D> {
   result: D[] = []
 
   private _lockSeriesPrecision: boolean = false
+  private _prevIndicator: Nullable<Indicator<D>> = null
 
   onClick?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
   onMouseEnter?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
@@ -267,48 +268,39 @@ export class Indicator<D = any> implements IndicatorApi<D> {
     this.onMouseLeave = onMouseLeave
   }
 
-  shouldUpdate(next: Partial<Indicator>): [boolean, boolean, boolean] {
-    const needCalc = shouldCalc(next)
-    const needSort = shouldSort(next)
-    const needUpdate = shouldUpdate(next)
-
-    function shouldUpdate(next: Partial<Indicator>): boolean {
-      return (
-        needCalc || needSort ||
-        isValid(next.styles) ||
-        (isString(next.shortName) && this.shortName !== next.shortName) ||
-        (isValid(next.series) && this.series !== next.series) ||
-        (isNumber(next.minValue) && this.minValue !== next.minValue) ||
-        (isNumber(next.maxValue) && this.maxValue !== next.maxValue) ||
-        (isNumber(next.precision) && this.precision !== next.precision) ||
-        (isBoolean(next.shouldOhlc) && this.shouldOhlc !== next.shouldOhlc) ||
-        (isBoolean(next.shouldFormatBigNumber) && this.shouldFormatBigNumber !== next.shouldFormatBigNumber) ||
-        (isBoolean(next.visible) && this.visible !== next.visible) ||
-        (isFunction(next.regenerateFigures) && this.regenerateFigures !== next.regenerateFigures) ||
-        (isFunction(next.createTooltipDataSource) && this.createTooltipDataSource !== next.createTooltipDataSource) ||
-        (isValid(next.draw) && this.draw !== next.draw)
-      )
-    }
-    function shouldSort(next: Partial<Indicator>): boolean {
-      return (
-        (isNumber(next.zLevel) && this.zLevel !== next.zLevel)
-      )
-    }
-    // todo should we calc after extendData change?
-    // todo should we calc after figures change?
-    function shouldCalc(next: Partial<Indicator>): boolean {
-      return (
-        (isFunction(next.calc) && this.calc !== next.calc) ||
-        (isArray(next.calcParams) && JSON.stringify(this.calcParams) !== JSON.stringify(next.calcParams)) ||
-        (isValid(next.extendData) && JSON.stringify(this.extendData) !== JSON.stringify(next.extendData)) ||
-        (isValid(next.figures) && this.figures !== next.figures)
-      )
+  shouldUpdate(): { draw: boolean, calc: boolean, sort: boolean } {
+    if (this._prevIndicator === null) {
+      return { draw: true, calc: false, sort: false }
     }
 
-    return [needUpdate, needCalc, needSort]
+    const sort = this._prevIndicator.zLevel !== this.zLevel
+
+    const calc = this._prevIndicator.calc !== this.calc ||
+      JSON.stringify(this._prevIndicator.calcParams) !== JSON.stringify(this.calcParams) ||
+      JSON.stringify(this._prevIndicator.extendData) !== JSON.stringify(this.extendData) ||
+      this._prevIndicator.figures !== this.figures
+
+    const draw = sort || calc ||
+      this._prevIndicator.styles !== this.styles ||
+      this._prevIndicator.shortName !== this.shortName ||
+      this._prevIndicator.series !== this.series ||
+      this._prevIndicator.minValue !== this.minValue ||
+      this._prevIndicator.maxValue !== this.maxValue ||
+      this._prevIndicator.precision !== this.precision ||
+      this._prevIndicator.shouldOhlc !== this.shouldOhlc ||
+      this._prevIndicator.shouldFormatBigNumber !== this.shouldFormatBigNumber ||
+      this._prevIndicator.visible !== this.visible ||
+      this._prevIndicator.regenerateFigures !== this.regenerateFigures ||
+      this._prevIndicator.createTooltipDataSource !== this.createTooltipDataSource ||
+      this._prevIndicator.draw !== this.draw
+
+    return { draw, calc, sort }
   }
 
-  overrideIndicator(next: Partial<Indicator>): void {
+  override(next: Partial<Indicator>): void {
+    // Save previous state for change detection
+    this._prevIndicator = clone({ ...this, _prevIndicator: null })
+
     const {
       shortName, calcParams, precision, figures, styles, ...others
     } = next

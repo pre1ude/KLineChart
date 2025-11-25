@@ -17,7 +17,7 @@ export default class IndicatorStore {
     if (isString(paneId)) {
       this._instances.get(paneId)?.sort((i1, i2) => i1.zLevel - i2.zLevel)
     } else {
-      this._instances.forEach(paneInstances => {
+      this._instances.forEach((paneInstances) => {
         paneInstances.sort((i1, i2) => i1.zLevel - i2.zLevel)
       })
     }
@@ -27,7 +27,7 @@ export default class IndicatorStore {
     const { name } = indicator
     let paneInstances = this._instances.get(paneId)
     if (isValid(paneInstances)) {
-      const instance = paneInstances.find(ins => ins.name === name)
+      const instance = paneInstances.find((ins) => ins.name === name)
       if (isValid(instance)) {
         return Promise.reject(new Error('Duplicate indicators.'))
       }
@@ -39,7 +39,7 @@ export default class IndicatorStore {
     const indicatorInstance = new Indicator(indicatorTemplate)
 
     this.synchronizeSeriesPrecision(indicatorInstance)
-    indicatorInstance.overrideIndicator(indicator)
+    indicatorInstance.override(indicator)
     if (!isStack) {
       paneInstances = []
     }
@@ -58,7 +58,7 @@ export default class IndicatorStore {
     const paneInstances = this._instances.get(paneId)
     if (isValid(paneInstances)) {
       if (isString(name)) {
-        const index = paneInstances.findIndex(ins => ins.name === name)
+        const index = paneInstances.findIndex((ins) => ins.name === name)
         if (index > -1) {
           paneInstances.splice(index, 1)
           removed = true
@@ -84,22 +84,22 @@ export default class IndicatorStore {
       if (isString(paneId)) {
         const paneInstances = this._instances.get(paneId)
         if (isValid(paneInstances)) {
-          const instance = paneInstances.find(ins => ins.name === name)
+          const instance = paneInstances.find((ins) => ins.name === name)
           if (isValid(instance)) {
             tasks.push(instance.calcIndicator(this._chartStore.getDataList()))
           }
         }
       } else {
-        this._instances.forEach(paneInstances => {
-          const instance = paneInstances.find(ins => ins.name === name)
+        this._instances.forEach((paneInstances) => {
+          const instance = paneInstances.find((ins) => ins.name === name)
           if (isValid(instance)) {
             tasks.push(instance.calcIndicator(this._chartStore.getDataList()))
           }
         })
       }
     } else {
-      this._instances.forEach(paneInstances => {
-        paneInstances.forEach(instance => {
+      this._instances.forEach((paneInstances) => {
+        paneInstances.forEach((instance) => {
           tasks.push(instance.calcIndicator(this._chartStore.getDataList()))
         })
       })
@@ -111,7 +111,7 @@ export default class IndicatorStore {
   getInstanceByPaneId(paneId?: string, name?: string): Nullable<Indicator> | Nullable<Map<string, Indicator>> | Map<string, Map<string, Indicator>> {
     const createMapping: ((instances: Indicator[]) => Map<string, Indicator>) = (instances: Indicator[]) => {
       const mapping = new Map<string, Indicator>()
-      instances.forEach(ins => {
+      instances.forEach((ins) => {
         mapping.set(ins.name, ins)
       })
       return mapping
@@ -120,7 +120,7 @@ export default class IndicatorStore {
     if (isString(paneId)) {
       const paneInstances = this._instances.get(paneId) ?? []
       if (isString(name)) {
-        return paneInstances?.find(ins => ins.name === name) ?? null
+        return paneInstances?.find((ins) => ins.name === name) ?? null
       }
       return createMapping(paneInstances)
     }
@@ -150,8 +150,8 @@ export default class IndicatorStore {
     if (isValid(indicator)) {
       synchronize(indicator)
     } else {
-      this._instances.forEach(paneInstances => {
-        paneInstances.forEach(instance => {
+      this._instances.forEach((paneInstances) => {
+        paneInstances.forEach((instance) => {
           synchronize(instance)
         })
       })
@@ -172,15 +172,15 @@ export default class IndicatorStore {
     let onlyUpdateFlag = false
     const tasks: Array<Promise<boolean>> = []
     let sortFlag = false
-    instances.forEach(paneInstances => {
-      const instance = paneInstances.find(ins => ins.name === name)
+    instances.forEach((paneInstances) => {
+      const instance = paneInstances.find((ins) => ins.name === name)
       if (isValid(instance)) {
-        const [needUpdate, needCalc, needSort] = instance.shouldUpdate(indicator)
-        instance.overrideIndicator(indicator)
-        sortFlag = needSort
-        if (needCalc) {
+        instance.override(indicator)
+        const { draw, calc, sort } = instance.shouldUpdate()
+        sortFlag = sort
+        if (calc) {
           tasks.push(instance.calcIndicator(this._chartStore.getDataList()))
-        } else if (needUpdate) {
+        } else if (draw) {
           onlyUpdateFlag = true
         }
       }
