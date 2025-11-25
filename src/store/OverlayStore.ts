@@ -103,6 +103,7 @@ export default class OverlayStore {
         const zLevel = overlay.zLevel ?? this.getInstances(targetPaneId).length
 
         const overlayInstance = new Overlay(overlayTemplate, {
+          ...overlay,
           id,
           groupId,
           paneId: targetPaneId,

@@ -241,7 +241,8 @@ export class OverlayLayer implements Layer {
       if (pressedInfo?.overlay != null) {
         const overlay = pressedInfo.overlay
         if (!overlay.lock) {
-          if (!(overlay.onPressedMoving?.(event, pressedInfo) ?? false)) {
+          const defaultPrevented = overlay.onPressedMoving?.(event, pressedInfo) ?? false
+          if (!defaultPrevented) {
             const point = this._overlayView.coordinateToPoint(overlay, event)
             if (pressedInfo.interactType === 'control-point') {
               overlay.onDragMoveControlPoint(point, pressedInfo.figureIndex)

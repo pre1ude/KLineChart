@@ -106,9 +106,10 @@ export interface OverlayEventHandlers {
   onPressedMoveEnd: Nullable<OverlayEventCallback>
   onMouseEnter: Nullable<OverlayEventCallback>
   onMouseLeave: Nullable<OverlayEventCallback>
-  onRemoved: Nullable<DefaultCallback>
   onSelected: Nullable<OverlayEventCallback>
   onDeselected: Nullable<OverlayEventCallback>
+
+  onRemoved: Nullable<DefaultCallback>
 }
 
 export interface OverlayApi<E = unknown> extends OverlayEventHandlers {
@@ -135,6 +136,12 @@ export interface OverlayApi<E = unknown> extends OverlayEventHandlers {
   createYAxisFigures: Nullable<OverlayCreateFiguresCallback<E>>
   onControlPointUpdate: Nullable<(points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void>
   onDrawPointUpdate: Nullable<(points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void>
+  onBodyDrag?: (params: {
+    point: Partial<Point>
+    prevPoint: Partial<Point>
+    prevPoints: ReadonlyArray<Readonly<Partial<Point>>>
+    chartStore: ChartStore
+  }) => void
 }
 
 export type OverlayTemplate<E = unknown> = PartialExcept<Omit<OverlayApi<E>, 'id' | 'groupId' | 'paneId' | 'points' | 'currentStep' | 'state'>, 'name'>
@@ -152,6 +159,7 @@ interface OverlayInitOption {
   groupId: string
   paneId: string
   zLevel?: number
+  [key: string]: unknown
 }
 
 export const OVERLAY_ID_PREFIX = 'overlay_'
@@ -185,30 +193,39 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
 
   onControlPointUpdate: Nullable<(points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void> = null
   onDrawPointUpdate: Nullable<(points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void> = null
+  onBodyDrag?: (params: {
+    point: Partial<Point>
+    prevPoint: Partial<Point>
+    prevPoints: ReadonlyArray<Readonly<Partial<Point>>>
+    chartStore: ChartStore
+  }) => void
 
   // Event callbacks
   onDrawStart: Nullable<DefaultCallback> = null
   onDrawing: Nullable<OverlayDrawEventCallback> = null
   onDrawEnd: Nullable<OverlayDrawEventCallback> = null
+
   onClick: Nullable<OverlayEventCallback> = null
   onDoubleClick: Nullable<OverlayEventCallback> = null
   /** 仅当返回 Truthy 值时阻止右键点击删除 */
   onRightClick: Nullable<OverlayEventCallback> = null
   onPressedMoveStart: Nullable<OverlayEventCallback> = null
+  // 返回 Truthy 表示阻止原有的默认拖动行为
   onPressedMoving: Nullable<OverlayEventCallback> = null
   onPressedMoveEnd: Nullable<OverlayEventCallback> = null
   onMouseEnter: Nullable<OverlayEventCallback> = null
   onMouseLeave: Nullable<OverlayEventCallback> = null
-  onRemoved: Nullable<DefaultCallback> = null
   onSelected: Nullable<OverlayEventCallback> = null
   onDeselected: Nullable<OverlayEventCallback> = null
+
+  onRemoved: Nullable<DefaultCallback> = null
 
   private _prevOverlay: Nullable<Overlay<E>> = null
   private _prevZLevel: number = 0
   private _prevPressedPoint: Nullable<Partial<Point>> = null
   private _prevPressedPoints: Array<Partial<Point>> = []
 
-  constructor(template: OverlayTemplate<E>, { id, groupId, paneId, zLevel }: OverlayInitOption) {
+  constructor(template: OverlayTemplate<E>, { id, groupId, paneId, zLevel, ...rest }: OverlayInitOption) {
     Object.assign(this, template)
 
     this.id = id
@@ -217,6 +234,7 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
     if (isValid(zLevel)) {
       this.zLevel = zLevel
     }
+    Object.assign(this, rest)
   }
 
   getPrevZLevel(): number {
@@ -345,6 +363,15 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
   onDragMoveBody(point: Partial<Point>, chartStore: ChartStore): void {
     if (!this._prevPressedPoint) return
 
+    if (this.onBodyDrag) {
+      this.onBodyDrag({
+        point,
+        prevPoint: this._prevPressedPoint,
+        prevPoints: this._prevPressedPoints,
+        chartStore
+      })
+      return
+    }
     const difDataIndex = isNumber(point.dataIndex) && isNumber(this._prevPressedPoint.dataIndex)
       ? point.dataIndex - this._prevPressedPoint.dataIndex
       : undefined
