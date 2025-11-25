@@ -1,41 +1,42 @@
-
 import { type OverlayTemplate } from '../../../component/Overlay'
-import { isFunction, isValid } from '../../../common/utils/typeChecks'
-import { LineType } from '../../../common/Styles'
 
 const textLog: OverlayTemplate = {
   name: 'textLog',
   totalStep: 2,
-  styles: {
-    line: { style: LineType.Dashed }
-  },
-  createPointFigures: ({ overlay, coordinates }) => {
-    let text
-    if (isValid(overlay.extendData)) {
-      if (!isFunction(overlay.extendData)) {
-        text = overlay.extendData ?? ''
-      } else {
-        text = overlay.extendData(overlay)
-      }
+  needDefaultPointFigure: true,
+  onBodyDrag({ point, prevPoint, prevPoints, chartStore }) {
+    // 只移动 point[1]（文本框），point[0]（锚点）保持不动
+    const difDataIndex = point.dataIndex - prevPoint.dataIndex
+    const difValue = point.value - prevPoint.value
+
+    // 只更新 point[1]
+    this.points[1] = {
+      dataIndex: prevPoints[1].dataIndex + difDataIndex,
+      value: prevPoints[1].value + difValue,
+      timestamp: chartStore.dataIndexToTimestamp(prevPoints[1].dataIndex + difDataIndex)
     }
-    const startX = coordinates[0].x
-    const startY = coordinates[0].y
-    const lineEndY = startY - 50
-    const arrowEndY = lineEndY - 5
+  },
+  createFigures: ({ overlay, coordinates }) => {
+    const text = String(overlay.extendData?.text ?? '')
+
+    const startX = coordinates[0]?.x ?? 0
+    const startY = coordinates[0]?.y ?? 0
+    const endX = coordinates[1]?.x ?? 0
+    const endY = coordinates[1]?.y ?? 0
+
+    if (coordinates.length < 2) {
+      return []
+    }
+
     return [
       {
         type: 'line',
-        attrs: { coordinates: [{ x: startX, y: startY }, { x: startX, y: lineEndY }] },
-        ignoreEvent: true
-      },
-      {
-        type: 'polygon', // 三角形
-        attrs: { coordinates: [{ x: startX, y: lineEndY }, { x: startX - 4, y: arrowEndY }, { x: startX + 4, y: arrowEndY }] },
+        attrs: { coordinates: [{ x: startX, y: startY }, { x: endX, y: endY }] },
         ignoreEvent: true
       },
       {
         type: 'textBox',
-        attrs: { x: startX, y: arrowEndY, text: text ?? '' },
+        attrs: { x: endX, y: endY, text: text ?? '' },
         ignoreEvent: true
       }
     ]
