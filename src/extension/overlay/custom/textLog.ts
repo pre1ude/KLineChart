@@ -37,7 +37,6 @@ const textLog: OverlayTemplate = {
       {
         type: 'textBox',
         attrs: { x: endX, y: endY, text: text ?? '' },
-        ignoreEvent: true
       }
     ]
   }
