@@ -123,3 +123,7 @@ export function log10(value: number): number {
 export function index10(value: number): number {
   return Math.pow(10, value)
 }
+
+export function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v))
+}

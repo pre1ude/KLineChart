@@ -1,4 +1,3 @@
-
 import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
 import { type CrosshairStyle, type CrosshairDirectionStyle, YAxisType, type StateTextStyle } from '../common/Styles'
@@ -25,7 +24,10 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
     const widget = this.getWidget() as unknown as YAxisWidget
     const axisType = widget.getAxisType()
     const yAxis = widget.getAxisComponent()
-    const value = yAxis.convertFromPixel(crosshair.y!)
+    if (!crosshair.y) {
+      return ''
+    }
+    const value = yAxis.convertFromPixel(crosshair.y)
     let text: string
     if (axisType === YAxisType.Percentage || axisType === YAxisType.MinutePercentage) {
       const fromData = chartStore.getVisibleFirstData()
@@ -37,7 +39,7 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
         text = `${((value - fromData.close) / fromData.close * 100).toFixed(2)}%`
       }
     } else {
-      const indicators = chartStore.getIndicatorStore().getInstances(crosshair.paneId!)
+      const indicators = chartStore.getIndicatorStore().getInstances(crosshair.paneId ?? '')
       let precision = 0
       let shouldFormatBigNumber = false
       if (yAxis.isInCandle()) {
@@ -63,6 +65,6 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
     const isAlignLeft = widget.isAlignLeft()
     const align = isAlignLeft ? 'left' : 'right'
 
-    return { x: bounding.width * (1 - +isAlignLeft), y: crosshair.y!, text, align, baseline: 'middle' }
+    return { x: bounding.width * (1 - +isAlignLeft), y: crosshair.y ?? 0, text, align, baseline: 'middle' }
   }
 }

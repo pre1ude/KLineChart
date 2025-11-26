@@ -261,7 +261,7 @@ export default class SyntheticEvent {
   }
 
   private _mouseMoveHandler(moveEvent: MouseEvent): void {
-    if (this._mousePressed || this._touchMoveStartCoordinate !== null) {
+    if (this._mousePressed || this._touchMoveStartCoordinate) {
       return
     }
 
@@ -322,7 +322,7 @@ export default class SyntheticEvent {
 
     this._lastTouchEventTimeStamp = this._eventTimeStamp(moveEvent)
 
-    if (this._startPinchMiddleCoordinate !== null) {
+    if (this._startPinchMiddleCoordinate) {
       return
     }
 
@@ -430,7 +430,7 @@ export default class SyntheticEvent {
     if (this._firesTouchEvents(dblClickEvent)) {
       ++this._tapCount
 
-      if (this._tapTimeoutId !== null && this._tapCount > 1) {
+      if (this._tapTimeoutId != null && this._tapCount > 1) {
         const { manhattanDistance } = this._mouseTouchMoveWithDownInfo(this._getCoordinate(dblClickEvent), this._tapCoordinate)
         if (manhattanDistance < ManhattanDistance.DoubleTap && !this._cancelTap) {
           this._processEvent(this._makeCompatEvent(dblClickEvent), this._handler.doubleTapEvent)
@@ -440,7 +440,7 @@ export default class SyntheticEvent {
     } else {
       ++this._clickCount
 
-      if (this._clickTimeoutId !== null && this._clickCount > 1) {
+      if (this._clickTimeoutId != null && this._clickCount > 1) {
         const { manhattanDistance } = this._mouseTouchMoveWithDownInfo(this._getCoordinate(dblClickEvent), this._clickCoordinate)
         if (manhattanDistance < ManhattanDistance.DoubleClick && !this._cancelClick) {
           this._processEvent(this._makeCompatEvent(dblClickEvent), this._handler.mouseDoubleClickEvent)
@@ -474,7 +474,7 @@ export default class SyntheticEvent {
     this._processEvent(compatEvent, this._handler.touchEndEvent)
     ++this._tapCount
 
-    if (this._tapTimeoutId !== null && this._tapCount > 1) {
+    if (this._tapTimeoutId != null && this._tapCount > 1) {
       // check that both clicks are near enough
       const { manhattanDistance } = this._mouseTouchMoveWithDownInfo(this._getCoordinate(touch), this._tapCoordinate)
       if (manhattanDistance < ManhattanDistance.DoubleTap && !this._cancelTap) {
@@ -531,7 +531,7 @@ export default class SyntheticEvent {
     this._processEvent(compatEvent, this._handler.mouseUpEvent)
     ++this._clickCount
 
-    if (this._clickTimeoutId !== null && this._clickCount > 1) {
+    if (this._clickTimeoutId != null && this._clickCount > 1) {
       // check that both clicks are near enough
       const { manhattanDistance } = this._mouseTouchMoveWithDownInfo(this._getCoordinate(mouseUpEvent), this._clickCoordinate)
       if (manhattanDistance < ManhattanDistance.DoubleClick && !this._cancelClick) {
@@ -553,7 +553,7 @@ export default class SyntheticEvent {
   }
 
   private _touchStartHandler(downEvent: TouchEvent): void {
-    if (this._activeTouchId !== null) {
+    if (this._activeTouchId != null) {
       return
     }
     const touch = downEvent.changedTouches[0]
@@ -673,7 +673,7 @@ export default class SyntheticEvent {
           return
         }
 
-        if ((event.target !== null) && this._target.contains(event.target as Element)) {
+        if ((event.target) && this._target.contains(event.target as Element)) {
           return
         }
 

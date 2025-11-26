@@ -1,4 +1,3 @@
-
 import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
 import { type CrosshairStyle, type CrosshairDirectionStyle, type StateTextStyle } from '../common/Styles'
@@ -57,7 +56,7 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
 
   // todo need optimize
   override getTextAttrs(text: string, textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs {
-    const x = crosshair.realX!
+    const x = crosshair.realX ?? 0
     let optimalX: number
     let align: CanvasTextAlign = 'center'
     if (x - textWidth / 2 - styles.paddingLeft < 0) {

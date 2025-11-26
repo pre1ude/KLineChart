@@ -139,7 +139,7 @@ export default abstract class DualYPane extends Pane {
     )
 
     // todo check here
-    if (this._yLeftAxisWidget !== null) {
+    if (this._yLeftAxisWidget) {
       const yAxisBounding = this._yLeftAxisWidget.getBounding()
       ctx.drawImage(
         this._yLeftAxisWidget.getImage(includeOverlay),

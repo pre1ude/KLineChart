@@ -1,8 +1,9 @@
 
-import type Coordinate from './Coordinate'
 import type KLineData from './KLineData'
 
-export default interface Crosshair extends Partial<Coordinate> {
+export default interface Crosshair {
+  x?: number
+  y?: number
   paneId?: string
   realX?: number
   kLineData?: KLineData

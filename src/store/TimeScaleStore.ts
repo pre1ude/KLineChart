@@ -4,7 +4,7 @@ import { createDefaultTimeShareVisibleRange, getDefaultVisibleRange } from '../c
 import { ActionType } from '../common/Action'
 import type ChartStore from './ChartStore'
 import { LoadDataType } from '../common/LoadDataCallback'
-import { clamp } from '../component/scale/utils'
+import { clamp } from '@/common/utils/number'
 import { createLinear, type LinearScale } from '../component/scale'
 import { formatToHHmm } from '../common/utils/format'
 
@@ -21,10 +21,10 @@ export default class TimeScaleStore {
   private _offsetRight = DEFAULT_OFFSET_RIGHT
   private _barSpaceLimit = { min: 1, max: 50 }
 
-  private _maxOffsetLeftDistance: number
-  private _maxOffsetRightDistance: number
-  private _leftMinVisibleBarCount: number
-  private _rightMinVisibleBarCount: number
+  private _maxOffsetLeftDistance?: number
+  private _maxOffsetRightDistance?: number
+  private _leftMinVisibleBarCount?: number
+  private _rightMinVisibleBarCount?: number
   private _calcMode: 'DISTANCE_MODE' | 'BARCOUNT_MODE' = 'DISTANCE_MODE'
   /**
    * 滚动到最左时最小剩余宽度, 滚动到最右时最小剩余宽度

@@ -23,7 +23,7 @@ export default abstract class Pane implements Updater {
       overflow: 'hidden',
       boxSizing: 'border-box'
     })
-    if (afterElement !== null) {
+    if (afterElement) {
       rootContainer.insertBefore(this._container, afterElement)
     } else {
       rootContainer.appendChild(this._container)

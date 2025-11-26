@@ -107,7 +107,7 @@ export default class OverlayView extends View {
       let value = yAxis.convertFromPixel(coordinate.y)
       if (overlay.mode !== 'normal' && paneId === PaneIdConstants.CANDLE && isNumber(point.dataIndex)) {
         const kLineData = chartStore.getDataByDataIndex(point.dataIndex)
-        if (kLineData !== null) {
+        if (kLineData) {
           const modeSensitivity = overlay.modeSensitivity
           if (value > kLineData.high) {
             if (overlay.mode === 'weak_magnet') {
@@ -243,7 +243,7 @@ export default class OverlayView extends View {
         coordinate.x = xAxis?.convertToPixel(dataIndex) ?? 0
         if (typeof point.dataKey === 'string' && point.dataKey !== '') {
           const data = chartStore.getDataByDataIndex(dataIndex)
-          if (data !== null && point.dataKey in data) {
+          if (data && point.dataKey in data) {
             const v = Number(data[point.dataKey])
             if (isNumber(v)) coordinate.y = yAxis?.convertToPixel(v) ?? 0
           }

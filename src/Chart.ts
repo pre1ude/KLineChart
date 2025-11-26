@@ -491,7 +491,7 @@ export default class ChartImp implements Chart {
     }
   }
 
-  crosshairChange(crosshair: Crosshair): void {
+  onCrosshairChange(crosshair: Crosshair): void {
     const actionStore = this._chartStore.getActionStore()
     if (actionStore.has(ActionType.OnCrosshairChange)) {
       const indicatorData: Record<string, Record<string, unknown>> = {}

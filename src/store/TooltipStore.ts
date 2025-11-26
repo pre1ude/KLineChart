@@ -2,8 +2,8 @@ import type KLineData from '../common/KLineData'
 import type Crosshair from '../common/Crosshair'
 import { UpdateLevel } from '../common/Updater'
 import { isNumber } from '../common/utils/typeChecks'
-
 import type ChartStore from './ChartStore'
+import { clamp } from '@/common/utils/number'
 
 export interface TooltipIcon {
   paneId: string
@@ -14,7 +14,7 @@ export interface TooltipIcon {
 export default class TooltipStore {
   private readonly _chartStore: ChartStore
   private _crosshair: Crosshair = {}
-  private _activeIcon?: TooltipIcon
+  private _activeIcon: TooltipIcon | null = null
 
   constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
@@ -37,32 +37,22 @@ export default class TooltipStore {
     // 当有数据时，计算数据索引和 kLineData
     if (dataList.length > 0) {
       if (isNumber(cr.x)) {
-        realDataIndex = this._chartStore.getTimeScaleStore().coordinateToDataIndex(cr.x)
-        if (realDataIndex < 0) {
-          dataIndex = 0
-        } else if (realDataIndex > dataList.length - 1) {
-          dataIndex = dataList.length - 1
-        } else {
-          dataIndex = realDataIndex
-        }
+        realDataIndex = this._chartStore.getTimeScaleStore()
+          .coordinateToDataIndex(cr.x)
+        dataIndex = clamp(realDataIndex, 0, dataList.length - 1)
       } else {
         realDataIndex = dataList.length - 1
         dataIndex = realDataIndex
       }
-      kLineData = dataList[dataIndex] ?? undefined
-      realX = this._chartStore.getTimeScaleStore().dataIndexToCoordinate(realDataIndex)
+      kLineData = dataList[dataIndex]
+      realX = this._chartStore.getTimeScaleStore()
+        .dataIndexToCoordinate(realDataIndex)
     } else {
       // 没有数据时，仍然允许垂直线跟随鼠标移动
       kLineData = undefined
-      if (isNumber(cr.x)) {
-        realX = cr.x
-        realDataIndex = -1
-        dataIndex = -1
-      } else {
-        realX = undefined
-        realDataIndex = -1
-        dataIndex = -1
-      }
+      realX = isNumber(cr.x) ? cr.x : undefined
+      realDataIndex = -1
+      dataIndex = -1
     }
 
     const prevCrosshair = { x: this._crosshair.x, y: this._crosshair.y, paneId: this._crosshair.paneId }
@@ -71,7 +61,7 @@ export default class TooltipStore {
       prevCrosshair.x !== cr.x || prevCrosshair.y !== cr.y || prevCrosshair.paneId !== cr.paneId
     ) {
       if (kLineData !== undefined && !(notExecuteAction ?? false)) {
-        this._chartStore.getChart().crosshairChange(this._crosshair)
+        this._chartStore.getChart().onCrosshairChange(this._crosshair)
       }
       if (!(notInvalidate ?? false)) {
         this._chartStore.getChart().updatePane(UpdateLevel.Overlay)
@@ -95,7 +85,7 @@ export default class TooltipStore {
     return this._crosshair
   }
 
-  setActiveIcon(icon?: TooltipIcon): void {
+  setActiveIcon(icon: TooltipIcon | null): void {
     this._activeIcon = icon
   }
 
@@ -105,6 +95,6 @@ export default class TooltipStore {
 
   clear(): void {
     this.setCrosshair({}, { notInvalidate: true })
-    this.setActiveIcon()
+    this.setActiveIcon(null)
   }
 }

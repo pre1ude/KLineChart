@@ -138,8 +138,12 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     const coordinate = { x: left, y: top }
     if (this.isDrawTooltip(crosshair, tooltipStyles)) {
       const dataIndex = crosshair.dataIndex ?? 0
+      const kLineData = crosshair.kLineData
+      if (!kLineData) {
+        return coordinate.y + prevRowHeight
+      }
       const legends = this._getCandleTooltipLegends(
-        { prev: dataList[dataIndex - 1] ?? null, current: crosshair.kLineData!, next: dataList[dataIndex + 1] ?? null },
+        { prev: dataList[dataIndex - 1] ?? null, current: kLineData, next: dataList[dataIndex + 1] ?? null },
         precision, dateTimeFormat, locale, customApi, thousandsSeparator, decimalFoldThreshold, styles
       )
 
@@ -195,8 +199,12 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     const indicatorTooltipStyles = indicatorStyles.tooltip
     if (isDrawCandleTooltip || isDrawIndicatorTooltip) {
       const dataIndex = crosshair.dataIndex ?? 0
+      const kLineData = crosshair.kLineData
+      if (!kLineData) {
+        return
+      }
       const candleLegends = this._getCandleTooltipLegends(
-        { prev: dataList[dataIndex - 1] ?? null, current: crosshair.kLineData!, next: dataList[dataIndex + 1] ?? null },
+        { prev: dataList[dataIndex - 1] ?? null, current: kLineData, next: dataList[dataIndex + 1] ?? null },
         precision, dateTimeFormat, locale, customApi, thousandsSeparator, decimalFoldThreshold, candleStyles
       )
 
@@ -278,7 +286,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
         const isLeft = (crosshair.realX ?? 0) > centerX
         let rectX: number = 0
         if (isPointer) {
-          const realX = crosshair.realX!
+          const realX = crosshair.realX ?? 0
           if (isLeft) {
             rectX = realX - rectOffsetRight - rectWidth
           } else {
@@ -298,7 +306,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
 
         let rectY = top + rectOffsetTop
         if (isPointer) {
-          const y = crosshair.y!
+          const y = crosshair.y ?? 0
           rectY = y - rectHeight / 2
           if (rectY + rectHeight > bounding.height - rectOffsetBottom - offsetBottom) {
             rectY = bounding.height - rectOffsetBottom - rectHeight - offsetBottom
@@ -420,7 +428,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     const prevClose = data.prev?.close ?? current.close
     const changeValue = current.close - prevClose
     const { price: pricePrecision, volume: volumePrecision } = precision
-    const mapping = {
+    const mapping: Record<string, string> = {
       '{time}': customApi.formatDate(dateTimeFormat, current.timestamp, 'YYYY-MM-DD HH:mm', FormatDateType.Tooltip),
       '{open}': formatFoldDecimal(formatThousands(formatPrecision(current.open, pricePrecision), thousandsSeparator), decimalFoldThreshold),
       '{high}': formatFoldDecimal(formatThousands(formatPrecision(current.high, pricePrecision), thousandsSeparator), decimalFoldThreshold),
@@ -458,9 +466,9 @@ export default class CandleTooltipView extends IndicatorTooltipView {
         v.color = textColor
       }
       const match = v.text.match(/{(\S*)}/)
-      if (match !== null && match.length > 1) {
+      if (match && match.length > 1) {
         const key = `{${match[1]}}`
-        v.text = v.text.replace(key, (mapping[key] ?? tooltipStyles.defaultValue) as string)
+        v.text = v.text.replace(key, mapping[key] ?? tooltipStyles.defaultValue)
         if (key === '{change}') {
           v.color = changeValue === 0 ? styles.priceMark.last.noChangeColor : (changeValue > 0 ? styles.priceMark.last.upColor : styles.priceMark.last.downColor)
         }

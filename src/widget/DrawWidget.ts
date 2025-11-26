@@ -1,12 +1,9 @@
-
 import type Bounding from '../common/Bounding'
 import { UpdateLevel } from '../common/Updater'
 import Canvas from '../common/Canvas'
-
 import Widget from './Widget'
-
 import { createDom } from '../common/utils/dom'
-import { getPixelRatio } from '../common/utils/canvas'
+import { initCanvas } from '../common/utils/canvas'
 import type Pane from '../pane/Pane'
 
 export default abstract class DrawWidget<P extends Pane> extends Widget<P> {
@@ -88,16 +85,7 @@ export default abstract class DrawWidget<P extends Pane> extends Widget<P> {
 
   getImage(includeOverlay: boolean): HTMLCanvasElement {
     const { width, height } = this.getBounding()
-    const canvas = createDom('canvas', {
-      width: `${width}px`,
-      height: `${height}px`,
-      boxSizing: 'border-box'
-    })
-    const ctx = canvas.getContext('2d')!
-    const pixelRatio = getPixelRatio(canvas)
-    canvas.width = width * pixelRatio
-    canvas.height = height * pixelRatio
-    ctx.scale(pixelRatio, pixelRatio)
+    const { ctx, canvas } = initCanvas(width, height)
 
     ctx.drawImage(this._mainCanvas.getElement(), 0, 0, width, height)
 

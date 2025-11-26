@@ -1,16 +1,12 @@
-
 import type Bounding from '../common/Bounding'
 import { UpdateLevel } from '../common/Updater'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
 import { ActionType } from '../common/Action'
 import { createDom } from '../common/utils/dom'
 import { throttle } from '../common/utils/performance'
-
 import Widget from './Widget'
 import { WidgetNameConstants, REAL_SEPARATOR_HEIGHT } from './types'
-
 import type SeparatorPane from '../pane/SeparatorPane'
-
 import type DualYPane from '../pane/DualYPane'
 
 export default class SeparatorWidget extends Widget<SeparatorPane> {
@@ -62,7 +58,12 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
     return this._mouseLeaveEvent()
   }
 
-  private readonly _pressedMouseMoveEvent = throttle(this._pressedTouchMouseMoveEvent, 20)
+  private readonly _throttledPressedMouseMove = throttle(this._pressedTouchMouseMoveEvent.bind(this), 20)
+
+  private _pressedMouseMoveEvent(event: MouseTouchEvent): boolean {
+    this._throttledPressedMouseMove(event)
+    return true
+  }
 
   private _pressedTouchMouseMoveEvent(event: MouseTouchEvent): boolean {
     const dragDistance = event.pageY - this._dragStartY

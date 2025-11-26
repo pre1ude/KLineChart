@@ -1,4 +1,3 @@
-
 import type Coordinate from '../common/Coordinate'
 import { CandleType, PolygonType, type CrosshairDirectionStyle } from '../common/Styles'
 import { isNumber, isString } from '../common/utils/typeChecks'
@@ -19,8 +18,8 @@ export default class CrosshairLineView extends View {
     const styles = chartStore.getStyles()
     const crosshairStyles = styles.crosshair
     if (isString(crosshair.paneId) && crosshairStyles.show) {
-      if (crosshair.paneId === pane.getId()) {
-        const y = crosshair.y!
+      if (crosshair.paneId === pane.getId() && isNumber(crosshair.y)) {
+        const y = crosshair.y
         this._drawLine(
           ctx,
           [
@@ -30,15 +29,17 @@ export default class CrosshairLineView extends View {
           crosshairStyles.horizontal
         )
       }
-      const x = crosshair.realX!
-      this._drawLine(
-        ctx,
-        [
-          { x, y: 0 },
-          { x, y: bounding.height }
-        ],
-        crosshairStyles.vertical
-      )
+      if (isNumber(crosshair.realX)) {
+        const x = crosshair.realX
+        this._drawLine(
+          ctx,
+          [
+            { x, y: 0 },
+            { x, y: bounding.height }
+          ],
+          crosshairStyles.vertical
+        )
+      }
     }
     const candleStyles = styles.candle
     const candleAreaStyle = candleStyles.area
@@ -51,7 +52,7 @@ export default class CrosshairLineView extends View {
       const crosshair = chartStore.getTooltipStore().getCrosshair()
 
       if (crosshair.kLineData && crosshair.dataIndex === crosshair.realDataIndex && crosshair.paneId != null) {
-        const x = crosshair.realX!
+        const x = crosshair.realX
         const value = crosshair.kLineData?.[candleAreaStyle.value]
 
         if (isNumber(value)) {
