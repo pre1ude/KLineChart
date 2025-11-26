@@ -1,5 +1,3 @@
-
-import type Nullable from './Nullable'
 import type KLineData from './KLineData'
 
 export interface Margin {
@@ -233,9 +231,9 @@ export interface CandleTooltipRectStyle extends Omit<RectStyle, 'style' | 'borde
 }
 
 export interface CandleTooltipCustomCallbackData {
-  prev: Nullable<KLineData>
+  prev?: KLineData
   current: KLineData
-  next: Nullable<KLineData>
+  next?: KLineData
 }
 
 export type CandleTooltipCustomCallback = (data: CandleTooltipCustomCallbackData, styles: CandleStyle) => TooltipLegend[]

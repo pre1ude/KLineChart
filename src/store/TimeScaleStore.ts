@@ -1,4 +1,3 @@
-
 import type BarSpace from '../common/BarSpace'
 import type VisibleRange from '../common/VisibleRange'
 import { createDefaultTimeShareVisibleRange, getDefaultVisibleRange } from '../common/VisibleRange'
@@ -154,7 +153,7 @@ export default class TimeScaleStore {
     const { from, to } = visibleRange
     if (from === 0) {
       const firstData = dataList[0]
-      this._chartStore.executeLoadMoreCallback(firstData?.timestamp ?? null)
+      this._chartStore.executeLoadMoreCallback(firstData?.timestamp)
       this._chartStore.executeLoadDataCallback({
         type: LoadDataType.Backward,
         data: firstData ?? null

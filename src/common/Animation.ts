@@ -1,5 +1,3 @@
-
-import type Nullable from './Nullable'
 import { requestAnimationFrame } from './utils/compatible'
 import { merge } from './utils/typeChecks'
 
@@ -14,7 +12,7 @@ interface AnimationOptions {
 export default class Animation {
   private readonly _options = { duration: 500, iterationCount: 1 }
 
-  private _doFrameCallback: Nullable<AnimationDoFrameCallback>
+  private _doFrameCallback?: AnimationDoFrameCallback
 
   private _currentIterationCount = 0
   private _running = false

@@ -1,5 +1,3 @@
-
-import type Nullable from '../common/Nullable'
 import type KLineData from '../common/KLineData'
 import type Crosshair from '../common/Crosshair'
 import { UpdateLevel } from '../common/Updater'
@@ -16,7 +14,7 @@ export interface TooltipIcon {
 export default class TooltipStore {
   private readonly _chartStore: ChartStore
   private _crosshair: Crosshair = {}
-  private _activeIcon: Nullable<TooltipIcon> = null
+  private _activeIcon?: TooltipIcon
 
   constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
@@ -98,10 +96,10 @@ export default class TooltipStore {
   }
 
   setActiveIcon(icon?: TooltipIcon): void {
-    this._activeIcon = icon ?? null
+    this._activeIcon = icon
   }
 
-  getActiveIcon(): Nullable<TooltipIcon> {
+  getActiveIcon() {
     return this._activeIcon
   }
 

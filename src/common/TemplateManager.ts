@@ -1,5 +1,3 @@
-import type Nullable from './Nullable'
-
 interface BaseTemplate {
   name: string
 }
@@ -18,8 +16,8 @@ export class TemplateManager<T extends BaseTemplate> {
     this.store.set(template.name, template)
   }
 
-  get(name: string): Nullable<T> {
-    return this.store.get(name) ?? null
+  get(name: string) {
+    return this.store.get(name)
   }
 
   keys(): string[] {

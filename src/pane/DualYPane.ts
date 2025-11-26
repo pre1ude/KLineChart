@@ -1,5 +1,4 @@
 import type DeepRequired from '../common/DeepRequired'
-import type Nullable from '../common/Nullable'
 import { type UpdateLevel } from '../common/Updater'
 import type Bounding from '../common/Bounding'
 import { isValid, merge } from '../common/utils/typeChecks'
@@ -32,7 +31,7 @@ export default abstract class DualYPane extends Pane {
     }
   }
 
-  constructor(rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string, options: Omit<PaneOptions, 'id' | 'height'>) {
+  constructor(rootContainer: HTMLElement, afterElement: HTMLElement | null, chart: Chart, id: string, options: Omit<PaneOptions, 'id' | 'height'>) {
     super(rootContainer, afterElement, chart, id)
     const container = this.getContainer()
     this._mainWidget = this.createMainWidget(container)

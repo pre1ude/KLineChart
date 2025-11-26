@@ -1,5 +1,3 @@
-
-import type Nullable from './common/Nullable'
 import type DeepPartial from './common/DeepPartial'
 import type Bounding from './common/Bounding'
 import type KLineData from './common/KLineData'
@@ -17,7 +15,7 @@ import { type CustomApi, LayoutChildType, type Options } from './Options'
 import Animation from './common/Animation'
 import { createId } from './common/utils/id'
 import { createDom } from './common/utils/dom'
-import { getPixelRatio } from './common/utils/canvas'
+import { initCanvas } from './common/utils/canvas'
 import { isString, isArray, isValid, isNumber } from './common/utils/typeChecks'
 import { logWarn } from './common/utils/logger'
 import { binarySearchNearest } from './common/utils/number'
@@ -50,8 +48,8 @@ export interface ConvertFinder {
 
 export interface Chart {
   id: string
-  getDom: (paneId?: string, position?: DomPosition) => Nullable<HTMLElement>
-  getSize: (paneId?: string, position?: DomPosition) => Nullable<Bounding>
+  getDom: (paneId?: string, position?: DomPosition) => HTMLElement | null
+  getSize: (paneId?: string, position?: DomPosition) => Bounding | null
   setLocale: (locale: string) => void
   getLocale: () => string
   setStyles: (styles: string | DeepPartial<Styles>) => void
@@ -85,12 +83,12 @@ export interface Chart {
    */
   loadMore: (cb: LoadMoreCallback) => void
   setLoadDataCallback: (cb: LoadDataCallback) => void
-  createIndicator: (value: string | IndicatorCreate, isStack?: boolean, paneOptions?: PaneOptions, callback?: () => void) => Nullable<string>
+  createIndicator: (value: string | IndicatorCreate, isStack?: boolean, paneOptions?: PaneOptions, callback?: () => void) => string | undefined
   overrideIndicator: (override: IndicatorCreate, paneId?: string, callback?: () => void) => void
-  getIndicatorByPaneId: (paneId?: string, name?: string) => Nullable<Indicator> | Nullable<Map<string, Indicator>> | Map<string, Map<string, Indicator>>
+  getIndicatorByPaneId: (paneId?: string, name?: string) => Indicator | Map<string, Indicator> | Map<string, Map<string, Indicator>> | null
   removeIndicator: (paneId: string, name?: string) => void
-  createOverlay: (value: string | OverlayCreate | Array<string | OverlayCreate>, paneId?: string) => Nullable<string> | Array<Nullable<string>>
-  getOverlayById: (id: string) => Nullable<Overlay>
+  createOverlay: (value: string | OverlayCreate | Array<string | OverlayCreate>, paneId?: string) => undefined | string | Array<string | undefined>
+  getOverlayById: (id: string) => Overlay | undefined
   overrideOverlay: (override: Partial<OverlayCreate>) => void
   removeOverlay: (remove?: string | OverlayFilter) => void
   setPaneOptions: (options: PaneOptions) => void
@@ -108,7 +106,7 @@ export interface Chart {
   zoomAtTimestamp: (scale: number, timestamp: number, animationDuration?: number) => void
   convertToPixel: (points: Partial<Point> | Array<Partial<Point>>, finder: ConvertFinder) => Partial<Coordinate> | Array<Partial<Coordinate>>
   convertFromPixel: (coordinates: Array<Partial<Coordinate>>, finder: ConvertFinder) => Partial<Point> | Array<Partial<Point>>
-  executeAction: (type: ActionType, data: unknown) => void
+  executeAction: (type: ActionType, data: object) => void
   subscribeAction: (type: ActionType, callback: ActionCallback) => void
   unsubscribeAction: (type: ActionType, callback?: ActionCallback) => void
   getConvertPictureUrl: (includeOverlay?: boolean, type?: string, backgroundColor?: string) => string
@@ -123,19 +121,12 @@ export default class ChartImp implements Chart {
   private readonly _chartEvent: Event
   private readonly _chartStore: ChartStore
   private _drawPanes: (DrawPane)[] = []
-  private _candlePane: Nullable<CandlePane>
-  private _xAxisPane: XAxisPane
+  private _candlePane?: CandlePane
+  private _xAxisPane!: XAxisPane
   private readonly _separatorPanes = new Map<DrawPane, SeparatorPane>()
 
   constructor(container: HTMLElement, options?: Options) {
-    this._initContainer(container)
-    this._chartEvent = new Event(this._chartContainer, this)
-    this._chartStore = new ChartStore(this, options)
-    this._initPanes(options)
-    this.adjustPaneViewport(true, true, true)
-  }
-
-  private _initContainer(container: HTMLElement): void {
+    this.id = createId('chart_')
     this._container = container
     this._chartContainer = createDom('div', {
       position: 'relative',
@@ -154,6 +145,10 @@ export default class ChartImp implements Chart {
     })
     this._chartContainer.tabIndex = 1
     container.appendChild(this._chartContainer)
+    this._chartEvent = new Event(this._chartContainer, this)
+    this._chartStore = new ChartStore(this, options)
+    this._initPanes(options)
+    this.adjustPaneViewport(true, true, true)
   }
 
   private _initPanes(options?: Options): void {
@@ -163,8 +158,7 @@ export default class ChartImp implements Chart {
 
     const createXAxisPane: ((ops?: PaneOptions) => void) = (ops?: PaneOptions) => {
       if (!xAxisPaneInitialized) {
-        const pane = this._createPane<XAxisPane>(XAxisPane, PaneIdConstants.X_AXIS, ops ?? {})
-        this._xAxisPane = pane
+        this._xAxisPane = this._createPane<XAxisPane>(XAxisPane, PaneIdConstants.X_AXIS, ops ?? {})
         xAxisPaneInitialized = true
       }
     }
@@ -190,7 +184,7 @@ export default class ChartImp implements Chart {
         case LayoutChildType.Indicator: {
           const content = child.content ?? []
           if (content.length > 0) {
-            let paneId: Nullable<string>
+            let paneId: string | undefined
             content.forEach(v => {
               if (isValid(paneId)) {
                 this.createIndicator(v, true, { id: paneId })
@@ -211,12 +205,12 @@ export default class ChartImp implements Chart {
   }
 
   private _createPane<P extends DrawPane>(
-    drawPaneClass: new (rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string, options: Omit<PaneOptions, 'id' | 'height'>) => P,
+    drawPaneClass: new (rootContainer: HTMLElement, afterElement: HTMLElement | null, chart: ChartImp, id: string, options: Omit<PaneOptions, 'id' | 'height'>) => P,
     id: string,
     options?: PaneOptions
   ): P {
-    let index: Nullable<number> = null
-    let pane: Nullable<P> = null
+    let index: number | undefined
+    let pane: P | undefined
     const position = options?.position
     switch (position) {
       case PanePosition.Top: {
@@ -401,7 +395,7 @@ export default class ChartImp implements Chart {
     if (isString(options.id)) {
       const pane = this.getDrawPaneById(options.id)
       let shouldMeasureHeight = false
-      if (pane !== null) {
+      if (pane) {
         let shouldAdjust = forceShouldAdjust
         if (options.id !== PaneIdConstants.CANDLE && isNumber(options.height) && options.height > 0) {
           const minHeight = Math.max(options.minHeight ?? pane.getOptions().minHeight, 0)
@@ -422,7 +416,7 @@ export default class ChartImp implements Chart {
     }
   }
 
-  getDrawPaneById(paneId: string): Nullable<DrawPane> {
+  getDrawPaneById(paneId: string): DrawPane | undefined {
     if (paneId === PaneIdConstants.CANDLE) {
       return this._candlePane
     }
@@ -430,7 +424,7 @@ export default class ChartImp implements Chart {
       return this._xAxisPane
     }
     const pane = this._drawPanes.find(p => p.getId() === paneId)
-    return pane ?? null
+    return pane
   }
 
   getContainer(): HTMLElement { return this._container }
@@ -500,10 +494,10 @@ export default class ChartImp implements Chart {
   crosshairChange(crosshair: Crosshair): void {
     const actionStore = this._chartStore.getActionStore()
     if (actionStore.has(ActionType.OnCrosshairChange)) {
-      const indicatorData = {}
+      const indicatorData: Record<string, Record<string, unknown>> = {}
       this._drawPanes.forEach(pane => {
         const id = pane.getId()
-        const paneIndicatorData = {}
+        const paneIndicatorData: Record<string, unknown> = {}
         const indicators = this._chartStore.getIndicatorStore().getInstances(id)
         indicators.forEach(indicator => {
           const result = indicator.result
@@ -520,10 +514,10 @@ export default class ChartImp implements Chart {
     }
   }
 
-  getDom(paneId?: string, position?: DomPosition): Nullable<HTMLElement> {
+  getDom(paneId?: string, position?: DomPosition): HTMLElement | null {
     if (isString(paneId)) {
       const pane = this.getDrawPaneById(paneId)
-      if (pane !== null) {
+      if (pane) {
         const pos = position ?? DomPosition.Root
         switch (pos) {
           case DomPosition.Root: {
@@ -545,10 +539,10 @@ export default class ChartImp implements Chart {
     return null
   }
 
-  getSize(paneId?: string, position?: DomPosition): Nullable<Bounding> {
+  getSize(paneId?: string, position?: DomPosition): Bounding | null {
     if (isValid(paneId)) {
       const pane = this.getDrawPaneById(paneId)
-      if (pane !== null) {
+      if (pane) {
         const pos = position ?? DomPosition.Root
         switch (pos) {
           case DomPosition.Root: {
@@ -728,16 +722,16 @@ export default class ChartImp implements Chart {
     this._chartStore.setLoadDataCallback(cb)
   }
 
-  createIndicator(value: string | IndicatorCreate, isStack?: boolean, paneOptions?: Nullable<PaneOptions>, callback?: () => void): Nullable<string> {
+  createIndicator(value: string | IndicatorCreate, isStack?: boolean, paneOptions?: PaneOptions, callback?: () => void): string | undefined {
     const indicator = isString(value) ? { name: value } : value
     if (getIndicatorClass(indicator.name) === null) {
       logWarn('createIndicator', 'value', 'indicator not supported, you may need to use registerIndicator to add one!!!')
-      return null
+      return undefined
     }
 
     let paneId = paneOptions?.id
     const currentPane = this.getDrawPaneById(paneId ?? '') as DualYPane
-    if (currentPane !== null) {
+    if (currentPane) {
       if (currentPane.getId() !== PaneIdConstants.CANDLE) {
         // is indicator pane
         const yAxisPosition = indicator.yAxisPosition ?? 'left'
@@ -779,11 +773,11 @@ export default class ChartImp implements Chart {
         callback?.()
       })
     }
-    return paneId ?? null
+    return paneId
   }
 
-  overrideIndicator(override: IndicatorCreate, paneId?: Nullable<string>, callback?: () => void): void {
-    this._chartStore.getIndicatorStore().override(override, paneId ?? null).then(
+  overrideIndicator(override: IndicatorCreate, paneId?: string, callback?: () => void): void {
+    this._chartStore.getIndicatorStore().override(override, paneId).then(
       ([onlyUpdateFlag, resizeFlag]) => {
         if (onlyUpdateFlag || resizeFlag) {
           this.adjustPaneViewport(false, resizeFlag, true, resizeFlag)
@@ -793,7 +787,7 @@ export default class ChartImp implements Chart {
     ).catch(() => {})
   }
 
-  getIndicatorByPaneId(paneId?: string, name?: string): Nullable<Indicator> | Nullable<Map<string, Indicator>> | Map<string, Map<string, Indicator>> {
+  getIndicatorByPaneId(paneId?: string, name?: string): Indicator | Map<string, Indicator> | Map<string, Map<string, Indicator>> | null {
     return this._chartStore.getIndicatorStore().getInstanceByPaneId(paneId, name)
   }
 
@@ -809,7 +803,7 @@ export default class ChartImp implements Chart {
       if (paneId !== PaneIdConstants.CANDLE) {
         // in indicator pane
         const pane = this.getDrawPaneById(paneId)
-        if (pane !== null) {
+        if (pane) {
           const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
           const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
           if (name !== undefined) {
@@ -822,7 +816,7 @@ export default class ChartImp implements Chart {
         }
         if (!indicatorStore.hasInstances(paneId)) {
           const index = this._drawPanes.findIndex(p => p.getId() === paneId)
-          if (pane !== null) {
+          if (pane) {
             shouldMeasureHeight = true
             const separatorPane = this._separatorPanes.get(pane)
             if (isValid(separatorPane)) {
@@ -854,7 +848,7 @@ export default class ChartImp implements Chart {
     }
   }
 
-  createOverlay(value: string | OverlayCreate | Array<string | OverlayCreate>, paneId?: string): Nullable<string> | Array<Nullable<string>> {
+  createOverlay(value: string | OverlayCreate | Array<string | OverlayCreate>, paneId?: string): undefined | string | Array<string | undefined> {
     let overlays: OverlayCreate[] = []
     if (isString(value)) {
       overlays = [{ name: value }]
@@ -880,13 +874,13 @@ export default class ChartImp implements Chart {
   }
 
   private _validatePaneId(paneId?: string): string {
-    if (isValid(paneId) && this.getDrawPaneById(paneId) !== null) {
+    if (isValid(paneId) && this.getDrawPaneById(paneId)) {
       return paneId
     }
     return PaneIdConstants.CANDLE
   }
 
-  getOverlayById(id: string): Nullable<Overlay> {
+  getOverlayById(id: string): Overlay | undefined {
     return this._chartStore.getOverlayStore().getInstanceById(id)
   }
 
@@ -1004,7 +998,7 @@ export default class ChartImp implements Chart {
     let coordinates: Array<Partial<Coordinate>> = []
     if (paneId !== PaneIdConstants.X_AXIS) {
       const pane = this.getDrawPaneById(paneId)
-      if (pane !== null) {
+      if (pane) {
         const bounding = pane.getBounding()
         const ps = new Array<Partial<Point>>().concat(points)
         const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
@@ -1036,7 +1030,7 @@ export default class ChartImp implements Chart {
     let points: Array<Partial<Point>> = []
     if (paneId !== PaneIdConstants.X_AXIS) {
       const pane = this.getDrawPaneById(paneId)
-      if (pane !== null) {
+      if (pane) {
         const bounding = pane.getBounding()
         const cs = new Array<Partial<Coordinate>>().concat(coordinates)
         const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
@@ -1061,7 +1055,7 @@ export default class ChartImp implements Chart {
     return isArray(coordinates) ? points : (points[0] ?? {})
   }
 
-  executeAction(type: ActionType, data: unknown): void {
+  executeAction(type: ActionType, data: object): void {
     switch (type) {
       case ActionType.OnCrosshairChange: {
         const crosshair: Crosshair = { ...data }
@@ -1083,18 +1077,9 @@ export default class ChartImp implements Chart {
   getConvertPictureUrl(includeOverlay?: boolean, type?: string, backgroundColor?: string): string {
     const width = this._chartContainer.clientWidth
     const height = this._chartContainer.clientHeight
-    const canvas = createDom('canvas', {
-      width: `${width}px`,
-      height: `${height}px`,
-      boxSizing: 'border-box'
-    })
-    const ctx = canvas.getContext('2d')!
-    const pixelRatio = getPixelRatio(canvas)
-    canvas.width = width * pixelRatio
-    canvas.height = height * pixelRatio
-    ctx.save()
-    ctx.scale(pixelRatio, pixelRatio)
+    const { ctx, canvas } = initCanvas(width, height)
 
+    ctx.save()
     ctx.fillStyle = backgroundColor ?? '#FFFFFF'
     ctx.fillRect(0, 0, width, height)
     const overlayFlag = includeOverlay ?? false

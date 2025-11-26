@@ -1,4 +1,3 @@
-
 import type Coordinate from '../common/Coordinate'
 import type VisibleData from '../common/VisibleData'
 import { type GradientColor } from '../common/Styles'
@@ -7,7 +6,6 @@ import { isNumber, isArray, isValid } from '../common/utils/typeChecks'
 import { UpdateLevel } from '../common/Updater'
 import View from './View'
 import { lineTo } from '../extension/figure/line'
-import type Nullable from '../common/Nullable'
 import type DualYPane from '../pane/DualYPane'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 
@@ -32,7 +30,7 @@ export default class CandleAreaView extends View {
     const bounding = widget.getBounding()
     const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
     const styles = chart.getStyles().candle.area
-    let ripplePointCoordinate: Nullable<Coordinate> = null
+    let ripplePointCoordinate: Coordinate | undefined
 
     const visibleDataList = chartStore.getVisibleDataList()
     const isTimeShare = chartStore.getIsTimeShare()
@@ -130,8 +128,8 @@ export default class CandleAreaView extends View {
     if (pointStyles.show && isValid(ripplePointCoordinate)) {
       drawStaticFigure(ctx, 'circle', {
         attrs: {
-          x: ripplePointCoordinate!.x,
-          y: ripplePointCoordinate!.y,
+          x: ripplePointCoordinate.x,
+          y: ripplePointCoordinate.y,
           r: pointStyles.radius
         },
         styles: {
@@ -147,8 +145,8 @@ export default class CandleAreaView extends View {
       // todo maybe we should just drawStaticFigure here
       this._ripplePoint
         ?.setAttrs({
-          x: ripplePointCoordinate!.x,
-          y: ripplePointCoordinate!.y,
+          x: ripplePointCoordinate.x,
+          y: ripplePointCoordinate.y,
           r: rippleRadius
         })
         .setStyles({ style: 'fill', color: pointStyles.rippleColor }).draw(ctx)

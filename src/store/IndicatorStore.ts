@@ -1,5 +1,3 @@
-
-import type Nullable from '../common/Nullable'
 import type ChartStore from './ChartStore'
 import { type IndicatorCreate, Indicator, IndicatorSeries } from '../component/Indicator'
 import { isValid, isString } from '../common/utils/typeChecks'
@@ -108,7 +106,7 @@ export default class IndicatorStore {
     return result.includes(true)
   }
 
-  getInstanceByPaneId(paneId?: string, name?: string): Nullable<Indicator> | Nullable<Map<string, Indicator>> | Map<string, Map<string, Indicator>> {
+  getInstanceByPaneId(paneId?: string, name?: string): Indicator | Map<string, Indicator> | Map<string, Map<string, Indicator>> | null {
     const createMapping: ((instances: Indicator[]) => Map<string, Indicator>) = (instances: Indicator[]) => {
       const mapping = new Map<string, Indicator>()
       instances.forEach((ins) => {
@@ -158,10 +156,10 @@ export default class IndicatorStore {
     }
   }
 
-  async override(indicator: IndicatorCreate, paneId: Nullable<string>): Promise<[boolean, boolean]> {
+  async override(indicator: IndicatorCreate, paneId?: string): Promise<[boolean, boolean]> {
     const { name } = indicator
     let instances = new Map<string, Indicator[]>()
-    if (paneId !== null) {
+    if (paneId) {
       const paneInstances = this._instances.get(paneId)
       if (isValid(paneInstances)) {
         instances.set(paneId, paneInstances)

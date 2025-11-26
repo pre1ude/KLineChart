@@ -1,7 +1,6 @@
 import { UpdateLevel } from '../common/Updater'
 import { createDefaultBounding } from '../common/Bounding'
 import { createDom } from '../common/utils/dom'
-import type Nullable from '../common/Nullable'
 import type Updater from '../common/Updater'
 import type Bounding from '../common/Bounding'
 import type Chart from '../Chart'
@@ -12,7 +11,7 @@ export default abstract class Pane implements Updater {
   private readonly _chart: Chart
   private readonly _bounding: Bounding = createDefaultBounding()
 
-  constructor(rootContainer: HTMLElement, afterElement: Nullable<HTMLElement>, chart: Chart, id: string) {
+  constructor(rootContainer: HTMLElement, afterElement: HTMLElement | null, chart: Chart, id: string) {
     this._chart = chart
     this._id = id
     this._rootContainer = rootContainer

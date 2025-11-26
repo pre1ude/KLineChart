@@ -1,5 +1,3 @@
-
-import type Nullable from '../common/Nullable'
 import type KLineData from '../common/KLineData'
 import type Crosshair from '../common/Crosshair'
 import { type IndicatorStyle, type TooltipStyle, type TooltipIconStyle, type TooltipTextStyle, type TooltipLegend, TooltipShowRule, type TooltipLegendChild, TooltipIconPosition } from '../common/Styles'
@@ -59,7 +57,7 @@ export default class IndicatorTooltipView extends View {
     paneId: string,
     dataList: KLineData[],
     crosshair: Crosshair,
-    activeTooltipIcon: Nullable<TooltipIcon>,
+    activeTooltipIcon: TooltipIcon | null,
     indicators: Indicator[],
     customApi: CustomApi,
     thousandsSeparator: string,
@@ -132,7 +130,7 @@ export default class IndicatorTooltipView extends View {
   // todo need optimize
   protected drawStandardTooltipIcons(
     ctx: CanvasRenderingContext2D,
-    activeIcon: Nullable<TooltipIcon>,
+    activeIcon: TooltipIcon | null,
     icons: TooltipIconStyle[],
     coordinate: Coordinate,
     paneId: string,
@@ -288,7 +286,7 @@ export default class IndicatorTooltipView extends View {
       tooltipData.values = legends
     }
 
-    if (indicator.createTooltipDataSource !== null) {
+    if (indicator.createTooltipDataSource) {
       const widget = this.getWidget()
       const pane = widget.getPane()
       const chartStore = pane.getChart().getChartStore()

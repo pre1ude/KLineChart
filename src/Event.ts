@@ -1,5 +1,3 @@
-
-import type Nullable from './common/Nullable'
 import SyntheticEvent, { type EventHandler, type MouseTouchEvent, TOUCH_MIN_RADIUS } from './common/SyntheticEvent'
 import type Coordinate from './common/Coordinate'
 import { UpdateLevel } from './common/Updater'
@@ -18,8 +16,8 @@ import type VisibleRange from './common/VisibleRange'
 import { setCursor } from './common/utils/cursor'
 
 interface EventTriggerWidgetInfo {
-  pane: Nullable<Pane>
-  widget: Nullable<Widget>
+  pane?: Pane
+  widget?: Widget
 }
 
 export default class Event implements EventHandler {
@@ -30,11 +28,11 @@ export default class Event implements EventHandler {
   // 惯性滚动开始时间
   private _flingStartTime = new Date().getTime()
   // 惯性滚动定时器
-  private _flingScrollRequestId: Nullable<number> = null
+  private _flingScrollRequestId?: number
   // 开始滚动时坐标点
-  private _startScrollCoordinate: Nullable<Coordinate> = null
+  private _startScrollCoordinate?: Coordinate
   // 开始触摸时坐标
-  private _touchCoordinate: Nullable<Coordinate> = null
+  private _touchCoordinate?: Coordinate
   // 是否是取消了十字光标
   private _touchCancelCrosshair = false
   // 是否缩放过
@@ -42,17 +40,17 @@ export default class Event implements EventHandler {
   // 用来记录捏合缩放的尺寸
   private _pinchScale = 1
 
-  private _mouseDownWidget: Nullable<Widget> = null
+  private _mouseDownWidget?: Widget
 
-  private _prevYAxisRange: Nullable<VisibleRange> = null
+  private _prevYAxisRange?: VisibleRange
 
-  private _xAxisStartScaleCoordinate: Nullable<Coordinate> = null
+  private _xAxisStartScaleCoordinate?: Coordinate
   private _xAxisStartScaleDistance = 0
   private _xAxisScale = 1
 
   private _yAxisStartScaleDistance = 0
 
-  private _mouseMoveTriggerWidgetInfo: EventTriggerWidgetInfo = { pane: null, widget: null }
+  private _mouseMoveTriggerWidgetInfo: EventTriggerWidgetInfo = {}
 
   private readonly _boundKeyBoardDownEvent: ((event: KeyboardEvent) => void) = (event: KeyboardEvent) => {
     if (event.shiftKey) {
@@ -129,7 +127,7 @@ export default class Event implements EventHandler {
   mouseDownEvent(e: MouseTouchEvent): boolean {
     const { pane, widget } = this._findWidgetByEvent(e)
     this._mouseDownWidget = widget
-    if (widget !== null) {
+    if (widget) {
       const event = this._makeWidgetEvent(e, widget)
       const name = widget.getName()
       switch (name) {
@@ -138,8 +136,8 @@ export default class Event implements EventHandler {
         }
         case WidgetNameConstants.MAIN: {
           // todo use left
-          const range = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent().getRange() ?? null
-          this._prevYAxisRange = range === null ? range : { ...range }
+          const range = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent().getRange()
+          this._prevYAxisRange = range ? { ...range } : undefined
           this._startScrollCoordinate = { x: event.x, y: event.y }
           return widget.dispatchEvent('mouseDownEvent', event)
         }
@@ -157,8 +155,8 @@ export default class Event implements EventHandler {
           if (consumed) {
             this._chart.updatePane(UpdateLevel.Overlay)
           }
-          const range = (widget as YAxisWidget).getAxisComponent().getRange() ?? null
-          this._prevYAxisRange = range === null ? range : { ...range }
+          const range = (widget as YAxisWidget).getAxisComponent().getRange()
+          this._prevYAxisRange = range ? { ...range } : undefined
           this._yAxisStartScaleDistance = event.pageY
           return consumed
         }
@@ -178,16 +176,16 @@ export default class Event implements EventHandler {
       this._mouseMoveTriggerWidgetInfo.widget?.dispatchEvent('mouseLeaveEvent', event)
       this._mouseMoveTriggerWidgetInfo = { pane, widget }
     }
-    if (widget !== null) {
+    if (widget) {
       const name = widget.getName()
       switch (name) {
         case WidgetNameConstants.MAIN: {
           const consumed = widget.dispatchEvent('mouseMoveEvent', event)
           const chartStore = this._chart.getChartStore()
           let crosshair: Crosshair | undefined = { x: event.x, y: event.y, paneId: pane?.getId() }
-          if (consumed && chartStore.getTooltipStore().getActiveIcon() !== null) {
+          if (consumed && chartStore.getTooltipStore().getActiveIcon()) {
             crosshair = undefined
-            if (widget !== null) {
+            if (widget) {
               setCursor(widget.getContainer(), 'pointer')
             }
           }
@@ -207,12 +205,12 @@ export default class Event implements EventHandler {
   }
 
   pressedMouseMoveEvent(e: MouseTouchEvent): boolean {
-    if (this._mouseDownWidget !== null && this._mouseDownWidget.getName() === WidgetNameConstants.SEPARATOR) {
+    if (this._mouseDownWidget && this._mouseDownWidget.getName() === WidgetNameConstants.SEPARATOR) {
       return this._mouseDownWidget.dispatchEvent('pressedMouseMoveEvent', e)
     }
     const { pane, widget } = this._findWidgetByEvent(e)
     if (
-      widget !== null &&
+      widget &&
       this._mouseDownWidget?.getPane().getId() === pane?.getId() &&
       this._mouseDownWidget?.getName() === widget.getName()
     ) {
@@ -222,10 +220,10 @@ export default class Event implements EventHandler {
         case WidgetNameConstants.MAIN: {
           const bounding = widget.getBounding()
           const consumed = widget.dispatchEvent('pressedMouseMoveEvent', event)
-          if (!consumed && this._startScrollCoordinate !== null) {
+          if (!consumed && this._startScrollCoordinate) {
             // todo use left
             const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
-            if (this._prevYAxisRange !== null && !yAxis.getAutoCalcTickFlag() && yAxis.getScrollZoomEnabled()) {
+            if (this._prevYAxisRange && !yAxis.getAutoCalcTickFlag() && yAxis.getScrollZoomEnabled()) {
               const { from, to } = this._prevYAxisRange
               const range = to - from
               let distance: number
@@ -275,7 +273,7 @@ export default class Event implements EventHandler {
           const consumed = widget.dispatchEvent('pressedMouseMoveEvent', event)
           if (!consumed) {
             const yAxis = (widget as YAxisWidget).getAxisComponent()
-            if (this._prevYAxisRange !== null && yAxis.getScrollZoomEnabled()) {
+            if (this._prevYAxisRange && yAxis.getScrollZoomEnabled()) {
               const { from, to } = this._prevYAxisRange
               const range = to - from
               const scale = event.pageY / this._yAxisStartScaleDistance
@@ -306,7 +304,7 @@ export default class Event implements EventHandler {
   mouseUpEvent(e: MouseTouchEvent): boolean {
     const { widget } = this._findWidgetByEvent(e)
     let consumed: boolean = false
-    if (widget !== null) {
+    if (widget) {
       const event = this._makeWidgetEvent(e, widget)
       const name = widget.getName()
       switch (name) {
@@ -322,10 +320,10 @@ export default class Event implements EventHandler {
         this._chart.updatePane(UpdateLevel.Overlay)
       }
     }
-    this._mouseDownWidget = null
-    this._startScrollCoordinate = null
-    this._prevYAxisRange = null
-    this._xAxisStartScaleCoordinate = null
+    this._mouseDownWidget = undefined
+    this._startScrollCoordinate = undefined
+    this._prevYAxisRange = undefined
+    this._xAxisStartScaleCoordinate = undefined
     this._xAxisStartScaleDistance = 0
     this._xAxisScale = 1
     this._yAxisStartScaleDistance = 0
@@ -334,7 +332,7 @@ export default class Event implements EventHandler {
 
   mouseClickEvent(e: MouseTouchEvent): boolean {
     const { widget } = this._findWidgetByEvent(e)
-    if (widget !== null) {
+    if (widget) {
       const event = this._makeWidgetEvent(e, widget)
       return widget.dispatchEvent('mouseClickEvent', event)
     }
@@ -344,7 +342,7 @@ export default class Event implements EventHandler {
   mouseRightClickEvent(e: MouseTouchEvent): boolean {
     const { widget } = this._findWidgetByEvent(e)
     let consumed: boolean = false
-    if (widget !== null) {
+    if (widget) {
       const event = this._makeWidgetEvent(e, widget)
       const name = widget.getName()
       switch (name) {
@@ -364,7 +362,7 @@ export default class Event implements EventHandler {
 
   mouseDoubleClickEvent(e: MouseTouchEvent): boolean {
     const { widget } = this._findWidgetByEvent(e)
-    if (widget !== null) {
+    if (widget) {
       const name = widget.getName()
       switch (name) {
         case WidgetNameConstants.MAIN: {
@@ -392,7 +390,7 @@ export default class Event implements EventHandler {
 
   touchStartEvent(e: MouseTouchEvent): boolean {
     const { pane, widget } = this._findWidgetByEvent(e)
-    if (widget !== null) {
+    if (widget) {
       const event = this._makeWidgetEvent(e, widget)
       const name = widget.getName()
       switch (name) {
@@ -401,19 +399,19 @@ export default class Event implements EventHandler {
           const tooltipStore = chartStore.getTooltipStore()
           if (widget.dispatchEvent('mouseDownEvent', event)) {
             this._touchCancelCrosshair = true
-            this._touchCoordinate = null
+            this._touchCoordinate = undefined
             tooltipStore.setCrosshair(undefined, { notInvalidate: true })
             this._chart.updatePane(UpdateLevel.Overlay)
             return true
           }
-          if (this._flingScrollRequestId !== null) {
+          if (this._flingScrollRequestId) {
             cancelAnimationFrame(this._flingScrollRequestId)
-            this._flingScrollRequestId = null
+            this._flingScrollRequestId = undefined
           }
           this._flingStartTime = new Date().getTime()
           this._startScrollCoordinate = { x: event.x, y: event.y }
           this._touchZoomed = false
-          if (this._touchCoordinate !== null) {
+          if (this._touchCoordinate) {
             const xDif = event.x - this._touchCoordinate.x
             const yDif = event.y - this._touchCoordinate.y
             const radius = Math.sqrt(xDif * xDif + yDif * yDif)
@@ -421,7 +419,7 @@ export default class Event implements EventHandler {
               this._touchCoordinate = { x: event.x, y: event.y }
               tooltipStore.setCrosshair({ x: event.x, y: event.y, paneId: pane?.getId() })
             } else {
-              this._touchCoordinate = null
+              this._touchCoordinate = undefined
               this._touchCancelCrosshair = true
               tooltipStore.setCrosshair()
             }
@@ -443,7 +441,7 @@ export default class Event implements EventHandler {
 
   touchMoveEvent(e: MouseTouchEvent): boolean {
     const { pane, widget } = this._findWidgetByEvent(e)
-    if (widget !== null) {
+    if (widget) {
       const event = this._makeWidgetEvent(e, widget)
       const name = widget.getName()
       const chartStore = this._chart.getChartStore()
@@ -456,11 +454,11 @@ export default class Event implements EventHandler {
             this._chart.updatePane(UpdateLevel.Overlay)
             return true
           }
-          if (this._touchCoordinate !== null) {
+          if (this._touchCoordinate) {
             event.preventDefault?.()
             tooltipStore.setCrosshair({ x: event.x, y: event.y, paneId: pane?.getId() })
           } else if (
-            this._startScrollCoordinate !== null &&
+            this._startScrollCoordinate &&
               Math.abs(this._startScrollCoordinate.x - event.x) > this._startScrollCoordinate.y - event.y
           ) {
             const distance = event.x - this._startScrollCoordinate.x
@@ -484,13 +482,13 @@ export default class Event implements EventHandler {
 
   touchEndEvent(e: MouseTouchEvent): boolean {
     const { widget } = this._findWidgetByEvent(e)
-    if (widget !== null) {
+    if (widget) {
       const event = this._makeWidgetEvent(e, widget)
       const name = widget.getName()
       switch (name) {
         case WidgetNameConstants.MAIN: {
           widget.dispatchEvent('mouseUpEvent', event)
-          if (this._startScrollCoordinate !== null) {
+          if (this._startScrollCoordinate) {
             const time = new Date().getTime() - this._flingStartTime
             const distance = event.x - this._startScrollCoordinate.x
             let v = distance / (time > 0 ? time : 1) * 20
@@ -501,9 +499,9 @@ export default class Event implements EventHandler {
                   timeScaleStore.scroll(v)
                   v = v * (1 - 0.025)
                   if (Math.abs(v) < 1) {
-                    if (this._flingScrollRequestId !== null) {
+                    if (this._flingScrollRequestId) {
                       cancelAnimationFrame(this._flingScrollRequestId)
-                      this._flingScrollRequestId = null
+                      this._flingScrollRequestId = undefined
                     }
                   } else {
                     flingScroll()
@@ -530,7 +528,7 @@ export default class Event implements EventHandler {
   tapEvent(e: MouseTouchEvent): boolean {
     const { pane, widget } = this._findWidgetByEvent(e)
     let consumed = false
-    if (widget !== null) {
+    if (widget) {
       const event = this._makeWidgetEvent(e, widget)
       const result = widget.dispatchEvent('mouseClickEvent', event)
       if (widget.getName() === WidgetNameConstants.MAIN) {
@@ -539,7 +537,7 @@ export default class Event implements EventHandler {
         const tooltipStore = chartStore.getTooltipStore()
         if (result) {
           this._touchCancelCrosshair = true
-          this._touchCoordinate = null
+          this._touchCoordinate = undefined
           tooltipStore.setCrosshair(undefined, { notInvalidate: true })
           consumed = true
         } else {
@@ -564,7 +562,7 @@ export default class Event implements EventHandler {
 
   longTapEvent(e: MouseTouchEvent): boolean {
     const { pane, widget } = this._findWidgetByEvent(e)
-    if (widget !== null && widget.getName() === WidgetNameConstants.MAIN) {
+    if (widget && widget.getName() === WidgetNameConstants.MAIN) {
       const event = this._makeWidgetEvent(e, widget)
       this._touchCoordinate = { x: event.x, y: event.y }
       this._chart.getChartStore().getTooltipStore().setCrosshair({ x: event.x, y: event.y, paneId: pane?.getId() })
@@ -595,7 +593,7 @@ export default class Event implements EventHandler {
     const targetPane = drawPanes.find(pane => isPointInBounding(pane.getBounding(), e))
 
     if (!targetPane) {
-      return { pane: null, widget: null }
+      return {}
     }
     const mainWidget = targetPane.getMainWidget()
     if (isPointInBounding(mainWidget.getBounding(), e)) {
@@ -616,11 +614,11 @@ export default class Event implements EventHandler {
       }
     }
 
-    return { pane: targetPane, widget: null }
+    return { pane: targetPane }
   }
 
-  private _makeWidgetEvent(event: MouseTouchEvent, widget: Nullable<Widget>): MouseTouchEvent {
-    const bounding = widget?.getBounding() ?? null
+  private _makeWidgetEvent(event: MouseTouchEvent, widget?: Widget): MouseTouchEvent {
+    const bounding = widget?.getBounding()
     return {
       ...event,
       x: event.x - (bounding?.left ?? 0),

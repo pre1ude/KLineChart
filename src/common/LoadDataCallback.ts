@@ -1,5 +1,3 @@
-
-import type Nullable from './Nullable'
 import type KLineData from './KLineData'
 
 enum LoadDataType {
@@ -10,7 +8,7 @@ enum LoadDataType {
 
 interface LoadDataParams {
   type: LoadDataType
-  data: Nullable<KLineData>
+  data?: KLineData
   callback: (dataList: KLineData[], more?: boolean) => void
 }
 

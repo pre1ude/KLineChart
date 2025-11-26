@@ -1,5 +1,3 @@
-
-import type Nullable from '../common/Nullable'
 import type KLineData from '../common/KLineData'
 import type Precision from '../common/Precision'
 import type VisibleData from '../common/VisibleData'
@@ -78,12 +76,12 @@ export default class ChartStore {
    * Since v9.8.0 deprecated, since v10 removed
    * @deprecated
    */
-  private _loadMoreCallback: Nullable<LoadMoreCallback> = null
+  private _loadMoreCallback?: LoadMoreCallback
 
   /**
    * Load data callback
    */
-  private _loadDataCallback: Nullable<LoadDataCallback> = null
+  private _loadDataCallback?: LoadDataCallback
 
   /**
    * Is loading data flag
@@ -145,7 +143,7 @@ export default class ChartStore {
         setTimezone(timezone)
       }
       if (isValid(styles)) {
-        let ss: Nullable<DeepPartial<Styles>> = null
+        let ss: DeepPartial<Styles> | undefined
         if (isString(styles)) {
           ss = getStyles(styles)
         } else {
@@ -250,13 +248,13 @@ export default class ChartStore {
     return this._dataList
   }
 
-  getDataByDataIndex(index: number): Nullable<KLineData> {
-    return this._dataList[index] ?? null
+  getDataByDataIndex(index: number): KLineData | undefined {
+    return this._dataList[index]
   }
 
-  dataIndexToTimestamp(index: number): Nullable<number> {
+  dataIndexToTimestamp(index: number): number | undefined {
     const data = this.getDataByDataIndex(index)
-    return data?.timestamp ?? null
+    return data?.timestamp
   }
 
   // todo
@@ -267,8 +265,8 @@ export default class ChartStore {
     return binarySearchNearest(this._dataList, 'timestamp', timestamp)
   }
 
-  getVisibleFirstData(): Nullable<KLineData> {
-    return this._dataList[0] ?? null
+  getVisibleFirstData(): KLineData | undefined {
+    return this._dataList[0]
   }
 
   getVisibleDataList(): VisibleData[] {
@@ -354,7 +352,7 @@ export default class ChartStore {
     this._loadMoreCallback = callback
   }
 
-  executeLoadMoreCallback(timestamp: Nullable<number>): void {
+  executeLoadMoreCallback(timestamp?: number): void {
     if (this._forwardMore && !this._loading && isValid(this._loadMoreCallback)) {
       this._loading = true
       this._loadMoreCallback(timestamp)

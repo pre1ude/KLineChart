@@ -1,5 +1,3 @@
-
-import type Nullable from '../common/Nullable'
 import type Bounding from '../common/Bounding'
 import type KLineData from '../common/KLineData'
 import type Precision from '../common/Precision'
@@ -122,7 +120,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     dataList: KLineData[],
     paneId: string,
     crosshair: Crosshair,
-    activeTooltipIcon: Nullable<TooltipIcon>,
+    activeTooltipIcon: TooltipIcon | null,
     precision: Precision,
     dateTimeFormat: Intl.DateTimeFormat,
     locale: string,

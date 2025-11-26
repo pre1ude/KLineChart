@@ -1,5 +1,3 @@
-
-import type Nullable from '../common/Nullable'
 import type PartialExcept from '../common/PartialExcept'
 import type KLineData from '../common/KLineData'
 import type Bounding from '../common/Bounding'
@@ -161,17 +159,17 @@ export interface IndicatorApi<D = any> {
   /**
    * Specified minimum value
    */
-  minValue: Nullable<number>
+  minValue?: number
 
   /**
    * Specified maximum value
    */
-  maxValue: Nullable<number>
+  maxValue?: number
 
   /**
    * Style configuration
    */
-  styles: Nullable<Partial<IndicatorStyle>>
+  styles?: Partial<IndicatorStyle>
 
   /**
    * Indicator calculation
@@ -181,17 +179,17 @@ export interface IndicatorApi<D = any> {
   /**
    * Regenerate figure configuration
    */
-  regenerateFigures: Nullable<IndicatorRegenerateFiguresCallback<D>>
+  regenerateFigures?: IndicatorRegenerateFiguresCallback<D>
 
   /**
    * Create custom tooltip text
    */
-  createTooltipDataSource: Nullable<IndicatorCreateTooltipDataSourceCallback>
+  createTooltipDataSource?: IndicatorCreateTooltipDataSourceCallback
 
   /**
    * Custom draw
    */
-  draw: Nullable<IndicatorDrawCallback<D>>
+  draw?: IndicatorDrawCallback<D>
 
   /**
    * Calculation result
@@ -221,18 +219,18 @@ export class Indicator<D = any> implements IndicatorApi<D> {
   extendData: unknown
   series: IndicatorSeries
   figures: Array<IndicatorFigure<D>>
-  minValue: Nullable<number>
-  maxValue: Nullable<number>
-  styles: Nullable<Partial<IndicatorStyle>>
-  regenerateFigures: Nullable<IndicatorRegenerateFiguresCallback<D>>
-  createTooltipDataSource: Nullable<IndicatorCreateTooltipDataSourceCallback>
-  draw: Nullable<IndicatorDrawCallback<D>>
+  minValue?: number
+  maxValue?: number
+  styles?: Partial<IndicatorStyle>
+  regenerateFigures?: IndicatorRegenerateFiguresCallback<D>
+  createTooltipDataSource?: IndicatorCreateTooltipDataSourceCallback
+  draw?: IndicatorDrawCallback<D>
   calc: IndicatorCalcCallback<D>
 
   result: D[] = []
 
   private _lockSeriesPrecision: boolean = false
-  private _prevIndicator: Nullable<Indicator<D>> = null
+  private _prevIndicator?: Indicator<D>
 
   onClick?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
   onMouseEnter?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
@@ -255,13 +253,13 @@ export class Indicator<D = any> implements IndicatorApi<D> {
     this.shouldFormatBigNumber = shouldFormatBigNumber ?? false
     this.visible = visible ?? true
     this.zLevel = zLevel ?? 0
-    this.minValue = minValue ?? null
-    this.maxValue = maxValue ?? null
+    this.minValue = minValue
+    this.maxValue = maxValue
     this.styles = clone(styles ?? {})
     this.extendData = extendData
-    this.regenerateFigures = regenerateFigures ?? null
-    this.createTooltipDataSource = createTooltipDataSource ?? null
-    this.draw = draw ?? null
+    this.regenerateFigures = regenerateFigures
+    this.createTooltipDataSource = createTooltipDataSource
+    this.draw = draw
     this.calc = calc
     this.onClick = onClick
     this.onMouseEnter = onMouseEnter
@@ -269,7 +267,7 @@ export class Indicator<D = any> implements IndicatorApi<D> {
   }
 
   shouldUpdate(): { draw: boolean, calc: boolean, sort: boolean } {
-    if (this._prevIndicator === null) {
+    if (!this._prevIndicator) {
       return { draw: true, calc: false, sort: false }
     }
 

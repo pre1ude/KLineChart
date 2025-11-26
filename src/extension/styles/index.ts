@@ -1,5 +1,3 @@
-
-import type Nullable from '../../common/Nullable'
 import type DeepPartial from '../../common/DeepPartial'
 import { type Styles } from '../../common/Styles'
 
@@ -17,8 +15,8 @@ function registerStyles(name: string, ss: DeepPartial<Styles>): void {
   styles[name] = ss
 }
 
-function getStyles(name: string): Nullable<DeepPartial<Styles>> {
-  return styles[name] ?? null
+function getStyles(name: string): DeepPartial<Styles> | undefined {
+  return styles[name]
 }
 
 export {

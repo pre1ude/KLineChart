@@ -1,35 +1,8 @@
-/**
- *       ___           ___                   ___           ___           ___           ___           ___           ___           ___
- *      /\__\         /\__\      ___        /\__\         /\  \         /\  \         /\__\         /\  \         /\  \         /\  \
- *     /:/  /        /:/  /     /\  \      /::|  |       /::\  \       /::\  \       /:/  /        /::\  \       /::\  \        \:\  \
- *    /:/__/        /:/  /      \:\  \    /:|:|  |      /:/\:\  \     /:/\:\  \     /:/__/        /:/\:\  \     /:/\:\  \        \:\  \
- *   /::\__\____   /:/  /       /::\__\  /:/|:|  |__   /::\~\:\  \   /:/  \:\  \   /::\  \ ___   /::\~\:\  \   /::\~\:\  \       /::\  \
- *  /:/\:::::\__\ /:/__/     __/:/\/__/ /:/ |:| /\__\ /:/\:\ \:\__\ /:/__/ \:\__\ /:/\:\  /\__\ /:/\:\ \:\__\ /:/\:\ \:\__\     /:/\:\__\
- *  \/_|:|~~|~    \:\  \    /\/:/  /    \/__|:|/:/  / \:\~\:\ \/__/ \:\  \  \/__/ \/__\:\/:/  / \/__\:\/:/  / \/_|::\/:/  /    /:/  \/__/
- *     |:|  |      \:\  \   \::/__/         |:/:/  /   \:\ \:\__\    \:\  \            \::/  /       \::/  /     |:|::/  /    /:/  /
- *     |:|  |       \:\  \   \:\__\         |::/  /     \:\ \/__/     \:\  \           /:/  /        /:/  /      |:|\/__/     \/__/
- *     |:|  |        \:\__\   \/__/         /:/  /       \:\__\        \:\__\         /:/  /        /:/  /       |:|  |
- *      \|__|         \/__/                 \/__/         \/__/         \/__/         \/__/         \/__/         \|__|
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
-
- * http://www.apache.org/licenses/LICENSE-2.0
-
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import {
   LineType, PolygonType, TooltipShowRule, TooltipShowType, TooltipIconPosition,
   CandleType, YAxisPosition, YAxisType, CandleTooltipRectPosition
 } from './common/Styles'
-import type Nullable from './common/Nullable'
-import { logError, logTag, logWarn } from './common/utils/logger'
+import { logTag, logWarn } from './common/utils/logger'
 import {
   clone, merge, isString, isNumber, isValid, isObject, isArray, isFunction, isBoolean
 } from './common/utils/typeChecks'
@@ -75,17 +48,16 @@ function version(): string {
  * @param options
  * @returns {Chart}
  */
-function init(ds: HTMLElement | string, options?: Options): Nullable<Chart> {
+function init(ds: HTMLElement | string, options?: Options): Chart {
   logTag()
-  let dom: Nullable<HTMLElement>
+  let dom: HTMLElement | null
   if (isString(ds)) {
     dom = document.getElementById(ds)
   } else {
     dom = ds
   }
-  if (dom === null) {
-    logError('', '', 'The chart cannot be initialized correctly. Please check the parameters. The chart container cannot be null and child elements need to be added!!!')
-    return null
+  if (!dom) {
+    throw new Error('The chart cannot be initialized correctly. Please check the parameters. The chart container cannot be null and child elements need to be added!!!')
   }
   let chart = instances.get(dom.id)
   if (isValid(chart)) {
@@ -105,11 +77,11 @@ function init(ds: HTMLElement | string, options?: Options): Nullable<Chart> {
  * @param dcs
  */
 function dispose(dcs: HTMLElement | Chart | string): void {
-  let id: Nullable<string>
+  let id: string | null
   if (dcs instanceof Chart) {
     id = dcs.id
   } else {
-    let dom: Nullable<HTMLElement>
+    let dom: HTMLElement | null
     if (isString(dcs)) {
       dom = document.getElementById(dcs)
     } else {
