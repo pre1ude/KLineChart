@@ -1,13 +1,13 @@
 import { createOrdinal } from './ordinal'
 
 export interface BandScale {
-  (x: any): number
+  (x: unknown): number
   bandWidth: () => number
   step: () => number
 }
 
 export interface BandScaleOptions {
-  domain: any[]
+  domain: unknown[]
   range: [number, number]
   padding?: number
   margin?: number
@@ -21,12 +21,12 @@ interface BandResult {
 
 export function createBand(options: BandScaleOptions): BandScale {
   const { bandRange, bandWidth, step } = band(options)
-  const scale = createOrdinal({ ...options, range: bandRange }) as any
+  const scale = createOrdinal({ ...options, range: bandRange }) as unknown as BandScale
 
   scale.bandWidth = (): number => bandWidth
   scale.step = (): number => step
 
-  return scale as BandScale
+  return scale
 }
 
 function band({ domain, range, padding = 0, margin = padding }: BandScaleOptions): BandResult {
@@ -34,7 +34,7 @@ function band({ domain, range, padding = 0, margin = padding }: BandScaleOptions
   const n = domain.length
   const step = (r1 - r0) / (margin * 2 + n - padding)
   const bandWidth = step * (1 - padding)
-  const x = (_: any, i: number): number => r0 + margin * step + step * i
+  const x = (_: unknown, i: number): number => r0 + margin * step + step * i
   return {
     step,
     bandWidth,
