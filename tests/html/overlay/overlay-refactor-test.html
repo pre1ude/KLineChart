@@ -106,6 +106,7 @@ limitations under the License.
         <div class="button-group">
           <button onclick="testXAxisOverlay()">X轴标签测试</button>
           <button onclick="testYAxisOverlay()">Y轴标签测试</button>
+          <button onclick="testCustomXAxisFigures()">自定义X轴Figures</button>
         </div>
       </div>
 
@@ -144,7 +145,7 @@ limitations under the License.
     <div id="chart"></div>
 
     <script type="module">
-      import { init } from '../../../dist/index.js'
+      import { init, registerOverlay } from '../../../dist/index.js'
       import { generated } from '../../js/dataSource.js'
 
       let chart
@@ -258,25 +259,204 @@ limitations under the License.
       }
 
       // 3. Axis Tests
-      window.testXAxisOverlay = function() {
+      window.testYAxisOverlay = function() {
         const overlay = chart.createOverlay({
           name: 'segment',
-          points: [
-            { timestamp: dataList[dataList.length - 50].timestamp, value: dataList[dataList.length - 50].close },
-            { timestamp: dataList[dataList.length - 5].timestamp, value: dataList[dataList.length - 5].close }
-          ]
+          needDefaultXAxisFigure: true,
+          // points: [
+          //   { timestamp: dataList[dataList.length - 50].timestamp, value: dataList[dataList.length - 50].close },
+          //   { timestamp: dataList[dataList.length - 5].timestamp, value: dataList[dataList.length - 5].close }
+          // ]
         })
         updateStatus('X轴标签应该显示在底部坐标轴上')
       }
 
-      window.testYAxisOverlay = function() {
+      window.testXAxisOverlay = function() {
         const overlay = chart.createOverlay({
           name: 'horizontalSegment',
+          needDefaultYAxisFigure: true,
           points: [
             { timestamp: dataList[dataList.length - 30].timestamp, value: dataList[dataList.length - 30].close }
           ]
         })
         updateStatus('Y轴标签应该显示在右侧坐标轴上')
+      }
+
+      window.testCustomXAxisFigures = function() {
+        // 注册一个自定义 overlay，带有自定义的 X 轴 figures
+        registerOverlay({
+          name: 'customXAxisOverlay',
+          totalStep: 2,
+          needDefaultPointFigure: true,
+          needDefaultXAxisFigure: false,  // 不使用默认的，我们自己绘制
+          needDefaultYAxisFigure: false,
+          createFigures: ({ coordinates }) => {
+            if (coordinates.length < 2) return []
+
+            return {
+              type: 'line',
+              attrs: { coordinates },
+              styles: {
+                color: '#ff6b00',
+                size: 3,
+                style: 'dashed'
+              }
+            }
+          },
+          // 自定义 X 轴 figures
+          createXAxisFigures: ({ overlay, coordinates, bounding }) => {
+            if (coordinates.length < 2) return []
+
+            const figures = []
+            const startX = coordinates[0].x
+            const endX = coordinates[1].x
+            const width = endX - startX
+
+            // 1. 绘制背景矩形（高亮区域）
+            figures.push({
+              type: 'rect',
+              attrs: {
+                x: startX,
+                y: 0,
+                width: width,
+                height: bounding.height
+              },
+              styles: {
+                style: 'fill',
+                color: 'rgba(255, 107, 0, 0.1)'
+              },
+              ignoreEvent: true
+            })
+
+            // 2. 绘制左边界线
+            figures.push({
+              type: 'line',
+              attrs: {
+                coordinates: [
+                  { x: startX, y: 0 },
+                  { x: startX, y: bounding.height }
+                ]
+              },
+              styles: {
+                color: '#ff6b00',
+                size: 2
+              },
+              ignoreEvent: true
+            })
+
+            // 3. 绘制右边界线
+            figures.push({
+              type: 'line',
+              attrs: {
+                coordinates: [
+                  { x: endX, y: 0 },
+                  { x: endX, y: bounding.height }
+                ]
+              },
+              styles: {
+                color: '#ff6b00',
+                size: 2
+              },
+              ignoreEvent: true
+            })
+
+            // 4. 绘制开始时间标签
+            const startPoint = overlay.points[0]
+            if (startPoint?.timestamp) {
+              figures.push({
+                type: 'text',
+                attrs: {
+                  x: startX,
+                  y: bounding.height / 2,
+                  text: '开始',
+                  align: 'center',
+                  baseline: 'middle'
+                },
+                styles: {
+                  color: '#ff6b00',
+                  size: 12,
+                  weight: 'bold',
+                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  borderColor: '#ff6b00',
+                  borderSize: 1,
+                  borderRadius: 2,
+                  paddingLeft: 4,
+                  paddingRight: 4,
+                  paddingTop: 2,
+                  paddingBottom: 2
+                },
+                ignoreEvent: true
+              })
+            }
+
+            // 5. 绘制结束时间标签
+            const endPoint = overlay.points[1]
+            if (endPoint?.timestamp) {
+              figures.push({
+                type: 'text',
+                attrs: {
+                  x: endX,
+                  y: bounding.height / 2,
+                  text: '结束',
+                  align: 'center',
+                  baseline: 'middle'
+                },
+                styles: {
+                  color: '#ff6b00',
+                  size: 12,
+                  weight: 'bold',
+                  backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  borderColor: '#ff6b00',
+                  borderSize: 1,
+                  borderRadius: 2,
+                  paddingLeft: 4,
+                  paddingRight: 4,
+                  paddingTop: 2,
+                  paddingBottom: 2
+                },
+                ignoreEvent: true
+              })
+            }
+
+            // 6. 绘制中间的时间跨度标签
+            const centerX = (startX + endX) / 2
+            figures.push({
+              type: 'text',
+              attrs: {
+                x: centerX,
+                y: bounding.height / 2,
+                text: `时间跨度: ${coordinates.length} 个点`,
+                align: 'center',
+                baseline: 'middle'
+              },
+              styles: {
+                color: 'white',
+                size: 11,
+                backgroundColor: '#ff6b00',
+                borderRadius: 3,
+                paddingLeft: 6,
+                paddingRight: 6,
+                paddingTop: 3,
+                paddingBottom: 3
+              },
+              ignoreEvent: true
+            })
+
+            return figures
+          }
+        })
+
+        // 创建这个自定义 overlay
+        const overlay = chart.createOverlay({
+          name: 'customXAxisOverlay',
+          points: [
+            { timestamp: dataList[dataList.length - 60].timestamp, value: dataList[dataList.length - 60].close },
+            { timestamp: dataList[dataList.length - 20].timestamp, value: dataList[dataList.length - 20].close }
+          ]
+        })
+
+        overlayCount++
+        updateStatus('✅ 创建了自定义 X 轴 Figures 的 overlay！点击它查看 X 轴上的自定义标签（背景高亮、边界线、开始/结束标签、时间跨度）')
       }
 
       // 4. Interactive Tests
