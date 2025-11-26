@@ -1,5 +1,3 @@
-
-import type Nullable from '../common/Nullable'
 import type DeepPartial from '../common/DeepPartial'
 import type PartialExcept from '../common/PartialExcept'
 import type Point from '../common/Point'
@@ -70,8 +68,8 @@ export interface OverlayCreateFiguresCallbackParams<E = unknown> {
   decimalFoldThreshold: number
   dateTimeFormat: Intl.DateTimeFormat
   defaultStyles: OverlayStyle
-  xAxis: Nullable<XAxis>
-  yAxis: Nullable<YAxis>
+  xAxis?: XAxis
+  yAxis?: YAxis
   isAlignLeft?: boolean
 }
 
@@ -94,22 +92,22 @@ export type OverlayEventCallback = (event: MouseTouchEvent, params: EventOverlay
 export type OverlayCreateFiguresCallback<E = unknown> = (params: OverlayCreateFiguresCallbackParams<E>) => OverlayFigure | OverlayFigure[]
 
 export interface OverlayEventHandlers {
-  onDrawStart: Nullable<DefaultCallback>
-  onDrawing: Nullable<OverlayDrawEventCallback>
-  onDrawEnd: Nullable<OverlayDrawEventCallback>
+  onDrawStart?: DefaultCallback
+  onDrawing?: OverlayDrawEventCallback
+  onDrawEnd?: OverlayDrawEventCallback
 
-  onClick: Nullable<OverlayEventCallback>
-  onDoubleClick: Nullable<OverlayEventCallback>
-  onRightClick: Nullable<OverlayEventCallback>
-  onPressedMoveStart: Nullable<OverlayEventCallback>
-  onPressedMoving: Nullable<OverlayEventCallback>
-  onPressedMoveEnd: Nullable<OverlayEventCallback>
-  onMouseEnter: Nullable<OverlayEventCallback>
-  onMouseLeave: Nullable<OverlayEventCallback>
-  onSelected: Nullable<OverlayEventCallback>
-  onDeselected: Nullable<OverlayEventCallback>
+  onClick?: OverlayEventCallback
+  onDoubleClick?: OverlayEventCallback
+  onRightClick?: OverlayEventCallback
+  onPressedMoveStart?: OverlayEventCallback
+  onPressedMoving?: OverlayEventCallback
+  onPressedMoveEnd?: OverlayEventCallback
+  onMouseEnter?: OverlayEventCallback
+  onMouseLeave?: OverlayEventCallback
+  onSelected?: OverlayEventCallback
+  onDeselected?: OverlayEventCallback
 
-  onRemoved: Nullable<DefaultCallback>
+  onRemoved?: DefaultCallback
 }
 
 export interface OverlayApi<E = unknown> extends OverlayEventHandlers {
@@ -130,12 +128,12 @@ export interface OverlayApi<E = unknown> extends OverlayEventHandlers {
   modeSensitivity: number
   points: Array<Partial<Point>>
   extendData: E
-  styles: Nullable<DeepPartial<OverlayStyle>>
-  createFigures: Nullable<OverlayCreateFiguresCallback<E>>
-  createXAxisFigures: Nullable<OverlayCreateFiguresCallback<E>>
-  createYAxisFigures: Nullable<OverlayCreateFiguresCallback<E>>
-  onControlPointUpdate: Nullable<(points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void>
-  onDrawPointUpdate: Nullable<(points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void>
+  styles?: DeepPartial<OverlayStyle>
+  createFigures?: OverlayCreateFiguresCallback<E>
+  createXAxisFigures?: OverlayCreateFiguresCallback<E>
+  createYAxisFigures?: OverlayCreateFiguresCallback<E>
+  onControlPointUpdate?: (points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
+  onDrawPointUpdate?: (points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
   onBodyDrag?: (params: {
     point: Partial<Point>
     prevPoint: Partial<Point>
@@ -190,18 +188,18 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
   mode: OverlayMode = 'normal'
   modeSensitivity: number = 8
   extendData: E = undefined as E
-  styles: Nullable<DeepPartial<OverlayStyle>> = null
+  styles?: DeepPartial<OverlayStyle>
 
   needDefaultPointFigure: boolean = false
   needDefaultXAxisFigure: boolean = false
   needDefaultYAxisFigure: boolean = false
 
-  createFigures: Nullable<OverlayCreateFiguresCallback<E>> = null
-  createXAxisFigures: Nullable<OverlayCreateFiguresCallback<E>> = null
-  createYAxisFigures: Nullable<OverlayCreateFiguresCallback<E>> = null
+  createFigures?: OverlayCreateFiguresCallback<E>
+  createXAxisFigures?: OverlayCreateFiguresCallback<E>
+  createYAxisFigures?: OverlayCreateFiguresCallback<E>
 
-  onControlPointUpdate: Nullable<(points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void> = null
-  onDrawPointUpdate: Nullable<(points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void> = null
+  onControlPointUpdate?: (points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
+  onDrawPointUpdate?: (points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
   onBodyDrag?: (params: {
     point: Partial<Point>
     prevPoint: Partial<Point>
@@ -210,27 +208,27 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
   }) => void
 
   // Event callbacks
-  onDrawStart: Nullable<DefaultCallback> = null
-  onDrawing: Nullable<OverlayDrawEventCallback> = null
-  onDrawEnd: Nullable<OverlayDrawEventCallback> = null
+  onDrawStart?: DefaultCallback
+  onDrawing?: OverlayDrawEventCallback
+  onDrawEnd?: OverlayDrawEventCallback
 
-  onClick: Nullable<OverlayEventCallback> = null
-  onDoubleClick: Nullable<OverlayEventCallback> = null
+  onClick?: OverlayEventCallback
+  onDoubleClick?: OverlayEventCallback
   /** 仅当返回 Truthy 值时阻止右键点击删除 */
-  onRightClick: Nullable<OverlayEventCallback> = null
-  onPressedMoveStart: Nullable<OverlayEventCallback> = null
+  onRightClick?: OverlayEventCallback
+  onPressedMoveStart?: OverlayEventCallback
   // 返回 Truthy 表示阻止原有的默认拖动行为
-  onPressedMoving: Nullable<OverlayEventCallback> = null
-  onPressedMoveEnd: Nullable<OverlayEventCallback> = null
-  onMouseEnter: Nullable<OverlayEventCallback> = null
-  onMouseLeave: Nullable<OverlayEventCallback> = null
-  onSelected: Nullable<OverlayEventCallback> = null
-  onDeselected: Nullable<OverlayEventCallback> = null
+  onPressedMoving?: OverlayEventCallback
+  onPressedMoveEnd?: OverlayEventCallback
+  onMouseEnter?: OverlayEventCallback
+  onMouseLeave?: OverlayEventCallback
+  onSelected?: OverlayEventCallback
+  onDeselected?: OverlayEventCallback
 
-  onRemoved: Nullable<DefaultCallback> = null
+  onRemoved?: DefaultCallback
 
   private _originalZLevel: number = 0
-  private _prevPressedPoint: Nullable<Partial<Point>> = null
+  private _prevPressedPoint?: Partial<Point>
   private _prevPressedPoints: Array<Partial<Point>> = []
 
   constructor(template: OverlayTemplate<E>, { id, groupId, paneId, zLevel, points, ...rest }: OverlayInitOption) {
