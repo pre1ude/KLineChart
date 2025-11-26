@@ -35,42 +35,42 @@ interface GetFiguresParams {
   decimalFoldThreshold: number
   dateTimeFormat: Intl.DateTimeFormat
   defaultStyles: OverlayStyle
-  xAxis: XAxis | null
-  yAxis: YAxis | null
+  xAxis?: XAxis
+  yAxis?: YAxis
 }
 
 export default class OverlayView extends View {
   private readonly _type: OverlayViewType
-  private _hoverInstanceInfo: EventOverlayInfo | null = null
-  private _clickInstanceInfo: EventOverlayInfo | null = null
-  private _pressedInstanceInfo: EventOverlayInfo | null = null
+  private _hoverInstanceInfo?: EventOverlayInfo
+  private _clickInstanceInfo?: EventOverlayInfo
+  private _pressedInstanceInfo?: EventOverlayInfo
 
   constructor(widget: DrawWidget<Pane>, type: OverlayViewType = 'main') {
     super(widget)
     this._type = type
   }
 
-  setHoverInstanceInfo(info: EventOverlayInfo | null): void {
+  setHoverInstanceInfo(info?: EventOverlayInfo): void {
     this._hoverInstanceInfo = info
   }
 
-  setClickInstanceInfo(info: EventOverlayInfo | null): void {
+  setClickInstanceInfo(info?: EventOverlayInfo): void {
     this._clickInstanceInfo = info
   }
 
-  setPressedInstanceInfo(info: EventOverlayInfo | null): void {
+  setPressedInstanceInfo(info?: EventOverlayInfo): void {
     this._pressedInstanceInfo = info
   }
 
-  getHoverInstanceInfo(): EventOverlayInfo | null {
+  getHoverInstanceInfo(): EventOverlayInfo | undefined {
     return this._hoverInstanceInfo
   }
 
-  getClickInstanceInfo(): EventOverlayInfo | null {
+  getClickInstanceInfo(): EventOverlayInfo | undefined {
     return this._clickInstanceInfo
   }
 
-  getPressedInstanceInfo(): EventOverlayInfo | null {
+  getPressedInstanceInfo(): EventOverlayInfo | undefined {
     return this._pressedInstanceInfo
   }
 
@@ -79,8 +79,8 @@ export default class OverlayView extends View {
     const overlayStore = this.getWidget().getPane().getChart().getChartStore().getOverlayStore()
     if (overlayStore.isDrawing()) return true
     if (this._pressedInstanceInfo?.overlay != null) return true
-    if (name === 'mouseMoveEvent' && this._hoverInstanceInfo !== null) return true // 支持取消hover
-    if (name === 'mouseClickEvent' && this._clickInstanceInfo !== null) return true // 支持取消选中
+    if (name === 'mouseMoveEvent' && this._hoverInstanceInfo) return true // 支持取消hover
+    if (name === 'mouseClickEvent' && this._clickInstanceInfo) return true // 支持取消选中
     return super.checkEventOn(event, name, other)
   }
 
@@ -149,13 +149,11 @@ export default class OverlayView extends View {
     const paneId = pane.getId()
     const chart = pane.getChart()
     const widgetName = widget.getName()
-    let yAxis: YAxis | null
+    let yAxis: YAxis | undefined
     if (widgetName === WidgetNameConstants.MAIN) {
       yAxis = pane.getYLeftAxisWidget().getAxisComponent()
     } else if (widgetName === WidgetNameConstants.Y_AXIS) {
       yAxis = widget.getAxisComponent()
-    } else {
-      yAxis = null
     }
     const xAxisWidget = chart.getXAxisPane().getMainWidget() as XAxisWidget
     const xAxis = xAxisWidget.getAxisComponent()
@@ -197,8 +195,8 @@ export default class OverlayView extends View {
         this._drawOverlay(
           ctx, overlay, bounding, barSpace, overlayPrecision,
           dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
-          defaultStyles, xAxis, yAxis,
-          hoverInfo, clickInfo, chartStore
+          defaultStyles, chartStore,
+          hoverInfo, clickInfo, xAxis, yAxis
         )
       }
     })
@@ -209,8 +207,8 @@ export default class OverlayView extends View {
         this._drawOverlay(
           ctx, progressOverlay, bounding, barSpace,
           overlayPrecision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
-          defaultStyles, xAxis, yAxis,
-          hoverInfo, clickInfo, chartStore
+          defaultStyles, chartStore,
+          hoverInfo, clickInfo, xAxis, yAxis
         )
       }
     }
@@ -227,11 +225,12 @@ export default class OverlayView extends View {
     thousandsSeparator: string,
     decimalFoldThreshold: number,
     defaultStyles: OverlayStyle,
-    xAxis: XAxis | null,
-    yAxis: YAxis | null,
-    hoverInfo: EventOverlayInfo | null,
-    clickInfo: EventOverlayInfo | null,
-    chartStore: ChartStore
+    chartStore: ChartStore,
+
+    hoverInfo?: EventOverlayInfo,
+    clickInfo?: EventOverlayInfo,
+    xAxis?: XAxis,
+    yAxis?: YAxis,
   ): void {
     const { points } = overlay
     const coordinates = points.map((point) => {
@@ -259,7 +258,7 @@ export default class OverlayView extends View {
       const figures = Array.isArray(_figures) ? _figures : [_figures]
       this.drawFigures(ctx, overlay, figures, defaultStyles)
     }
-    this.drawDefaultFigures(ctx, overlay, coordinates, bounding, precision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, xAxis, yAxis, hoverInfo, clickInfo)
+    this.drawDefaultFigures(ctx, overlay, coordinates, bounding, precision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis)
   }
 
   protected drawFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, figures: OverlayFigure[], defaultStyles: OverlayStyle): void {
@@ -309,7 +308,7 @@ export default class OverlayView extends View {
     }
   }
 
-  protected drawDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, dateTimeFormat: Intl.DateTimeFormat, customApi: CustomApi, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, _xAxis: XAxis | null, _yAxis: YAxis | null, hoverInfo: EventOverlayInfo | null, clickInfo: EventOverlayInfo | null): void {
+  protected drawDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, dateTimeFormat: Intl.DateTimeFormat, customApi: CustomApi, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, _xAxis?: XAxis, _yAxis?: YAxis): void {
     switch (this._type) {
       case 'xAxis':
         this._drawXAxisDefaultFigures(ctx, overlay, coordinates, bounding, dateTimeFormat, customApi, defaultStyles, clickInfo)
@@ -322,7 +321,7 @@ export default class OverlayView extends View {
     }
   }
 
-  private _drawMainDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], defaultStyles: OverlayStyle, hoverInfo: EventOverlayInfo | null, clickInfo: EventOverlayInfo | null): void {
+  private _drawMainDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo): void {
     if (!overlay.needDefaultPointFigure) return
 
     // 正在绘制的 overlay 始终显示控制点
@@ -373,7 +372,7 @@ export default class OverlayView extends View {
     })
   }
 
-  private _drawXAxisDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, dateTimeFormat: Intl.DateTimeFormat, customApi: CustomApi, defaultStyles: OverlayStyle, clickInfo: EventOverlayInfo | null): void {
+  private _drawXAxisDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, dateTimeFormat: Intl.DateTimeFormat, customApi: CustomApi, defaultStyles: OverlayStyle, clickInfo?: EventOverlayInfo): void {
     if (!overlay.needDefaultXAxisFigure) return
     if (overlay.id !== clickInfo?.overlay?.id) return
     if (coordinates.length === 0) return
@@ -415,7 +414,7 @@ export default class OverlayView extends View {
     this.drawFigures(ctx, overlay, figures, defaultStyles)
   }
 
-  private _drawYAxisDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, clickInfo: EventOverlayInfo | null): void {
+  private _drawYAxisDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, clickInfo?: EventOverlayInfo): void {
     if (!overlay.needDefaultYAxisFigure) return
     if (overlay.id !== clickInfo?.overlay?.id) return
     if (coordinates.length === 0) return

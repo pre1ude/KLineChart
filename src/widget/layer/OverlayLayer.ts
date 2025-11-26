@@ -27,13 +27,13 @@ export class OverlayLayer implements Layer {
     widget.addChild(this._overlayView)
   }
 
-  private _extractEventOverlayInfo(target: unknown, paneId: string): EventOverlayInfo | null {
-    const figure = target as Figure<unknown, unknown, OverlayFigureData> | null
-    if (!figure?.data) return null
+  private _extractEventOverlayInfo(target: unknown, paneId: string): EventOverlayInfo | undefined {
+    const figure = target as Figure<unknown, unknown, OverlayFigureData>
+    if (!figure?.data) return undefined
     return { ...figure.data, paneId }
   }
 
-  private _isSameEventOverlayInfo(a: EventOverlayInfo | null, b: EventOverlayInfo | null): boolean {
+  private _isSameEventOverlayInfo(a?: EventOverlayInfo, b?: EventOverlayInfo): boolean {
     return a?.overlay.id === b?.overlay.id && a?.interactType === b?.interactType && a?.figureIndex === b?.figureIndex
   }
 
@@ -48,7 +48,7 @@ export class OverlayLayer implements Layer {
       const progressOverlay = overlayStore.getProgressOverlay()
 
       // 处理绘制中的 overlay
-      if (progressOverlay !== null) {
+      if (progressOverlay) {
         // 如果还在 CREATED 状态，允许切换 pane
         if (progressOverlay.isCreated()) {
           overlayStore.updateProgressOverlayPane(paneId)
@@ -115,7 +115,7 @@ export class OverlayLayer implements Layer {
     // 鼠标点击事件 - 处理 onClick、onSelected 和 onDeselected
     this._overlayView.addEventListener('mouseClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
-      if (progressOverlay !== null) {
+      if (progressOverlay) {
         const pointIndex = progressOverlay.points.length - 1
         const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
         if (progressOverlay.isDrawing() && progressOverlay.paneId === paneId) {
@@ -186,7 +186,7 @@ export class OverlayLayer implements Layer {
     // 鼠标双击事件 - 处理 onDoubleClick
     this._overlayView.addEventListener('mouseDoubleClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
-      if (progressOverlay !== null) {
+      if (progressOverlay) {
         if (progressOverlay.isDrawing() && progressOverlay.paneId === paneId) {
           progressOverlay.forceComplete()
           overlayStore.progressOverlayComplete()
@@ -209,10 +209,8 @@ export class OverlayLayer implements Layer {
     // 鼠标右键事件 - 处理 onRightClick
     this._overlayView.addEventListener('mouseRightClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
-      if (progressOverlay !== null) {
-        if (progressOverlay.isDrawing()) {
-          return false
-        }
+      if (progressOverlay?.isDrawing()) {
+        return false
       }
 
       // 处理完成的 overlay 的右键事件
@@ -232,7 +230,7 @@ export class OverlayLayer implements Layer {
       if (pressedInfo?.overlay != null) {
         pressedInfo.overlay.onPressedMoveEnd?.(event, pressedInfo)
       }
-      this._overlayView.setPressedInstanceInfo(null)
+      this._overlayView.setPressedInstanceInfo()
       return false
     })
 
