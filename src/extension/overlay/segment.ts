@@ -4,8 +4,8 @@ const segment: OverlayTemplate = {
   name: 'segment',
   totalStep: 2,
   needDefaultPointFigure: true,
-  needDefaultXAxisFigure: true,
-  needDefaultYAxisFigure: true,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
   createFigures: ({ coordinates }) => {
     if (coordinates.length === 2) {
       return [

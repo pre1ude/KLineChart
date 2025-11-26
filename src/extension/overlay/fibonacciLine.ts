@@ -8,8 +8,8 @@ const fibonacciLine: OverlayTemplate = {
   name: 'fibonacciLine',
   totalStep: 2,
   needDefaultPointFigure: true,
-  needDefaultXAxisFigure: true,
-  needDefaultYAxisFigure: true,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
   createFigures: ({ coordinates, bounding, overlay, precision, thousandsSeparator, decimalFoldThreshold, yAxis }) => {
     const points = overlay.points
     if (coordinates.length > 0) {

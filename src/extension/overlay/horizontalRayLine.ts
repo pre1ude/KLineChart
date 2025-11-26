@@ -5,8 +5,8 @@ const horizontalRayLine: OverlayTemplate = {
   name: 'horizontalRayLine',
   totalStep: 2,
   needDefaultPointFigure: true,
-  needDefaultXAxisFigure: true,
-  needDefaultYAxisFigure: true,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
   createFigures: ({ coordinates, bounding }) => {
     const coordinate = { x: 0, y: coordinates[0].y }
     if (isValid(coordinates[1]) && coordinates[0].x < coordinates[1].x) {

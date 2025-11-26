@@ -4,8 +4,8 @@ const verticalStraightLine: OverlayTemplate = {
   name: 'verticalStraightLine',
   totalStep: 1,
   needDefaultPointFigure: true,
-  needDefaultXAxisFigure: true,
-  needDefaultYAxisFigure: true,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
   createFigures: ({ coordinates, bounding }) => {
     return [
       {

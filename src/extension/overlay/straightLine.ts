@@ -5,8 +5,8 @@ const straightLine: OverlayTemplate = {
   name: 'straightLine',
   totalStep: 2,
   needDefaultPointFigure: true,
-  needDefaultXAxisFigure: true,
-  needDefaultYAxisFigure: true,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
   createFigures: ({ coordinates, bounding }) => {
     if (coordinates.length === 2) {
       if (coordinates[0].x === coordinates[1].x) {

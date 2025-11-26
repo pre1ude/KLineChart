@@ -4,8 +4,8 @@ const verticalRayLine: OverlayTemplate = {
   name: 'verticalRayLine',
   totalStep: 2,
   needDefaultPointFigure: true,
-  needDefaultXAxisFigure: true,
-  needDefaultYAxisFigure: true,
+  needDefaultXAxisFigure: false,
+  needDefaultYAxisFigure: false,
   createFigures: ({ coordinates, bounding }) => {
     if (coordinates.length === 2) {
       const coordinate = { x: coordinates[0].x, y: 0 }
