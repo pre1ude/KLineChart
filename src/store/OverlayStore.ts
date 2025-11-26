@@ -1,4 +1,3 @@
-import type Nullable from '../common/Nullable'
 import { UpdateLevel } from '../common/Updater'
 import { isValid, isString, isArray } from '../common/utils/typeChecks'
 import { createId } from '../common/utils/id'
@@ -19,26 +18,26 @@ export default class OverlayStore {
   /**
    * Overlay in painting
    */
-  private _progressOverlay: Nullable<ProgressOverlay> = null
+  private _progressOverlay?: ProgressOverlay
 
   /**
    * 全局选中的 overlay（用于跨 pane 共享选中状态）
    */
-  private _selectedInfo: EventOverlayInfo | null = null
+  private _selectedInfo?: EventOverlayInfo
 
   constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
   }
 
-  setSelectedInfo(info: EventOverlayInfo | null): void {
+  setSelectedInfo(info?: EventOverlayInfo): void {
     this._selectedInfo = info
   }
 
-  getSelectedInfo(): EventOverlayInfo | null {
+  getSelectedInfo(): EventOverlayInfo | undefined {
     return this._selectedInfo
   }
 
-  getInstanceById(id: string): Nullable<Overlay> {
+  getInstanceById(id: string): Overlay | undefined {
     for (const entry of this._instances) {
       const paneShapes = entry[1]
       const overlay = paneShapes.find(s => s.id === id)
@@ -46,10 +45,10 @@ export default class OverlayStore {
         return overlay
       }
     }
-    if (this._progressOverlay !== null && this._progressOverlay.id === id) {
+    if (this._progressOverlay && this._progressOverlay.id === id) {
       return this._progressOverlay
     }
-    return null
+    return undefined
   }
 
   find(filter: OverlayFilter): Overlay[] {
@@ -77,7 +76,7 @@ export default class OverlayStore {
       })
     }
 
-    if (this._progressOverlay !== null && match(this._progressOverlay)) {
+    if (this._progressOverlay && match(this._progressOverlay)) {
       overlays.push(this._progressOverlay)
     }
 
@@ -94,7 +93,7 @@ export default class OverlayStore {
     }
   }
 
-  addInstances(overlays: OverlayCreate[], paneId: string | string[]): Array<Nullable<string>> {
+  addInstances(overlays: OverlayCreate[], paneId: string | string[]): Array<string | undefined> {
     const updatePaneIds: string[] = []
     const paneIds = isArray(paneId) ? paneId : overlays.map(() => paneId)
 
@@ -104,13 +103,13 @@ export default class OverlayStore {
       // Check if ID already exists
       if (isValid(overlay.id)) {
         const existingOverlay = this.getInstanceById(overlay.id)
-        if (existingOverlay !== null) {
+        if (existingOverlay) {
           return overlay.id
         }
       }
 
       const overlayTemplate = getOverlayClass(overlay.name)
-      if (overlayTemplate !== null) {
+      if (overlayTemplate) {
         const id = overlay.id ?? createId(OVERLAY_ID_PREFIX)
         const groupId = overlay.groupId ?? id
         const zLevel = overlay.zLevel ?? this.getInstances(targetPaneId).length
@@ -142,7 +141,7 @@ export default class OverlayStore {
 
         return id
       }
-      return null
+      return undefined
     })
 
     if (updatePaneIds.length > 0) {
@@ -153,24 +152,24 @@ export default class OverlayStore {
     return ids
   }
 
-  getProgressOverlay(): Nullable<ProgressOverlay> {
+  getProgressOverlay(): ProgressOverlay | undefined {
     return this._progressOverlay
   }
 
   progressOverlayComplete(): void {
-    if (this._progressOverlay !== null && !this._progressOverlay.isDrawing()) {
+    if (this._progressOverlay && !this._progressOverlay.isDrawing()) {
       const paneId = this._progressOverlay.paneId
       if (!this._instances.has(paneId)) {
         this._instances.set(paneId, [])
       }
       this._instances.get(paneId)?.push(this._progressOverlay)
       this._sort(paneId)
-      this._progressOverlay = null
+      this._progressOverlay = undefined
     }
   }
 
   updateProgressOverlayPane(paneId: string): void {
-    if (this._progressOverlay !== null) {
+    if (this._progressOverlay) {
       this._progressOverlay.paneId = paneId
     }
   }
@@ -229,12 +228,12 @@ export default class OverlayStore {
 
     if (!isValid(filter)) {
       // Remove all overlays
-      if (this._progressOverlay !== null) {
+      if (this._progressOverlay) {
         if (!updatePaneIds.includes(this._progressOverlay.paneId)) {
           updatePaneIds.push(this._progressOverlay.paneId)
         }
         this._progressOverlay.onRemoved?.()
-        this._progressOverlay = null
+        this._progressOverlay = undefined
       }
 
       this._instances.forEach((paneInstances, paneId) => {
@@ -259,7 +258,7 @@ export default class OverlayStore {
         }
 
         if (instance.isDrawing()) {
-          this._progressOverlay = null
+          this._progressOverlay = undefined
         } else {
           const index = paneInstances.findIndex(o => o.id === instance.id)
           if (index > -1) {
@@ -303,10 +302,10 @@ export default class OverlayStore {
   }
 
   isEmpty(): boolean {
-    return this._instances.size === 0 && this._progressOverlay === null
+    return this._instances.size === 0 && !this._progressOverlay
   }
 
   isDrawing(): boolean {
-    return this._progressOverlay !== null && (this._progressOverlay.isDrawing() ?? false)
+    return this._progressOverlay?.isDrawing() ?? false
   }
 }
