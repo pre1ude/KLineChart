@@ -1,4 +1,3 @@
-
 import { WidgetNameConstants } from './types'
 import DrawWidget from './DrawWidget'
 import type SingleWidgetPane from '../pane/SingleWidgetPane'
@@ -27,7 +26,6 @@ export default class XAxisWidget extends DrawWidget<SingleWidgetPane> {
     super(rootContainer, pane)
 
     setCursor(this.getContainer(), 'ew-resize')
-    this.addChild(this._overlayXAxisView)
     this.setOptions(options.axisOptions ?? { name: 'default', scrollZoomEnabled: true })
   }
 

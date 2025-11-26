@@ -1,4 +1,3 @@
-
 import type DualYPane from '../pane/DualYPane'
 import { WidgetNameConstants } from './types'
 import DrawWidget from './DrawWidget'
@@ -39,7 +38,6 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
   constructor(rootContainer: HTMLElement, pane: DualYPane, options: PaneOptions, position: Exclude<YAxisPosition, 'both'>) {
     super(rootContainer, pane)
     setCursor(this.getContainer(), 'ns-resize')
-    this.addChild(this._overlayYAxisView)
 
     const axisType = options.axisOptions?.YAxis?.[position]?.type ?? YAxisType.Normal
     this.setOptions({

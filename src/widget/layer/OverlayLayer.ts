@@ -153,6 +153,9 @@ export class OverlayLayer implements Layer {
           clickInfo.overlay.onSelected?.(event, clickInfo)
         }
 
+        // 更新全局选中状态（用于跨 pane 共享）
+        overlayStore.setSelectedInfo(clickInfo)
+
         // 更新 pane
         if (lastClickInfo?.overlay?.id !== clickInfo?.overlay?.id) {
           chart.updatePane(UpdateLevel.Overlay, paneId)

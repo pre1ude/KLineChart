@@ -3,7 +3,7 @@ import { UpdateLevel } from '../common/Updater'
 import { isValid, isString, isArray } from '../common/utils/typeChecks'
 import { createId } from '../common/utils/id'
 import { LoadDataType } from '../common/LoadDataCallback'
-import type { OverlayCreate, OverlayFilter, OverlayProps } from '../component/Overlay'
+import type { EventOverlayInfo, OverlayCreate, OverlayFilter, OverlayProps } from '../component/Overlay'
 import { OVERLAY_ID_PREFIX, Overlay } from '../component/Overlay'
 import { getOverlayClass } from '../extension/overlay'
 import type ChartStore from './ChartStore'
@@ -21,8 +21,21 @@ export default class OverlayStore {
    */
   private _progressOverlay: Nullable<ProgressOverlay> = null
 
+  /**
+   * 全局选中的 overlay（用于跨 pane 共享选中状态）
+   */
+  private _selectedInfo: EventOverlayInfo | null = null
+
   constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
+  }
+
+  setSelectedInfo(info: EventOverlayInfo | null): void {
+    this._selectedInfo = info
+  }
+
+  getSelectedInfo(): EventOverlayInfo | null {
+    return this._selectedInfo
   }
 
   getInstanceById(id: string): Nullable<Overlay> {

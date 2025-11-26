@@ -171,7 +171,10 @@ export default class OverlayView extends View {
     const defaultStyles = chartStore.getStyles().overlay
     const overlayStore = chartStore.getOverlayStore()
     const hoverInfo = this._hoverInstanceInfo
-    const clickInfo = this._clickInstanceInfo
+    // 对于 xAxis 和 yAxis，使用全局选中状态；对于 main，使用本地状态
+    const clickInfo = (this._type === 'xAxis' || this._type === 'yAxis')
+      ? overlayStore.getSelectedInfo()
+      : this._clickInstanceInfo
     const overlays = this._type === 'xAxis' ? overlayStore.getInstances() : overlayStore.getInstances(paneId)
     const paneIndicators = chartStore.getIndicatorStore().getInstances(paneId)
     const overlayPrecision: OverlayPrecision = {
