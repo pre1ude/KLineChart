@@ -797,6 +797,10 @@ export default class ChartImp implements Chart {
     return this._chartStore.getIndicatorStore().getInstanceByPaneId(paneId, name)
   }
 
+  // getIndicators(filter?: IndicatorFilter): Map<string, Indicator[]> {
+  //   return this._chartStore.getIndicatorStore().getInstanceByFilter(filter ?? {})
+  // }
+
   removeIndicator(paneId: string, name?: string): void {
     const indicatorStore = this._chartStore.getIndicatorStore()
     const removed = indicatorStore.removeInstance(paneId, name)
@@ -886,8 +890,12 @@ export default class ChartImp implements Chart {
     return this._chartStore.getOverlayStore().getInstanceById(id)
   }
 
-  overrideOverlay(override: Partial<OverlayCreate>): void {
-    this._chartStore.getOverlayStore().override(override)
+  getOverlays(filter?: OverlayFilter): Overlay[] {
+    return this._chartStore.getOverlayStore().find(filter ?? {})
+  }
+
+  overrideOverlay({ id, name, groupId, paneId, ...props }: Partial<OverlayCreate>): void {
+    this._chartStore.getOverlayStore().update({ id, name, groupId, paneId }, props)
   }
 
   removeOverlay(remove?: string | OverlayFilter): void {
