@@ -154,6 +154,14 @@ export interface OverlayFilter {
   paneId?: string
 }
 
+export type OverlayProps = Omit<OverlayCreate, keyof OverlayFilter>
+
+export interface ChangeInfo {
+  sort: boolean
+  draw: boolean
+  fields: string[]
+}
+
 interface OverlayInitOption {
   id: string
   groupId: string
@@ -221,8 +229,7 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
 
   onRemoved: Nullable<DefaultCallback> = null
 
-  private _prevOverlay: Nullable<Overlay<E>> = null
-  private _prevZLevel: number = 0
+  private _originalZLevel: number = 0
   private _prevPressedPoint: Nullable<Partial<Point>> = null
   private _prevPressedPoints: Array<Partial<Point>> = []
 
@@ -240,18 +247,15 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
     Object.assign(this, rest)
   }
 
-  getPrevZLevel(): number {
-    return this._prevZLevel
+  setOriginalZLevel(zLevel: number): void {
+    this._originalZLevel = zLevel
   }
 
-  setPrevZLevel(zLevel: number): void {
-    this._prevZLevel = zLevel
+  getOriginalZLevel(): number {
+    return this._originalZLevel
   }
 
-  override(overlay: Partial<Overlay<E>>): void {
-    // Save previous state for change detection
-    this._prevOverlay = clone({ ...this, _prevOverlay: null })
-
+  update(overlay: Partial<Overlay<E>>): void {
     const {
       id,           // 不可修改 - 唯一标识符
       paneId,       // 不可修改 - 会导致数据不一致
@@ -298,19 +302,35 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
     }
   }
 
-  shouldUpdate(): { draw: boolean, sort: boolean } {
-    if (this._prevOverlay === null) {
-      return { draw: true, sort: false }
+  shouldUpdate(nextProps: Partial<OverlayProps>): ChangeInfo {
+    const changes: string[] = []
+
+    // 检测每个属性的变化
+    if (nextProps.zLevel !== undefined && nextProps.zLevel !== this.zLevel) {
+      changes.push('zLevel')
     }
 
-    const sort = this._prevOverlay.zLevel !== this.zLevel
-    const draw = sort ||
-      JSON.stringify(this._prevOverlay.points) !== JSON.stringify(this.points) ||
-      this._prevOverlay.visible !== this.visible ||
-      this._prevOverlay.extendData !== this.extendData ||
-      this._prevOverlay.styles !== this.styles
+    if (nextProps.visible !== undefined && nextProps.visible !== this.visible) {
+      changes.push('visible')
+    }
 
-    return { sort, draw }
+    if (nextProps.points !== undefined && nextProps.points !== this.points) {
+      changes.push('points')
+    }
+
+    if (nextProps.extendData !== undefined && nextProps.extendData !== this.extendData) {
+      changes.push('extendData')
+    }
+
+    if (nextProps.points !== undefined && nextProps.styles !== this.styles) {
+      changes.push('styles')
+    }
+
+    return {
+      sort: changes.includes('zLevel'),
+      draw: changes.length > 0,
+      fields: changes
+    }
   }
 
   isDrawing(): boolean {

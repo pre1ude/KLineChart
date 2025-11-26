@@ -120,7 +120,16 @@ limitations under the License.
       </div>
 
       <div class="test-section">
-        <h4>5. Batch Operations (批量操作)</h4>
+        <h4>5. zLevel Tests (层级测试)</h4>
+        <div class="button-group">
+          <button onclick="testZLevelBasic()">基础层级测试</button>
+          <button onclick="testZLevelHover()">Hover 层级测试</button>
+          <button onclick="testZLevelMultiple()">多个 Overlay 层级测试</button>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>6. Batch Operations (批量操作)</h4>
         <div class="button-group">
           <button onclick="createMultipleOverlays()">创建多个覆盖物</button>
           <button onclick="clearAllOverlays()">清除所有覆盖物</button>
@@ -287,7 +296,115 @@ limitations under the License.
         updateStatus('请右键点击覆盖物，测试删除功能')
       }
 
-      // 5. Batch Operations
+      // 5. zLevel Tests
+      window.testZLevelBasic = function() {
+        // 创建三个重叠的矩形，测试 zLevel
+        const rect1 = chart.createOverlay({
+          name: 'rect',
+          zLevel: 1,
+          points: [
+            { timestamp: dataList[dataList.length - 30].timestamp, value: dataList[dataList.length - 30].high },
+            { timestamp: dataList[dataList.length - 20].timestamp, value: dataList[dataList.length - 20].low }
+          ],
+          styles: {
+            polygon: {
+              color: 'rgba(255, 0, 0, 0.3)'
+            }
+          }
+        })
+
+        const rect2 = chart.createOverlay({
+          name: 'rect',
+          zLevel: 2,
+          points: [
+            { timestamp: dataList[dataList.length - 28].timestamp, value: dataList[dataList.length - 28].high },
+            { timestamp: dataList[dataList.length - 18].timestamp, value: dataList[dataList.length - 18].low }
+          ],
+          styles: {
+            polygon: {
+              color: 'rgba(0, 255, 0, 0.3)'
+            }
+          }
+        })
+
+        const rect3 = chart.createOverlay({
+          name: 'rect',
+          zLevel: 3,
+          points: [
+            { timestamp: dataList[dataList.length - 26].timestamp, value: dataList[dataList.length - 26].high },
+            { timestamp: dataList[dataList.length - 16].timestamp, value: dataList[dataList.length - 16].low }
+          ],
+          styles: {
+            polygon: {
+              color: 'rgba(0, 0, 255, 0.4)'
+            }
+          }
+        })
+
+        overlayCount += 3
+        updateStatus('创建了 3 个重叠的矩形（红、绿、蓝），zLevel 分别为 1、2、3。蓝色应该在最上层。')
+      }
+
+      window.testZLevelHover = function() {
+        // 创建两个重叠的圆形，测试 hover 时的 zLevel 提升
+        const circle1 = chart.createOverlay({
+          name: 'circle',
+          zLevel: 1,
+          points: [
+            { timestamp: dataList[dataList.length - 40].timestamp, value: dataList[dataList.length - 40].close },
+            { timestamp: dataList[dataList.length - 35].timestamp, value: dataList[dataList.length - 35].close }
+          ],
+          styles: {
+            circle: {
+              color: 'rgba(255, 165, 0, 0.5)'
+            }
+          }
+        })
+
+        const circle2 = chart.createOverlay({
+          name: 'circle',
+          zLevel: 2,
+          points: [
+            { timestamp: dataList[dataList.length - 38].timestamp, value: dataList[dataList.length - 38].close },
+            { timestamp: dataList[dataList.length - 33].timestamp, value: dataList[dataList.length - 33].close }
+          ],
+          styles: {
+            circle: {
+              color: 'rgba(128, 0, 128, 0.5)'
+            }
+          }
+        })
+
+        overlayCount += 2
+        updateStatus('创建了 2 个重叠的圆形（橙、紫）。Hover 到任意一个，它应该提升到最上层。移出后恢复原始层级。')
+      }
+
+      window.testZLevelMultiple = function() {
+        // 创建多个 overlay，快速 hover 测试
+        const overlays = []
+        for (let i = 0; i < 3; i++) {
+          const offset = 45 + i * 3
+          overlays.push(chart.createOverlay({
+            name: 'segment',
+            zLevel: i + 1,
+            points: [
+              { timestamp: dataList[dataList.length - offset].timestamp, value: dataList[dataList.length - offset].high },
+              { timestamp: dataList[dataList.length - (offset - 5)].timestamp, value: dataList[dataList.length - (offset - 5)].low }
+            ],
+            styles: {
+              line: {
+                size: 10,
+                color: i === 0 ? '#ff0000' : i === 1 ? '#00ff00' : '#0000ff'
+              }
+            }
+          }))
+        }
+
+        overlayCount += 3
+        updateStatus('创建了 3 条线段（红、绿、蓝）。快速 hover 不同的线段，测试 zLevel 是否能正确恢复。')
+      }
+
+      // 6. Batch Operations
       window.createMultipleOverlays = function() {
         for (let i = 0; i < 5; i++) {
           const offset = 10 + i * 5

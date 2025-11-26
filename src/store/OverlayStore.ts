@@ -3,7 +3,7 @@ import { UpdateLevel } from '../common/Updater'
 import { isValid, isString, isArray } from '../common/utils/typeChecks'
 import { createId } from '../common/utils/id'
 import { LoadDataType } from '../common/LoadDataCallback'
-import type { OverlayCreate, OverlayFilter } from '../component/Overlay'
+import type { OverlayCreate, OverlayFilter, OverlayProps } from '../component/Overlay'
 import { OVERLAY_ID_PREFIX, Overlay } from '../component/Overlay'
 import { getOverlayClass } from '../extension/overlay'
 import type ChartStore from './ChartStore'
@@ -39,7 +39,7 @@ export default class OverlayStore {
     return null
   }
 
-  getInstancesByFilter(filter: OverlayFilter): Overlay[] {
+  find(filter: OverlayFilter): Overlay[] {
     const { id, groupId, paneId, name } = filter
 
     const match = (overlay: Overlay): boolean => {
@@ -134,11 +134,7 @@ export default class OverlayStore {
 
     if (updatePaneIds.length > 0) {
       this._sort()
-      const chart = this._chartStore.getChart()
-      updatePaneIds.forEach(pid => {
-        chart.updatePane(UpdateLevel.Overlay, pid)
-      })
-      chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
+      this._redraw(updatePaneIds)
     }
 
     return ids
@@ -177,40 +173,42 @@ export default class OverlayStore {
     return this._instances.get(paneId) ?? []
   }
 
-  override(overlay: Partial<OverlayCreate>): boolean {
-    let sortFlag = false
+  update(filter: OverlayFilter, props: Partial<OverlayProps>): boolean {
     const updatePaneIds: string[] = []
+    let shouldSort = false
 
-    const filterInstances = this.getInstancesByFilter(overlay)
+    const instances = this.find(filter)
 
-    filterInstances.forEach(instance => {
-      instance.override(overlay)
-      const { sort, draw } = instance.shouldUpdate()
+    instances.forEach(instance => {
+      // 检测变化
+      const changes = instance.shouldUpdate(props)
 
-      if (sort) {
-        sortFlag = true
-      }
-      if (sort || draw) {
+      if (changes.sort) shouldSort = true
+      // 如果有变化，更新
+      if (changes.draw) {
+        instance.update(props)
         if (!updatePaneIds.includes(instance.paneId)) {
           updatePaneIds.push(instance.paneId)
         }
       }
     })
 
-    if (sortFlag) {
-      this._sort()
-    }
-
+    // 应用副作用
+    if (shouldSort) this._sort()
     if (updatePaneIds.length > 0) {
-      const chart = this._chartStore.getChart()
-      updatePaneIds.forEach(paneId => {
-        chart.updatePane(UpdateLevel.Overlay, paneId)
-      })
-      chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
+      this._redraw(updatePaneIds)
       return true
     }
 
     return false
+  }
+
+  _redraw(updatePaneIds: string[]): void {
+    const chart = this._chartStore.getChart()
+    updatePaneIds.forEach(paneId => {
+      chart.updatePane(UpdateLevel.Overlay, paneId)
+    })
+    chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
   }
 
   removeInstance(filter?: OverlayFilter): boolean {
@@ -235,7 +233,7 @@ export default class OverlayStore {
       this._instances.clear()
     } else {
       // Remove filtered overlays
-      const filterInstances = this.getInstancesByFilter(filter)
+      const filterInstances = this.find(filter)
 
       filterInstances.forEach(instance => {
         const targetPaneId = instance.paneId
@@ -264,11 +262,7 @@ export default class OverlayStore {
     }
 
     if (updatePaneIds.length > 0) {
-      const chart = this._chartStore.getChart()
-      updatePaneIds.forEach(paneId => {
-        chart.updatePane(UpdateLevel.Overlay, paneId)
-      })
-      chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
+      this._redraw(updatePaneIds)
       return true
     }
 

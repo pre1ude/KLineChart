@@ -75,13 +75,12 @@ export class OverlayLayer implements Layer {
 
         // 触发 onMouseLeave（当从一个 figure 切换到另一个，或者移出所有 figure）
         if (lastHoverInfo?.overlay != null) {
-          const prevOverlay = lastHoverInfo.overlay
-          // 恢复 zLevel
-          prevOverlay.setPrevZLevel(prevOverlay.zLevel)
-          prevOverlay.override({ zLevel: prevOverlay.getPrevZLevel() })
+          const overlay = lastHoverInfo.overlay
+          const zLevel = overlay.getOriginalZLevel()
+          overlayStore.update({ id: overlay.id }, { zLevel })
 
           // 触发 onMouseLeave
-          const hasCallback = prevOverlay.onMouseLeave?.(event, lastHoverInfo)
+          const hasCallback = overlay.onMouseLeave?.(event, lastHoverInfo)
 
           if (!hasCallback) {
             needUpdate = true
@@ -90,13 +89,12 @@ export class OverlayLayer implements Layer {
 
         // 触发 onMouseEnter（仅当移入一个新的 figure）
         if (hoverInfo?.overlay != null) {
-          const currentOverlay = hoverInfo.overlay
-          // 提升 zLevel 到最上层
-          currentOverlay.setPrevZLevel(currentOverlay.zLevel)
-          currentOverlay.override({ zLevel: Number.MAX_SAFE_INTEGER })
+          const overlay = hoverInfo.overlay
+          overlay.setOriginalZLevel(overlay.zLevel)
+          overlayStore.update({ id: overlay.id }, { zLevel: Number.MAX_SAFE_INTEGER })
 
           // 触发 onMouseEnter
-          const hasCallback = currentOverlay.onMouseEnter?.(event, hoverInfo)
+          const hasCallback = overlay.onMouseEnter?.(event, hoverInfo)
 
           if (!hasCallback) {
             needUpdate = true
