@@ -127,7 +127,7 @@ export default class OverlayStore {
         updatePaneIds.push(targetPaneId)
       }
 
-      if (overlayInstance.isDrawing()) {
+      if (!overlayInstance.isCompleted()) {
         this._progressOverlay = overlayInstance
       } else {
         if (!this._instances.has(targetPaneId)) {
@@ -156,7 +156,7 @@ export default class OverlayStore {
   }
 
   progressOverlayComplete(): void {
-    if (this._progressOverlay && !this._progressOverlay.isDrawing()) {
+    if (this._progressOverlay?.isCompleted()) {
       const paneId = this._progressOverlay.paneId
       if (!this._instances.has(paneId)) {
         this._instances.set(paneId, [])
@@ -256,7 +256,7 @@ export default class OverlayStore {
           updatePaneIds.push(targetPaneId)
         }
 
-        if (instance.isDrawing()) {
+        if (!instance.isCompleted()) {
           this._progressOverlay = undefined
         } else {
           const index = paneInstances.findIndex(o => o.id === instance.id)
@@ -302,9 +302,5 @@ export default class OverlayStore {
 
   isEmpty(): boolean {
     return this._instances.size === 0 && !this._progressOverlay
-  }
-
-  isDrawing(): boolean {
-    return this._progressOverlay?.isDrawing() ?? false
   }
 }

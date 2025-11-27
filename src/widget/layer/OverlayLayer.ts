@@ -56,7 +56,7 @@ export class OverlayLayer implements Layer {
 
         const pointIndex = progressOverlay.points.length - 1
         const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
-        if (progressOverlay.isDrawing() && progressOverlay.paneId === paneId) {
+        if (!progressOverlay.isCompleted() && progressOverlay.paneId === paneId) {
           progressOverlay.updateDrawPoint(this._overlayView.coordinateToPoint(progressOverlay, event))
           progressOverlay.onDrawing?.(event, { figureKey, pointIndex })
         }
@@ -118,11 +118,11 @@ export class OverlayLayer implements Layer {
       if (progressOverlay) {
         const pointIndex = progressOverlay.points.length - 1
         const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
-        if (progressOverlay.isDrawing() && progressOverlay.paneId === paneId) {
+        if (!progressOverlay.isCompleted() && progressOverlay.paneId === paneId) {
           progressOverlay.updateDrawPoint(this._overlayView.coordinateToPoint(progressOverlay, event))
           progressOverlay.onDrawing?.(event, { figureKey, pointIndex })
           progressOverlay.nextStep()
-          if (!progressOverlay.isDrawing()) {
+          if (progressOverlay.isCompleted()) {
             overlayStore.progressOverlayComplete()
             progressOverlay.onDrawEnd?.(event, { figureKey, pointIndex })
           }
@@ -187,7 +187,7 @@ export class OverlayLayer implements Layer {
     this._overlayView.addEventListener('mouseDoubleClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay) {
-        if (progressOverlay.isDrawing() && progressOverlay.paneId === paneId) {
+        if (!progressOverlay.isCompleted() && progressOverlay.paneId === paneId) {
           progressOverlay.forceComplete()
           overlayStore.progressOverlayComplete()
           const pointIndex = progressOverlay.points.length - 1
@@ -209,7 +209,8 @@ export class OverlayLayer implements Layer {
     // 鼠标右键事件 - 处理 onRightClick
     this._overlayView.addEventListener('mouseRightClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
-      if (progressOverlay?.isDrawing()) {
+      // 绘制中不触发右键
+      if (progressOverlay) {
         return false
       }
 

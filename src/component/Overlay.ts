@@ -7,7 +7,7 @@ import type BarSpace from '../common/BarSpace'
 import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
-import { clone, isFunction, isNumber, isValid, merge } from '../common/utils/typeChecks'
+import { clone, isNumber, isValid, merge } from '../common/utils/typeChecks'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
 import type ChartStore from '../store/ChartStore'
@@ -334,7 +334,7 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
   }
 
   isDrawing(): boolean {
-    return this.state !== OverlayState.COMPLETED
+    return this.state === OverlayState.DRAWING
   }
 
   isCreated(): boolean {
@@ -363,7 +363,7 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
   }
 
   updateDrawPoint(point: Partial<Point>): void {
-    if (isFunction(this.onDrawPointUpdate)) {
+    if (this.onDrawPointUpdate) {
       this.onDrawPointUpdate(this.points, this.currentStep, point)
       return
     }
@@ -371,7 +371,7 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
   }
 
   onDragMoveControlPoint(point: Partial<Point>, pointIndex: number): void {
-    if (isFunction(this.onControlPointUpdate)) {
+    if (this.onControlPointUpdate) {
       this.onControlPointUpdate(this.points, pointIndex, point)
       return
     }
