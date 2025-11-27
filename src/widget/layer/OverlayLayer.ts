@@ -120,8 +120,11 @@ export class OverlayLayer implements Layer {
         const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
         if (!progressOverlay.isCompleted() && progressOverlay.paneId === paneId) {
           progressOverlay.updateDrawPoint(this._overlayView.coordinateToPoint(progressOverlay, event))
-          progressOverlay.onDrawing?.(event, { figureKey, pointIndex })
+          if (progressOverlay.isCreated()) {
+            progressOverlay.onDrawStart?.(event, { figureKey, pointIndex })
+          }
           progressOverlay.nextStep()
+          progressOverlay.onDrawing?.(event, { figureKey, pointIndex })
           if (progressOverlay.isCompleted()) {
             overlayStore.progressOverlayComplete()
             progressOverlay.onDrawEnd?.(event, { figureKey, pointIndex })

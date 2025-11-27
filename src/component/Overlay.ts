@@ -99,22 +99,29 @@ export type OverlayEventCallback = (event: MouseTouchEvent, params: EventOverlay
 export type OverlayCreateFiguresCallback<E = DefaultExtendData> = (params: OverlayCreateFiguresCallbackParams<E>) => OverlayFigure | OverlayFigure[]
 
 export interface OverlayEventHandlers {
-  onDrawStart?: DefaultCallback
+  /** 当 overlay 实例被创建完毕时触发，不论是否已经绘制完成 */
+  onCreated?: DefaultCallback
+  onRemoved?: DefaultCallback
+
+  /** 开始绘制（第一个点） */
+  onDrawStart?: OverlayDrawEventCallback
+  /** 绘制中（每次添加点） */
   onDrawing?: OverlayDrawEventCallback
+  /** 绘制完成（最后一个点） */
   onDrawEnd?: OverlayDrawEventCallback
 
   onClick?: OverlayEventCallback
   onDoubleClick?: OverlayEventCallback
+  /** 返回 Truthy 阻止右键点击删除 */
   onRightClick?: OverlayEventCallback
   onPressedMoveStart?: OverlayEventCallback
+  /** 返回 Truthy 阻止原有的默认拖动行为 */
   onPressedMoving?: OverlayEventCallback
   onPressedMoveEnd?: OverlayEventCallback
   onMouseEnter?: OverlayEventCallback
   onMouseLeave?: OverlayEventCallback
   onSelected?: OverlayEventCallback
   onDeselected?: OverlayEventCallback
-
-  onRemoved?: DefaultCallback
 }
 
 export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers {
@@ -215,16 +222,15 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   }) => void
 
   // Event callbacks
-  onDrawStart?: DefaultCallback
+  onCreated?: DefaultCallback
+  onDrawStart?: OverlayDrawEventCallback
   onDrawing?: OverlayDrawEventCallback
   onDrawEnd?: OverlayDrawEventCallback
 
   onClick?: OverlayEventCallback
   onDoubleClick?: OverlayEventCallback
-  /** 仅当返回 Truthy 值时阻止右键点击删除 */
   onRightClick?: OverlayEventCallback
   onPressedMoveStart?: OverlayEventCallback
-  // 返回 Truthy 表示阻止原有的默认拖动行为
   onPressedMoving?: OverlayEventCallback
   onPressedMoveEnd?: OverlayEventCallback
   onMouseEnter?: OverlayEventCallback
@@ -252,6 +258,8 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     }
 
     Object.assign(this, rest)
+
+    this.onCreated?.()
   }
 
   setOriginalZLevel(zLevel: number): void {
@@ -389,7 +397,6 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     if (isNumber(np.timestamp)) p.timestamp = np.timestamp
     if (isNumber(np.dataIndex)) p.dataIndex = np.dataIndex
     if (isNumber(np.value)) p.value = np.value
-    // if (isNumber(np.dataKey)) p.dataKey = np.dataKey
   }
 
   startPressedMove(point: Partial<Point>): void {

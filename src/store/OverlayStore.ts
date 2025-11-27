@@ -136,10 +136,6 @@ export default class OverlayStore {
         this._instances.get(targetPaneId)?.push(overlayInstance)
       }
 
-      if (overlayInstance.isCreated()) {
-        overlayInstance.onDrawStart?.()
-      }
-
       return id
     })
 
