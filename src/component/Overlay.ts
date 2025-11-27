@@ -12,6 +12,13 @@ import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
 import type ChartStore from '../store/ChartStore'
 
+// 辅助类型：表示数组索引访问总是返回非 undefined 的值
+type NonUndefinedArray<T> = ReadonlyArray<T> & { [K in number]: T }
+
+// 默认的 extendData 类型，允许任意属性
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DefaultExtendData = Record<string, any>
+
 export type OverlayMode = 'normal' | 'weak_magnet' | 'strong_magnet'
 
 export enum OverlayState {
@@ -58,7 +65,7 @@ export interface OverlayPrecision extends Precision {
   [key: string]: number
 }
 
-export interface OverlayCreateFiguresCallbackParams<E = unknown> {
+export interface OverlayCreateFiguresCallbackParams<E = DefaultExtendData> {
   overlay: Overlay<E>
   coordinates: Coordinate[]
   bounding: Bounding
@@ -73,7 +80,7 @@ export interface OverlayCreateFiguresCallbackParams<E = unknown> {
   isAlignLeft?: boolean
 }
 
-export interface OverlayEvent<E = unknown> extends Partial<MouseTouchEvent> {
+export interface OverlayEvent<E = DefaultExtendData> extends Partial<MouseTouchEvent> {
   figureKey?: string
   figureIndex?: number
   overlay: Overlay<E>
@@ -89,7 +96,7 @@ export type OverlayDrawEventCallback = (event: MouseTouchEvent, params: DrawPara
 
 export type OverlayEventCallback = (event: MouseTouchEvent, params: EventOverlayInfo) => boolean
 
-export type OverlayCreateFiguresCallback<E = unknown> = (params: OverlayCreateFiguresCallbackParams<E>) => OverlayFigure | OverlayFigure[]
+export type OverlayCreateFiguresCallback<E = DefaultExtendData> = (params: OverlayCreateFiguresCallbackParams<E>) => OverlayFigure | OverlayFigure[]
 
 export interface OverlayEventHandlers {
   onDrawStart?: DefaultCallback
@@ -110,7 +117,7 @@ export interface OverlayEventHandlers {
   onRemoved?: DefaultCallback
 }
 
-export interface OverlayApi<E = unknown> extends OverlayEventHandlers {
+export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers {
   id: string
   groupId: string
   paneId: string
@@ -134,16 +141,16 @@ export interface OverlayApi<E = unknown> extends OverlayEventHandlers {
   createYAxisFigures?: OverlayCreateFiguresCallback<E>
   onControlPointUpdate?: (points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
   onDrawPointUpdate?: (points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
-  onBodyDrag?: (params: {
-    point: Partial<Point>
-    prevPoint: Partial<Point>
-    prevPoints: ReadonlyArray<Readonly<Partial<Point>>>
+  onBodyDrag?: (this: Overlay<E>, params: {
+    point: Required<Point>
+    prevPoint: Required<Point>
+    prevPoints: NonUndefinedArray<Readonly<Required<Point>>>
     chartStore: ChartStore
   }) => void
 }
 
-export type OverlayTemplate<E = unknown> = PartialExcept<Omit<OverlayApi<E>, 'id' | 'groupId' | 'paneId' | 'points' | 'currentStep' | 'state'>, 'name'>
-export type OverlayCreate<E = unknown> = PartialExcept<Omit<OverlayApi<E>, 'currentStep' | 'totalStep' | 'state' | 'createFigures' | 'createXAxisFigures' | 'createYAxisFigures' | 'performEventPressedMove' | 'onDrawingPointUpdate'>, 'name'>
+export type OverlayTemplate<E = DefaultExtendData> = PartialExcept<Omit<OverlayApi<E>, 'id' | 'groupId' | 'paneId' | 'points' | 'currentStep' | 'state'>, 'name'>
+export type OverlayCreate<E = DefaultExtendData> = PartialExcept<Omit<OverlayApi<E>, 'currentStep' | 'totalStep' | 'state' | 'createFigures' | 'createXAxisFigures' | 'createYAxisFigures' | 'performEventPressedMove' | 'onDrawingPointUpdate'>, 'name'>
 
 export interface OverlayFilter {
   id?: string
@@ -172,7 +179,7 @@ interface OverlayInitOption {
 export const OVERLAY_ID_PREFIX = 'overlay_'
 export const OVERLAY_FIGURE_KEY_PREFIX = 'overlay_figure_'
 
-export class Overlay<E = unknown> implements OverlayApi<E> {
+export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   id: string
   groupId: string
   paneId: string
@@ -200,10 +207,10 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
 
   onControlPointUpdate?: (points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
   onDrawPointUpdate?: (points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
-  onBodyDrag?: (params: {
-    point: Partial<Point>
-    prevPoint: Partial<Point>
-    prevPoints: ReadonlyArray<Readonly<Partial<Point>>>
+  onBodyDrag?: (this: Overlay<E>, params: {
+    point: Required<Point>
+    prevPoint: Required<Point>
+    prevPoints: NonUndefinedArray<Readonly<Required<Point>>>
     chartStore: ChartStore
   }) => void
 
@@ -394,10 +401,11 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
     if (!this._prevPressedPoint) return
 
     if (this.onBodyDrag) {
+      // todo here is unsafe as
       this.onBodyDrag({
-        point,
-        prevPoint: this._prevPressedPoint,
-        prevPoints: this._prevPressedPoints,
+        point: point as Required<Point>,
+        prevPoint: this._prevPressedPoint as Required<Point>,
+        prevPoints: this._prevPressedPoints as NonUndefinedArray<Readonly<Required<Point>>>,
         chartStore
       })
       return
