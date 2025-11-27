@@ -178,10 +178,10 @@ export default class IndicatorTooltipView extends View {
           family: fontFamily,
           backgroundColor: active ? activeBackgroundColor : backgroundColor
         }).draw(ctx)
-        this.bindFigureEvent(figureInstance, {
-          mouseClickEvent: this._boundIconClickEvent({ paneId, indicatorName, iconId: icon.id }),
-          mouseMoveEvent: this._boundIconMouseMoveEvent({ paneId, indicatorName, iconId: icon.id })
-        })
+
+        figureInstance.addEventListener('mouseClickEvent', this._boundIconClickEvent({ paneId, indicatorName, iconId: icon.id }))
+        figureInstance.addEventListener('mouseMoveEvent', this._boundIconMouseMoveEvent({ paneId, indicatorName, iconId: icon.id }))
+        this.addChild(figureInstance)
 
         const font = createFont(size, 'normal', fontFamily)
         coordinate.x += (marginLeft + paddingLeft + calcTextWidth(text, font) + paddingRight + marginRight)
@@ -258,7 +258,7 @@ export default class IndicatorTooltipView extends View {
 
     const tooltipData: IndicatorTooltipData = { name, calcParamsText, values: [], icons: tooltipStyles.icons }
 
-    const dataIndex = crosshair.dataIndex!
+    const dataIndex = crosshair.dataIndex ?? 0
     const result = indicator.result ?? []
 
     const legends: TooltipLegend[] = []
