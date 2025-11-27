@@ -1,46 +1,75 @@
-
-import type Nullable from '../../common/Nullable'
 import type Coordinate from '../../common/Coordinate'
 import { type SmoothLineStyle, LineType } from '../../common/Styles'
-
 import { type FigureTemplate, DEVIATION } from '../../component/Figure'
 import { isNumber } from '../../common/utils/typeChecks'
 
-export function checkCoordinateOnLine(coordinate: Coordinate, attrs: LineAttrs | LineAttrs[]): boolean {
-  let lines: LineAttrs[] = []
-  lines = lines.concat(attrs)
+const DEFAULT_SMOOTH = 0.5
 
-  for (let i = 0; i < lines.length; i++) {
-    const { coordinates } = lines[i]
-    if (coordinates.length > 1) {
-      for (let i = 1; i < coordinates.length; i++) {
-        const prevCoordinate = coordinates[i - 1]
-        const currentCoordinate = coordinates[i]
-        if (prevCoordinate.x === currentCoordinate.x) {
-          if (
-            Math.abs(prevCoordinate.y - coordinate.y) + Math.abs(currentCoordinate.y - coordinate.y) - Math.abs(prevCoordinate.y - currentCoordinate.y) < DEVIATION + DEVIATION &&
-            Math.abs(coordinate.x - prevCoordinate.x) < DEVIATION
-          ) {
-            return true
-          }
-        } else {
-          const kb = getLinearSlopeIntercept(prevCoordinate, currentCoordinate)!
-          const y = getLinearYFromSlopeIntercept(kb, coordinate)
-          const yDif = Math.abs(y - coordinate.y)
-          if (
-            Math.abs(prevCoordinate.x - coordinate.x) + Math.abs(currentCoordinate.x - coordinate.x) - Math.abs(prevCoordinate.x - currentCoordinate.x) < DEVIATION + DEVIATION &&
-            yDif * yDif / (kb[0] * kb[0] + 1) < DEVIATION * DEVIATION
-          ) {
-            return true
-          }
-        }
-      }
+function pointToSegmentDistance2(point: Coordinate, p1: Coordinate, p2: Coordinate): number {
+  const dx = p2.x - p1.x
+  const dy = p2.y - p1.y
+  const lengthSquared = dx * dx + dy * dy
+
+  if (lengthSquared === 0) {
+    // 退化为点
+    const pdx = point.x - p1.x
+    const pdy = point.y - p1.y
+    return pdx * pdx + pdy * pdy
+  }
+
+  // 计算投影参数 t
+  let t = ((point.x - p1.x) * dx + (point.y - p1.y) * dy) / lengthSquared
+  t = Math.max(0, Math.min(1, t))  // 限制在 [0, 1]
+
+  // 计算最近点
+  const nearestX = p1.x + t * dx
+  const nearestY = p1.y + t * dy
+
+  // 计算距离
+  const distX = point.x - nearestX
+  const distY = point.y - nearestY
+  return distX * distX + distY * distY
+}
+
+function isPointOnSingleLine(point: Coordinate, attrs: LineAttrs): boolean {
+  const { coordinates } = attrs
+  const len = coordinates.length
+
+  if (len <= 1) return false
+
+  let prev = coordinates[0]
+
+  for (let j = 1; j < len; j++) {
+    const curr = coordinates[j]
+    // fast bounding box check
+    const minX = Math.min(prev.x, curr.x) - DEVIATION
+    const maxX = Math.max(prev.x, curr.x) + DEVIATION
+    const minY = Math.min(prev.y, curr.y) - DEVIATION
+    const maxY = Math.max(prev.y, curr.y) + DEVIATION
+
+    if (point.x < minX || point.x > maxX || point.y < minY || point.y > maxY) {
+      continue
+    }
+    const distance2 = pointToSegmentDistance2(point, prev, curr)
+    if (distance2 <= DEVIATION * DEVIATION) {
+      return true
+    }
+    prev = curr
+  }
+  return false
+}
+
+export function isPointOnLine(point: Coordinate, attrs: LineAttrs | LineAttrs[]): boolean {
+  attrs = Array.isArray(attrs) ? attrs : [attrs]
+  for (let i = 0; i < attrs.length; i++) {
+    if (isPointOnSingleLine(point, attrs[i])) {
+      return true
     }
   }
   return false
 }
 
-export function getLinearYFromSlopeIntercept(kb: Nullable<number[]>, coordinate: Coordinate): number {
+export function getLinearYFromSlopeIntercept(kb: number[] | null, coordinate: Coordinate): number {
   if (kb !== null) {
     return coordinate.x * kb[0] + kb[1]
   }
@@ -58,7 +87,7 @@ export function getLinearYFromCoordinates(coordinate1: Coordinate, coordinate2: 
   return getLinearYFromSlopeIntercept(kb, targetCoordinate)
 }
 
-export function getLinearSlopeIntercept(coordinate1: Coordinate, coordinate2: Coordinate): Nullable<number[]> {
+export function getLinearSlopeIntercept(coordinate1: Coordinate, coordinate2: Coordinate): number[] | null {
   const difX = coordinate1.x - coordinate2.x
   if (difX !== 0) {
     const k = (coordinate1.y - coordinate2.y) / difX
@@ -68,67 +97,112 @@ export function getLinearSlopeIntercept(coordinate1: Coordinate, coordinate2: Co
   return null
 }
 
-export function lineTo(ctx: CanvasRenderingContext2D, coordinates: Coordinate[], smooth: number | boolean): void {
-  const length = coordinates.length
-  const smoothParam = isNumber(smooth) ? (smooth > 0 && smooth < 1 ? smooth : 0) : (smooth ? 0.5 : 0)
-  if ((smoothParam > 0) && length > 2) {
-    let cpx0 = coordinates[0].x
-    let cpy0 = coordinates[0].y
-    for (let i = 1; i < length - 1; i++) {
-      const prevCoordinate = coordinates[i - 1]
-      const coordinate = coordinates[i]
-      const nextCoordinate = coordinates[i + 1]
-      const dx01 = coordinate.x - prevCoordinate.x
-      const dy01 = coordinate.y - prevCoordinate.y
-      const dx12 = nextCoordinate.x - coordinate.x
-      const dy12 = nextCoordinate.y - coordinate.y
-      let dx02 = nextCoordinate.x - prevCoordinate.x
-      let dy02 = nextCoordinate.y - prevCoordinate.y
-      const prevSegmentLength = Math.sqrt(dx01 * dx01 + dy01 * dy01)
-      const nextSegmentLength = Math.sqrt(dx12 * dx12 + dy12 * dy12)
-      const segmentLengthRatio = nextSegmentLength / (nextSegmentLength + prevSegmentLength)
+function lineToSmooth(ctx: CanvasRenderingContext2D, points: Coordinate[], smooth: number): void {
+  const length = points.length
+  let x0 = points[0].x
+  let y0 = points[0].y
 
-      let nextCpx = coordinate.x + dx02 * smoothParam * segmentLengthRatio
-      let nextCpy = coordinate.y + dy02 * smoothParam * segmentLengthRatio
-      nextCpx = Math.min(nextCpx, Math.max(nextCoordinate.x, coordinate.x))
-      nextCpy = Math.min(nextCpy, Math.max(nextCoordinate.y, coordinate.y))
-      nextCpx = Math.max(nextCpx, Math.min(nextCoordinate.x, coordinate.x))
-      nextCpy = Math.max(nextCpy, Math.min(nextCoordinate.y, coordinate.y))
+  const lastIndex = length - 1
 
-      dx02 = nextCpx - coordinate.x
-      dy02 = nextCpy - coordinate.y
+  for (let i = 1; i < lastIndex; i++) {
+    const prevCoordinate = points[i - 1]
+    const coordinate = points[i]
+    const nextCoordinate = points[i + 1]
+    const dx01 = coordinate.x - prevCoordinate.x
+    const dy01 = coordinate.y - prevCoordinate.y
+    const dx12 = nextCoordinate.x - coordinate.x
+    const dy12 = nextCoordinate.y - coordinate.y
+    let dx02 = nextCoordinate.x - prevCoordinate.x
+    let dy02 = nextCoordinate.y - prevCoordinate.y
+    const prevSegmentLength = Math.sqrt(dx01 * dx01 + dy01 * dy01)
+    const nextSegmentLength = Math.sqrt(dx12 * dx12 + dy12 * dy12)
+    const segmentLengthRatio = nextSegmentLength / (nextSegmentLength + prevSegmentLength)
 
-      let cpx1 = coordinate.x - dx02 * prevSegmentLength / nextSegmentLength
-      let cpy1 = coordinate.y - dy02 * prevSegmentLength / nextSegmentLength
+    let nextCpx = coordinate.x + dx02 * smooth * segmentLengthRatio
+    let nextCpy = coordinate.y + dy02 * smooth * segmentLengthRatio
+    nextCpx = Math.min(nextCpx, Math.max(nextCoordinate.x, coordinate.x))
+    nextCpy = Math.min(nextCpy, Math.max(nextCoordinate.y, coordinate.y))
+    nextCpx = Math.max(nextCpx, Math.min(nextCoordinate.x, coordinate.x))
+    nextCpy = Math.max(nextCpy, Math.min(nextCoordinate.y, coordinate.y))
 
-      cpx1 = Math.min(cpx1, Math.max(prevCoordinate.x, coordinate.x))
-      cpy1 = Math.min(cpy1, Math.max(prevCoordinate.y, coordinate.y))
-      cpx1 = Math.max(cpx1, Math.min(prevCoordinate.x, coordinate.x))
-      cpy1 = Math.max(cpy1, Math.min(prevCoordinate.y, coordinate.y))
+    dx02 = nextCpx - coordinate.x
+    dy02 = nextCpy - coordinate.y
 
-      dx02 = coordinate.x - cpx1
-      dy02 = coordinate.y - cpy1
-      nextCpx = coordinate.x + dx02 * nextSegmentLength / prevSegmentLength
-      nextCpy = coordinate.y + dy02 * nextSegmentLength / prevSegmentLength
+    let x1 = coordinate.x - dx02 * prevSegmentLength / nextSegmentLength
+    let y1 = coordinate.y - dy02 * prevSegmentLength / nextSegmentLength
 
-      ctx.bezierCurveTo(cpx0, cpy0, cpx1, cpy1, coordinate.x, coordinate.y)
+    x1 = Math.min(x1, Math.max(prevCoordinate.x, coordinate.x))
+    y1 = Math.min(y1, Math.max(prevCoordinate.y, coordinate.y))
+    x1 = Math.max(x1, Math.min(prevCoordinate.x, coordinate.x))
+    y1 = Math.max(y1, Math.min(prevCoordinate.y, coordinate.y))
 
-      cpx0 = nextCpx
-      cpy0 = nextCpy
-    }
-    const lastCoordinate = coordinates[length - 1]
-    ctx.bezierCurveTo(cpx0, cpy0, lastCoordinate.x, lastCoordinate.y, lastCoordinate.x, lastCoordinate.y)
-  } else {
-    for (let i = 1; i < length; i++) {
-      ctx.lineTo(coordinates[i].x, coordinates[i].y)
-    }
+    dx02 = coordinate.x - x1
+    dy02 = coordinate.y - y1
+    nextCpx = coordinate.x + dx02 * nextSegmentLength / prevSegmentLength
+    nextCpy = coordinate.y + dy02 * nextSegmentLength / prevSegmentLength
+
+    ctx.bezierCurveTo(x0, y0, x1, y1, coordinate.x, coordinate.y)
+
+    x0 = nextCpx
+    y0 = nextCpy
+  }
+  const lastCoordinate = points[lastIndex]
+  ctx.bezierCurveTo(x0, y0, lastCoordinate.x, lastCoordinate.y, lastCoordinate.x, lastCoordinate.y)
+}
+
+function lineToStraight(ctx: CanvasRenderingContext2D, points: Coordinate[]): void {
+  const length = points.length
+  for (let i = 1; i < length; i++) {
+    const coord = points[i]
+    ctx.lineTo(coord.x, coord.y)
   }
 }
 
-export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineAttrs[], styles: Partial<SmoothLineStyle>): void {
-  let lines: LineAttrs[] = []
-  lines = lines.concat(attrs)
+export function lineTo(ctx: CanvasRenderingContext2D, points: Coordinate[], smooth: number): void {
+  const length = points.length
+  if (smooth > 0 && length > 2) {
+    lineToSmooth(ctx, points, smooth)
+  } else {
+    lineToStraight(ctx, points)
+  }
+}
+
+function drawSingleLine(ctx: CanvasRenderingContext2D, points: Coordinate[], smooth: number, correction: number): void {
+  if (points.length <= 1) return
+
+  // 只对水平/垂直两点线段进行像素对齐
+  if (
+    points.length === 2 &&
+    (points[0].x === points[1].x || points[0].y === points[1].y)
+  ) {
+    ctx.beginPath()
+    if (points[0].x === points[1].x) {
+      ctx.moveTo(points[0].x + correction, points[0].y)
+      ctx.lineTo(points[1].x + correction, points[1].y)
+    } else {
+      ctx.moveTo(points[0].x, points[0].y + correction)
+      ctx.lineTo(points[1].x, points[1].y + correction)
+    }
+    ctx.stroke()
+    ctx.closePath()
+    return
+  }
+
+  // 一般情况：不使用 correction
+  ctx.beginPath()
+  ctx.moveTo(points[0].x, points[0].y)
+  lineTo(ctx, points, smooth)
+  ctx.stroke()
+  ctx.closePath()
+}
+
+export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs[], styles: Partial<SmoothLineStyle>): void {
   const { style = LineType.Solid, smooth = false, size = 1, color = 'currentColor', dashedValue = [2, 2] } = styles
+  const correction = size % 2 === 1 ? 0.5 : 0
+  const smoothParam = isNumber(smooth)
+    ? (smooth > 0 && smooth < 1 ? smooth : 0)
+    : (smooth ? DEFAULT_SMOOTH : 0)
+
   ctx.lineWidth = size
   ctx.strokeStyle = color
   if (style === LineType.Dashed) {
@@ -136,40 +210,10 @@ export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineA
   } else {
     ctx.setLineDash([])
   }
-  const correction = size % 2 === 1 ? 0.5 : 0
-  lines.forEach(({ coordinates }) => {
-    if (coordinates.length > 1) {
-      if (
-        coordinates.length === 2 &&
-        (
-          coordinates[0].x === coordinates[1].x ||
-          coordinates[0].y === coordinates[1].y
-        )
-      ) {
-        ctx.beginPath()
-        if (coordinates[0].x === coordinates[1].x) {
-          ctx.moveTo(coordinates[0].x + correction, coordinates[0].y)
-          ctx.lineTo(coordinates[1].x + correction, coordinates[1].y)
-        } else {
-          ctx.moveTo(coordinates[0].x, coordinates[0].y + correction)
-          ctx.lineTo(coordinates[1].x, coordinates[1].y + correction)
-        }
-        ctx.stroke()
-        ctx.closePath()
-      } else {
-        ctx.save()
-        if (size % 2 === 1) {
-          ctx.translate(0.5, 0.5)
-        }
-        ctx.beginPath()
-        ctx.moveTo(coordinates[0].x, coordinates[0].y)
-        lineTo(ctx, coordinates, smooth)
-        ctx.stroke()
-        ctx.closePath()
-        ctx.restore()
-      }
-    }
-  })
+
+  for (let i = 0; i < attrs.length; i++) {
+    drawSingleLine(ctx, attrs[i].coordinates, smoothParam, correction)
+  }
 }
 
 export interface LineAttrs {
@@ -178,10 +222,10 @@ export interface LineAttrs {
 
 const line: FigureTemplate<LineAttrs | LineAttrs[], Partial<SmoothLineStyle>> = {
   name: 'line',
-  checkEventOn: checkCoordinateOnLine,
+  checkEventOn: isPointOnLine,
   draw: (ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineAttrs[], styles: Partial<SmoothLineStyle>) => {
     ctx.save()
-    drawLine(ctx, attrs, styles)
+    drawLine(ctx, Array.isArray(attrs) ? attrs : [attrs], styles)
     ctx.restore()
   }
 }
