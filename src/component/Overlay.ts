@@ -7,7 +7,7 @@ import type BarSpace from '../common/BarSpace'
 import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
-import { clone, isArray, isFunction, isNumber, isValid, merge } from '../common/utils/typeChecks'
+import { clone, isFunction, isNumber, isValid, merge } from '../common/utils/typeChecks'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
 import type ChartStore from '../store/ChartStore'
@@ -240,7 +240,9 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
     if (isValid(zLevel)) {
       this.zLevel = zLevel
     }
-    this._applyPoints(points)
+    if (points) {
+      this._applyPoints(points)
+    }
 
     Object.assign(this, rest)
   }
@@ -279,24 +281,24 @@ export class Overlay<E = unknown> implements OverlayApi<E> {
       merge(this.styles, styles)
     }
 
-    this._applyPoints(points)
+    if (points) {
+      this._applyPoints(points)
+    }
   }
 
-  private _applyPoints(points: Partial<Point>[] | undefined) {
-    if (isArray(points)) {
-      const _points = points.length > this.totalStep ? points.slice(0, this.totalStep) : points
+  private _applyPoints(points: Partial<Point>[]) {
+    const _points = points.length > this.totalStep ? points.slice(0, this.totalStep) : points
 
-      this.currentStep = _points.length
-      this.state = this.currentStep === this.totalStep
-        ? OverlayState.COMPLETED
-        : this.currentStep === 0
-          ? OverlayState.CREATED
-          : OverlayState.DRAWING
+    this.currentStep = _points.length
+    this.state = this.currentStep === this.totalStep
+      ? OverlayState.COMPLETED
+      : this.currentStep === 0
+        ? OverlayState.CREATED
+        : OverlayState.DRAWING
 
-      this.points = _points
-      for (let i = 0; i < this.currentStep; i++) {
-        this.onDrawPointUpdate?.(this.points, i, this.points[i])
-      }
+    this.points = _points
+    for (let i = 0; i < this.currentStep; i++) {
+      this.onDrawPointUpdate?.(this.points, i, this.points[i])
     }
   }
 
