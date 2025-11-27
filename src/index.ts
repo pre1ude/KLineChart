@@ -17,7 +17,7 @@ import Chart, { DomPosition } from './Chart'
 import { checkCoordinateOnArc, drawArc } from './extension/figure/arc'
 import { checkCoordinateOnCircle, drawCircle } from './extension/figure/circle'
 import {
-  checkCoordinateOnLine, drawLine,
+  isPointOnLine, drawLine,
   getLinearYFromSlopeIntercept, getLinearSlopeIntercept, getLinearYFromCoordinates
 } from './extension/figure/line'
 import { checkCoordinateOnPolygon, drawPolygon } from './extension/figure/polygon'
@@ -117,7 +117,7 @@ const utils = {
   getLinearYFromCoordinates,
   checkCoordinateOnArc,
   checkCoordinateOnCircle,
-  checkCoordinateOnLine,
+  checkCoordinateOnLine: isPointOnLine,
   checkCoordinateOnPolygon,
   checkCoordinateOnRect,
   checkCoordinateOnText,
