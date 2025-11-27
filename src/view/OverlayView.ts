@@ -214,6 +214,38 @@ export default class OverlayView extends View {
     }
   }
 
+  private pointToCoordinate(
+    point: Partial<Point>,
+    chartStore: ChartStore,
+    xAxis?: XAxis,
+    yAxis?: YAxis
+  ): Coordinate {
+    let dataIndex = point.dataIndex
+    if (dataIndex == null && isNumber(point.timestamp)) {
+      dataIndex = chartStore.timestampToDataIndex(point.timestamp)
+    }
+
+    const coordinate = { x: 0, y: 0 }
+
+    if (isNumber(dataIndex)) {
+      coordinate.x = xAxis?.convertToPixel(dataIndex) ?? 0
+
+      if (typeof point.dataKey === 'string' && point.dataKey !== '') {
+        const data = chartStore.getDataByDataIndex(dataIndex)
+        if (data && point.dataKey in data) {
+          const v = Number(data[point.dataKey])
+          if (isNumber(v)) {
+            coordinate.y = yAxis?.convertToPixel(v) ?? 0
+          }
+        }
+      } else if (isNumber(point.value)) {
+        coordinate.y = yAxis?.convertToPixel(point.value) ?? 0
+      }
+    }
+
+    return coordinate
+  }
+
   private _drawOverlay(
     ctx: CanvasRenderingContext2D,
     overlay: Overlay,
@@ -233,26 +265,10 @@ export default class OverlayView extends View {
     yAxis?: YAxis,
   ): void {
     const { points } = overlay
-    const coordinates = points.map((point) => {
-      let dataIndex = point.dataIndex
-      if (dataIndex == null && isNumber(point.timestamp)) {
-        dataIndex = chartStore.timestampToDataIndex(point.timestamp)
-      }
-      const coordinate = { x: 0, y: 0 }
-      if (isNumber(dataIndex)) {
-        coordinate.x = xAxis?.convertToPixel(dataIndex) ?? 0
-        if (typeof point.dataKey === 'string' && point.dataKey !== '') {
-          const data = chartStore.getDataByDataIndex(dataIndex)
-          if (data && point.dataKey in data) {
-            const v = Number(data[point.dataKey])
-            if (isNumber(v)) coordinate.y = yAxis?.convertToPixel(v) ?? 0
-          }
-        } else if (isNumber(point.value)) {
-          coordinate.y = yAxis?.convertToPixel(point.value) ?? 0
-        }
-      }
-      return coordinate
-    })
+    const coordinates = points.map(point =>
+      this.pointToCoordinate(point, chartStore, xAxis, yAxis)
+    )
+
     if (coordinates.length > 0) {
       const _figures = this.getFigures({ overlay, coordinates, bounding, barSpace, precision, thousandsSeparator, decimalFoldThreshold, dateTimeFormat, defaultStyles, xAxis, yAxis })
       const figures = Array.isArray(_figures) ? _figures : [_figures]
