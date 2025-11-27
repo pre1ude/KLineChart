@@ -91,17 +91,16 @@ interface DrawParams {
   pointIndex: number
 }
 
-export type DefaultCallback = () => void
 export type OverlayDrawEventCallback = (event: MouseTouchEvent, params: DrawParams) => void
 
 export type OverlayEventCallback = (event: MouseTouchEvent, params: EventOverlayInfo) => boolean
 
 export type OverlayCreateFiguresCallback<E = DefaultExtendData> = (params: OverlayCreateFiguresCallbackParams<E>) => OverlayFigure | OverlayFigure[]
 
-export interface OverlayEventHandlers {
+export interface OverlayEventHandlers<E = DefaultExtendData> {
   /** 当 overlay 实例被创建完毕时触发，不论是否已经绘制完成 */
-  onCreated?: DefaultCallback
-  onRemoved?: DefaultCallback
+  onCreated?: (this: Overlay<E>) => void
+  onRemoved?: () => void
 
   /** 开始绘制（第一个点） */
   onDrawStart?: OverlayDrawEventCallback
@@ -124,7 +123,7 @@ export interface OverlayEventHandlers {
   onDeselected?: OverlayEventCallback
 }
 
-export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers {
+export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers<E> {
   id: string
   groupId: string
   paneId: string
@@ -146,8 +145,11 @@ export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers 
   createFigures?: OverlayCreateFiguresCallback<E>
   createXAxisFigures?: OverlayCreateFiguresCallback<E>
   createYAxisFigures?: OverlayCreateFiguresCallback<E>
-  onControlPointUpdate?: (points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
-  onDrawPointUpdate?: (points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
+  /** 控制点更新回调，可通过 this 访问 overlay 实例 */
+  onControlPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
+  /** 绘制点更新回调，可通过 this 访问 overlay 实例 */
+  onDrawPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
+  /** 拖动 overlay 主体时的回调，可通过 this 访问 overlay 实例 */
   onBodyDrag?: (this: Overlay<E>, params: {
     point: Required<Point>
     prevPoint: Required<Point>
@@ -212,8 +214,8 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   createXAxisFigures?: OverlayCreateFiguresCallback<E>
   createYAxisFigures?: OverlayCreateFiguresCallback<E>
 
-  onControlPointUpdate?: (points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
-  onDrawPointUpdate?: (points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
+  onControlPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
+  onDrawPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
   onBodyDrag?: (this: Overlay<E>, params: {
     point: Required<Point>
     prevPoint: Required<Point>
@@ -222,7 +224,9 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   }) => void
 
   // Event callbacks
-  onCreated?: DefaultCallback
+  onCreated?: (this: Overlay<E>) => void
+  onRemoved?: () => void
+
   onDrawStart?: OverlayDrawEventCallback
   onDrawing?: OverlayDrawEventCallback
   onDrawEnd?: OverlayDrawEventCallback
@@ -237,8 +241,6 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   onMouseLeave?: OverlayEventCallback
   onSelected?: OverlayEventCallback
   onDeselected?: OverlayEventCallback
-
-  onRemoved?: DefaultCallback
 
   private _originalZLevel: number = 0
   private _prevPressedPoint?: Partial<Point>
