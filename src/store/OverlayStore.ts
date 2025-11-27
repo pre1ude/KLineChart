@@ -1,5 +1,5 @@
 import { UpdateLevel } from '../common/Updater'
-import { isValid, isString, isArray } from '../common/utils/typeChecks'
+import { isValid, isString } from '../common/utils/typeChecks'
 import { createId } from '../common/utils/id'
 import { LoadDataType } from '../common/LoadDataCallback'
 import type { EventOverlayInfo, OverlayCreate, OverlayFilter, OverlayProps } from '../component/Overlay'
@@ -93,12 +93,12 @@ export default class OverlayStore {
     }
   }
 
-  addInstances(overlays: OverlayCreate[], paneId: string | string[]): Array<string | undefined> {
+  addInstances(overlays: OverlayCreate[], paneId?: string): Array<string | undefined> {
     const updatePaneIds: string[] = []
-    const paneIds = isArray(paneId) ? paneId : overlays.map(() => paneId)
 
-    const ids = overlays.map((overlay, index) => {
-      const targetPaneId = paneIds[index] ?? PaneIdConstants.CANDLE
+    const ids = overlays.map((overlay) => {
+      // 优先使用 overlay 自己的 paneId，否则使用参数 paneId，最后回退到 CANDLE
+      const targetPaneId = overlay.paneId ?? paneId ?? PaneIdConstants.CANDLE
 
       // Check if ID already exists
       if (isValid(overlay.id)) {

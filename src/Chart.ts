@@ -864,20 +864,11 @@ export default class ChartImp implements Chart {
       overlays = [overlay]
     }
 
-    const validatedPaneId = this._validatePaneId(paneId)
-
-    const ids = this._chartStore.getOverlayStore().addInstances(overlays, validatedPaneId)
+    const ids = this._chartStore.getOverlayStore().addInstances(overlays, paneId)
     if (isArray(value)) {
       return ids
     }
     return ids[0]
-  }
-
-  private _validatePaneId(paneId?: string): string {
-    if (isValid(paneId) && this.getDrawPaneById(paneId)) {
-      return paneId
-    }
-    return PaneIdConstants.CANDLE
   }
 
   getOverlayById(id: string): Overlay | undefined {
