@@ -1,5 +1,3 @@
-
-import type Nullable from '../../common/Nullable'
 import { TemplateManager } from '../../common/TemplateManager'
 import { type OverlayTemplate } from '../../component/Overlay'
 import fibonacciLine from './fibonacciLine'
@@ -27,18 +25,18 @@ const extensions = [
   simpleAnnotation, simpleTag, ...advancedOverlays, ...customOverlays
 ]
 
-const overlayTemplateManager = new TemplateManager<OverlayTemplate>(extensions)
+const TM = new TemplateManager<OverlayTemplate>(extensions)
 
 function registerOverlay(template: OverlayTemplate): void {
-  overlayTemplateManager.add(template)
+  TM.add(template)
 }
 
-function getOverlayTemplate(name: string): Nullable<OverlayTemplate> {
-  return overlayTemplateManager.get(name)
+function getOverlayTemplate(name: string): OverlayTemplate | undefined {
+  return TM.get(name)
 }
 
 function getSupportedOverlays(): string[] {
-  return overlayTemplateManager.keys()
+  return TM.keys()
 }
 
-export { registerOverlay, getOverlayTemplate as getOverlayClass, getSupportedOverlays }
+export { registerOverlay, getOverlayTemplate, getSupportedOverlays }

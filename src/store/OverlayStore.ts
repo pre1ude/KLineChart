@@ -4,7 +4,7 @@ import { createId } from '../common/utils/id'
 import { LoadDataType } from '../common/LoadDataCallback'
 import type { EventOverlayInfo, OverlayCreate, OverlayFilter, OverlayProps } from '../component/Overlay'
 import { OVERLAY_ID_PREFIX, Overlay } from '../component/Overlay'
-import { getOverlayClass } from '../extension/overlay'
+import { getOverlayTemplate } from '../extension/overlay'
 import type ChartStore from './ChartStore'
 import { PaneIdConstants } from '../pane/types'
 
@@ -108,40 +108,39 @@ export default class OverlayStore {
         }
       }
 
-      const overlayTemplate = getOverlayClass(overlay.name)
-      if (overlayTemplate) {
-        const id = overlay.id ?? createId(OVERLAY_ID_PREFIX)
-        const groupId = overlay.groupId ?? id
-        const zLevel = overlay.zLevel ?? this.getInstances(targetPaneId).length
+      const overlayTemplate = getOverlayTemplate(overlay.name)
+      if (!overlayTemplate) return undefined
 
-        const overlayInstance = new Overlay(overlayTemplate, {
-          ...overlay,
-          id,
-          groupId,
-          paneId: targetPaneId,
-          zLevel
-        })
+      const id = overlay.id ?? createId(OVERLAY_ID_PREFIX)
+      const groupId = overlay.groupId ?? id
+      const zLevel = overlay.zLevel ?? this.getInstances(targetPaneId).length
 
-        if (!updatePaneIds.includes(targetPaneId)) {
-          updatePaneIds.push(targetPaneId)
-        }
+      const overlayInstance = new Overlay(overlayTemplate, {
+        ...overlay,
+        id,
+        groupId,
+        paneId: targetPaneId,
+        zLevel
+      })
 
-        if (overlayInstance.isDrawing()) {
-          this._progressOverlay = overlayInstance
-        } else {
-          if (!this._instances.has(targetPaneId)) {
-            this._instances.set(targetPaneId, [])
-          }
-          this._instances.get(targetPaneId)?.push(overlayInstance)
-        }
-
-        if (overlayInstance.isCreated()) {
-          overlayInstance.onDrawStart?.()
-        }
-
-        return id
+      if (!updatePaneIds.includes(targetPaneId)) {
+        updatePaneIds.push(targetPaneId)
       }
-      return undefined
+
+      if (overlayInstance.isDrawing()) {
+        this._progressOverlay = overlayInstance
+      } else {
+        if (!this._instances.has(targetPaneId)) {
+          this._instances.set(targetPaneId, [])
+        }
+        this._instances.get(targetPaneId)?.push(overlayInstance)
+      }
+
+      if (overlayInstance.isCreated()) {
+        overlayInstance.onDrawStart?.()
+      }
+
+      return id
     })
 
     if (updatePaneIds.length > 0) {
