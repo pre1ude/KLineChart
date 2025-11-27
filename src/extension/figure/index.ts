@@ -1,5 +1,3 @@
-
-import type Nullable from '../../common/Nullable'
 import { Figure, type FigureTemplate } from '../../component/Figure'
 import { TemplateManager } from '../../common/TemplateManager'
 import arc from './arc'
@@ -12,18 +10,18 @@ import textBox from './textBox'
 
 const extensions = [arc, circle, line, polygon, rect, text, textBox]
 
-const figureTemplateManager = new TemplateManager<FigureTemplate<any, any>>(extensions)
+const TM = new TemplateManager<FigureTemplate>(extensions as FigureTemplate[])
 
 function registerFigure<A = unknown, S = unknown>(template: FigureTemplate<A, S>): void {
-  figureTemplateManager.add(template)
+  TM.add(template as FigureTemplate)
 }
 
-function getFigureTemplate<A = unknown, S = unknown>(name: string): Nullable<FigureTemplate<A, S>> {
-  return figureTemplateManager.get(name)
+function getFigureTemplate<A = unknown, S = unknown>(name: string): FigureTemplate<A, S> | undefined {
+  return TM.get(name)
 }
 
 function getSupportedFigures(): string[] {
-  return figureTemplateManager.keys()
+  return TM.keys()
 }
 
 function createFigure<A = unknown, S = unknown, T = unknown>(name: string, id?: string): Figure<A, S, T> {
@@ -38,4 +36,4 @@ function drawStaticFigure<A = unknown, S = unknown>(ctx: CanvasRenderingContext2
   template.draw(ctx, attrs, styles)
 }
 
-export { registerFigure, getFigureTemplate as getFigureClass, getSupportedFigures, createFigure, drawStaticFigure }
+export { registerFigure, getFigureTemplate, getSupportedFigures, createFigure, drawStaticFigure }

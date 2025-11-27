@@ -23,7 +23,7 @@ import {
 import { checkCoordinateOnPolygon, drawPolygon } from './extension/figure/polygon'
 import { checkCoordinateOnRect, drawRect } from './extension/figure/rect'
 import { checkCoordinateOnText, drawText } from './extension/figure/text'
-import { registerFigure, getSupportedFigures, getFigureClass } from './extension/figure/index'
+import { registerFigure, getSupportedFigures, getFigureTemplate } from './extension/figure/index'
 import { registerIndicator, getSupportedIndicators } from './extension/indicator/index'
 import { registerLocale, getSupportedLocales } from './extension/i18n/index'
 import { registerOverlay, getOverlayTemplate, getSupportedOverlays } from './extension/overlay/index'
@@ -132,7 +132,7 @@ const utils = {
 
 export {
   version, init, dispose,
-  registerFigure, getSupportedFigures, getFigureClass,
+  registerFigure, getSupportedFigures, getFigureTemplate,
   registerIndicator, getSupportedIndicators,
   registerOverlay, getSupportedOverlays, getOverlayTemplate,
   registerLocale, getSupportedLocales,
