@@ -295,7 +295,7 @@ export default abstract class XAxisImp extends AxisImp {
   getAutoCalcTickFlag(): boolean { return this._autoCalcTickFlag }
 
   // todo should just use the timeScaleStore
-  convertTimestampFromPixel(pixel: number): number | null {
+  convertTimestampFromPixel(pixel: number) {
     const chartStore = this.getParent().getPane().getChart().getChartStore()
     const timeScaleStore = chartStore.getTimeScaleStore()
     const dataIndex = timeScaleStore.coordinateToDataIndex(pixel)

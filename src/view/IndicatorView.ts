@@ -140,6 +140,7 @@ export default class IndicatorView extends View {
               })
 
             figureInstance.draw(ctx)
+            // TODO: only when figure has event
             this.addChild(figureInstance)
           }
         }

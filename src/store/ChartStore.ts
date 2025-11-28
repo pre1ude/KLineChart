@@ -292,6 +292,7 @@ export default class ChartStore {
     let adjustFlag = false
     let dataLengthChange = 0
     if (isArray<KLineData>(data)) {
+      // TODO if data.length is zero, we should ajust the visible range
       dataLengthChange = data.length
       switch (type) {
         case LoadDataType.Init: {
