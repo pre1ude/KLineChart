@@ -19,14 +19,14 @@ const textLog: OverlayTemplate = {
   createFigures: ({ overlay, coordinates }) => {
     const text = String(overlay.extendData?.text ?? '')
 
-    const startX = coordinates[0]?.x ?? 0
-    const startY = coordinates[0]?.y ?? 0
-    const endX = coordinates[1]?.x ?? 0
-    const endY = coordinates[1]?.y ?? 0
-
     if (coordinates.length < 2) {
       return []
     }
+
+    const startX = coordinates[0].x ?? 0
+    const startY = coordinates[0].y ?? 0
+    const endX = coordinates[1].x ?? 0
+    const endY = coordinates[1].y ?? 0
 
     return [
       {
@@ -36,7 +36,7 @@ const textLog: OverlayTemplate = {
       },
       {
         type: 'textBox',
-        attrs: { x: endX, y: endY, text: text ?? '' },
+        attrs: { x: endX, y: endY, text },
       }
     ]
   }
