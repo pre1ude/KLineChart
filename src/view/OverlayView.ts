@@ -230,15 +230,7 @@ export default class OverlayView extends View {
     if (isNumber(dataIndex)) {
       coordinate.x = xAxis?.convertToPixel(dataIndex) ?? 0
 
-      if (typeof point.dataKey === 'string' && point.dataKey !== '') {
-        const data = chartStore.getDataByDataIndex(dataIndex)
-        if (data && point.dataKey in data) {
-          const v = Number(data[point.dataKey])
-          if (isNumber(v)) {
-            coordinate.y = yAxis?.convertToPixel(v) ?? 0
-          }
-        }
-      } else if (isNumber(point.value)) {
+      if (isNumber(point.value)) {
         coordinate.y = yAxis?.convertToPixel(point.value) ?? 0
       }
     }
