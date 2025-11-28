@@ -16,10 +16,12 @@ function getVolumeFigure(): IndicatorFigure<Vol> {
       const kLineData = kLineDataList[dataIndex]
 
       let color = defaultStyles.bars[0].noChangeColor
-      if (kLineData.diffLastPrice > 0) {
-        color = defaultStyles.bars[0].upColor
-      } else if (kLineData.diffLastPrice < 0) {
-        color = defaultStyles.bars[0].downColor
+      if (kLineData) {
+        if (kLineData.diffLastPrice > 0) {
+          color = defaultStyles.bars[0].upColor
+        } else if (kLineData.diffLastPrice < 0) {
+          color = defaultStyles.bars[0].downColor
+        }
       }
 
       return { color }
