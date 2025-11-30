@@ -265,6 +265,34 @@ export default class ChartStore {
     return binarySearchNearest(this._dataList, 'timestamp', timestamp)
   }
 
+  /**
+   * Get K-line data by timestamp
+   * @param timestamp - Target timestamp
+   * @param options - Query options
+   * @returns K-line data or undefined if not found
+   */
+  getDataByTimestamp(timestamp: number, options?: { exact?: boolean }): KLineData | undefined {
+    if (this._dataList.length === 0) {
+      return undefined
+    }
+
+    const exact = options?.exact ?? false
+    const index = binarySearchNearest(this._dataList, 'timestamp', timestamp)
+
+    if (index < 0 || index >= this._dataList.length) {
+      return undefined
+    }
+
+    const data = this._dataList[index]
+
+    // If exact match is required, verify timestamp matches
+    if (exact && data.timestamp !== timestamp) {
+      return undefined
+    }
+
+    return data
+  }
+
   getVisibleFirstData(): KLineData | undefined {
     return this._dataList[0]
   }

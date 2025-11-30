@@ -70,6 +70,8 @@ export interface Chart {
   getVisibleRange: () => VisibleRange
   clearData: () => void
   getDataList: () => KLineData[]
+  getDataByDataIndex: (dataIndex: number) => KLineData | undefined
+  getDataByTimestamp: (timestamp: number, options?: { exact?: boolean }) => KLineData | undefined
   applyNewData: (dataList: KLineData[], more?: boolean, callback?: () => void) => void
   /**
    * @deprecated
@@ -684,6 +686,14 @@ export default class ChartImp implements Chart {
 
   getDataList(): KLineData[] {
     return this._chartStore.getDataList()
+  }
+
+  getDataByDataIndex(dataIndex: number): KLineData | undefined {
+    return this._chartStore.getDataByDataIndex(dataIndex)
+  }
+
+  getDataByTimestamp(timestamp: number, options?: { exact?: boolean }): KLineData | undefined {
+    return this._chartStore.getDataByTimestamp(timestamp, options)
   }
 
   applyNewData(data: KLineData[], more?: boolean, callback?: () => void): void {
