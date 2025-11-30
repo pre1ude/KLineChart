@@ -1,59 +1,54 @@
-
-import { requestIdleCallback, cancelIdleCallback, DEFAULT_REQUEST_ID } from './utils/compatible'
-
-interface Task {
-  id: string
-  handler: () => void
-}
+type TaskFinishedCallback = () => void
+type TaskErrorCallback = (error: Error) => void
 
 export default class TaskScheduler {
-  private readonly _tasks: Task[]
+  private _holdingTasks: Record<string, Promise<unknown>> | null = null
+  private _running = false
+  private readonly _onFinish?: TaskFinishedCallback
+  private readonly _onError?: TaskErrorCallback
 
-  private _requestIdleCallbackId = DEFAULT_REQUEST_ID
-
-  constructor(tasks?: Task[]) {
-    this._tasks = tasks ?? []
-    this._operateTasks()
+  constructor(onFinish?: TaskFinishedCallback, onError?: TaskErrorCallback) {
+    this._onFinish = onFinish
+    this._onError = onError
   }
 
-  private _operateTasks(fn?: () => void): void {
-    if (this._requestIdleCallbackId !== DEFAULT_REQUEST_ID) {
-      cancelIdleCallback(this._requestIdleCallbackId)
-      this._requestIdleCallbackId = DEFAULT_REQUEST_ID
-    }
-    fn?.()
-    this._requestIdleCallbackId = requestIdleCallback(deadline => { this._runTasks(deadline) })
-  }
-
-  private _runTasks(deadline: IdleDeadline): void {
-    while (deadline.timeRemaining() > 0 && this._tasks.length > 0) {
-      const task = this._tasks.shift()
-      task?.handler()
-    }
-    if (this._tasks.length > 0) {
-      this._requestIdleCallbackId = requestIdleCallback(deadline => { this._runTasks(deadline) })
-    }
-  }
-
-  addTask(task: Task): this {
-    this._operateTasks(() => {
-      const index = this._tasks.findIndex(t => t.id === task.id)
-      if (index > -1) {
-        this._tasks[index] = task
-      } else {
-        this._tasks.push(task)
+  add(tasks: Record<string, Promise<unknown>>): void {
+    if (!this._running) {
+      void this._runTask(tasks)
+    } else if (this._holdingTasks) {
+      this._holdingTasks = {
+        ...this._holdingTasks,
+        ...tasks
       }
-    })
-    return this
+    } else {
+      this._holdingTasks = tasks
+    }
   }
 
-  removeTask(id: string): this {
-    this._operateTasks(() => {
-      const index = this._tasks.findIndex(t => t.id === id)
-      if (index > -1) {
-        this._tasks.splice(index, 1)
+  private async _runTask(tasks: Record<string, Promise<unknown>>): Promise<void> {
+    this._running = true
+    try {
+      const results = await Promise.allSettled(Object.values(tasks))
+      // 收集错误
+      const errors = results
+        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        .map(r => r.reason)
+
+      if (errors.length > 0 && this._onError) {
+        errors.forEach(error => this._onError?.(error))
       }
-    })
-    return this
+    } finally {
+      this._running = false
+      this._onFinish?.()
+      if (this._holdingTasks) {
+        const next = this._holdingTasks
+        this._holdingTasks = null
+        void this._runTask(next)
+      }
+    }
+  }
+
+  clear(): void {
+    this._holdingTasks = null
   }
 }

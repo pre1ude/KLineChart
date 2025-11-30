@@ -1,5 +1,5 @@
 import type ChartStore from './ChartStore'
-import { type IndicatorCreate, Indicator, IndicatorSeries } from '../component/Indicator'
+import { type IndicatorCreate, Indicator, type IndicatorFilter, IndicatorSeries } from '../component/Indicator'
 import { isValid, isString } from '../common/utils/typeChecks'
 import { getIndicatorClass } from '../extension/indicator/index'
 
@@ -76,34 +76,14 @@ export default class IndicatorStore {
     return this._instances.has(paneId)
   }
 
-  async calcInstance(name?: string, paneId?: string): Promise<boolean> {
-    const tasks: Array<Promise<boolean>> = []
-    if (isString(name)) {
-      if (isString(paneId)) {
-        const paneInstances = this._instances.get(paneId)
-        if (isValid(paneInstances)) {
-          const instance = paneInstances.find((ins) => ins.name === name)
-          if (isValid(instance)) {
-            tasks.push(instance.calcIndicator(this._chartStore.getDataList()))
-          }
-        }
-      } else {
-        this._instances.forEach((paneInstances) => {
-          const instance = paneInstances.find((ins) => ins.name === name)
-          if (isValid(instance)) {
-            tasks.push(instance.calcIndicator(this._chartStore.getDataList()))
-          }
-        })
-      }
-    } else {
-      this._instances.forEach((paneInstances) => {
-        paneInstances.forEach((instance) => {
-          tasks.push(instance.calcIndicator(this._chartStore.getDataList()))
-        })
+  calcInstance(indicators: Indicator[]): void {
+    if (indicators.length > 0) {
+      const tasks: Record<string, Promise<unknown>> = {}
+      indicators.forEach(indicator => {
+        tasks[indicator.id] = indicator.calcIndicator(this._chartStore.getDataList())
       })
+      this._chartStore.getTaskScheduler().add(tasks)
     }
-    const result = await Promise.all(tasks)
-    return result.includes(true)
   }
 
   getInstanceByPaneId(paneId?: string, name?: string): Indicator | Map<string, Indicator> | Map<string, Map<string, Indicator>> | null {
@@ -127,6 +107,29 @@ export default class IndicatorStore {
       mapping.set(paneId, createMapping(instances))
     })
     return mapping
+  }
+
+  getIndicatorsByPaneId(paneId: string): Indicator[] {
+    return this._instances.get(paneId) ?? []
+  }
+
+  getIndicatorsByFilter(filter: IndicatorFilter): Indicator[] {
+    const { paneId, name, id } = filter
+    const match: ((overlay: Indicator) => boolean) = indicator => {
+      if (isValid(id)) {
+        return indicator.id === id
+      }
+      return !isValid(name) || indicator.name === name
+    }
+    let indicators: Indicator[] = []
+    if (isValid(paneId)) {
+      indicators = indicators.concat(this.getIndicatorsByPaneId(paneId).filter(match))
+    } else {
+      this._instances.forEach(paneIndicator => {
+        indicators = indicators.concat(paneIndicator.filter(match))
+      })
+    }
+    return indicators
   }
 
   synchronizeSeriesPrecision(indicator?: Indicator): void {

@@ -18,6 +18,7 @@ import { getStyles } from '../extension/styles/index'
 import type Chart from '../Chart'
 import { setTimezone } from '../common/utils/dateTimeFormat'
 import { binarySearchNearest } from '../common/utils/number'
+import TaskScheduler from '@/common/TaskScheduler'
 
 export default class ChartStore {
   /**
@@ -128,9 +129,18 @@ export default class ChartStore {
    */
   private _visibleDataList: VisibleData[] = []
 
+  /**
+   * Task scheduler
+   */
+  private readonly _taskScheduler: TaskScheduler
+
   constructor(chart: Chart, options?: Options) {
     this._chart = chart
     this.setOptions(options)
+
+    this._taskScheduler = new TaskScheduler(() => {
+      this._chart.adjustPaneViewport(false, true, true, true)
+    }, (error) => { console.error(error) })
   }
 
   setOptions(options?: Options): this {
@@ -248,6 +258,10 @@ export default class ChartStore {
     return this._dataList
   }
 
+  getTaskScheduler(): TaskScheduler {
+    return this._taskScheduler
+  }
+
   getDataByDataIndex(index: number): KLineData | undefined {
     return this._dataList[index]
   }
@@ -315,7 +329,7 @@ export default class ChartStore {
     }
   }
 
-  async addData(data: KLineData | KLineData[], type?: LoadDataType, more?: boolean): Promise<void> {
+  addData(data: KLineData | KLineData[], type?: LoadDataType, more?: boolean): void {
     let success = false
     let adjustFlag = false
     let dataLengthChange = 0
@@ -369,7 +383,8 @@ export default class ChartStore {
         if (adjustFlag) {
           this._timeScaleStore.adjustVisibleRange()
           this._tooltipStore.recalculateCrosshair(true)
-          await this._indicatorStore.calcInstance()
+          const filterIndicators = this._indicatorStore.getIndicatorsByFilter({})
+          this._indicatorStore.calcInstance(filterIndicators)
           this._chart.adjustPaneViewport(false, true, true, true)
         }
         this._actionStore.execute(ActionType.OnDataReady)
@@ -402,7 +417,7 @@ export default class ChartStore {
       )
     ) {
       const cb: ((data: KLineData[], more?: boolean) => void) = (data: KLineData[], more?: boolean) => {
-        this.addData(data, params.type, more).then(() => {}).catch(() => {})
+        this.addData(data, params.type, more)
       }
       this._loading = true
       this._loadDataCallback({ ...params, callback: cb })
@@ -417,6 +432,7 @@ export default class ChartStore {
     this._visibleDataList = []
     this._timeScaleStore.clear()
     this._tooltipStore.clear()
+    this._taskScheduler.clear()
   }
 
   getTimeScaleStore(): TimeScaleStore {

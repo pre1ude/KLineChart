@@ -26,7 +26,7 @@ import IndicatorPane from './pane/IndicatorPane'
 import XAxisPane from './pane/XAxisPane'
 import SeparatorPane from './pane/SeparatorPane'
 import { type PaneOptions, PanePosition, PANE_DEFAULT_HEIGHT, PaneIdConstants, type DrawPane } from './pane/types'
-import { type Indicator, type IndicatorCreate } from './component/Indicator'
+import { type IndicatorFilter, type Indicator, type IndicatorCreate } from './component/Indicator'
 import { type Overlay, type OverlayCreate, type OverlayFilter } from './component/Overlay'
 import { getIndicatorClass } from './extension/indicator/index'
 // import { getStyles as getExtensionStyles } from './extension/styles/index'
@@ -696,33 +696,18 @@ export default class ChartImp implements Chart {
     return this._chartStore.getDataByTimestamp(timestamp, options)
   }
 
-  applyNewData(data: KLineData[], more?: boolean, callback?: () => void): void {
-    if (isValid(callback)) {
-      logWarn('applyNewData', '', 'param `callback` has been deprecated since version 9.8.0, use `subscribeAction(\'onDataReady\')` instead.')
-    }
-    this._chartStore.addData(data, LoadDataType.Init, more).then(() => {}).catch(() => {}).finally(() => { callback?.() })
+  applyNewData(data: KLineData[], more?: boolean): void {
+    this._chartStore.addData(data, LoadDataType.Init, more)
   }
 
-  /**
-   * @deprecated
-   * Since v9.8.0 deprecated, since v10 removed
-   */
-  applyMoreData(data: KLineData[], more?: boolean, callback?: () => void): void {
-    logWarn('', '', 'Api `applyMoreData` has been deprecated since version 9.8.0.')
-    this._chartStore.addData(data, LoadDataType.Backward, more ?? true).then(() => {}).catch(() => {}).finally(() => { callback?.() })
+  applyMoreData(data: KLineData[], more?: boolean): void {
+    this._chartStore.addData(data, LoadDataType.Backward, more ?? true)
   }
 
-  updateData(data: KLineData, callback?: () => void): void {
-    if (isValid(callback)) {
-      logWarn('updateData', '', 'param `callback` has been deprecated since version 9.8.0, use `subscribeAction(\'onDataReady\')` instead.')
-    }
-    this._chartStore.addData(data).then(() => {}).catch(() => {}).finally(() => { callback?.() })
+  updateData(data: KLineData): void {
+    this._chartStore.addData(data)
   }
 
-  /**
-   * @deprecated
-   * Since v9.8.0 deprecated, since v10 removed
-   */
   loadMore(cb: LoadMoreCallback): void {
     logWarn('', '', 'Api `loadMore` has been deprecated since version 9.8.0, use `setLoadDataCallback` instead.')
     this._chartStore.setLoadMoreCallback(cb)
@@ -738,11 +723,16 @@ export default class ChartImp implements Chart {
       logWarn('createIndicator', 'value', 'indicator not supported, you may need to use registerIndicator to add one!!!')
       return undefined
     }
+    if (!isString(indicator.id)) {
+      indicator.id = createId(indicator.name)
+    }
 
-    let paneId = paneOptions?.id
+    const paneId = paneOptions?.id
     const currentPane = this.getDrawPaneById(paneId ?? '') as DualYPane
+    let realPaneId = paneId
     if (currentPane) {
-      if (currentPane.getId() !== PaneIdConstants.CANDLE) {
+      realPaneId = currentPane.getId()
+      if (realPaneId !== PaneIdConstants.CANDLE) {
         // is indicator pane
         const yAxisPosition = indicator.yAxisPosition ?? 'left'
         // get current pane yAxisWidget so the yAxisWidget now know what data to collect
@@ -756,7 +746,8 @@ export default class ChartImp implements Chart {
       } else {
         // in candle pane just as usual
       }
-      this._chartStore.getIndicatorStore().addInstance(indicator, paneId ?? '', isStack ?? false).then(_ => {
+      indicator.paneId = realPaneId
+      this._chartStore.getIndicatorStore().addInstance(indicator, realPaneId, isStack ?? false).then(_ => {
         const forceShouldAdjustLeft = currentPane.getYLeftAxisWidget()?.getAxisComponent().buildTicks(true)
         const forceShouldAdjustRight = currentPane.getYRightAxisWidget()?.getAxisComponent().buildTicks(true)
         const forceShouldAdjust = forceShouldAdjustLeft || forceShouldAdjustRight
@@ -764,8 +755,8 @@ export default class ChartImp implements Chart {
         this._setPaneOptions(paneOptions ?? {}, forceShouldAdjust ?? false)
       }).catch(_ => {})
     } else {
-      paneId ??= createId(PaneIdConstants.INDICATOR)
-      const pane = this._createPane(IndicatorPane, paneId, paneOptions ?? {})
+      realPaneId ??= createId(PaneIdConstants.INDICATOR)
+      const pane = this._createPane(IndicatorPane, realPaneId, paneOptions ?? {})
       // let the yAxisWidget know what data to collect
       const yAxisPosition = indicator.yAxisPosition ?? 'left'
       // get current pane yAxisWidget so the yAxisWidget now know what data to collect
@@ -778,7 +769,8 @@ export default class ChartImp implements Chart {
       }
       const height = paneOptions?.height ?? PANE_DEFAULT_HEIGHT
       pane.setBounding({ height })
-      void this._chartStore.getIndicatorStore().addInstance(indicator, paneId, isStack ?? false).finally(() => {
+      indicator.paneId = realPaneId
+      void this._chartStore.getIndicatorStore().addInstance(indicator, realPaneId, isStack ?? false).finally(() => {
         this.adjustPaneViewport(true, true, true, true, true)
         callback?.()
       })
@@ -801,9 +793,9 @@ export default class ChartImp implements Chart {
     return this._chartStore.getIndicatorStore().getInstanceByPaneId(paneId, name)
   }
 
-  // getIndicators(filter?: IndicatorFilter): Map<string, Indicator[]> {
-  //   return this._chartStore.getIndicatorStore().getInstanceByFilter(filter ?? {})
-  // }
+  getIndicators(filter?: IndicatorFilter): Indicator[] {
+    return this._chartStore.getIndicatorStore().getIndicatorsByFilter(filter ?? {})
+  }
 
   removeIndicator(paneId: string, name?: string): void {
     const indicatorStore = this._chartStore.getIndicatorStore()

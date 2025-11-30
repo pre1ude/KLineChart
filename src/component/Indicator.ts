@@ -102,6 +102,16 @@ export type IndicatorCalcCallback<D> = (dataList: KLineData[], indicator: Indica
 
 export interface IndicatorApi<D = any> {
   /**
+   * Unique id
+   */
+  id: string
+
+  /**
+   * Pane id
+   */
+  paneId: string
+
+  /**
    * Indicator name
    */
   name: string
@@ -201,13 +211,21 @@ export interface IndicatorApi<D = any> {
   onMouseLeave?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
 }
 
-export type IndicatorTemplate<D = any> = PartialExcept<Omit<IndicatorApi<D>, 'result'>, 'name' | 'calc'>
+export type IndicatorTemplate<D = any> = PartialExcept<Omit<IndicatorApi<D>, 'result'>, 'id' | 'paneId' | 'name' | 'calc'>
 
 export type IndicatorCreate<D = any> = PartialExcept<Omit<IndicatorApi<D>, 'result'>, 'name'> & {
   yAxisPosition?: 'left' | 'right'
 }
 
+export interface IndicatorFilter {
+  id?: string
+  name?: string
+  paneId?: string
+}
+
 export class Indicator<D = any> implements IndicatorApi<D> {
+  id: string
+  paneId: string
   name: string
   shortName: string
   precision: number
@@ -238,11 +256,13 @@ export class Indicator<D = any> implements IndicatorApi<D> {
 
   constructor(indicator: IndicatorTemplate) {
     const {
-      name, shortName, series, calcParams, figures, precision,
+      id, paneId, name, shortName, series, calcParams, figures, precision,
       shouldOhlc, shouldFormatBigNumber, visible, zLevel,
       minValue, maxValue, styles, extendData,
       regenerateFigures, createTooltipDataSource, draw, calc, onClick, onMouseEnter, onMouseLeave
     } = indicator
+    this.id = id
+    this.paneId = paneId
     this.name = name
     this.shortName = shortName ?? name
     this.series = series ?? IndicatorSeries.Normal
