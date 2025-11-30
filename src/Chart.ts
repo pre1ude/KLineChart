@@ -775,7 +775,7 @@ export default class ChartImp implements Chart {
         callback?.()
       })
     }
-    return paneId
+    return realPaneId
   }
 
   overrideIndicator(override: IndicatorCreate, paneId?: string, callback?: () => void): void {
