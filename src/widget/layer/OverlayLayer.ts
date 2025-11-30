@@ -179,7 +179,8 @@ export class OverlayLayer implements Layer {
       const pressedInfo = this._extractEventOverlayInfo(event.target, paneId)
       if (pressedInfo?.overlay != null) {
         const { overlay } = pressedInfo
-        overlay.startPressedMove(this._overlayView.coordinateToPoint(overlay, event))
+        const chartStore = chart.getChartStore()
+        overlay.startPressedMove(this._overlayView.coordinateToPoint(overlay, event), chartStore)
         overlay.onPressedMoveStart?.(event, pressedInfo)
         this._overlayView.setPressedInstanceInfo(pressedInfo)
       }

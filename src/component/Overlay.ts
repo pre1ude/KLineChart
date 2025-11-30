@@ -7,7 +7,7 @@ import type BarSpace from '../common/BarSpace'
 import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
-import { clone, isNumber, isValid, merge } from '../common/utils/typeChecks'
+import { isNumber, isValid, merge } from '../common/utils/typeChecks'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
 import type ChartStore from '../store/ChartStore'
@@ -401,9 +401,29 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     if (isNumber(np.value)) p.value = np.value
   }
 
-  startPressedMove(point: Partial<Point>): void {
+  startPressedMove(point: Partial<Point>, chartStore: ChartStore): void {
     this._prevPressedPoint = { ...point }
-    this._prevPressedPoints = clone(this.points)
+    this._prevPressedPoints = this.points.map(point => {
+      const normalized = { ...point }
+
+      // 如果没有 dataIndex，从 timestamp 计算
+      if (!isNumber(normalized.dataIndex) && isNumber(normalized.timestamp)) {
+        normalized.dataIndex = chartStore.timestampToDataIndex(normalized.timestamp)
+      }
+
+      // 如果没有 value 但有 dataKey，从数据中获取
+      if (!isNumber(normalized.value) && typeof normalized.dataKey === 'string' && normalized.dataKey !== '' && isNumber(normalized.dataIndex)) {
+        const data = chartStore.getDataByDataIndex(normalized.dataIndex)
+        if (data && normalized.dataKey in data) {
+          const v = Number(data[normalized.dataKey])
+          if (isNumber(v)) {
+            normalized.value = v
+          }
+        }
+      }
+
+      return normalized
+    })
   }
 
   onDragMoveBody(point: Partial<Point>, chartStore: ChartStore): void {
