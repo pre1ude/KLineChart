@@ -43,6 +43,7 @@ export class CandleLayer implements Layer {
   private _initEvent(): void {
     const pane = this._widget.getPane()
     if (pane.getId() === PaneIdConstants.CANDLE) {
+      // 左键点击事件
       this._candleBarView.addEventListener('mouseClickEvent', (e: MouseTouchEvent) => {
         const chartStore = pane.getChart().getChartStore()
         const dataList = chartStore.getDataList()
@@ -61,6 +62,30 @@ export class CandleLayer implements Layer {
         }
 
         chartStore.getActionStore().execute(ActionType.OnCandleBarClick, data)
+        return false
+      })
+
+      // 右键点击事件
+      this._candleBarView.addEventListener('mouseRightClickEvent', (e: MouseTouchEvent) => {
+        const chartStore = pane.getChart().getChartStore()
+        const timeScaleStore = chartStore.getTimeScaleStore()
+        const dataList = chartStore.getDataList()
+        const target = e.target
+
+        let data: KLineData | undefined
+        let dataIndex: number | undefined
+        if (target != null) {
+          dataIndex = timeScaleStore.coordinateToDataIndex(e.x)
+          if (dataIndex != null) {
+            data = dataList[dataIndex]
+          }
+        }
+
+        chartStore.getActionStore().execute(ActionType.OnCandleBarRightClick, {
+          ...e,
+          data,
+          dataIndex,
+        })
         return false
       })
     }

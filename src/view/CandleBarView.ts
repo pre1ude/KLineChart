@@ -1,4 +1,3 @@
-
 import type BarSpace from '../common/BarSpace'
 import { CandleType, type CandleBarColor, type RectStyle, PolygonType } from '../common/Styles'
 import type ChartStore from '../store/ChartStore'
@@ -10,6 +9,7 @@ import { isValid } from '../common/utils/typeChecks'
 import type DualYPane from '../pane/DualYPane'
 import { createFigure } from '../extension/figure'
 import { PaneIdConstants } from '../pane/types'
+import { type EventName, type MouseTouchEvent } from '@/common/SyntheticEvent'
 
 export interface CandleBarOptions {
   type: Exclude<CandleType, CandleType.Area>
@@ -17,6 +17,9 @@ export interface CandleBarOptions {
 }
 
 export default class CandleBarView extends View {
+  override checkEventOn(_event: MouseTouchEvent, name: EventName): boolean {
+    return name === 'mouseRightClickEvent'
+  }
   override drawImp(ctx: CanvasRenderingContext2D): void {
     const pane = this.getWidget().getPane()
     const chartStore = pane.getChart().getChartStore()
