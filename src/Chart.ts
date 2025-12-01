@@ -696,16 +696,16 @@ export default class ChartImp implements Chart {
     return this._chartStore.getDataByTimestamp(timestamp, options)
   }
 
-  applyNewData(data: KLineData[], more?: boolean): void {
-    this._chartStore.addData(data, LoadDataType.Init, more)
+  applyNewData(data: KLineData[], more?: boolean, callback?: () => void): void {
+    this._chartStore.addData(data, LoadDataType.Init, more, callback)
   }
 
-  applyMoreData(data: KLineData[], more?: boolean): void {
-    this._chartStore.addData(data, LoadDataType.Backward, more ?? true)
+  applyMoreData(data: KLineData[], more?: boolean, callback?: () => void): void {
+    this._chartStore.addData(data, LoadDataType.Backward, more ?? true, callback)
   }
 
-  updateData(data: KLineData): void {
-    this._chartStore.addData(data)
+  updateData(data: KLineData, callback?: () => void): void {
+    this._chartStore.addData(data, undefined, undefined, callback)
   }
 
   loadMore(cb: LoadMoreCallback): void {

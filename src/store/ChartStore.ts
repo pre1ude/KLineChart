@@ -134,13 +134,32 @@ export default class ChartStore {
    */
   private readonly _taskScheduler: TaskScheduler
 
+  /**
+   * Data ready callbacks
+   */
+  private _dataReadyCallbacks: Array<() => void> = []
+
   constructor(chart: Chart, options?: Options) {
     this._chart = chart
     this.setOptions(options)
 
     this._taskScheduler = new TaskScheduler(() => {
       this._chart.adjustPaneViewport(false, true, true, true)
+      // 执行待处理的回调
+      this._executeDataReadyCallbacks()
     }, (error) => { console.error(error) })
+  }
+
+  private _executeDataReadyCallbacks(): void {
+    const callbacks = this._dataReadyCallbacks.slice()
+    this._dataReadyCallbacks = []
+    callbacks.forEach(cb => {
+      try {
+        cb()
+      } catch (error) {
+        console.error('Data ready callback error:', error)
+      }
+    })
   }
 
   setOptions(options?: Options): this {
@@ -329,7 +348,7 @@ export default class ChartStore {
     }
   }
 
-  addData(data: KLineData | KLineData[], type?: LoadDataType, more?: boolean): void {
+  addData(data: KLineData | KLineData[], type?: LoadDataType, more?: boolean, callback?: () => void): void {
     let success = false
     let adjustFlag = false
     let dataLengthChange = 0
@@ -384,8 +403,21 @@ export default class ChartStore {
           this._timeScaleStore.adjustVisibleRange()
           this._tooltipStore.recalculateCrosshair(true)
           const filterIndicators = this._indicatorStore.getIndicatorsByFilter({})
-          this._indicatorStore.calcInstance(filterIndicators)
-          this._chart.adjustPaneViewport(false, true, true, true)
+
+          if (filterIndicators.length > 0) {
+            // 有指标需要计算：先计算指标，TaskScheduler 完成后会自动调用 adjustPaneViewport
+            // 这样确保 calcRange() 使用的是最新的 indicator.result
+            this._indicatorStore.calcInstance(filterIndicators)
+            // 将回调加入队列，等待指标计算完成
+            if (callback) {
+              this._dataReadyCallbacks.push(callback)
+            }
+          } else {
+            // 没有指标：直接调整视口
+            this._chart.adjustPaneViewport(false, true, true, true)
+            // 立即执行回调
+            callback?.()
+          }
         }
         this._actionStore.execute(ActionType.OnDataReady)
       } catch {}
@@ -433,6 +465,7 @@ export default class ChartStore {
     this._timeScaleStore.clear()
     this._tooltipStore.clear()
     this._taskScheduler.clear()
+    this._dataReadyCallbacks = []
   }
 
   getTimeScaleStore(): TimeScaleStore {
