@@ -211,7 +211,7 @@ export class OverlayLayer implements Layer {
     })
 
     // 鼠标右键事件 - 处理 onRightClick
-    this._overlayView.addEventListener('mouseRightClickEvent', (event: MouseTouchEvent) => {
+    this._overlayView.addEventListener('contextMenuEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
       // 绘制中不触发右键
       if (progressOverlay) {
