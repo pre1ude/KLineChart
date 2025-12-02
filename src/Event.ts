@@ -360,6 +360,27 @@ export default class Event implements EventHandler {
     return false
   }
 
+  contextMenuEvent(e: MouseTouchEvent): boolean {
+    const { widget } = this._findWidgetByEvent(e)
+    let consumed: boolean = false
+    if (widget) {
+      const event = this._makeWidgetEvent(e, widget)
+      const name = widget.getName()
+      switch (name) {
+        case WidgetNameConstants.MAIN:
+        case WidgetNameConstants.X_AXIS:
+        case WidgetNameConstants.Y_AXIS: {
+          consumed = widget.dispatchEvent('contextMenuEvent', event)
+          break
+        }
+      }
+      if (consumed) {
+        this._chart.updatePane(UpdateLevel.Overlay)
+      }
+    }
+    return false
+  }
+
   mouseDoubleClickEvent(e: MouseTouchEvent): boolean {
     const { widget } = this._findWidgetByEvent(e)
     if (widget) {

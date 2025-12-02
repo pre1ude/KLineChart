@@ -34,6 +34,7 @@ export interface EventHandler {
 
   mouseClickEvent?: MouseTouchEventCallback
   mouseRightClickEvent?: MouseTouchEventCallback
+  contextMenuEvent?: MouseTouchEventCallback
   tapEvent?: MouseTouchEventCallback
 
   mouseDoubleClickEvent?: MouseTouchEventCallback
@@ -312,6 +313,7 @@ export default class SyntheticEvent {
 
   private _contextMenuHandler(mouseEvent: MouseEvent): void {
     this._preventDefault(mouseEvent)
+    this._processEvent(this._makeCompatEvent(mouseEvent), this._handler.contextMenuEvent)
   }
 
   private _touchMoveHandler(moveEvent: TouchEvent): void {

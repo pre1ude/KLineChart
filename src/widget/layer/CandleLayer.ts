@@ -66,7 +66,7 @@ export class CandleLayer implements Layer {
       })
 
       // 右键点击事件
-      this._candleBarView.addEventListener('mouseRightClickEvent', (e: MouseTouchEvent) => {
+      this._candleBarView.addEventListener('contextMenuEvent', (e: MouseTouchEvent) => {
         const chartStore = pane.getChart().getChartStore()
         const timeScaleStore = chartStore.getTimeScaleStore()
         const dataList = chartStore.getDataList()

@@ -18,7 +18,7 @@ export interface CandleBarOptions {
 
 export default class CandleBarView extends View {
   override checkEventOn(_event: MouseTouchEvent, name: EventName): boolean {
-    return name === 'mouseRightClickEvent'
+    return name === 'contextMenuEvent'
   }
   override drawImp(ctx: CanvasRenderingContext2D): void {
     const pane = this.getWidget().getPane()
