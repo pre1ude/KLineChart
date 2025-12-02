@@ -18,6 +18,7 @@ const textLog: OverlayTemplate = {
   },
   createFigures: ({ overlay, coordinates }) => {
     const text = String(overlay.extendData?.text ?? '')
+    const show = overlay.extendData?.show ?? true
 
     if (coordinates.length < 2) {
       return []
@@ -28,7 +29,22 @@ const textLog: OverlayTemplate = {
     const endX = coordinates[1].x ?? 0
     const endY = coordinates[1].y ?? 0
 
+    if (!show) {
+      return [
+        {
+          type: 'circle',
+          attrs: { x: startX, y: startY, r: 6 },
+          ignoreEvent: true
+        },
+      ]
+    }
+
     return [
+      {
+        type: 'circle',
+        attrs: { x: startX, y: startY, r: 6 },
+        ignoreEvent: true
+      },
       {
         type: 'line',
         attrs: { coordinates: [{ x: startX, y: startY }, { x: endX, y: endY }] },
