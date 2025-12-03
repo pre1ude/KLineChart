@@ -190,16 +190,36 @@ export default class OverlayView extends View {
       overlayPrecision.excludePriceVolumeMax = Math.max(overlayPrecision.excludePriceVolumeMax, p)
       overlayPrecision.excludePriceVolumeMin = Math.min(overlayPrecision.excludePriceVolumeMin, p)
     })
+
     overlays.forEach((overlay) => {
       if (overlay.visible) {
         this._drawOverlay(
           ctx, overlay, bounding, barSpace, overlayPrecision,
           dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
           defaultStyles, chartStore,
-          hoverInfo, clickInfo, xAxis, yAxis
+          hoverInfo, clickInfo, xAxis, yAxis,
+          true // bindEvent = true
         )
       }
     })
+
+    const hoveredOverlay = hoverInfo?.overlay
+
+    if (hoveredOverlay) {
+      const shouldDrawHoveredAgain = this._type === 'main' &&
+        hoveredOverlay.visible &&
+        overlays.includes(hoveredOverlay)
+      if (shouldDrawHoveredAgain) {
+        this._drawOverlay(
+          ctx, hoveredOverlay, bounding, barSpace, overlayPrecision,
+          dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
+          defaultStyles, chartStore,
+          hoverInfo, clickInfo, xAxis, yAxis,
+          false // bindEvent = false，不添加到事件树
+        )
+      }
+    }
+
     const progressOverlay = overlayStore.getProgressOverlay()
     if (progressOverlay?.visible === true) {
       // 只在 xAxis 或当前 pane 上绘制
@@ -208,7 +228,8 @@ export default class OverlayView extends View {
           ctx, progressOverlay, bounding, barSpace,
           overlayPrecision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
           defaultStyles, chartStore,
-          hoverInfo, clickInfo, xAxis, yAxis
+          hoverInfo, clickInfo, xAxis, yAxis,
+          true // bindEvent = true
         )
       }
     }
@@ -263,6 +284,7 @@ export default class OverlayView extends View {
     clickInfo?: EventOverlayInfo,
     xAxis?: XAxis,
     yAxis?: YAxis,
+    bindEvent: boolean = true
   ): void {
     const { points } = overlay
     const coordinates = points.map(point =>
@@ -272,12 +294,12 @@ export default class OverlayView extends View {
     if (coordinates.length > 0) {
       const _figures = this.getFigures({ overlay, coordinates, bounding, barSpace, precision, thousandsSeparator, decimalFoldThreshold, dateTimeFormat, defaultStyles, xAxis, yAxis })
       const figures = Array.isArray(_figures) ? _figures : [_figures]
-      this.drawFigures(ctx, overlay, figures, defaultStyles)
+      this.drawFigures(ctx, overlay, figures, defaultStyles, bindEvent)
     }
     this.drawDefaultFigures(ctx, overlay, coordinates, bounding, precision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis)
   }
 
-  protected drawFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, figures: OverlayFigure[], defaultStyles: OverlayStyle): void {
+  protected drawFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, figures: OverlayFigure[], defaultStyles: OverlayStyle, bindEvent: boolean = true): void {
     for (let i = 0; i < figures.length; i++) {
       const figure = figures[i]
       const { type, styles, attrs, ignoreEvent } = figure
@@ -285,6 +307,14 @@ export default class OverlayView extends View {
       const attrsArray = Array.isArray(attrs) ? attrs : [attrs]
 
       for (let j = 0; j < attrsArray.length; j++) {
+        // 不绑定事件 或 完全忽略事件的图形不添加到事件树
+        if (!bindEvent || ignoreEvent === true) {
+          drawStaticFigure(ctx, type, {
+            attrs: attrsArray[j],
+            styles: finalStyles
+          })
+          continue
+        }
         const fig = createFigure<object[], object, OverlayFigureData>(type)
         fig.setAttrs(attrsArray[j])
           .setStyles(finalStyles)
@@ -296,11 +326,6 @@ export default class OverlayView extends View {
             attrsIndex: j
           })
           .draw(ctx)
-          // 优化：完全忽略事件的图形不添加到事件树
-        if (ignoreEvent === true) {
-        // 不添加到事件树，节省性能
-          continue
-        }
 
         // 部分忽略或不忽略的图形添加到事件树
         fig.setIgnoreEvent(ignoreEvent)
@@ -383,7 +408,6 @@ export default class OverlayView extends View {
         attrs: { x, y, r: style.radius },
         styles: { color: style.color }
       })
-      // make it interactive
       this.addChild(dot)
     })
   }
@@ -427,7 +451,7 @@ export default class OverlayView extends View {
       }
     })
 
-    this.drawFigures(ctx, overlay, figures, defaultStyles)
+    this.drawFigures(ctx, overlay, figures, defaultStyles, false)
   }
 
   private _drawYAxisDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, clickInfo?: EventOverlayInfo): void {
@@ -482,6 +506,6 @@ export default class OverlayView extends View {
       }
     })
 
-    this.drawFigures(ctx, overlay, figures, defaultStyles)
+    this.drawFigures(ctx, overlay, figures, defaultStyles, false)
   }
 }
