@@ -146,3 +146,4 @@ export {
 
 export { OverlayState } from './component/Overlay'
 export type { Chart } from './Chart'
+export { PaneIdConstants } from './pane/types'
