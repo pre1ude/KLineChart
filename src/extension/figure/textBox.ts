@@ -1,15 +1,12 @@
 
 import type Coordinate from '../../common/Coordinate'
 import { type TextBoxStyle } from '../../common/Styles'
-
 import {
   createFont,
   calcTextWidth,
   calcBreakIndex
 } from '../../common/utils/canvas'
-
 import { type FigureTemplate } from '../../component/Figure'
-
 import { type RectAttrs, drawRect } from './rect'
 
 // 默认省略号
@@ -52,7 +49,7 @@ interface TextLayout {
   font: string
   // 文本对齐方式
   textAlign: CanvasTextAlign
-  // 文本基线
+  // 文本垂直对齐方式
   textBaseline: CanvasTextBaseline
 
   // ===== 优化信息 =====
@@ -60,8 +57,6 @@ interface TextLayout {
   ellipsis: string
   // 省略号文本宽度
   ellipsisWidth: number
-  // 截断原因（用于调试和优化）
-  truncationReason?: 'none' | 'maxChars' | 'maxLines' | 'maxHeight' | 'maxWidth'
 }
 
 // 提取公共的对齐计算逻辑

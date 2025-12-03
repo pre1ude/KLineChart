@@ -1,3 +1,4 @@
+import { LineType, PolygonType } from '@/common/Styles'
 import { type OverlayTemplate } from '../../../component/Overlay'
 
 const textLog: OverlayTemplate = {
@@ -48,11 +49,23 @@ const textLog: OverlayTemplate = {
       {
         type: 'line',
         attrs: { coordinates: [{ x: startX, y: startY }, { x: endX, y: endY }] },
+        styles: {
+          style: LineType.Dashed,
+          color: 'rgba(138, 174, 230, 0.5)',
+          dashedValue: [4, 2]
+        },
         ignoreEvent: true
       },
       {
         type: 'textBox',
         attrs: { x: endX, y: endY, text },
+        styles: {
+          maxWidth: 150,
+          color: '#FFF',
+          backgroundColor: '#4D6180',
+          borderColor: '#8AAEE6',
+          style: PolygonType.StrokeFill
+        }
       }
     ]
   }
