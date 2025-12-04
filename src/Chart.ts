@@ -44,6 +44,7 @@ export enum DomPosition {
 export interface ConvertFinder {
   paneId?: string
   absolute?: boolean
+  yAxisPosition?: 'left' | 'right'
 }
 
 export interface Chart {
@@ -106,8 +107,10 @@ export interface Chart {
   zoomAtCoordinate: (scale: number, coordinate?: Coordinate, animationDuration?: number) => void
   zoomAtDataIndex: (scale: number, dataIndex: number, animationDuration?: number) => void
   zoomAtTimestamp: (scale: number, timestamp: number, animationDuration?: number) => void
-  convertToPixel: (points: Partial<Point> | Array<Partial<Point>>, finder: ConvertFinder) => Partial<Coordinate> | Array<Partial<Coordinate>>
-  convertFromPixel: (coordinates: Array<Partial<Coordinate>>, finder: ConvertFinder) => Partial<Point> | Array<Partial<Point>>
+  convertToPixel(point: Partial<Point>, finder: ConvertFinder): Partial<Coordinate>
+  convertToPixel(points: Array<Partial<Point>>, finder: ConvertFinder): Array<Partial<Coordinate>>
+  convertFromPixel(coordinate: Partial<Coordinate>, finder: ConvertFinder): Partial<Point>
+  convertFromPixel(coordinates: Array<Partial<Coordinate>>, finder: ConvertFinder): Array<Partial<Point>>
   executeAction: (type: ActionType, data: object) => void
   subscribeAction: (type: ActionType, callback: ActionCallback) => void
   unsubscribeAction: (type: ActionType, callback?: ActionCallback) => void
@@ -986,18 +989,25 @@ export default class ChartImp implements Chart {
     this.zoomAtDataIndex(scale, dataIndex, animationDuration)
   }
 
-  convertToPixel(points: Partial<Point> | Array<Partial<Point>>, finder: ConvertFinder): Partial<Coordinate> | Array<Partial<Coordinate>> {
-    const { paneId = PaneIdConstants.CANDLE, absolute = false } = finder
+  convertToPixel(point: Partial<Point>, finder: ConvertFinder): Partial<Coordinate>
+  convertToPixel(points: Array<Partial<Point>>, finder: ConvertFinder): Array<Partial<Coordinate>>
+  convertToPixel(
+    points: Partial<Point> | Array<Partial<Point>>,
+    finder: ConvertFinder
+  ): Partial<Coordinate> | Array<Partial<Coordinate>> {
+    const { paneId = PaneIdConstants.CANDLE, absolute = false, yAxisPosition = 'left' } = finder
+    const isArrayInput = isArray(points)
     let coordinates: Array<Partial<Coordinate>> = []
+
     if (paneId !== PaneIdConstants.X_AXIS) {
       const pane = this.getDrawPaneById(paneId)
-      if (pane) {
+      if (pane && pane.getId() !== PaneIdConstants.X_AXIS) {
         const bounding = pane.getBounding()
-        const ps = new Array<Partial<Point>>().concat(points)
+        const ps = isArrayInput ? points : [points]
         const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
         const xAxis = xAxisWidget.getAxisComponent()
-        // todo take left
-        const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+        const yAxis = this._getYAxis(pane as DualYPane, yAxisPosition)
+
         coordinates = ps.map(point => {
           const coordinate: Partial<Coordinate> = {}
           let dataIndex = point.dataIndex
@@ -1007,29 +1017,44 @@ export default class ChartImp implements Chart {
           if (isNumber(dataIndex)) {
             coordinate.x = xAxis?.convertToPixel(dataIndex)
           }
-          if (isNumber(point.value)) {
-            const y = yAxis?.convertToPixel(point.value)
+          if (isNumber(point.value) && yAxis) {
+            const y = yAxis.convertToPixel(point.value)
             coordinate.y = absolute ? bounding.top + y : y
           }
           return coordinate
         })
       }
     }
-    return isArray(points) ? coordinates : (coordinates[0] ?? {})
+
+    return isArrayInput ? coordinates : (coordinates[0] ?? {})
   }
 
-  convertFromPixel(coordinates: Array<Partial<Coordinate>>, finder: ConvertFinder): Partial<Point> | Array<Partial<Point>> {
-    const { paneId = PaneIdConstants.CANDLE, absolute = false } = finder
+  private _getYAxis(pane: DualYPane, position: 'left' | 'right') {
+    const yAxisWidget = position === 'left'
+      ? pane.getYLeftAxisWidget()
+      : pane.getYRightAxisWidget()
+    return yAxisWidget?.getAxisComponent()
+  }
+
+  convertFromPixel(coordinate: Partial<Coordinate>, finder: ConvertFinder): Partial<Point>
+  convertFromPixel(coordinates: Array<Partial<Coordinate>>, finder: ConvertFinder): Array<Partial<Point>>
+  convertFromPixel(
+    coordinates: Partial<Coordinate> | Array<Partial<Coordinate>>,
+    finder: ConvertFinder
+  ): Partial<Point> | Array<Partial<Point>> {
+    const { paneId = PaneIdConstants.CANDLE, absolute = false, yAxisPosition = 'left' } = finder
+    const isArrayInput = isArray(coordinates)
     let points: Array<Partial<Point>> = []
+
     if (paneId !== PaneIdConstants.X_AXIS) {
       const pane = this.getDrawPaneById(paneId)
-      if (pane) {
+      if (pane && pane.getId() !== PaneIdConstants.X_AXIS) {
         const bounding = pane.getBounding()
-        const cs = new Array<Partial<Coordinate>>().concat(coordinates)
+        const cs = isArrayInput ? coordinates : [coordinates]
         const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
         const xAxis = xAxisWidget.getAxisComponent()
-        // todo take left
-        const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+        const yAxis = this._getYAxis(pane as DualYPane, yAxisPosition)
+
         points = cs.map(coordinate => {
           const point: Partial<Point> = {}
           if (isNumber(coordinate.x)) {
@@ -1037,7 +1062,7 @@ export default class ChartImp implements Chart {
             point.dataIndex = dataIndex
             point.timestamp = this._chartStore.dataIndexToTimestamp(dataIndex) ?? undefined
           }
-          if (isNumber(coordinate.y)) {
+          if (isNumber(coordinate.y) && yAxis) {
             const y = absolute ? coordinate.y - bounding.top : coordinate.y
             point.value = yAxis.convertFromPixel(y)
           }
@@ -1045,7 +1070,8 @@ export default class ChartImp implements Chart {
         })
       }
     }
-    return isArray(coordinates) ? points : (points[0] ?? {})
+
+    return isArrayInput ? points : (points[0] ?? {})
   }
 
   executeAction(type: ActionType, data: object): void {
