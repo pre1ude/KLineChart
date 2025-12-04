@@ -58,6 +58,7 @@ export interface Chart {
   setCustomApi: (customApi: Partial<CustomApi>) => void
   setPriceVolumePrecision: (pricePrecision: number, volumePrecision: number) => void
   getPriceVolumePrecision: () => Precision
+  setTimeShareDays: (days: number) => void
   setTimezone: (timezone: string) => void
   getTimezone: () => string
   setOffsetRightDistance: (distance: number) => void

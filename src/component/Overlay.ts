@@ -145,10 +145,10 @@ export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers<
   createFigures?: OverlayCreateFiguresCallback<E>
   createXAxisFigures?: OverlayCreateFiguresCallback<E>
   createYAxisFigures?: OverlayCreateFiguresCallback<E>
-  /** 控制点更新回调，可通过 this 访问 overlay 实例 */
-  onControlPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
   /** 绘制点更新回调，可通过 this 访问 overlay 实例 */
   onDrawPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
+  /** 控制点更新回调，可通过 this 访问 overlay 实例 */
+  onControlPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
   /** 拖动 overlay 主体时的回调，可通过 this 访问 overlay 实例 */
   onBodyDrag?: (this: Overlay<E>, params: {
     point: Required<Point>
@@ -159,7 +159,7 @@ export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers<
 }
 
 export type OverlayTemplate<E = DefaultExtendData> = PartialExcept<Omit<OverlayApi<E>, 'id' | 'groupId' | 'paneId' | 'points' | 'currentStep' | 'state'>, 'name'>
-export type OverlayCreate<E = DefaultExtendData> = PartialExcept<Omit<OverlayApi<E>, 'currentStep' | 'totalStep' | 'state' | 'createFigures' | 'createXAxisFigures' | 'createYAxisFigures' | 'performEventPressedMove' | 'onDrawingPointUpdate'>, 'name'>
+export type OverlayCreate<E = DefaultExtendData> = PartialExcept<Omit<OverlayApi<E>, 'currentStep' | 'totalStep' | 'state' | 'createFigures' | 'createXAxisFigures' | 'createYAxisFigures' | 'onBodyDrag' | 'onControlPointUpdate'>, 'name'>
 
 export interface OverlayFilter {
   id?: string
@@ -214,8 +214,8 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   createXAxisFigures?: OverlayCreateFiguresCallback<E>
   createYAxisFigures?: OverlayCreateFiguresCallback<E>
 
-  onControlPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
   onDrawPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
+  onControlPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
   onBodyDrag?: (this: Overlay<E>, params: {
     point: Required<Point>
     prevPoint: Required<Point>

@@ -193,7 +193,7 @@ export interface CandleAreaStyle {
   // value: 从klineData取的字段 一般为close
   value: string
   lineOnly: boolean
-  smooth: boolean
+  smooth: boolean | number
   backgroundColor: string | GradientColor[]
   point: CandleAreaPointStyle
 }

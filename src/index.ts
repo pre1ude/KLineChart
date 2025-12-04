@@ -1,28 +1,63 @@
-import {
-  LineType, PolygonType, TooltipShowRule, TooltipShowType, TooltipIconPosition,
-  CandleType, YAxisPosition, YAxisType, CandleTooltipRectPosition
-} from './common/Styles'
-import { logTag, logWarn } from './common/utils/logger'
-import {
-  clone, merge, isString, isNumber, isValid, isObject, isArray, isFunction, isBoolean
-} from './common/utils/typeChecks'
-import { formatValue, formatPrecision, formatBigNumber, formatDate, formatThousands, formatFoldDecimal } from './common/utils/format'
-import { calcTextWidth } from './common/utils/canvas'
-import { setCursor } from './common/utils/cursor'
+import Chart, { DomPosition } from './Chart'
+import { type Options, FormatDateType, LayoutChildType } from './Options'
+
+// Enums and Constants
 import { ActionType } from './common/Action'
 import { LoadDataType } from './common/LoadDataCallback'
+import {
+  LineType,
+  PolygonType,
+  TooltipShowRule,
+  TooltipShowType,
+  TooltipIconPosition,
+  CandleType,
+  YAxisPosition,
+  YAxisType,
+  CandleTooltipRectPosition
+} from './common/Styles'
 import { IndicatorSeries } from './component/Indicator'
-import { type Options, FormatDateType } from './Options'
-import Chart, { DomPosition } from './Chart'
+import { OverlayState } from './component/Overlay'
+import { PanePosition, PaneIdConstants } from './pane/types'
+
+// Utils
+import { logTag, logWarn } from './common/utils/logger'
+import {
+  clone,
+  merge,
+  isString,
+  isNumber,
+  isValid,
+  isObject,
+  isArray,
+  isFunction,
+  isBoolean
+} from './common/utils/typeChecks'
+import {
+  formatValue,
+  formatPrecision,
+  formatBigNumber,
+  formatDate,
+  formatThousands,
+  formatFoldDecimal
+} from './common/utils/format'
+import { calcTextWidth } from './common/utils/canvas'
+import { setCursor } from './common/utils/cursor'
+
+// Figure Utils
 import { checkCoordinateOnArc, drawArc } from './extension/figure/arc'
 import { checkCoordinateOnCircle, drawCircle } from './extension/figure/circle'
 import {
-  isPointOnLine, drawLine,
-  getLinearYFromSlopeIntercept, getLinearSlopeIntercept, getLinearYFromCoordinates
+  isPointOnLine,
+  drawLine,
+  getLinearYFromSlopeIntercept,
+  getLinearSlopeIntercept,
+  getLinearYFromCoordinates
 } from './extension/figure/line'
 import { checkCoordinateOnPolygon, drawPolygon } from './extension/figure/polygon'
 import { checkCoordinateOnRect, drawRect } from './extension/figure/rect'
 import { checkCoordinateOnText, drawText } from './extension/figure/text'
+
+// Extension APIs
 import { registerFigure, getSupportedFigures, getFigureTemplate } from './extension/figure/index'
 import { registerIndicator, getSupportedIndicators } from './extension/indicator/index'
 import { registerLocale, getSupportedLocales } from './extension/i18n/index'
@@ -130,20 +165,99 @@ const utils = {
   setCursor
 }
 
+// ==================== Core API ====================
+
+export { version, init, dispose }
+
+// ==================== Extension APIs ====================
+
 export {
-  version, init, dispose,
-  registerFigure, getSupportedFigures, getFigureTemplate,
-  registerIndicator, getSupportedIndicators,
-  registerOverlay, getSupportedOverlays, getOverlayTemplate,
-  registerLocale, getSupportedLocales,
+  // Figure
+  registerFigure,
+  getSupportedFigures,
+  getFigureTemplate,
+  // Indicator
+  registerIndicator,
+  getSupportedIndicators,
+  // Overlay
+  registerOverlay,
+  getSupportedOverlays,
+  getOverlayTemplate,
+  // Locale
+  registerLocale,
+  getSupportedLocales,
+  // Styles
   registerStyles,
-  registerXAxis, registerYAxis,
-  utils,
-  LineType, PolygonType, TooltipShowRule, TooltipShowType, TooltipIconPosition, CandleTooltipRectPosition,
-  CandleType, YAxisPosition, YAxisType, FormatDateType,
-  DomPosition, ActionType, IndicatorSeries, LoadDataType
+  // Axis
+  registerXAxis,
+  registerYAxis
 }
 
-export { OverlayState } from './component/Overlay'
+// ==================== Utility Functions ====================
+
+export { utils }
+
+// ==================== Enums ====================
+
+export {
+  // Action
+  ActionType,
+  // Data Loading
+  LoadDataType,
+  // Styles
+  LineType,
+  PolygonType,
+  TooltipShowRule,
+  TooltipShowType,
+  TooltipIconPosition,
+  CandleTooltipRectPosition,
+  CandleType,
+  YAxisPosition,
+  YAxisType,
+  // Format
+  FormatDateType,
+  // Chart
+  DomPosition,
+  // Indicator
+  IndicatorSeries,
+  // Layout
+  LayoutChildType,
+  // Pane
+  PanePosition,
+  PaneIdConstants,
+  // Overlay
+  OverlayState
+}
+
+// ==================== Type Exports ====================
+
+// Core Types
 export type { Chart } from './Chart'
-export { PaneIdConstants } from './pane/types'
+export type { Options } from './Options'
+
+// Data Types
+export type { default as KLineData } from './common/KLineData'
+export type { default as Precision } from './common/Precision'
+export type { default as Point } from './common/Point'
+
+// Style Types
+export type {
+  Styles,
+  TooltipIconStyle,
+  GradientColor,
+  CandleTooltipCustomCallback,
+  CandleTooltipCustomCallbackData
+} from './common/Styles'
+
+// Layout Types
+export type { LayoutChild } from './Options'
+
+// Indicator Types
+export type { IndicatorCreate, IndicatorTemplate, IndicatorTooltipData } from './component/Indicator'
+
+// Overlay Types
+export type { OverlayCreate, OverlayTemplate } from './component/Overlay'
+export type { OverlayEventCallback, OverlayDrawEventCallback } from './component/Overlay'
+
+// Event Types
+export type { MouseTouchEvent } from './common/SyntheticEvent'
