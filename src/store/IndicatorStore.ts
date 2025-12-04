@@ -1,7 +1,7 @@
 import type ChartStore from './ChartStore'
 import { type IndicatorCreate, Indicator, type IndicatorFilter, IndicatorSeries } from '../component/Indicator'
 import { isValid, isString } from '../common/utils/typeChecks'
-import { getIndicatorClass } from '../extension/indicator/index'
+import { getIndicatorTemplate } from '../extension/indicator/index'
 
 export default class IndicatorStore {
   private readonly _chartStore: ChartStore
@@ -33,8 +33,11 @@ export default class IndicatorStore {
     if (!isValid(paneInstances)) {
       paneInstances = []
     }
-    const indicatorTemplate = getIndicatorClass(name)!
-    const indicatorInstance = new Indicator(indicatorTemplate)
+    const indicatorTemplate = getIndicatorTemplate(name)!
+    const indicatorInstance = new Indicator(indicatorTemplate, {
+      id: indicator.id,
+      paneId
+    })
 
     this.synchronizeSeriesPrecision(indicatorInstance)
     indicatorInstance.override(indicator)

@@ -1,5 +1,3 @@
-
-import type Nullable from '../../common/Nullable'
 import { TemplateManager } from '../../common/TemplateManager'
 import type { IndicatorTemplate } from '../../component/Indicator'
 import averagePrice from './averagePrice'
@@ -44,18 +42,18 @@ const extensions = [
   stoch, stopAndReverse, tripleExponentiallySmoothedAverage, volume, volumeRatio, williamsR, waPrice, volumeMinute, openInterest
 ]
 
-const indicatorTemplateManager = new TemplateManager<IndicatorTemplate>(extensions)
+const TM = new TemplateManager<IndicatorTemplate<any>>(extensions)
 
-function registerIndicator<D>(template: IndicatorTemplate<D>): void {
-  indicatorTemplateManager.add(template)
+function registerIndicator<D = unknown>(template: IndicatorTemplate<D>): void {
+  TM.add(template)
 }
 
-function getIndicatorTemplate(name: string): Nullable<IndicatorTemplate> {
-  return indicatorTemplateManager.get(name)
+function getIndicatorTemplate(name: string): IndicatorTemplate<unknown> | undefined {
+  return TM.get(name)
 }
 
 function getSupportedIndicators(): string[] {
-  return indicatorTemplateManager.keys()
+  return TM.keys()
 }
 
-export { registerIndicator, getIndicatorTemplate as getIndicatorClass, getSupportedIndicators }
+export { registerIndicator, getIndicatorTemplate, getSupportedIndicators }

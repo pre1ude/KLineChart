@@ -7,6 +7,7 @@ import { OVERLAY_ID_PREFIX, Overlay } from '../component/Overlay'
 import { getOverlayTemplate } from '../extension/overlay'
 import type ChartStore from './ChartStore'
 import { PaneIdConstants } from '../pane/types'
+import { logWarn } from '@/common/utils/logger'
 
 export type ProgressOverlay = Overlay
 
@@ -109,7 +110,10 @@ export default class OverlayStore {
       }
 
       const overlayTemplate = getOverlayTemplate(overlay.name)
-      if (!overlayTemplate) return undefined
+      if (!overlayTemplate) {
+        logWarn('createOverlay', 'value', 'overlay not supported, you may need to use registerOverlay to add one!!!')
+        return undefined
+      }
 
       const id = overlay.id ?? createId(OVERLAY_ID_PREFIX)
       const groupId = overlay.groupId ?? id

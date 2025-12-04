@@ -28,7 +28,7 @@ import SeparatorPane from './pane/SeparatorPane'
 import { type PaneOptions, PanePosition, PANE_DEFAULT_HEIGHT, PaneIdConstants, type DrawPane } from './pane/types'
 import { type IndicatorFilter, type Indicator, type IndicatorCreate } from './component/Indicator'
 import { type Overlay, type OverlayCreate, type OverlayFilter } from './component/Overlay'
-import { getIndicatorClass } from './extension/indicator/index'
+import { getIndicatorTemplate } from './extension/indicator/index'
 // import { getStyles as getExtensionStyles } from './extension/styles/index'
 import Event from './Event'
 import type XAxisWidget from './widget/XAxisWidget'
@@ -723,7 +723,7 @@ export default class ChartImp implements Chart {
 
   createIndicator(value: string | IndicatorCreate, isStack?: boolean, paneOptions?: PaneOptions, callback?: () => void): string | undefined {
     const indicator = isString(value) ? { name: value } : value
-    if (getIndicatorClass(indicator.name) === null) {
+    if (getIndicatorTemplate(indicator.name) == null) {
       logWarn('createIndicator', 'value', 'indicator not supported, you may need to use registerIndicator to add one!!!')
       return undefined
     }

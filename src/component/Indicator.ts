@@ -211,9 +211,9 @@ export interface IndicatorApi<D = any> {
   onMouseLeave?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
 }
 
-export type IndicatorTemplate<D = any> = PartialExcept<Omit<IndicatorApi<D>, 'result'>, 'id' | 'paneId' | 'name' | 'calc'>
+export type IndicatorTemplate<D = unknown> = PartialExcept<Omit<IndicatorApi<D>, 'result' | 'id' | 'paneId'>, 'name' | 'calc'>
 
-export type IndicatorCreate<D = any> = PartialExcept<Omit<IndicatorApi<D>, 'result'>, 'name'> & {
+export type IndicatorCreate<D = unknown> = PartialExcept<Omit<IndicatorApi<D>, 'result'>, 'name'> & {
   yAxisPosition?: 'left' | 'right'
 }
 
@@ -223,7 +223,7 @@ export interface IndicatorFilter {
   paneId?: string
 }
 
-export class Indicator<D = any> implements IndicatorApi<D> {
+export class Indicator<D = unknown> implements IndicatorApi<D> {
   id: string
   paneId: string
   name: string
@@ -254,36 +254,33 @@ export class Indicator<D = any> implements IndicatorApi<D> {
   onMouseEnter?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
   onMouseLeave?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
 
-  constructor(indicator: IndicatorTemplate) {
-    const {
-      id, paneId, name, shortName, series, calcParams, figures, precision,
-      shouldOhlc, shouldFormatBigNumber, visible, zLevel,
-      minValue, maxValue, styles, extendData,
-      regenerateFigures, createTooltipDataSource, draw, calc, onClick, onMouseEnter, onMouseLeave
-    } = indicator
-    this.id = id
-    this.paneId = paneId
-    this.name = name
-    this.shortName = shortName ?? name
-    this.series = series ?? IndicatorSeries.Normal
-    this.precision = precision ?? 4
-    this.calcParams = calcParams ?? []
-    this.figures = figures ?? []
-    this.shouldOhlc = shouldOhlc ?? false
-    this.shouldFormatBigNumber = shouldFormatBigNumber ?? false
-    this.visible = visible ?? true
-    this.zLevel = zLevel ?? 0
-    this.minValue = minValue
-    this.maxValue = maxValue
-    this.styles = clone(styles ?? {})
-    this.extendData = extendData
-    this.regenerateFigures = regenerateFigures
-    this.createTooltipDataSource = createTooltipDataSource
-    this.draw = draw
-    this.calc = calc
-    this.onClick = onClick
-    this.onMouseEnter = onMouseEnter
-    this.onMouseLeave = onMouseLeave
+  constructor(template: IndicatorTemplate<D>, initOptions?: Partial<Pick<IndicatorApi<D>, 'id' | 'paneId'>>) {
+    this.id = initOptions?.id ?? ''
+    this.paneId = initOptions?.paneId ?? ''
+
+    this.name = template.name
+    this.shortName = template.shortName ?? template.name
+    this.series = template.series ?? IndicatorSeries.Normal
+    this.precision = template.precision ?? 4
+    this.calcParams = template.calcParams ?? []
+    this.figures = template.figures ?? []
+    this.shouldOhlc = template.shouldOhlc ?? false
+    this.shouldFormatBigNumber = template.shouldFormatBigNumber ?? false
+    this.visible = template.visible ?? true
+    this.zLevel = template.zLevel ?? 0
+    this.minValue = template.minValue
+    this.maxValue = template.maxValue
+    this.styles = clone(template.styles ?? {})
+    this.extendData = template.extendData
+    this.regenerateFigures = template.regenerateFigures
+    this.createTooltipDataSource = template.createTooltipDataSource
+    this.draw = template.draw
+    this.calc = template.calc
+    this.onClick = template.onClick
+    this.onMouseEnter = template.onMouseEnter
+    this.onMouseLeave = template.onMouseLeave
+
+    this.result = []
   }
 
   shouldUpdate(): { draw: boolean, calc: boolean, sort: boolean } {
@@ -315,7 +312,7 @@ export class Indicator<D = any> implements IndicatorApi<D> {
     return { draw, calc, sort }
   }
 
-  override(next: Partial<Indicator>): void {
+  override(next: Partial<Indicator<D>>): void {
     // Save previous state for change detection
     this._prevIndicator = clone({ ...this, _prevIndicator: null })
 
