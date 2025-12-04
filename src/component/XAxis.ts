@@ -50,15 +50,15 @@ export default abstract class XAxisImp extends AxisImp {
     const chartStore = chart.getChartStore()
     const timeShareTicks = chartStore.getTimeShareTicks()
     const timeShareDays = chartStore.getTimeShareDays()
-    const dataList = chartStore.getDataList()
+    // const dataList = chartStore.getDataList()
 
     const tmpTicks: number[] = []
     if (timeShareDays > 1) {
       for (let i = 0; i < timeShareDays; i++) {
-        const data = dataList[i * timeShareTicks.length]
-        if (isValid(data)) {
-          tmpTicks.push(i * timeShareTicks.length)
-        }
+        // const data = dataList[i * timeShareTicks.length]
+        // if (isValid(data)) {
+        // }
+        tmpTicks.push(i * timeShareTicks.length)
       }
     } else {
       for (let i = 0; i < timeShareTicks.length; i += 30) {
@@ -217,7 +217,7 @@ export default abstract class XAxisImp extends AxisImp {
           const hintTs = getHintTs(i)
           let text = timeShareTicks[index]
           const timeStamp = genTimeStamp(text, hintTs)
-          text = formatDate(getDateTimeFormat(), timeStamp, 'YYYY-MM-DD')
+          text = formatDate(getDateTimeFormat(), timeStamp, i === 0 ? 'YYYY-MM-DD' : 'MM-DD')
           optimalTicks.push({ text, coord: x, value: timeStamp })
         }
       }
