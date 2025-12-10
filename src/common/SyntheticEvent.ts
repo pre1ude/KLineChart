@@ -454,7 +454,7 @@ export default class SyntheticEvent {
 
   private _touchEndHandler(touchEndEvent: TouchEvent): void {
     let touch = this._touchWithId(touchEndEvent.changedTouches, this._activeTouchId)
-    if (touch === null && touchEndEvent.touches.length === 0) {
+    if (touch && touchEndEvent.touches.length === 0) {
       // something went wrong, somehow we missed the required touchend event
       // probably the browser has not sent this event
       touch = touchEndEvent.changedTouches[0]
@@ -592,7 +592,7 @@ export default class SyntheticEvent {
 
     this._processEvent(this._makeCompatEvent(downEvent, touch), this._handler.touchStartEvent)
 
-    if (this._tapTimeoutId === null) {
+    if (this._tapTimeoutId == null) {
       this._tapCount = 0
       this._tapTimeoutId = setTimeout(this._resetTapTimeout.bind(this), Delay.ResetClick)
       this._tapCoordinate = this._getCoordinate(touch)
@@ -643,7 +643,7 @@ export default class SyntheticEvent {
 
     this._processEvent(this._makeCompatEvent(downEvent), this._handler.mouseDownEvent)
 
-    if (this._clickTimeoutId === null) {
+    if (this._clickTimeoutId == null) {
       this._clickCount = 0
       this._clickTimeoutId = setTimeout(this._resetClickTimeout.bind(this), Delay.ResetClick)
       this._clickCoordinate = this._getCoordinate(downEvent)
