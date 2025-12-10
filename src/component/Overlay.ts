@@ -373,6 +373,28 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     this.state = OverlayState.COMPLETED
   }
 
+  /**
+   * 智能完成：根据图形特性决定是否允许提前完成
+   * - 无限步骤图形（anyWaves等）：任意步骤都可完成
+   * - 固定步骤图形：只有达到 totalStep 才能完成，保证图形完整性
+   */
+  smartComplete(): boolean {
+    // 对于无限步骤的图形（totalStep >= 999），允许任意步骤完成
+    if (this.totalStep >= 999) {
+      this.forceComplete()
+      return true
+    }
+
+    // 对于固定步骤的图形，必须完成所有步骤才能完成
+    // 这确保了图形的完整性和用户期望的一致性
+    if (this.currentStep >= this.totalStep) {
+      this.forceComplete()
+      return true
+    }
+
+    return false
+  }
+
   updateDrawPoint(point: Partial<Point>): void {
     if (this.onDrawPointUpdate) {
       this.onDrawPointUpdate(this.points, this.currentStep, point)

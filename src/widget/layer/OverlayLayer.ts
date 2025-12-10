@@ -188,11 +188,15 @@ export class OverlayLayer implements Layer {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay) {
         if (!progressOverlay.isCompleted() && progressOverlay.paneId === paneId) {
-          progressOverlay.forceComplete()
-          overlayStore.progressOverlayComplete()
-          const pointIndex = progressOverlay.points.length - 1
-          const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
-          progressOverlay.onDrawEnd?.(event, { figureKey, pointIndex })
+          // 使用智能完成：只有满足最小步骤要求时才完成
+          const completed = progressOverlay.smartComplete()
+          if (completed) {
+            overlayStore.progressOverlayComplete()
+            const pointIndex = progressOverlay.points.length - 1
+            const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
+            progressOverlay.onDrawEnd?.(event, { figureKey, pointIndex })
+          }
+          // 如果不满足完成条件，双击事件被忽略，继续绘制
         }
         return false
       }
