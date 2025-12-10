@@ -111,7 +111,7 @@ export default class OverlayStore {
 
       const overlayTemplate = getOverlayTemplate(overlay.name)
       if (!overlayTemplate) {
-        logWarn('createOverlay', 'value', 'overlay not supported, you may need to use registerOverlay to add one!!!')
+        logWarn('createOverlay', overlay.name, 'overlay not supported, you may need to use registerOverlay to add one!!!')
         return undefined
       }
 
