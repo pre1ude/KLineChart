@@ -239,6 +239,7 @@ export type { Options } from './Options'
 export type { default as KLineData } from './common/KLineData'
 export type { default as Precision } from './common/Precision'
 export type { default as Point } from './common/Point'
+export type { default as Crosshair } from './common/Crosshair'
 
 // Style Types
 export type {
