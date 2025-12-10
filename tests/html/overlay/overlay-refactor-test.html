@@ -90,6 +90,7 @@ limitations under the License.
           <button onclick="testMainPaneCircle()">创建圆形</button>
           <button onclick="testHorizontalRayLine()">创建水平射线</button>
           <button onclick="testParallelogram()">创建平行四边形</button>
+          <button onclick="testAnyWaves()">创建Anywaves</button>
         </div>
       </div>
 
@@ -107,16 +108,6 @@ limitations under the License.
           <button onclick="testXAxisOverlay()">X轴标签测试</button>
           <button onclick="testYAxisOverlay()">Y轴标签测试</button>
           <button onclick="testCustomXAxisFigures()">自定义X轴Figures</button>
-        </div>
-      </div>
-
-      <div class="test-section">
-        <h4>4. Interactive Tests (交互测试)</h4>
-        <div class="button-group">
-          <button onclick="testHoverEffect()">Hover 效果</button>
-          <button onclick="testClickSelect()">点击选中</button>
-          <button onclick="testDragMove()">拖拽移动</button>
-          <button onclick="testRightClick()">右键删除</button>
         </div>
       </div>
 
@@ -228,13 +219,26 @@ limitations under the License.
       window.testParallelogram = function() {
         const overlay = chart.createOverlay({
           name: 'parallelogram',
-          points: [
-            { timestamp: dataList[dataList.length - 50].timestamp, value: dataList[dataList.length - 50].high },
-            { timestamp: dataList[dataList.length - 40].timestamp, value: dataList[dataList.length - 40].high },
-            { timestamp: dataList[dataList.length - 35].timestamp, value: dataList[dataList.length - 35].low }
-          ]
         })
         updateStatus(`创建平行四边形 #${++overlayCount} - 拖动前两个控制点，第一条边会保持水平`)
+      }
+      // window.testParallelogram = function() {
+      //   const overlay = chart.createOverlay({
+      //     name: 'parallelogram',
+      //     points: [
+      //       { timestamp: dataList[dataList.length - 50].timestamp, value: dataList[dataList.length - 50].high },
+      //       { timestamp: dataList[dataList.length - 40].timestamp, value: dataList[dataList.length - 40].high },
+      //       { timestamp: dataList[dataList.length - 35].timestamp, value: dataList[dataList.length - 35].low }
+      //     ]
+      //   })
+      //   updateStatus(`创建平行四边形 #${++overlayCount} - 拖动前两个控制点，第一条边会保持水平`)
+      // }
+
+      window.testAnyWaves = function() {
+        const overlay = chart.createOverlay({
+          name: 'anyWaves',
+        })
+        updateStatus(`创建anywaves`)
       }
 
       // 2. Sub Pane Tests
@@ -457,23 +461,6 @@ limitations under the License.
 
         overlayCount++
         updateStatus('✅ 创建了自定义 X 轴 Figures 的 overlay！点击它查看 X 轴上的自定义标签（背景高亮、边界线、开始/结束标签、时间跨度）')
-      }
-
-      // 4. Interactive Tests
-      window.testHoverEffect = function() {
-        updateStatus('请将鼠标悬停在覆盖物上，观察高亮效果')
-      }
-
-      window.testClickSelect = function() {
-        updateStatus('请点击覆盖物，观察选中状态和控制点')
-      }
-
-      window.testDragMove = function() {
-        updateStatus('请点击并拖拽覆盖物的控制点，测试移动功能')
-      }
-
-      window.testRightClick = function() {
-        updateStatus('请右键点击覆盖物，测试删除功能')
       }
 
       // 5. zLevel Tests

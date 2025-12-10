@@ -27,20 +27,14 @@ export enum OverlayState {
   COMPLETED = 'completed'
 }
 
-export type OverlayFigureIgnoreEventType = 'mouseClickEvent' | 'mouseDoubleClickEvent' | 'mouseRightClickEvent' | 'tapEvent' | 'doubleTapEvent' | 'mouseDownEvent' | 'touchStartEvent' | 'mouseMoveEvent' | 'touchMoveEvent'
-
-export const getAllOverlayFigureIgnoreEventTypes = (): OverlayFigureIgnoreEventType[] => [
-  'mouseClickEvent', 'mouseDoubleClickEvent', 'mouseRightClickEvent',
-  'tapEvent', 'doubleTapEvent', 'mouseDownEvent', 'touchStartEvent',
-  'mouseMoveEvent', 'touchMoveEvent'
-]
+export type FigureEventType = 'mouseClickEvent' | 'mouseDoubleClickEvent' | 'mouseRightClickEvent' | 'tapEvent' | 'doubleTapEvent' | 'mouseDownEvent' | 'touchStartEvent' | 'mouseMoveEvent' | 'touchMoveEvent'
 
 export interface OverlayFigure {
   key?: string
   type: string
   attrs: object | object[]
   styles?: object
-  ignoreEvent?: boolean | OverlayFigureIgnoreEventType[]
+  ignoreEvent?: boolean | FigureEventType[]
 }
 
 export type InteractType = 'control-point' | 'body'
