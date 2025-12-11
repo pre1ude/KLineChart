@@ -14,7 +14,7 @@ import type DualYPane from '../pane/DualYPane'
 
 interface FiguresResult {
   figures: IndicatorFigure[]
-  result: any[]
+  result: unknown[]
 }
 
 export interface YAxis extends Axis {
@@ -105,7 +105,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
                 text = `${formatPrecision(v, 2)}%`
               }
             } else if (type === YAxisType.Log) {
-              v = log10(v)
+              // 对数轴：v 已经是原始价格值（convertFromPixel 已经转换过了）
+              // 刻度文本应该显示原始价格值
               text = formatPrecision(v, precision)
             }
 
@@ -139,6 +140,44 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   }
 
   getRange(): VisibleRange { return this._range }
+
+  /**
+   * 基于像素偏移量同步移动轴的范围
+   * @param pixelOffset 像素偏移量
+   * @param height 轴的高度
+   */
+  offsetByPixel(pixelOffset: number, height: number): void {
+    if (this._autoCalcTickFlag || !this.getScrollZoomEnabled()) {
+      return
+    }
+
+    const { from, to, domainFrom, domainTo } = this._range
+    const rangeSize = to - from
+    const domainSize = domainTo - domainFrom
+
+    // 防止除零错误
+    if (rangeSize === 0 || height === 0) {
+      return
+    }
+
+    // 计算内部范围的偏移量
+    const rangeOffset = (pixelOffset / height) * rangeSize
+
+    // 计算新的内部范围
+    const newFrom = from + rangeOffset
+    const newTo = to + rangeOffset
+
+    // 计算新的domain范围
+    const newDomainFrom = domainFrom + (rangeOffset / rangeSize) * domainSize
+    const newDomainTo = domainTo + (rangeOffset / rangeSize) * domainSize
+
+    this._range = {
+      from: newFrom,
+      to: newTo,
+      domainFrom: newDomainFrom,
+      domainTo: newDomainTo
+    }
+  }
 
   setAutoCalcTickFlag(flag: boolean): void {
     this._autoCalcTickFlag = flag
@@ -245,7 +284,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       figuresResultList.forEach(({ figures, result }) => {
         const indicatorData = result[dataIndex] ?? {}
         figures.forEach(figure => {
-          const value = indicatorData[figure.key]
+          const value = (indicatorData as Record<string, unknown>)[figure.key]
           if (isNumber(value)) {
             min = Math.min(min, value)
             max = Math.max(max, value)
@@ -336,19 +375,44 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     if (bottomRate >= 1) {
       bottomRate = bottomRate / height
     }
+    // 保存原始数据范围作为domain（在应用gap之前）
+    let domainFrom = min
+    let domainTo = max
+
+    // 对于非Normal类型，需要将转换后的值还原为原始数据值
+    switch (type) {
+      case YAxisType.Percentage: {
+        const firstData = chartStore.getVisibleFirstData()
+        if (isValid(firstData) && isNumber(firstData.close)) {
+          domainFrom = firstData.close * (min / 100 + 1)
+          domainTo = firstData.close * (max / 100 + 1)
+        }
+        break
+      }
+      case YAxisType.MinutePercentage: {
+        const firstData = chartStore.getVisibleFirstData()
+        let prevClose = firstData?.prevClose
+        if (!prevClose) {
+          prevClose = firstData?.close
+        }
+        if (isNumber(prevClose)) {
+          domainFrom = prevClose * (min / 100 + 1)
+          domainTo = prevClose * (max / 100 + 1)
+        }
+        break
+      }
+      case YAxisType.Log: {
+        domainFrom = index10(min)
+        domainTo = index10(max)
+        break
+      }
+      // Normal类型已经是原始数据值，不需要转换
+    }
+
+    // 应用gap到内部范围
     const range = Math.abs(max - min)
-    // gap
     min = min - range * bottomRate
     max = max + range * topRate
-    let domainFrom: number
-    let domainTo: number
-    if (type === YAxisType.Log) {
-      domainFrom = index10(min)
-      domainTo = index10(max)
-    } else {
-      domainFrom = min
-      domainTo = max
-    }
 
     return {
       from: min, to: max, domainFrom, domainTo
@@ -436,8 +500,12 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
           break
         }
         case YAxisType.Log: {
-          y = this._innerConvertToPixel(log10(+value))
-          v = formatPrecision(value, precision)
+          // 对数轴：value 是对数值（来自 _calcTicks），需要转换回原始价格值显示
+          // _innerConvertToPixel 期望的是对数值，所以直接使用 value
+          y = this._innerConvertToPixel(+value)
+          // 显示的文本应该是原始价格值
+          const realValue = index10(+value)
+          v = formatPrecision(realValue, precision)
           break
         }
         default: {

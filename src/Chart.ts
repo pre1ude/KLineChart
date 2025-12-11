@@ -410,8 +410,8 @@ export default class ChartImp implements Chart {
           shouldAdjust = true
           shouldMeasureHeight = true
         }
-        // todo check this
-        if (isString(options.axisOptions?.name) || isValid(options.gap)) {
+        // 检查是否需要调整视图
+        if (isString(options.axisOptions?.name) || isValid(options.gap) || isValid(options.axisOptions?.YAxis)) {
           shouldAdjust = true
         }
         pane.setOptions(options)

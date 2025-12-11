@@ -43,6 +43,28 @@ export default abstract class DualYPane extends Pane {
 
   setOptions(options: Omit<PaneOptions, 'id' | 'height'>): this {
     merge(this._options, options)
+
+    // 更新Y轴Widget的类型（如果已创建且有新的类型配置）
+    if (options.axisOptions?.YAxis) {
+      const yAxisConfig = options.axisOptions.YAxis
+      if (this._yLeftAxisWidget && yAxisConfig.left?.type !== undefined) {
+        const currentOptions = this._yLeftAxisWidget.getOptions()
+        this._yLeftAxisWidget.setOptions({
+          ...currentOptions,
+          type: yAxisConfig.left.type
+        })
+        this._yLeftAxisWidget.getAxisComponent().setAutoCalcTickFlag(true)
+      }
+      if (this._yRightAxisWidget && yAxisConfig.right?.type !== undefined) {
+        const currentOptions = this._yRightAxisWidget.getOptions()
+        this._yRightAxisWidget.setOptions({
+          ...currentOptions,
+          type: yAxisConfig.right.type
+        })
+        this._yRightAxisWidget.getAxisComponent().setAutoCalcTickFlag(true)
+      }
+    }
+
     return this
   }
 

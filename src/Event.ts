@@ -43,6 +43,7 @@ export default class Event implements EventHandler {
   private _mouseDownWidget?: Widget
 
   private _prevYAxisRange?: VisibleRange
+  private _prevOtherYAxisRange?: VisibleRange
 
   private _xAxisStartScaleCoordinate?: Coordinate
   private _xAxisStartScaleDistance = 0
@@ -135,9 +136,7 @@ export default class Event implements EventHandler {
           return widget.dispatchEvent('mouseDownEvent', event)
         }
         case WidgetNameConstants.MAIN: {
-          // todo use left
-          const range = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent().getRange()
-          this._prevYAxisRange = range ? { ...range } : undefined
+          // 不再需要保存特定的Y轴范围，因为我们会在拖拽时实时获取每个轴的当前范围
           this._startScrollCoordinate = { x: event.x, y: event.y }
           return widget.dispatchEvent('mouseDownEvent', event)
         }
@@ -155,8 +154,17 @@ export default class Event implements EventHandler {
           if (consumed) {
             this._chart.updatePane(UpdateLevel.Overlay)
           }
-          const range = (widget as YAxisWidget).getAxisComponent().getRange()
+          const currentYAxis = (widget as YAxisWidget).getAxisComponent()
+          const range = currentYAxis.getRange()
           this._prevYAxisRange = range ? { ...range } : undefined
+
+          // 保存另一个Y轴的初始范围
+          const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+          const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
+          const otherYAxis = currentYAxis === yLeftAxis ? yRightAxis : yLeftAxis
+          const otherRange = otherYAxis.getRange()
+          this._prevOtherYAxisRange = otherRange ? { ...otherRange } : undefined
+
           this._yAxisStartScaleDistance = event.pageY
           return consumed
         }
@@ -219,32 +227,26 @@ export default class Event implements EventHandler {
       switch (name) {
         case WidgetNameConstants.MAIN: {
           const bounding = widget.getBounding()
+          const height = bounding.height
           const consumed = widget.dispatchEvent('pressedMouseMoveEvent', event)
           if (!consumed && this._startScrollCoordinate) {
-            // todo use left
-            const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
-            if (this._prevYAxisRange && !yAxis.getAutoCalcTickFlag() && yAxis.getScrollZoomEnabled()) {
-              const { from, to } = this._prevYAxisRange
-              const range = to - from
-              let distance: number
-              if (yAxis?.isReverse() ?? false) {
-                distance = this._startScrollCoordinate.y - event.y
-              } else {
-                distance = event.y - this._startScrollCoordinate.y
-              }
-              const scale = distance / bounding.height
-              const difRange = range * scale
-              const newFrom = from + difRange
-              const newTo = to + difRange
-              const newRealFrom = yAxis.convertToRealValue(newFrom)
-              const newRealTo = yAxis.convertToRealValue(newTo)
-              yAxis.setRange({
-                from: newFrom,
-                to: newTo,
-                domainFrom: newRealFrom,
-                domainTo: newRealTo
-              })
+            const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+            const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
+
+            // 计算像素移动距离
+            let pixelDistance: number
+            const isReverse = yLeftAxis?.isReverse() ?? false
+            if (isReverse) {
+              pixelDistance = this._startScrollCoordinate.y - event.y
+            } else {
+              pixelDistance = event.y - this._startScrollCoordinate.y
             }
+
+            // 使用像素偏移量直接更新每个轴的范围
+            // 这样每个轴都会根据自己的内部范围进行等比例偏移
+            yLeftAxis.offsetByPixel(pixelDistance, height)
+            yRightAxis.offsetByPixel(pixelDistance, height)
+
             const distance = event.x - this._startScrollCoordinate.x
             this._startScrollCoordinate = { x: event.x, y: event.y }
             this._chart.getChartStore().getTimeScaleStore().scroll(distance)
@@ -272,8 +274,8 @@ export default class Event implements EventHandler {
         case WidgetNameConstants.Y_AXIS: {
           const consumed = widget.dispatchEvent('pressedMouseMoveEvent', event)
           if (!consumed) {
-            const yAxis = (widget as YAxisWidget).getAxisComponent()
-            if (this._prevYAxisRange && yAxis.getScrollZoomEnabled()) {
+            const currentYAxis = (widget as YAxisWidget).getAxisComponent()
+            if (this._prevYAxisRange && currentYAxis.getScrollZoomEnabled()) {
               const { from, to } = this._prevYAxisRange
               const range = to - from
               const scale = event.pageY / this._yAxisStartScaleDistance
@@ -281,14 +283,39 @@ export default class Event implements EventHandler {
               const difRange = (newRange - range) / 2
               const newFrom = from - difRange
               const newTo = to + difRange
-              const newRealFrom = yAxis.convertToRealValue(newFrom)
-              const newRealTo = yAxis.convertToRealValue(newTo)
-              yAxis.setRange({
+              const newRealFrom = currentYAxis.convertToRealValue(newFrom)
+              const newRealTo = currentYAxis.convertToRealValue(newTo)
+
+              // 更新当前拖拽的Y轴
+              currentYAxis.setRange({
                 from: newFrom,
                 to: newTo,
                 domainFrom: newRealFrom,
                 domainTo: newRealTo
               })
+
+              // 同步其他Y轴 - 使用保存的初始范围和相同的缩放比例
+              const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+              const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
+              const otherYAxis = currentYAxis === yLeftAxis ? yRightAxis : yLeftAxis
+
+              if (otherYAxis.getScrollZoomEnabled() && this._prevOtherYAxisRange) {
+                const otherRange = this._prevOtherYAxisRange
+                const otherRangeSize = otherRange.to - otherRange.from
+                const otherNewRange = otherRangeSize * scale
+                const otherDifRange = (otherNewRange - otherRangeSize) / 2
+                const otherNewFrom = otherRange.from - otherDifRange
+                const otherNewTo = otherRange.to + otherDifRange
+                const otherNewRealFrom = otherYAxis.convertToRealValue(otherNewFrom)
+                const otherNewRealTo = otherYAxis.convertToRealValue(otherNewTo)
+                otherYAxis.setRange({
+                  from: otherNewFrom,
+                  to: otherNewTo,
+                  domainFrom: otherNewRealFrom,
+                  domainTo: otherNewRealTo
+                })
+              }
+
               this._chart.adjustPaneViewport(false, true, true, true)
             }
           } else {
@@ -323,6 +350,7 @@ export default class Event implements EventHandler {
     this._mouseDownWidget = undefined
     this._startScrollCoordinate = undefined
     this._prevYAxisRange = undefined
+    this._prevOtherYAxisRange = undefined
     this._xAxisStartScaleCoordinate = undefined
     this._xAxisStartScaleDistance = 0
     this._xAxisScale = 1
@@ -382,7 +410,7 @@ export default class Event implements EventHandler {
   }
 
   mouseDoubleClickEvent(e: MouseTouchEvent): boolean {
-    const { widget } = this._findWidgetByEvent(e)
+    const { pane, widget } = this._findWidgetByEvent(e)
     if (widget) {
       const name = widget.getName()
       switch (name) {
@@ -391,13 +419,13 @@ export default class Event implements EventHandler {
           return widget.dispatchEvent('mouseDoubleClickEvent', event)
         }
         case WidgetNameConstants.Y_AXIS: {
-          const yAxis = (widget as YAxisWidget).getAxisComponent()
-          if (!yAxis.getAutoCalcTickFlag()) {
-            yAxis.setAutoCalcTickFlag(true)
-            this._chart.adjustPaneViewport(false, true, true, true)
-            return true
-          }
-          break
+          const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+          const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
+
+          yLeftAxis.setAutoCalcTickFlag(true)
+          yRightAxis.setAutoCalcTickFlag(true)
+          this._chart.adjustPaneViewport(false, true, true, true)
+          return true
         }
       }
     }

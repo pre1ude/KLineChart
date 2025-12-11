@@ -19,17 +19,86 @@ limitations under the License.
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     <meta name="keywords" content="kline time-line candlestick stock chart canvas k线 行情 蜡烛图 分时图 技术指标 图表"/>
-    <meta name="description" content="shape test"/>
-    <title>KLineChart test cases</title>
+    <meta name="description" content="KLineChart comprehensive test suite including Y-axis sync drag functionality"/>
+    <title>KLineChart Test Suite</title>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <style>
-      h1 {
-        padding-left: 0.7em
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f5f5f5;
       }
-  </style>
-    <h1>Test cases</h1>
+      h1 {
+        padding-left: 0.7em;
+        color: #333;
+        border-bottom: 2px solid #2196f3;
+        padding-bottom: 10px;
+      }
+      #case-list {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+      }
+      li {
+        margin: 8px 0;
+      }
+      p {
+        font-weight: bold;
+        color: #2196f3;
+        margin: 15px 0 8px 0;
+        font-size: 16px;
+      }
+      a {
+        color: #1976d2;
+        text-decoration: none;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+      }
+      a:hover {
+        background-color: #e3f2fd;
+        text-decoration: underline;
+      }
+      .test-category {
+        background: white;
+        margin: 20px 0;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .new-feature {
+        background: #e8f5e8 !important;
+        border-left: 4px solid #4caf50;
+      }
+      .new-badge {
+        background: #4caf50;
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 12px;
+        margin-left: 8px;
+      }
+    </style>
+    <h1>KLineChart Test Cases</h1>
+
+    <div style="background: #e8f5e8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #4caf50; max-width: 1200px; margin-left: auto; margin-right: auto;">
+      <h3 style="margin-top: 0; color: #2e7d32;">🆕 最新功能测试</h3>
+      <p style="margin: 10px 0; font-weight: normal; color: #333;">
+        <strong>双Y轴同步拖拽功能</strong> - 修复了拖拽主绘制区域时只有左侧Y轴移动的问题。
+        现在左右两个Y轴会同步移动，创造出整个图表上下移动的视觉效果。
+      </p>
+      <p style="margin: 10px 0; font-weight: normal; color: #666; font-size: 14px;">
+        💡 <strong>测试提示：</strong>双击Y轴进入手动控制模式，然后在主图区域拖拽测试同步效果。
+        推荐从 "Y-Axis Sync - Basic Test" 开始测试。
+      </p>
+    </div>
+
     <div id="case-list"></div>
     <script>
       window.onload = function () {
@@ -99,15 +168,39 @@ limitations under the License.
           },
           { title: 'Set precision', link: './html/set-precision.html' },
           { title: 'Set bar width', link: './html/set-bar-width.html' },
-          { title: 'Set pane options', link: './html/set-pane-options.html' }
+          { title: 'Set pane options', link: './html/set-pane-options.html' },
+          {
+            title: 'Y-Axis Sync Tests',
+            isNew: true,
+            description: '测试双Y轴同步拖拽功能 - 验证左右Y轴在拖拽主绘制区域时能够同步移动',
+            children: [
+              {
+                title: 'Dual Y-Axis Sync Drag - Advanced',
+                link: './html/dual-yaxis-sync-drag.html',
+                description: '高级测试 - 完整的功能测试和多种轴类型组合'
+              }
+            ]
+          }
         ]
         var html = '<ul>'
         cases.forEach(function (child) {
-          var childHtml = '<li>'
+          var childHtml = '<li class="test-category' + (child.isNew ? ' new-feature' : '') + '">'
           if (child.children) {
-            var grandsonHtml = '<p>' + child.title + '</p>' + '<ul>'
+            var titleHtml = '<p>' + child.title
+            if (child.isNew) {
+              titleHtml += '<span class="new-badge">NEW</span>'
+            }
+            titleHtml += '</p>'
+            if (child.description) {
+              titleHtml += '<div style="font-size: 14px; color: #666; margin-bottom: 10px; font-weight: normal;">' + child.description + '</div>'
+            }
+            var grandsonHtml = titleHtml + '<ul>'
             child.children.forEach(function (grandson) {
-              grandsonHtml += '<li>' + '<a target="_blank" href="' + grandson.link + '">' + grandson.title + '</a>' + '</li>'
+              var linkHtml = '<a target="_blank" href="' + grandson.link + '">' + grandson.title + '</a>'
+              if (grandson.description) {
+                linkHtml += '<div style="font-size: 12px; color: #888; margin-top: 2px;">' + grandson.description + '</div>'
+              }
+              grandsonHtml += '<li>' + linkHtml + '</li>'
             })
             grandsonHtml += '</ul>'
             childHtml += grandsonHtml
