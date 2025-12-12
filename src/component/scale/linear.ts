@@ -2,6 +2,7 @@ import { normalize, interpolateNumber, ticks, tickStep, nice, floor, ceil } from
 
 export interface LinearScale {
   (x: number): number
+  invert: (y: number) => number
   ticks: (tickCount?: number) => number[]
   nice: (tickCount?: number) => void
 }
@@ -23,6 +24,11 @@ export function createLinear({
   const scale = (x: number): number => {
     const t = normalize(x, domainStart, domainEnd)
     return interpolate(t, r0, r1)
+  }
+
+  scale.invert = (y: number): number => {
+    const t = normalize(y, r0, r1)
+    return interpolateNumber(t, domainStart, domainEnd)
   }
 
   scale.ticks = (tickCount: number = 10): number[] => {
