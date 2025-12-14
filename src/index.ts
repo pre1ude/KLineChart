@@ -233,6 +233,7 @@ export {
 
 // Core Types
 export type { Chart } from './Chart'
+export type { default as ChartImp } from './Chart'
 export type { Options } from './Options'
 
 // Data Types
@@ -257,7 +258,7 @@ export type { LayoutChild } from './Options'
 export type { IndicatorCreate, IndicatorTemplate, IndicatorTooltipData } from './component/Indicator'
 
 // Overlay Types
-export type { OverlayCreate, OverlayTemplate } from './component/Overlay'
+export type { Overlay, OverlayCreate, OverlayTemplate, OverlayMode } from './component/Overlay'
 export type { OverlayEventCallback, OverlayDrawEventCallback } from './component/Overlay'
 
 // Event Types
