@@ -72,6 +72,7 @@ export interface Chart {
   getVisibleRange: () => VisibleRange
   clearData: () => void
   getDataList: () => KLineData[]
+  getChartStore: () => ChartStore
   getDataByDataIndex: (dataIndex: number) => KLineData | undefined
   getDataByTimestamp: (timestamp: number, options?: { exact?: boolean }) => KLineData | undefined
   applyNewData: (dataList: KLineData[], more?: boolean, callback?: () => void) => void
