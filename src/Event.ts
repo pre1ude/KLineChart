@@ -53,32 +53,6 @@ export default class Event implements EventHandler {
 
   private _mouseMoveTriggerWidgetInfo: EventTriggerWidgetInfo = {}
 
-  private readonly _boundKeyBoardDownEvent: ((event: KeyboardEvent) => void) = (event: KeyboardEvent) => {
-    if (event.shiftKey) {
-      switch (event.code) {
-        case 'Equal': {
-          this._chart.getChartStore().getTimeScaleStore().zoom(0.05)
-          break
-        }
-        case 'Minus': {
-          this._chart.getChartStore().getTimeScaleStore().zoom(-0.05)
-          break
-        }
-        case 'ArrowLeft': {
-          this._chart.scrollByBar(-3)
-          break
-        }
-        case 'ArrowRight': {
-          this._chart.scrollByBar(3)
-          break
-        }
-        default: {
-          break
-        }
-      }
-    }
-  }
-
   constructor(container: HTMLElement, chart: Chart) {
     this._container = container
     this._chart = chart
@@ -86,7 +60,6 @@ export default class Event implements EventHandler {
       treatVertDragAsPageScroll: () => false,
       treatHorzDragAsPageScroll: () => false
     })
-    container.addEventListener('keydown', this._boundKeyBoardDownEvent)
   }
 
   pinchStartEvent(): boolean {
@@ -676,7 +649,6 @@ export default class Event implements EventHandler {
   }
 
   destroy(): void {
-    this._container.removeEventListener('keydown', this._boundKeyBoardDownEvent)
     this._event.destroy()
   }
 }
