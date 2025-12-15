@@ -10,11 +10,15 @@ import type YAxisImp from '../component/YAxis'
 import { PaneIdConstants } from '../pane/types'
 import View from './View'
 import type { EventName, MouseTouchEvent } from '../common/SyntheticEvent'
+import type { Figure } from '../component/Figure'
+
+// 指标结果数据类型，支持通过字符串键访问
+type IndicatorResultData = Record<string, unknown>
 
 export default class IndicatorView extends View {
-  private _lastHoverFigure: any = null
+  private _lastHoverFigure: Figure | null = null
 
-  setLastHoverFigure(figure: any): void {
+  setLastHoverFigure(figure: Figure | null): void {
     this._lastHoverFigure = figure
   }
 
@@ -45,16 +49,15 @@ export default class IndicatorView extends View {
 
     // 定义辅助函数
     function filterIndicatorsByAxis(paneIndicators: Indicator[], yAxis: YAxisImp): Indicator[] {
-      let indicators: Array<Indicator<any>> = []
       const indicatorNames = yAxis.getIndicatorNames()
       if (indicatorNames.length > 0) {
         // 如果有收集的指标，则只计算收集的指标
         const filteredIndicators = paneIndicators.filter(indicator => indicatorNames.includes(indicator.name))
         if (filteredIndicators.length > 0) {
-          indicators = filteredIndicators
+          return filteredIndicators
         }
       }
-      return indicators
+      return []
     }
 
     function setCompositeOperation(zLevel: number): void {
@@ -119,7 +122,8 @@ export default class IndicatorView extends View {
         // 其他类型：逐个绘制，创建 Figure 实例以支持交互
         for (const data of visibleDataList) {
           const { dataIndex, x } = data
-          if (!isValid(indicator.result[dataIndex]?.[figure.key])) continue
+          const resultData = indicator.result[dataIndex] as IndicatorResultData | undefined
+          if (!isValid(resultData?.[figure.key])) continue
 
           const figureStyles = createFigureStyles(dataIndex)
 
@@ -175,8 +179,10 @@ export default class IndicatorView extends View {
       for (const data of visibleDataList) {
         const { dataIndex, x } = data
 
-        const currentValue = result[dataIndex]?.[key]
-        const nextValue = result[dataIndex + 1]?.[key]
+        const currentResultData = result[dataIndex] as IndicatorResultData | undefined
+        const nextResultData = result[dataIndex + 1] as IndicatorResultData | undefined
+        const currentValue = currentResultData?.[key]
+        const nextValue = nextResultData?.[key]
 
         // 值无效 → 绘制当前 path 并重置
         if (!isNumber(currentValue) || !isNumber(nextValue)) {
@@ -226,12 +232,13 @@ export default class IndicatorView extends View {
     function computeDefaultAttrs(
       figure: IndicatorFigure,
       dataIndex: number,
-      result: any[],
+      result: unknown[],
       x: number,
       yAxis: YAxisImp
     ): IndicatorFigureAttrs | undefined {
       const type = figure.type ?? 'line'
-      const value = result[dataIndex]?.[figure.key]
+      const resultData = result[dataIndex] as IndicatorResultData | undefined
+      const value = resultData?.[figure.key]
       if (!isNumber(value)) return
 
       const { halfGapBar } = barSpace

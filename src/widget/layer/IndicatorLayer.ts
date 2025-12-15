@@ -8,11 +8,13 @@ import type { MouseTouchEvent } from '../../common/SyntheticEvent'
 import type { Figure } from '../../component/Figure'
 import type { Indicator, IndicatorFigure } from '../../component/Indicator'
 
-interface IndicatorFigureData {
+export interface IndicatorFigureData {
   dataIndex: number
   figure: IndicatorFigure
   indicator: Indicator
 }
+
+type IndicatorFigureInstance = Figure<unknown, unknown, IndicatorFigureData>
 
 /**
  * 指标图层
@@ -39,12 +41,13 @@ export class IndicatorLayer implements Layer {
   }
 
   private _initEvent(widget: DrawWidget<DualYPane>): void {
-    let lastHoverFigureData: IndicatorFigureData | null = null
+    let lastHoverFigure: IndicatorFigureInstance | null = null
 
     // 鼠标移动事件 - 处理 onMouseEnter 和 onMouseLeave
     this._indicatorView.addEventListener('mouseMoveEvent', (e: MouseTouchEvent) => {
-      const target = e.target as any
-      const currentFigureData = (target?.data as IndicatorFigureData) ?? null
+      const currentFigure = e.target as IndicatorFigureInstance | undefined
+      const currentFigureData = currentFigure?.data ?? null
+      const lastHoverFigureData = lastHoverFigure?.data ?? null
 
       // 检查是否切换了 figure（包括从有 figure 到无 figure 的情况）
       const isSameFigure = lastHoverFigureData != null && currentFigureData != null &&
@@ -70,8 +73,8 @@ export class IndicatorLayer implements Layer {
           indicator.onMouseEnter?.(e, { dataIndex, dataList, figure, indicator })
         }
 
-        lastHoverFigureData = currentFigureData
-        this._indicatorView?.setLastHoverFigure(currentFigureData)
+        lastHoverFigure = currentFigure ?? null
+        this._indicatorView?.setLastHoverFigure(lastHoverFigure)
       }
 
       return false
@@ -81,10 +84,10 @@ export class IndicatorLayer implements Layer {
     this._indicatorView.addEventListener('mouseClickEvent', (e: MouseTouchEvent) => {
       const chartStore = widget.getPane().getChart().getChartStore()
       const dataList = chartStore.getDataList()
-      const target = e.target
+      const target = e.target as IndicatorFigureInstance | undefined
 
       if (target != null) {
-        const figureData = (target as Figure<any, any, IndicatorFigureData>).data
+        const figureData = target.data
         if (figureData != null) {
           const { dataIndex, indicator, figure } = figureData
 

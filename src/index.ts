@@ -255,7 +255,7 @@ export type {
 export type { LayoutChild } from './Options'
 
 // Indicator Types
-export type { IndicatorCreate, IndicatorTemplate, IndicatorTooltipData } from './component/Indicator'
+export type { Indicator, IndicatorCreate, IndicatorTemplate, IndicatorTooltipData } from './component/Indicator'
 
 // Overlay Types
 export type { Overlay, OverlayCreate, OverlayTemplate, OverlayMode } from './component/Overlay'
