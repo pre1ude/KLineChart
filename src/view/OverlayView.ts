@@ -366,7 +366,7 @@ export default class OverlayView extends View {
     if (!overlay.needDefaultPointFigure) return
 
     // 正在绘制的 overlay 始终显示控制点
-    const isDrawing = overlay.isDrawing()
+    const isDrawing = !overlay.isCompleted()
 
     // 已完成的 overlay 只有在 hover 或 click 时才显示控制点
     const isHovered = hoverInfo?.overlay?.id === overlay.id
