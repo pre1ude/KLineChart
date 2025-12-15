@@ -8,6 +8,9 @@ const simpleAnnotation: OverlayTemplate = {
   styles: {
     line: { style: LineType.Dashed }
   },
+  onRightClick() {
+    return true
+  },
   createFigures: ({ overlay, coordinates }) => {
     let text
     if (isValid(overlay.extendData)) {

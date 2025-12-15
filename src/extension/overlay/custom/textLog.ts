@@ -5,6 +5,9 @@ const textLog: OverlayTemplate = {
   name: 'textLog',
   totalStep: 2,
   needDefaultPointFigure: true,
+  onRightClick() {
+    return true
+  },
   onBodyDrag({ point, prevPoint, prevPoints, chartStore }) {
     // 只移动 point[1]（文本框），point[0]（锚点）保持不动
     const difDataIndex = point.dataIndex - prevPoint.dataIndex

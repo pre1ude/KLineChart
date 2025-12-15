@@ -40,6 +40,9 @@ const rayLine: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
+  onRightClick() {
+    return true
+  },
   createFigures: ({ coordinates, bounding }) => {
     return [
       {

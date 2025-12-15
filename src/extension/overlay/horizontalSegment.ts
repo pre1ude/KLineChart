@@ -7,6 +7,9 @@ const horizontalSegment: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
+  onRightClick() {
+    return true
+  },
   createFigures: ({ coordinates }) => {
     const lines: LineAttrs[] = []
     if (coordinates.length === 2) {
