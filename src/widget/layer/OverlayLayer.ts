@@ -124,6 +124,17 @@ export class OverlayLayer implements Layer {
           if (progressOverlay.isCompleted()) {
             overlayStore.progressOverlayComplete()
             progressOverlay.onDrawEnd?.(event, { figureKey, pointIndex })
+            // 绘制完成后默认选中该 overlay
+            const completedInfo: EventOverlayInfo = {
+              overlay: progressOverlay,
+              interactType: 'body',
+              figureKey: '',
+              figureIndex: 0,
+              attrsIndex: 0,
+              paneId
+            }
+            overlayStore.setSelectedInfo(completedInfo)
+            this._overlayView.setClickInstanceInfo(completedInfo)
           }
         }
         return false
@@ -195,6 +206,17 @@ export class OverlayLayer implements Layer {
             const pointIndex = progressOverlay.points.length - 1
             const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
             progressOverlay.onDrawEnd?.(event, { figureKey, pointIndex })
+            // 绘制完成后默认选中该 overlay
+            const completedInfo: EventOverlayInfo = {
+              overlay: progressOverlay,
+              interactType: 'body',
+              figureKey: '',
+              figureIndex: 0,
+              attrsIndex: 0,
+              paneId
+            }
+            overlayStore.setSelectedInfo(completedInfo)
+            this._overlayView.setClickInstanceInfo(completedInfo)
           }
           // 如果不满足完成条件，双击事件被忽略，继续绘制
         }
