@@ -242,19 +242,24 @@ export default class OverlayView extends View {
     yAxis?: YAxis
   ): Coordinate {
     const { timestamp, dataIndex: cachedDataIndex } = point
-    // timestamp 是必须的，dataIndex 作为缓存
     let dataIndex: number | undefined
 
     if (isNumber(timestamp)) {
-      // 检查缓存的 dataIndex 是否有效
+      // 有 timestamp 时，验证缓存的 dataIndex 是否有效
       if (isNumber(cachedDataIndex)) {
         const cachedData = chartStore.getDataByDataIndex(cachedDataIndex)
-        if (cachedData?.timestamp === timestamp) dataIndex = cachedDataIndex
+        if (cachedData?.timestamp === timestamp) {
+          dataIndex = cachedDataIndex
+        }
       }
       if (dataIndex === undefined) {
+        // 缓存无效或不存在，重新计算
         dataIndex = chartStore.timestampToDataIndex(timestamp)
         point.dataIndex = dataIndex
       }
+    } else if (isNumber(cachedDataIndex)) {
+      // 没有 timestamp（可能是拖动到数据范围外），直接使用 dataIndex
+      dataIndex = cachedDataIndex
     }
 
     const coordinate = { x: 0, y: 0 }
