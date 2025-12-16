@@ -1,7 +1,20 @@
 import { LineType, PolygonType } from '@/common/Styles'
 import { type OverlayTemplate } from '../../../component/Overlay'
 
-const textLog: OverlayTemplate = {
+export interface ExtendDataType {
+  /** 文本内容 */
+  text: string;
+  /**
+   * 与 visible 的区别是: false 时是完全看不见, 而 show 还能看到一个点
+  */
+  show: boolean;
+  /**
+   * 用于交互时取到 id
+   */
+  id: string | number;
+}
+
+export const textLog: OverlayTemplate<ExtendDataType> = {
   name: 'textLog',
   totalStep: 2,
   needDefaultPointFigure: true,
@@ -73,5 +86,3 @@ const textLog: OverlayTemplate = {
     ]
   }
 }
-
-export default textLog

@@ -1,7 +1,8 @@
-import textLog from './textLog'
+import { textLog } from './textLog'
+import type { OverlayTemplate } from '../../../component/Overlay'
 
-const klineOverlays = [
-  textLog
+const klineOverlays: OverlayTemplate[] = [
+  textLog as OverlayTemplate
 ]
 
 export default klineOverlays
