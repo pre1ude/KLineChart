@@ -301,11 +301,18 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     const _points = points.length > this.totalStep ? points.slice(0, this.totalStep) : points
 
     this.currentStep = _points.length
-    this.state = this.currentStep === this.totalStep
-      ? OverlayState.COMPLETED
-      : this.currentStep === 0
-        ? OverlayState.CREATED
-        : OverlayState.DRAWING
+
+    if (this.currentStep === 0) {
+      this.state = OverlayState.CREATED
+    } else if (this.currentStep >= this.totalStep) {
+      // 达到或超过 totalStep
+      this.state = OverlayState.COMPLETED
+    } else if (this.totalStep >= 999) {
+      // 无限步骤图形（如任意浪）：有点就认为是完成状态
+      this.state = OverlayState.COMPLETED
+    } else {
+      this.state = OverlayState.DRAWING
+    }
 
     this.points = _points
     for (let i = 0; i < this.currentStep; i++) {
