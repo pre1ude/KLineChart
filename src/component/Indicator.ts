@@ -154,7 +154,7 @@ export interface IndicatorApi<D = any> {
   /**
    * Extend data
    */
-  extendData: any
+  extendData: unknown
 
   /**
    * Indicator series
@@ -366,27 +366,33 @@ export function getMergedDefaultStyles(indicator: Indicator, defaultStyles: Indi
     ...defaultStyles
   }
 
+  // 合并样式数组的辅助函数
+  function mergeStyleArray<T>(defaultArr: T[], userArr?: T[]): T[] {
+    if (!userArr || userArr.length === 0) {
+      return defaultArr
+    }
+    const maxLen = Math.max(defaultArr.length, userArr.length)
+    const result: T[] = []
+    for (let i = 0; i < maxLen; i++) {
+      const defaultStyle = defaultArr[i % defaultArr.length]
+      const userStyle = userArr[i]
+      result.push(userStyle ? { ...defaultStyle, ...userStyle } : defaultStyle)
+    }
+    return result
+  }
+
   // 合并样式数组
   if (styles) {
     if (styles.circles) {
-      merged.circles = defaultStyles.circles.map((defaultStyle, index) => {
-        const userStyle = styles.circles?.[index]
-        return userStyle ? { ...defaultStyle, ...userStyle } : defaultStyle
-      })
+      merged.circles = mergeStyleArray(defaultStyles.circles, styles.circles)
     }
 
     if (styles.bars) {
-      merged.bars = defaultStyles.bars.map((defaultStyle, index) => {
-        const userStyle = styles.bars?.[index]
-        return userStyle ? { ...defaultStyle, ...userStyle } : defaultStyle
-      })
+      merged.bars = mergeStyleArray(defaultStyles.bars, styles.bars)
     }
 
     if (styles.lines) {
-      merged.lines = defaultStyles.lines.map((defaultStyle, index) => {
-        const userStyle = styles.lines?.[index]
-        return userStyle ? { ...defaultStyle, ...userStyle } : defaultStyle
-      })
+      merged.lines = mergeStyleArray(defaultStyles.lines, styles.lines)
     }
 
     if (styles.ohlc) {
