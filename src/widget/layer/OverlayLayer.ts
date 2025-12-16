@@ -181,15 +181,16 @@ export class OverlayLayer implements Layer {
       return false
     })
 
-    // 鼠标按下事件 - 处理 onPressedMoveStart
+    // 鼠标按下事件 - 记录按下信息，但不触发 onPressedMoveStart
+    let hasMoved = false
     this._overlayView.addEventListener('mouseDownEvent', (event: MouseTouchEvent) => {
       const pressedInfo = this._extractEventOverlayInfo(event.target, paneId)
       if (pressedInfo?.overlay != null) {
         const { overlay } = pressedInfo
         const chartStore = chart.getChartStore()
         overlay.startPressedMove(this._overlayView.coordinateToPoint(overlay, event), chartStore)
-        overlay.onPressedMoveStart?.(event, pressedInfo)
         this._overlayView.setPressedInstanceInfo(pressedInfo)
+        hasMoved = false
       }
       return false
     })
@@ -251,13 +252,14 @@ export class OverlayLayer implements Layer {
       return false
     })
 
-    // 鼠标抬起事件 - 处理 onPressedMoveEnd
+    // 鼠标抬起事件 - 只有实际发生拖动时才触发 onPressedMoveEnd
     this._overlayView.addEventListener('mouseUpEvent', (event: MouseTouchEvent) => {
       const pressedInfo = this._overlayView.getPressedInstanceInfo()
-      if (pressedInfo?.overlay != null) {
+      if (pressedInfo?.overlay != null && hasMoved) {
         pressedInfo.overlay.onPressedMoveEnd?.(event, pressedInfo)
       }
       this._overlayView.setPressedInstanceInfo()
+      hasMoved = false
       return false
     })
 
@@ -267,6 +269,11 @@ export class OverlayLayer implements Layer {
       if (pressedInfo?.overlay != null) {
         const overlay = pressedInfo.overlay
         if (!overlay.lock) {
+          // 首次拖动时触发 onPressedMoveStart
+          if (!hasMoved) {
+            hasMoved = true
+            overlay.onPressedMoveStart?.(event, pressedInfo)
+          }
           const defaultPrevented = overlay.onPressedMoving?.(event, pressedInfo) ?? false
           if (!defaultPrevented) {
             const point = this._overlayView.coordinateToPoint(overlay, event)
