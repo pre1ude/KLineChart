@@ -17,6 +17,7 @@ export interface ExtendDataType {
 export const textLog: OverlayTemplate<ExtendDataType> = {
   name: 'textLog',
   totalStep: 2,
+  zLevel: 100, // 默认设为100, 确保比普通画线层级高
   needDefaultPointFigure: true,
   onRightClick() {
     return true
