@@ -160,24 +160,28 @@ export default abstract class DualYPane extends Pane {
       mainBounding.width, mainBounding.height
     )
 
-    // Draw left Y axis
+    // Draw left Y axis (only if width > 0)
     if (this._yLeftAxisWidget) {
       const yLeftAxisBounding = this._yLeftAxisWidget.getBounding()
-      ctx.drawImage(
-        this._yLeftAxisWidget.getImage(includeOverlay),
-        yLeftAxisBounding.left, 0,
-        yLeftAxisBounding.width, yLeftAxisBounding.height
-      )
+      if (yLeftAxisBounding.width > 0 && yLeftAxisBounding.height > 0) {
+        ctx.drawImage(
+          this._yLeftAxisWidget.getImage(includeOverlay),
+          yLeftAxisBounding.left, 0,
+          yLeftAxisBounding.width, yLeftAxisBounding.height
+        )
+      }
     }
 
-    // Draw right Y axis
+    // Draw right Y axis (only if width > 0)
     if (this._yRightAxisWidget) {
       const yRightAxisBounding = this._yRightAxisWidget.getBounding()
-      ctx.drawImage(
-        this._yRightAxisWidget.getImage(includeOverlay),
-        yRightAxisBounding.left, 0,
-        yRightAxisBounding.width, yRightAxisBounding.height
-      )
+      if (yRightAxisBounding.width > 0 && yRightAxisBounding.height > 0) {
+        ctx.drawImage(
+          this._yRightAxisWidget.getImage(includeOverlay),
+          yRightAxisBounding.left, 0,
+          yRightAxisBounding.width, yRightAxisBounding.height
+        )
+      }
     }
 
     return canvas
