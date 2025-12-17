@@ -1,0 +1,242 @@
+<!--
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="keywords" content="kline candlestick stock chart canvas k线 蜡烛图"/>
+    <meta name="description" content="Candle click test - test candle bar click and right click events"/>
+    <link rel="stylesheet" type="text/css" href="../../css/chart.css"/>
+    <title>Candle Click Test</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+      }
+      #chart {
+        height: 500px;
+      }
+      .controls {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f5f5f5;
+        border-radius: 4px;
+      }
+      .controls h3 {
+        margin-top: 0;
+      }
+      .button-group {
+        margin: 10px 0;
+      }
+      button {
+        margin: 5px;
+        padding: 8px 16px;
+        cursor: pointer;
+        background: #1890ff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+      }
+      button:hover {
+        background: #40a9ff;
+      }
+      button.active {
+        background: #52c41a;
+      }
+      .status {
+        margin-top: 10px;
+        padding: 10px;
+        background: #e6f7ff;
+        border-left: 3px solid #1890ff;
+        border-radius: 2px;
+      }
+      .test-section {
+        margin: 15px 0;
+        padding: 10px;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+      }
+      .test-section h4 {
+        margin-top: 0;
+        color: #1890ff;
+      }
+      .event-log {
+        margin-top: 20px;
+        padding: 15px;
+        background: #fafafa;
+        border: 1px solid #d9d9d9;
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .event-log h4 {
+        margin-top: 0;
+      }
+      .event-item {
+        padding: 5px 10px;
+        margin: 5px 0;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 12px;
+      }
+      .event-item.click {
+        background: #e6f7ff;
+        border-left: 3px solid #1890ff;
+      }
+      .event-item.rightclick {
+        background: #fff7e6;
+        border-left: 3px solid #fa8c16;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+
+    <div class="controls">
+      <h3>🕯️ Candle Click Test</h3>
+      <p>测试蜡烛图点击和右键事件</p>
+
+      <div class="test-section">
+        <h4>1. 蜡烛图类型切换</h4>
+        <div class="button-group">
+          <button id="btn-solid" onclick="setCandleType('candle_solid')">实心蜡烛</button>
+          <button id="btn-stroke" onclick="setCandleType('candle_stroke')">空心蜡烛</button>
+          <button id="btn-up-stroke" onclick="setCandleType('candle_up_stroke')">涨空心</button>
+          <button id="btn-down-stroke" onclick="setCandleType('candle_down_stroke')">跌空心</button>
+          <button id="btn-ohlc" onclick="setCandleType('ohlc')">OHLC</button>
+          <button id="btn-area" onclick="setCandleType('area')">面积图</button>
+        </div>
+      </div>
+
+      <div class="test-section">
+        <h4>2. 测试说明</h4>
+        <ul>
+          <li><strong>左键点击</strong>：只有点击蜡烛实体部分才会触发 OnCandleBarClick 事件</li>
+          <li><strong>右键点击</strong>：在整个主图区域都能触发 OnCandleBarRightClick 事件</li>
+          <li><strong>OHLC 模式</strong>：左键点击不会触发事件（非蜡烛图类型）</li>
+          <li><strong>面积图模式</strong>：不显示蜡烛，点击事件不会触发</li>
+        </ul>
+      </div>
+
+      <div class="test-section">
+        <h4>3. 操作</h4>
+        <div class="button-group">
+          <button onclick="clearEventLog()">清除事件日志</button>
+        </div>
+      </div>
+
+      <div class="status" id="status">
+        状态: 就绪 - 请点击蜡烛图测试
+      </div>
+    </div>
+
+    <div id="chart"></div>
+
+    <div class="event-log">
+      <h4>📋 事件日志</h4>
+      <div id="event-list"></div>
+    </div>
+
+    <script type="module">
+      import { init } from '../../../dist/index.js'
+      import { generated } from '../../js/dataSource.js'
+
+      let chart
+      let dataList
+      let eventCount = 0
+
+      function updateStatus(message) {
+        document.getElementById('status').textContent = '状态: ' + message
+      }
+
+      function addEventLog(type, data) {
+        eventCount++
+        const eventList = document.getElementById('event-list')
+        const item = document.createElement('div')
+        item.className = `event-item ${type === 'click' ? 'click' : 'rightclick'}`
+
+        const time = new Date().toLocaleTimeString()
+        const eventName = type === 'click' ? 'OnCandleBarClick' : 'OnCandleBarRightClick'
+        const dataInfo = data ? `dataIndex: ${data.dataIndex}, timestamp: ${data.data?.timestamp}, close: ${data.data?.close?.toFixed(2)}` : 'no data'
+
+        item.textContent = `#${eventCount} [${time}] ${eventName} - ${dataInfo}`
+        eventList.insertBefore(item, eventList.firstChild)
+      }
+
+      window.clearEventLog = function() {
+        document.getElementById('event-list').innerHTML = ''
+        eventCount = 0
+        updateStatus('事件日志已清除')
+      }
+
+      window.setCandleType = function(type) {
+        chart.setStyles({
+          candle: {
+            type: type
+          }
+        })
+
+        // 更新按钮状态
+        document.querySelectorAll('.button-group button').forEach(btn => {
+          btn.classList.remove('active')
+        })
+
+        const btnMap = {
+          'candle_solid': 'btn-solid',
+          'candle_stroke': 'btn-stroke',
+          'candle_up_stroke': 'btn-up-stroke',
+          'candle_down_stroke': 'btn-down-stroke',
+          'ohlc': 'btn-ohlc',
+          'area': 'btn-area'
+        }
+
+        const activeBtn = document.getElementById(btnMap[type])
+        if (activeBtn) {
+          activeBtn.classList.add('active')
+        }
+
+        updateStatus(`切换到 ${type} 模式`)
+      }
+
+      window.onload = function () {
+        chart = init('chart')
+        dataList = generated()
+        chart.applyNewData(dataList)
+
+        // 订阅蜡烛点击事件
+        chart.subscribeAction('onCandleBarClick', (data) => {
+          console.log('OnCandleBarClick:', data)
+          addEventLog('click', data)
+          updateStatus(`左键点击 - dataIndex: ${data.dataIndex}`)
+        })
+
+        // 订阅蜡烛右键事件
+        chart.subscribeAction('onCandleBarRightClick', (data) => {
+          console.log('OnCandleBarRightClick:', data)
+          addEventLog('rightclick', data)
+          updateStatus(`右键点击 - dataIndex: ${data.dataIndex}`)
+        })
+
+        // 默认选中实心蜡烛
+        document.getElementById('btn-solid').classList.add('active')
+
+        updateStatus('图表初始化完成 - 请点击蜡烛图测试')
+      }
+    </script>
+  </body>
+</html>

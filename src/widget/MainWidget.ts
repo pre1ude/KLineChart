@@ -3,6 +3,8 @@ import { WidgetNameConstants } from './types'
 import DrawWidget from './DrawWidget'
 import type { Layer, LayerClass } from './layer/Layer'
 import { setCursor } from '../common/utils/cursor'
+import { ActionType } from '../common/Action'
+import { PaneIdConstants } from '../pane/types'
 
 /**
  * 主 Widget - 使用 Layer 组合模式
@@ -29,6 +31,16 @@ export default class MainWidget extends DrawWidget<DualYPane> {
       pane.getChart().getChartStore().getTooltipStore().setActiveIcon(null)
       return false
     })
+
+    if (pane.getId() === PaneIdConstants.CANDLE) {
+      this.addEventListener('contextMenuEvent', (e) => {
+        const chart = pane.getChart()
+        const dataIndex = chart.coordinateToDataIndex(e.x)
+        const data = chart.getDataByDataIndex(dataIndex)
+        chart.getChartStore().getActionStore().execute(ActionType.OnCandleBarRightClick, { ...e, data, dataIndex })
+        return false
+      })
+    }
   }
 
   getName(): string {
