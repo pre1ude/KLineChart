@@ -30,12 +30,15 @@ export class OverlayLayer implements Layer {
     return { ...figure.data, paneId }
   }
 
-  private _isSameEventOverlayInfo(a?: EventOverlayInfo, b?: EventOverlayInfo): boolean {
-    // 两者都为空，视为相同
+  private _isSameOverlay(a?: EventOverlayInfo, b?: EventOverlayInfo): boolean {
     if (a == null && b == null) return true
-    // 只有一个为空，视为不同
     if (a == null || b == null) return false
-    // 比较关键字段
+    return a.overlay.id === b.overlay.id
+  }
+
+  private _isSameFigure(a?: EventOverlayInfo, b?: EventOverlayInfo): boolean {
+    if (a == null && b == null) return true
+    if (a == null || b == null) return false
     return a.overlay.id === b.overlay.id && a.interactType === b.interactType && a.figureIndex === b.figureIndex
   }
 
@@ -98,16 +101,14 @@ export class OverlayLayer implements Layer {
       const hoverInfo = this._extractEventOverlayInfo(event.target, paneId)
       const lastHoverInfo = this._overlayView.getHoverInstanceInfo()
 
-      if (!this._isSameEventOverlayInfo(lastHoverInfo, hoverInfo)) {
+      if (!this._isSameOverlay(lastHoverInfo, hoverInfo)) {
         let needUpdate = false
 
-        // 触发 onMouseLeave（当从一个 figure 切换到另一个，或者移出所有 figure）
         if (lastHoverInfo?.overlay != null) {
           const hasCallback = lastHoverInfo.overlay.onMouseLeave?.(this._createOverlayEventFromInfo(event, lastHoverInfo))
           if (!hasCallback) needUpdate = true
         }
 
-        // 触发 onMouseEnter（仅当移入一个新的 figure）
         if (hoverInfo?.overlay != null) {
           const hasCallback = hoverInfo.overlay.onMouseEnter?.(this._createOverlayEventFromInfo(event, hoverInfo))
           if (!hasCallback) needUpdate = true
@@ -116,6 +117,10 @@ export class OverlayLayer implements Layer {
         if (needUpdate) {
           chart.updatePane(UpdateLevel.Overlay, paneId)
         }
+      }
+
+      // 始终更新 hoverInfo（用于其他用途，如高亮当前 figure）
+      if (!this._isSameFigure(lastHoverInfo, hoverInfo)) {
         this._overlayView.setHoverInstanceInfo(hoverInfo)
       }
 
@@ -155,17 +160,15 @@ export class OverlayLayer implements Layer {
         return false
       }
 
-      // 获取当前点击的 figure 信息
       const clickInfo = this._extractEventOverlayInfo(event.target, paneId)
 
       if (clickInfo?.overlay?.isCompleted()) {
         clickInfo.overlay.onClick?.(this._createOverlayEventFromInfo(event, clickInfo))
       }
 
-      // 获取上一次 click 的信息
       const lastClickInfo = this._overlayView.getClickInstanceInfo()
 
-      if (!this._isSameEventOverlayInfo(lastClickInfo, clickInfo)) {
+      if (!this._isSameOverlay(lastClickInfo, clickInfo)) {
         if (lastClickInfo?.overlay != null) {
           lastClickInfo.overlay.onDeselected?.(this._createOverlayEventFromInfo(event, lastClickInfo))
         }
@@ -176,14 +179,15 @@ export class OverlayLayer implements Layer {
 
         overlayStore.setSelectedInfo(clickInfo)
 
-        if (lastClickInfo?.overlay?.id !== clickInfo?.overlay?.id) {
-          chart.updatePane(UpdateLevel.Overlay, paneId)
-          if (lastClickInfo != null && lastClickInfo.paneId !== paneId) {
-            chart.updatePane(UpdateLevel.Overlay, lastClickInfo.paneId)
-          }
-          chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
+        chart.updatePane(UpdateLevel.Overlay, paneId)
+        if (lastClickInfo != null && lastClickInfo.paneId !== paneId) {
+          chart.updatePane(UpdateLevel.Overlay, lastClickInfo.paneId)
         }
+        chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
+      }
 
+      // 始终更新 clickInfo（记录最后点击的 figure）
+      if (!this._isSameFigure(lastClickInfo, clickInfo)) {
         this._overlayView.setClickInstanceInfo(clickInfo)
       }
 
