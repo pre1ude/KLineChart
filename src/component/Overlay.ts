@@ -85,9 +85,9 @@ interface DrawParams {
   pointIndex: number
 }
 
-export type OverlayDrawEventCallback = (event: MouseTouchEvent, params: DrawParams) => void
+export type OverlayDrawEventCallback<T> = (event: MouseTouchEvent<T>, params: DrawParams) => void
 
-export type OverlayEventCallback = (event: MouseTouchEvent, params: EventOverlayInfo) => boolean
+export type OverlayEventCallback<T> = (event: MouseTouchEvent<T>, params: EventOverlayInfo) => boolean
 
 export type OverlayCreateFiguresCallback<E = DefaultExtendData> = (params: OverlayCreateFiguresCallbackParams<E>) => OverlayFigure | OverlayFigure[]
 
@@ -97,24 +97,24 @@ export interface OverlayEventHandlers<E = DefaultExtendData> {
   onRemoved?: () => void
 
   /** 开始绘制（第一个点） */
-  onDrawStart?: OverlayDrawEventCallback
+  onDrawStart?: OverlayDrawEventCallback<MouseEvent>
   /** 绘制中（每次添加点） */
-  onDrawing?: OverlayDrawEventCallback
+  onDrawing?: OverlayDrawEventCallback<MouseEvent>
   /** 绘制完成（最后一个点） */
-  onDrawEnd?: OverlayDrawEventCallback
+  onDrawEnd?: OverlayDrawEventCallback<MouseEvent>
 
-  onClick?: OverlayEventCallback
-  onDoubleClick?: OverlayEventCallback
+  onClick?: OverlayEventCallback<MouseEvent>
+  onDoubleClick?: OverlayEventCallback<MouseEvent>
   /** 返回 Truthy 阻止右键点击删除 */
-  onRightClick?: OverlayEventCallback
-  onPressedMoveStart?: OverlayEventCallback
+  onRightClick?: OverlayEventCallback<MouseEvent>
+  onPressedMoveStart?: OverlayEventCallback<MouseEvent>
   /** 返回 Truthy 阻止原有的默认拖动行为 */
-  onPressedMoving?: OverlayEventCallback
-  onPressedMoveEnd?: OverlayEventCallback
-  onMouseEnter?: OverlayEventCallback
-  onMouseLeave?: OverlayEventCallback
-  onSelected?: OverlayEventCallback
-  onDeselected?: OverlayEventCallback
+  onPressedMoving?: OverlayEventCallback<MouseEvent>
+  onPressedMoveEnd?: OverlayEventCallback<MouseEvent>
+  onMouseEnter?: OverlayEventCallback<MouseEvent>
+  onMouseLeave?: OverlayEventCallback<MouseEvent>
+  onSelected?: OverlayEventCallback<MouseEvent>
+  onDeselected?: OverlayEventCallback<MouseEvent>
 }
 
 export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers<E> {
@@ -221,20 +221,20 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   onCreated?: (this: Overlay<E>) => void
   onRemoved?: () => void
 
-  onDrawStart?: OverlayDrawEventCallback
-  onDrawing?: OverlayDrawEventCallback
-  onDrawEnd?: OverlayDrawEventCallback
+  onDrawStart?: OverlayDrawEventCallback<MouseEvent>
+  onDrawing?: OverlayDrawEventCallback<MouseEvent>
+  onDrawEnd?: OverlayDrawEventCallback<MouseEvent>
 
-  onClick?: OverlayEventCallback
-  onDoubleClick?: OverlayEventCallback
-  onRightClick?: OverlayEventCallback
-  onPressedMoveStart?: OverlayEventCallback
-  onPressedMoving?: OverlayEventCallback
-  onPressedMoveEnd?: OverlayEventCallback
-  onMouseEnter?: OverlayEventCallback
-  onMouseLeave?: OverlayEventCallback
-  onSelected?: OverlayEventCallback
-  onDeselected?: OverlayEventCallback
+  onClick?: OverlayEventCallback<MouseEvent>
+  onDoubleClick?: OverlayEventCallback<MouseEvent>
+  onRightClick?: OverlayEventCallback<MouseEvent>
+  onPressedMoveStart?: OverlayEventCallback<MouseEvent>
+  onPressedMoving?: OverlayEventCallback<MouseEvent>
+  onPressedMoveEnd?: OverlayEventCallback<MouseEvent>
+  onMouseEnter?: OverlayEventCallback<MouseEvent>
+  onMouseLeave?: OverlayEventCallback<MouseEvent>
+  onSelected?: OverlayEventCallback<MouseEvent>
+  onDeselected?: OverlayEventCallback<MouseEvent>
 
   private _originalZLevel: number = 0
   private _prevPressedPoint?: Partial<Point>
