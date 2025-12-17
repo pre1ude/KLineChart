@@ -113,6 +113,7 @@ export interface Chart {
   convertToPixel(points: Array<Partial<Point>>, finder: ConvertFinder): Array<Partial<Coordinate>>
   convertFromPixel(coordinate: Partial<Coordinate>, finder: ConvertFinder): Partial<Point>
   convertFromPixel(coordinates: Array<Partial<Coordinate>>, finder: ConvertFinder): Array<Partial<Point>>
+  coordinateToDataIndex: (x: number) => number
   executeAction: (type: ActionType, data: object) => void
   subscribeAction: (type: ActionType, callback: ActionCallback) => void
   unsubscribeAction: (type: ActionType, callback?: ActionCallback) => void
@@ -1074,6 +1075,10 @@ export default class ChartImp implements Chart {
     }
 
     return isArrayInput ? points : (points[0] ?? {})
+  }
+
+  coordinateToDataIndex(x: number): number {
+    return this._chartStore.getTimeScaleStore().coordinateToDataIndex(x)
   }
 
   executeAction(type: ActionType, data: object): void {
