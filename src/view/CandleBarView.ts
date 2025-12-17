@@ -2,10 +2,10 @@ import type BarSpace from '../common/BarSpace'
 import { CandleType, type CandleBarColor, type RectStyle, PolygonType } from '../common/Styles'
 import type ChartStore from '../store/ChartStore'
 import { type FigureCreate } from '../component/Figure'
-import { FigureGroup } from '../component/FigureGroup'
 import { type RectAttrs } from '../extension/figure/rect'
 import View from './View'
 import { isValid } from '../common/utils/typeChecks'
+import { isPointInRect } from '../common/utils/hitTest'
 import type DualYPane from '../pane/DualYPane'
 import { createFigure } from '../extension/figure'
 import { PaneIdConstants } from '../pane/types'
@@ -16,9 +16,83 @@ export interface CandleBarOptions {
   styles: CandleBarColor
 }
 
+export type CandleHitTestMode = 'body' | 'full'
+
 export default class CandleBarView extends View {
-  override checkEventOn(_event: MouseTouchEvent, name: EventName): boolean {
-    return name === 'contextMenuEvent'
+  // 响应点击和右键事件，仅蜡烛图类型走命中测试
+  override checkEventOn(event: MouseTouchEvent, name: EventName): boolean {
+    if (name !== 'contextMenuEvent' && name !== 'mouseClickEvent') {
+      return false
+    }
+    const pane = this.getWidget().getPane()
+    const chartStore = pane.getChart().getChartStore()
+    const candleBarOptions = this.getCandleBarOptions(chartStore)
+    if (candleBarOptions == null) {
+      return false
+    }
+    // 仅蜡烛图类型走 hitTest，非蜡烛图类型返回 false
+    const isCandleType = candleBarOptions.type !== CandleType.Ohlc
+    if (!isCandleType) {
+      return false
+    }
+    return this.candleBarHitTest(event.x, event.y, 'body')
+  }
+
+  /**
+   * K线命中测试
+   * @param x 点击的x坐标
+   * @param y 点击的y坐标
+   * @param mode 命中测试模式：'body' 只检测实体部分，'full' 检测整个K线范围(high-low)
+   * @returns 是否命中K线
+   */
+  candleBarHitTest(x: number, y: number, mode: CandleHitTestMode = 'body'): boolean {
+    const pane = this.getWidget().getPane()
+    const chartStore = pane.getChart().getChartStore()
+    const candleBarOptions = this.getCandleBarOptions(chartStore)
+    if (candleBarOptions == null) {
+      return false
+    }
+
+    const timeScaleStore = chartStore.getTimeScaleStore()
+    const dataIndex = timeScaleStore.coordinateToDataIndex(x)
+    if (dataIndex == null) {
+      return false
+    }
+
+    const visibleDataList = chartStore.getVisibleDataList()
+    const visibleData = visibleDataList.find(d => d.dataIndex === dataIndex)
+    if (visibleData?.data == null) {
+      return false
+    }
+
+    const { data: kLineData, x: barX } = visibleData
+    const { open, high, low, close } = kLineData
+    const barSpace = timeScaleStore.getBarSpace()
+
+    const widget = (pane as DualYPane).getYLeftAxisWidget()
+    const yAxis = widget.getAxisComponent()
+
+    let top: number
+    let bottom: number
+
+    if (mode === 'full') {
+      // full 模式：使用 high-low 范围
+      const highY = yAxis.convertToPixel(high)
+      const lowY = yAxis.convertToPixel(low)
+      top = Math.min(highY, lowY)
+      bottom = Math.max(highY, lowY)
+    } else {
+      // body 模式：使用 open-close 实体范围
+      const openY = yAxis.convertToPixel(open)
+      const closeY = yAxis.convertToPixel(close)
+      top = Math.min(openY, closeY)
+      bottom = Math.max(openY, closeY)
+    }
+
+    const height = Math.max(1, bottom - top)
+    const left = barX - barSpace.halfGapBar
+
+    return isPointInRect(x, y, { x: left, y: top, width: barSpace.gapBar, height })
   }
   override drawImp(ctx: CanvasRenderingContext2D): void {
     const pane = this.getWidget().getPane()
@@ -125,20 +199,14 @@ export default class CandleBarView extends View {
               break
             }
           }
-          // 使用 FigureGroup 将同一个蜡烛的所有图形组合在一起
-          const group = new FigureGroup()
 
           for (let i = 0; i < rects.length; i++) {
             const rect = rects[i]
             const { attrs, styles } = rect
             const attrsArr = Array.isArray(attrs) ? attrs : [attrs]
             const figureInstance = createFigure(rect.name)
-            figureInstance.setAttrs(attrsArr).setStyles(styles).setData(data.dataIndex)
-            group.addChild(figureInstance)
+            figureInstance.setAttrs(attrsArr).setStyles(styles).draw(ctx)
           }
-
-          group.draw(ctx)
-          this.addChild(group)
         }
       })
     }

@@ -10,8 +10,6 @@ import { CandleType } from '../../common/Styles'
 import { ActionType } from '../../common/Action'
 import { PaneIdConstants } from '../../pane/types'
 import type { MouseTouchEvent } from '../../common/SyntheticEvent'
-import type { Figure } from '../../component/Figure'
-import type KLineData from '../../common/KLineData'
 
 /**
  * 蜡烛图图层
@@ -46,20 +44,10 @@ export class CandleLayer implements Layer {
       // 左键点击事件
       this._candleBarView.addEventListener('mouseClickEvent', (e: MouseTouchEvent) => {
         const chartStore = pane.getChart().getChartStore()
+        const timeScaleStore = chartStore.getTimeScaleStore()
         const dataList = chartStore.getDataList()
-        const target = e.target
-
-        let data: KLineData | undefined
-        if (target != null) {
-          const dataIndex = (target as Figure<any, any, number>).data
-          if (dataIndex != null) {
-            data = dataList[dataIndex]
-          }
-        }
-
-        if (data == null) {
-          console.warn('Candle bar click data should not be null')
-        }
+        const dataIndex = timeScaleStore.coordinateToDataIndex(e.x)
+        const data = dataIndex != null ? dataList[dataIndex] : undefined
 
         chartStore.getActionStore().execute(ActionType.OnCandleBarClick, data)
         return false
@@ -70,16 +58,8 @@ export class CandleLayer implements Layer {
         const chartStore = pane.getChart().getChartStore()
         const timeScaleStore = chartStore.getTimeScaleStore()
         const dataList = chartStore.getDataList()
-        const target = e.target
-
-        let data: KLineData | undefined
-        let dataIndex: number | undefined
-        if (target != null) {
-          dataIndex = timeScaleStore.coordinateToDataIndex(e.x)
-          if (dataIndex != null) {
-            data = dataList[dataIndex]
-          }
-        }
+        const dataIndex = timeScaleStore.coordinateToDataIndex(e.x)
+        const data = dataIndex != null ? dataList[dataIndex] : undefined
 
         chartStore.getActionStore().execute(ActionType.OnCandleBarRightClick, {
           ...e,
