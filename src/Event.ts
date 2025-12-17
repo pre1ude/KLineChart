@@ -641,10 +641,15 @@ export default class Event implements EventHandler {
 
   private _makeWidgetEvent(event: MouseTouchEvent, widget?: Widget): MouseTouchEvent {
     const bounding = widget?.getBounding()
-    // 直接修改原始 event 对象，不要创建拷贝
-    // 因为 stopPropagation 函数引用的是原始对象
-    event.x = event.x - (bounding?.left ?? 0)
-    event.y = event.y - (bounding?.top ?? 0)
+    // 保存原始坐标（如果还没保存过）
+    // 这样即使 event 被多次处理，也能从原始坐标计算
+    if ((event as any)._originalX == null) {
+      (event as any)._originalX = event.x
+      ;(event as any)._originalY = event.y
+    }
+    // 从原始坐标计算，避免重复减去偏移
+    event.x = (event as any)._originalX - (bounding?.left ?? 0)
+    event.y = (event as any)._originalY - (bounding?.top ?? 0)
     return event
   }
 
