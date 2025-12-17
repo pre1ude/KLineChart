@@ -107,7 +107,7 @@ export default class CandleBarView extends View {
         if (ohlcSize > 2 && ohlcSize % 2 === 1) {
           ohlcSize--
         }
-        halfOhlcSize = Math.floor(halfOhlcSize / 2)
+        halfOhlcSize = Math.floor(ohlcSize / 2)
       }
       // todo use left
       const widget = (pane as DualYPane).getYLeftAxisWidget()
@@ -183,7 +183,7 @@ export default class CandleBarView extends View {
                     {
                       x: x - barSpace.halfGapBar,
                       y: openY + ohlcSize > priceY[3] ? priceY[3] - ohlcSize : openY,
-                      width: barSpace.halfGapBar,
+                      width: barSpace.halfGapBar - halfOhlcSize,
                       height: ohlcSize
                     },
                     {
