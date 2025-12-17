@@ -36,17 +36,20 @@ export default abstract class Eventful {
   private _dispatchEvent(path: Eventful[], name: EventName, event: MouseTouchEvent, other?: unknown): boolean {
     path.push(this)
 
-    // 递归查找命中的子元素
-    for (let i = this._children.length - 1; i >= 0; i--) {
-      if (this._children[i]._dispatchEvent(path, name, event, other)) {
-        // 子元素命中了，触发冒泡阶段
-        if (event.propagationStopped) {
+    // 检查是否需要遍历子元素（性能优化）
+    if (this.shouldCheckChildren(name)) {
+      // 递归查找命中的子元素
+      for (let i = this._children.length - 1; i >= 0; i--) {
+        if (this._children[i]._dispatchEvent(path, name, event, other)) {
+          // 子元素命中了，触发冒泡阶段
+          if (event.propagationStopped) {
+            return true
+          }
+          event.eventPhase = EventPhase.BUBBLING_PHASE
+          event.currentTarget = this
+          this.triggerCallbacks(this._bubbleCallbacks, name, event, other)
           return true
         }
-        event.eventPhase = EventPhase.BUBBLING_PHASE
-        event.currentTarget = this
-        this.triggerCallbacks(this._bubbleCallbacks, name, event, other)
-        return true
       }
     }
 
@@ -98,6 +101,15 @@ export default abstract class Eventful {
 
   checkEventOn(_event: MouseTouchEvent, _name: EventName, _other?: unknown): boolean {
     return false
+  }
+
+  /**
+   * 是否需要遍历子元素来检查事件命中
+   * 子类可以覆盖此方法来优化性能，跳过不需要的事件类型
+   * 默认返回 true（总是遍历子元素）
+   */
+  shouldCheckChildren(_name: EventName): boolean {
+    return true
   }
 
   addChild(eventful: Eventful): this {
