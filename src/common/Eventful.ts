@@ -8,10 +8,12 @@ export default abstract class Eventful {
 
   addEventListener(name: EventName, callback: MouseTouchEventCallback, useCapture = false): this {
     const callbacks = useCapture ? this._captureCallbacks : this._bubbleCallbacks
-    if (!callbacks.has(name)) {
-      callbacks.set(name, [])
+    let handlers = callbacks.get(name)
+    if (handlers == null) {
+      handlers = []
+      callbacks.set(name, handlers)
     }
-    callbacks.get(name)!.push(callback)
+    handlers.push(callback)
     return this
   }
 

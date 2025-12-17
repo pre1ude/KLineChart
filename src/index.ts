@@ -258,7 +258,7 @@ export type { LayoutChild } from './Options'
 export type { Indicator, IndicatorCreate, IndicatorTemplate, IndicatorTooltipData } from './component/Indicator'
 
 // Overlay Types
-export type { Overlay, OverlayCreate, OverlayTemplate, OverlayMode, EventOverlayInfo, OverlayEventCallback, OverlayDrawEventCallback } from './component/Overlay'
+export type { Overlay, OverlayCreate, OverlayTemplate, OverlayMode, EventOverlayInfo, OverlayEventCallback, OverlayDrawEventCallback, OverlayMouseTouchEvent } from './component/Overlay'
 
 // Event Types
 export type { MouseTouchEvent } from './common/SyntheticEvent'

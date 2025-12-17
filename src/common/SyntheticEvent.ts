@@ -19,10 +19,28 @@ export const enum EventPhase {
   BUBBLING_PHASE = 3
 }
 
-export type MouseTouchEventCallback = (event: MouseTouchEvent<MouseEvent | TouchEvent>, other?: unknown) => boolean
+export type MouseTouchEventCallback = (event: MouseTouchEvent, other?: unknown) => boolean
 export type PinchEventCallback = (event: MouseTouchEvent<TouchEvent>, scale: number) => boolean
 export type MouseWheelHortEventCallback = (event: MouseTouchEvent<MouseEvent>, distance: number) => boolean
 export type MouseWheelVertEventCallback = (event: MouseTouchEvent<MouseEvent>, normDeltaY: number) => boolean
+
+/** Overlay 事件的附加数据 */
+export interface OverlayEventData {
+  /** Overlay 实例 */
+  overlay: unknown
+  /** 所在 pane 的 ID */
+  paneId: string
+  /** 交互类型：控制点或主体 */
+  interactType: 'control-point' | 'body'
+  /** Figure 的 key */
+  figureKey: string
+  /** Figure 索引 */
+  figureIndex: number
+  /** attrs 索引 */
+  attrsIndex: number
+  /** 绘制点索引（仅绘制事件） */
+  pointIndex?: number
+}
 
 export interface EventHandler {
   pinchStartEvent?: MouseTouchEventCallback
@@ -74,6 +92,8 @@ export interface MouseTouchEvent<TSourceEvent = MouseEvent | TouchEvent> extends
   isImmediate: boolean
   stopPropagation: () => void
   stopImmediatePropagation: () => void
+  /** Overlay 事件附加数据（仅在 overlay 相关事件中存在） */
+  overlayData?: OverlayEventData
 }
 
 export interface EventOptions {

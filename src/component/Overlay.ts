@@ -6,7 +6,7 @@ import type Bounding from '../common/Bounding'
 import type BarSpace from '../common/BarSpace'
 import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
-import { type MouseTouchEvent } from '../common/SyntheticEvent'
+import { type MouseTouchEvent, type OverlayEventData } from '../common/SyntheticEvent'
 import { isNumber, isValid, merge } from '../common/utils/typeChecks'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
@@ -18,6 +18,11 @@ type NonUndefinedArray<T> = ReadonlyArray<T> & { [K in number]: T }
 // 默认的 extendData 类型，允许任意属性
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DefaultExtendData = Record<string, any>
+
+/** Overlay 事件回调的事件类型，包含 overlayData */
+export type OverlayMouseTouchEvent<E = DefaultExtendData> = MouseTouchEvent & {
+  overlayData: OverlayEventData & { overlay: Overlay<E> }
+}
 
 export type OverlayMode = 'normal' | 'weak_magnet' | 'strong_magnet'
 
@@ -74,20 +79,11 @@ export interface OverlayCreateFiguresCallbackParams<E = DefaultExtendData> {
   isAlignLeft?: boolean
 }
 
-export interface OverlayEvent<E = DefaultExtendData> extends Partial<MouseTouchEvent> {
-  figureKey?: string
-  figureIndex?: number
-  overlay: Overlay<E>
-}
+/** Overlay 绘制事件回调 */
+export type OverlayDrawEventCallback<E = DefaultExtendData> = (event: OverlayMouseTouchEvent<E>) => void
 
-interface DrawParams {
-  figureKey: string
-  pointIndex: number
-}
-
-export type OverlayDrawEventCallback<T> = (event: MouseTouchEvent<T>, params: DrawParams) => void
-
-export type OverlayEventCallback<T> = (event: MouseTouchEvent<T>, params: EventOverlayInfo) => boolean
+/** Overlay 交互事件回调，返回 true 阻止默认行为 */
+export type OverlayEventCallback<E = DefaultExtendData> = (event: OverlayMouseTouchEvent<E>) => boolean
 
 export type OverlayCreateFiguresCallback<E = DefaultExtendData> = (params: OverlayCreateFiguresCallbackParams<E>) => OverlayFigure | OverlayFigure[]
 
@@ -97,24 +93,24 @@ export interface OverlayEventHandlers<E = DefaultExtendData> {
   onRemoved?: () => void
 
   /** 开始绘制（第一个点） */
-  onDrawStart?: OverlayDrawEventCallback<MouseEvent>
+  onDrawStart?: OverlayDrawEventCallback<E>
   /** 绘制中（每次添加点） */
-  onDrawing?: OverlayDrawEventCallback<MouseEvent>
+  onDrawing?: OverlayDrawEventCallback<E>
   /** 绘制完成（最后一个点） */
-  onDrawEnd?: OverlayDrawEventCallback<MouseEvent>
+  onDrawEnd?: OverlayDrawEventCallback<E>
 
-  onClick?: OverlayEventCallback<MouseEvent>
-  onDoubleClick?: OverlayEventCallback<MouseEvent>
+  onClick?: OverlayEventCallback<E>
+  onDoubleClick?: OverlayEventCallback<E>
   /** 返回 Truthy 阻止右键点击删除 */
-  onRightClick?: OverlayEventCallback<MouseEvent>
-  onPressedMoveStart?: OverlayEventCallback<MouseEvent>
+  onRightClick?: OverlayEventCallback<E>
+  onPressedMoveStart?: OverlayEventCallback<E>
   /** 返回 Truthy 阻止原有的默认拖动行为 */
-  onPressedMoving?: OverlayEventCallback<MouseEvent>
-  onPressedMoveEnd?: OverlayEventCallback<MouseEvent>
-  onMouseEnter?: OverlayEventCallback<MouseEvent>
-  onMouseLeave?: OverlayEventCallback<MouseEvent>
-  onSelected?: OverlayEventCallback<MouseEvent>
-  onDeselected?: OverlayEventCallback<MouseEvent>
+  onPressedMoving?: OverlayEventCallback<E>
+  onPressedMoveEnd?: OverlayEventCallback<E>
+  onMouseEnter?: OverlayEventCallback<E>
+  onMouseLeave?: OverlayEventCallback<E>
+  onSelected?: OverlayEventCallback<E>
+  onDeselected?: OverlayEventCallback<E>
 }
 
 export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers<E> {
@@ -221,20 +217,20 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   onCreated?: (this: Overlay<E>) => void
   onRemoved?: () => void
 
-  onDrawStart?: OverlayDrawEventCallback<MouseEvent>
-  onDrawing?: OverlayDrawEventCallback<MouseEvent>
-  onDrawEnd?: OverlayDrawEventCallback<MouseEvent>
+  onDrawStart?: OverlayDrawEventCallback<E>
+  onDrawing?: OverlayDrawEventCallback<E>
+  onDrawEnd?: OverlayDrawEventCallback<E>
 
-  onClick?: OverlayEventCallback<MouseEvent>
-  onDoubleClick?: OverlayEventCallback<MouseEvent>
-  onRightClick?: OverlayEventCallback<MouseEvent>
-  onPressedMoveStart?: OverlayEventCallback<MouseEvent>
-  onPressedMoving?: OverlayEventCallback<MouseEvent>
-  onPressedMoveEnd?: OverlayEventCallback<MouseEvent>
-  onMouseEnter?: OverlayEventCallback<MouseEvent>
-  onMouseLeave?: OverlayEventCallback<MouseEvent>
-  onSelected?: OverlayEventCallback<MouseEvent>
-  onDeselected?: OverlayEventCallback<MouseEvent>
+  onClick?: OverlayEventCallback<E>
+  onDoubleClick?: OverlayEventCallback<E>
+  onRightClick?: OverlayEventCallback<E>
+  onPressedMoveStart?: OverlayEventCallback<E>
+  onPressedMoving?: OverlayEventCallback<E>
+  onPressedMoveEnd?: OverlayEventCallback<E>
+  onMouseEnter?: OverlayEventCallback<E>
+  onMouseLeave?: OverlayEventCallback<E>
+  onSelected?: OverlayEventCallback<E>
+  onDeselected?: OverlayEventCallback<E>
 
   private _originalZLevel: number = 0
   private _prevPressedPoint?: Partial<Point>

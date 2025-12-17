@@ -1,8 +1,8 @@
 import type { Layer } from './Layer'
 import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
-import type { MouseTouchEvent } from '../../common/SyntheticEvent'
-import type { EventOverlayInfo, OverlayFigureData } from '../../component/Overlay'
+import type { MouseTouchEvent, OverlayEventData } from '../../common/SyntheticEvent'
+import type { EventOverlayInfo, OverlayFigureData, OverlayMouseTouchEvent, Overlay } from '../../component/Overlay'
 import { OVERLAY_FIGURE_KEY_PREFIX } from '../../component/Overlay'
 import type { Figure } from '../../component/Figure'
 import { UpdateLevel } from '../../common/Updater'
@@ -19,14 +19,11 @@ export class OverlayLayer implements Layer {
 
   constructor(widget: DrawWidget<DualYPane>) {
     this._overlayView = new OverlayView(widget)
-
-    // 初始化事件处理
     this._initEvent(widget)
-
-    // OverlayView 需要添加到 widget 的 children 中以接收事件
     widget.addChild(this._overlayView)
   }
 
+  /** 从 event.target 提取 overlay 信息 */
   private _extractEventOverlayInfo(target: unknown, paneId: string): EventOverlayInfo | undefined {
     const figure = target as Figure<unknown, unknown, OverlayFigureData>
     if (!figure?.data) return undefined
@@ -34,7 +31,42 @@ export class OverlayLayer implements Layer {
   }
 
   private _isSameEventOverlayInfo(a?: EventOverlayInfo, b?: EventOverlayInfo): boolean {
-    return a?.overlay.id === b?.overlay.id && a?.interactType === b?.interactType && a?.figureIndex === b?.figureIndex
+    // 两者都为空，视为相同
+    if (a == null && b == null) return true
+    // 只有一个为空，视为不同
+    if (a == null || b == null) return false
+    // 比较关键字段
+    return a.overlay.id === b.overlay.id && a.interactType === b.interactType && a.figureIndex === b.figureIndex
+  }
+
+  /** 创建带 overlayData 的事件对象 */
+  private _createOverlayEvent<E>(
+    event: MouseTouchEvent,
+    overlay: Overlay<E>,
+    paneId: string,
+    extra?: Partial<Pick<OverlayEventData, 'interactType' | 'figureKey' | 'figureIndex' | 'attrsIndex' | 'pointIndex'>>
+  ): OverlayMouseTouchEvent<E> {
+    const overlayEvent = event as OverlayMouseTouchEvent<E>
+    overlayEvent.overlayData = {
+      overlay,
+      paneId,
+      interactType: extra?.interactType ?? 'body',
+      figureKey: extra?.figureKey ?? '',
+      figureIndex: extra?.figureIndex ?? 0,
+      attrsIndex: extra?.attrsIndex ?? 0,
+      pointIndex: extra?.pointIndex
+    }
+    return overlayEvent
+  }
+
+  /** 从 EventOverlayInfo 创建带 overlayData 的事件对象 */
+  private _createOverlayEventFromInfo<E>(event: MouseTouchEvent, info: EventOverlayInfo): OverlayMouseTouchEvent<E> {
+    return this._createOverlayEvent(event, info.overlay as Overlay<E>, info.paneId, {
+      interactType: info.interactType,
+      figureKey: info.figureKey,
+      figureIndex: info.figureIndex,
+      attrsIndex: info.attrsIndex
+    })
   }
 
   private _initEvent(widget: DrawWidget<DualYPane>): void {
@@ -54,54 +86,36 @@ export class OverlayLayer implements Layer {
           overlayStore.updateProgressOverlayPane(paneId)
         }
 
-        const pointIndex = progressOverlay.points.length - 1
-        const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
         if (!progressOverlay.isCompleted() && progressOverlay.paneId === paneId) {
+          const pointIndex = progressOverlay.points.length - 1
+          const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
           progressOverlay.updateDrawPoint(this._overlayView.coordinateToPoint(progressOverlay, event))
-          progressOverlay.onDrawing?.(event, { figureKey, pointIndex })
+          progressOverlay.onDrawing?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
         }
         return false
       }
 
-      // 获取当前 hover 的 figure 信息（从 event.target 获取）
       const hoverInfo = this._extractEventOverlayInfo(event.target, paneId)
-
-      // 获取上一次 hover 的信息
       const lastHoverInfo = this._overlayView.getHoverInstanceInfo()
 
-      // 检查是否切换了 overlay 或 figure
       if (!this._isSameEventOverlayInfo(lastHoverInfo, hoverInfo)) {
         let needUpdate = false
 
         // 触发 onMouseLeave（当从一个 figure 切换到另一个，或者移出所有 figure）
         if (lastHoverInfo?.overlay != null) {
-          const overlay = lastHoverInfo.overlay
-
-          // 触发 onMouseLeave
-          const hasCallback = overlay.onMouseLeave?.(event, lastHoverInfo)
-
-          if (!hasCallback) {
-            needUpdate = true
-          }
+          const hasCallback = lastHoverInfo.overlay.onMouseLeave?.(this._createOverlayEventFromInfo(event, lastHoverInfo))
+          if (!hasCallback) needUpdate = true
         }
 
         // 触发 onMouseEnter（仅当移入一个新的 figure）
         if (hoverInfo?.overlay != null) {
-          const overlay = hoverInfo.overlay
-
-          // 触发 onMouseEnter
-          const hasCallback = overlay.onMouseEnter?.(event, hoverInfo)
-
-          if (!hasCallback) {
-            needUpdate = true
-          }
+          const hasCallback = hoverInfo.overlay.onMouseEnter?.(this._createOverlayEventFromInfo(event, hoverInfo))
+          if (!hasCallback) needUpdate = true
         }
 
-        // 更新 pane（如果需要）
         if (needUpdate) {
           chart.updatePane(UpdateLevel.Overlay, paneId)
         }
-
         this._overlayView.setHoverInstanceInfo(hoverInfo)
       }
 
@@ -112,19 +126,20 @@ export class OverlayLayer implements Layer {
     this._overlayView.addEventListener('mouseClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay) {
-        const pointIndex = progressOverlay.points.length - 1
-        const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
         if (!progressOverlay.isCompleted() && progressOverlay.paneId === paneId) {
+          const pointIndex = progressOverlay.points.length - 1
+          const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
           progressOverlay.updateDrawPoint(this._overlayView.coordinateToPoint(progressOverlay, event))
+
           if (progressOverlay.isCreated()) {
-            progressOverlay.onDrawStart?.(event, { figureKey, pointIndex })
+            progressOverlay.onDrawStart?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
           }
           progressOverlay.nextStep()
-          progressOverlay.onDrawing?.(event, { figureKey, pointIndex })
+          progressOverlay.onDrawing?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
+
           if (progressOverlay.isCompleted()) {
             overlayStore.progressOverlayComplete()
-            progressOverlay.onDrawEnd?.(event, { figureKey, pointIndex })
-            // 绘制完成后默认选中该 overlay
+            progressOverlay.onDrawEnd?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
             const completedInfo: EventOverlayInfo = {
               overlay: progressOverlay,
               interactType: 'body',
@@ -143,30 +158,24 @@ export class OverlayLayer implements Layer {
       // 获取当前点击的 figure 信息
       const clickInfo = this._extractEventOverlayInfo(event.target, paneId)
 
-      // 触发 onClick
       if (clickInfo?.overlay?.isCompleted()) {
-        clickInfo.overlay.onClick?.(event, clickInfo)
+        clickInfo.overlay.onClick?.(this._createOverlayEventFromInfo(event, clickInfo))
       }
 
       // 获取上一次 click 的信息
       const lastClickInfo = this._overlayView.getClickInstanceInfo()
 
-      // 检查是否切换了选中的 overlay
       if (!this._isSameEventOverlayInfo(lastClickInfo, clickInfo)) {
-        // 触发 onDeselected（取消选中上一个 overlay）
         if (lastClickInfo?.overlay != null) {
-          lastClickInfo.overlay.onDeselected?.(event, lastClickInfo)
+          lastClickInfo.overlay.onDeselected?.(this._createOverlayEventFromInfo(event, lastClickInfo))
         }
 
-        // 触发 onSelected（选中新的 overlay）
         if (clickInfo?.overlay != null) {
-          clickInfo.overlay.onSelected?.(event, clickInfo)
+          clickInfo.overlay.onSelected?.(this._createOverlayEventFromInfo(event, clickInfo))
         }
 
-        // 更新全局选中状态（用于跨 pane 共享）
         overlayStore.setSelectedInfo(clickInfo)
 
-        // 更新 pane
         if (lastClickInfo?.overlay?.id !== clickInfo?.overlay?.id) {
           chart.updatePane(UpdateLevel.Overlay, paneId)
           if (lastClickInfo != null && lastClickInfo.paneId !== paneId) {
@@ -181,14 +190,13 @@ export class OverlayLayer implements Layer {
       return false
     })
 
-    // 鼠标按下事件 - 记录按下信息，但不触发 onPressedMoveStart
+    // 鼠标按下事件
     let hasMoved = false
     this._overlayView.addEventListener('mouseDownEvent', (event: MouseTouchEvent) => {
       const pressedInfo = this._extractEventOverlayInfo(event.target, paneId)
       if (pressedInfo?.overlay != null) {
         const { overlay } = pressedInfo
-        const chartStore = chart.getChartStore()
-        overlay.startPressedMove(this._overlayView.coordinateToPoint(overlay, event), chartStore)
+        overlay.startPressedMove(this._overlayView.coordinateToPoint(overlay, event), chart.getChartStore())
         this._overlayView.setPressedInstanceInfo(pressedInfo)
         hasMoved = false
       }
@@ -200,14 +208,12 @@ export class OverlayLayer implements Layer {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay) {
         if (!progressOverlay.isCompleted() && progressOverlay.paneId === paneId) {
-          // 使用智能完成：只有满足最小步骤要求时才完成
           const completed = progressOverlay.smartComplete()
           if (completed) {
             overlayStore.progressOverlayComplete()
             const pointIndex = progressOverlay.points.length - 1
             const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
-            progressOverlay.onDrawEnd?.(event, { figureKey, pointIndex })
-            // 绘制完成后默认选中该 overlay
+            progressOverlay.onDrawEnd?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
             const completedInfo: EventOverlayInfo = {
               overlay: progressOverlay,
               interactType: 'body',
@@ -219,16 +225,13 @@ export class OverlayLayer implements Layer {
             overlayStore.setSelectedInfo(completedInfo)
             this._overlayView.setClickInstanceInfo(completedInfo)
           }
-          // 如果不满足完成条件，双击事件被忽略，继续绘制
         }
         return false
       }
 
-      // 处理完成的 overlay 的双击事件
       const doubleClickInfo = this._extractEventOverlayInfo(event.target, paneId)
       if (doubleClickInfo?.overlay != null) {
-        const { overlay } = doubleClickInfo
-        overlay.onDoubleClick?.(event, doubleClickInfo)
+        doubleClickInfo.overlay.onDoubleClick?.(this._createOverlayEventFromInfo(event, doubleClickInfo))
       }
       return false
     })
@@ -236,27 +239,23 @@ export class OverlayLayer implements Layer {
     // 鼠标右键事件 - 处理 onRightClick
     this._overlayView.addEventListener('contextMenuEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
-      // 绘制中不触发右键
-      if (progressOverlay) {
-        return false
-      }
+      if (progressOverlay) return false
 
-      // 处理完成的 overlay 的右键事件
       const rightClickInfo = this._extractEventOverlayInfo(event.target, paneId)
       if (rightClickInfo?.overlay != null) {
         const { overlay } = rightClickInfo
-        if (!(overlay.onRightClick?.(event, rightClickInfo) ?? false)) {
+        if (!(overlay.onRightClick?.(this._createOverlayEventFromInfo(event, rightClickInfo)) ?? false)) {
           overlayStore.removeInstance(overlay)
         }
       }
       return false
     })
 
-    // 鼠标抬起事件 - 只有实际发生拖动时才触发 onPressedMoveEnd
+    // 鼠标抬起事件
     this._overlayView.addEventListener('mouseUpEvent', (event: MouseTouchEvent) => {
       const pressedInfo = this._overlayView.getPressedInstanceInfo()
       if (pressedInfo?.overlay != null && hasMoved) {
-        pressedInfo.overlay.onPressedMoveEnd?.(event, pressedInfo)
+        pressedInfo.overlay.onPressedMoveEnd?.(this._createOverlayEventFromInfo(event, pressedInfo))
       }
       this._overlayView.setPressedInstanceInfo()
       hasMoved = false
@@ -269,12 +268,11 @@ export class OverlayLayer implements Layer {
       if (pressedInfo?.overlay != null) {
         const overlay = pressedInfo.overlay
         if (!overlay.lock) {
-          // 首次拖动时触发 onPressedMoveStart
           if (!hasMoved) {
             hasMoved = true
-            overlay.onPressedMoveStart?.(event, pressedInfo)
+            overlay.onPressedMoveStart?.(this._createOverlayEventFromInfo(event, pressedInfo))
           }
-          const defaultPrevented = overlay.onPressedMoving?.(event, pressedInfo) ?? false
+          const defaultPrevented = overlay.onPressedMoving?.(this._createOverlayEventFromInfo(event, pressedInfo)) ?? false
           if (!defaultPrevented) {
             const point = this._overlayView.coordinateToPoint(overlay, event)
             if (pressedInfo.interactType === 'control-point') {
