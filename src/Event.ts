@@ -601,6 +601,10 @@ export default class Event implements EventHandler {
   }
 
   private _findWidgetByEvent(e: MouseTouchEvent): EventTriggerWidgetInfo {
+    // 使用原始坐标（如果存在），否则使用当前坐标
+    const x = (e as any)._originalX ?? e.x
+    const y = (e as any)._originalY ?? e.y
+    const coord = { x, y }
     const separatorPanes = this._chart.getAllSeparatorPanes()
     const separatorSize = this._chart.getChartStore().getStyles().separator.size
     for (const [, pane] of separatorPanes) {
@@ -612,20 +616,20 @@ export default class Event implements EventHandler {
         height: REAL_SEPARATOR_HEIGHT
       }
       if (
-        isPointInBounding(separatorBounding, e)
+        isPointInBounding(separatorBounding, coord)
       ) {
         return { pane, widget: pane.getWidget() }
       }
     }
 
     const drawPanes = this._chart.getAllDrawPanes()
-    const targetPane = drawPanes.find(pane => isPointInBounding(pane.getBounding(), e))
+    const targetPane = drawPanes.find(pane => isPointInBounding(pane.getBounding(), coord))
 
     if (!targetPane) {
       return {}
     }
     const mainWidget = targetPane.getMainWidget()
-    if (isPointInBounding(mainWidget.getBounding(), e)) {
+    if (isPointInBounding(mainWidget.getBounding(), coord)) {
       return { pane: targetPane, widget: mainWidget }
     }
 
@@ -633,12 +637,12 @@ export default class Event implements EventHandler {
       const dualPane = targetPane as DualYPane
 
       const yLeftAxisWidget = dualPane.getYLeftAxisWidget()
-      if (yLeftAxisWidget && isPointInBounding(yLeftAxisWidget.getBounding(), e)) {
+      if (yLeftAxisWidget && isPointInBounding(yLeftAxisWidget.getBounding(), coord)) {
         return { pane: targetPane, widget: yLeftAxisWidget }
       }
 
       const yRightAxisWidget = dualPane.getYRightAxisWidget()
-      if (yRightAxisWidget && isPointInBounding(yRightAxisWidget.getBounding(), e)) {
+      if (yRightAxisWidget && isPointInBounding(yRightAxisWidget.getBounding(), coord)) {
         return { pane: targetPane, widget: yRightAxisWidget }
       }
     }
