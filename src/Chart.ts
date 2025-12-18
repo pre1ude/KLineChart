@@ -6,7 +6,7 @@ import type Point from './common/Point'
 import { UpdateLevel } from './common/Updater'
 import { type Styles, YAxisPosition } from './common/Styles'
 import type Crosshair from './common/Crosshair'
-import { ActionType, type ActionCallback } from './common/Action'
+import { ActionType, type ActionCallback, type ActionCallbackParams } from './common/Action'
 import type LoadMoreCallback from './common/LoadMoreCallback'
 import type LoadDataCallback from './common/LoadDataCallback'
 import type Precision from './common/Precision'
@@ -115,8 +115,8 @@ export interface Chart {
   convertFromPixel(coordinates: Array<Partial<Coordinate>>, finder: ConvertFinder): Array<Partial<Point>>
   coordinateToDataIndex: (x: number) => number
   executeAction: (type: ActionType, data: object) => void
-  subscribeAction: (type: ActionType, callback: ActionCallback) => void
-  unsubscribeAction: (type: ActionType, callback?: ActionCallback) => void
+  subscribeAction: <T extends ActionType>(type: T, callback: ActionCallback<ActionCallbackParams[T]>) => void
+  unsubscribeAction: <T extends ActionType>(type: T, callback?: ActionCallback<ActionCallbackParams[T]>) => void
   getConvertPictureUrl: (includeOverlay?: boolean, type?: string, backgroundColor?: string) => string
   resize: () => void
 }
@@ -1092,11 +1092,11 @@ export default class ChartImp implements Chart {
     }
   }
 
-  subscribeAction(type: ActionType, callback: ActionCallback): void {
+  subscribeAction<T extends ActionType>(type: T, callback: ActionCallback<ActionCallbackParams[T]>): void {
     this._chartStore.getActionStore().subscribe(type, callback)
   }
 
-  unsubscribeAction(type: ActionType, callback?: ActionCallback): void {
+  unsubscribeAction<T extends ActionType>(type: T, callback?: ActionCallback<ActionCallbackParams[T]>): void {
     this._chartStore.getActionStore().unsubscribe(type, callback)
   }
 

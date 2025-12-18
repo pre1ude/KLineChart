@@ -262,3 +262,16 @@ export type { Overlay, OverlayCreate, OverlayTemplate, OverlayMode, EventOverlay
 
 // Event Types
 export type { MouseTouchEvent } from './common/SyntheticEvent'
+
+// Action Types
+export type {
+  ActionCallback,
+  ActionCallbackParams,
+  ClickEventData,
+  ZoomEventData,
+  ScrollEventData,
+  VisibleRangeChangeEventData,
+  TooltipIconClickEventData,
+  CrosshairChangeEventData,
+  PaneDragEventData
+} from './common/Action'

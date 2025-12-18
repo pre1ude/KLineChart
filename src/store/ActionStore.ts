@@ -1,32 +1,22 @@
-
-import Action, { type ActionType, type ActionCallback } from '../common/Action'
+import Action, { type ActionType, type ActionCallback, type ActionCallbackParams } from '../common/Action'
 import { isValid } from '../common/utils/typeChecks'
 
 export default class ActionStore {
-  /**
-   * Chart action map
-   */
-  private readonly _actions = new Map<ActionType, Action>()
+  private readonly _actions = new Map<ActionType, Action<unknown>>()
 
-  execute(type: ActionType, data?: any): void {
+  execute<T extends ActionType>(type: T, data: ActionCallbackParams[T]): void {
     this._actions.get(type)?.execute(data)
   }
 
-  subscribe(type: ActionType, callback: ActionCallback): void {
+  subscribe<T extends ActionType>(type: T, callback: ActionCallback<ActionCallbackParams[T]>): void {
     if (!this._actions.has(type)) {
-      this._actions.set(type, new Action())
+      this._actions.set(type, new Action<ActionCallbackParams[T]>() as Action<unknown>)
     }
-    this._actions.get(type)?.subscribe(callback)
+    (this._actions.get(type) as Action<ActionCallbackParams[T]>).subscribe(callback)
   }
 
-  /**
-   * 取消事件订阅
-   * @param type
-   * @param callback
-   * @return {boolean}
-   */
-  unsubscribe(type: ActionType, callback?: ActionCallback): void {
-    const action = this._actions.get(type)
+  unsubscribe<T extends ActionType>(type: T, callback?: ActionCallback<ActionCallbackParams[T]>): void {
+    const action = this._actions.get(type) as Action<ActionCallbackParams[T]> | undefined
     if (isValid(action)) {
       action.unsubscribe(callback)
       if (action.isEmpty()) {
