@@ -119,6 +119,7 @@ export interface Chart {
   unsubscribeAction: <T extends ActionType>(type: T, callback?: ActionCallback<ActionCallbackParams[T]>) => void
   getConvertPictureUrl: (includeOverlay?: boolean, type?: string, backgroundColor?: string) => string
   resize: () => void
+  focus: () => void
 }
 
 export default class ChartImp implements Chart {
@@ -1131,6 +1132,10 @@ export default class ChartImp implements Chart {
 
   resize(): void {
     this.adjustPaneViewport(true, true, true, true, true)
+  }
+
+  focus(): void {
+    this._chartContainer.focus()
   }
 
   destroy(): void {
