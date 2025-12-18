@@ -1,4 +1,3 @@
-
 import { type SmoothLineStyle, type IndicatorStyle } from '../common/Styles'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import type Coordinate from '../common/Coordinate'
@@ -10,20 +9,24 @@ import type YAxisImp from '../component/YAxis'
 import { PaneIdConstants } from '../pane/types'
 import View from './View'
 import type { EventName, MouseTouchEvent } from '../common/SyntheticEvent'
-import type { Figure } from '../component/Figure'
+import { type IndicatorFigureData } from '@/widget/layer/IndicatorLayer'
 
 // 指标结果数据类型，支持通过字符串键访问
 type IndicatorResultData = Record<string, unknown>
 
 export default class IndicatorView extends View {
-  private _lastHoverFigure: Figure | null = null
+  private _hoverInfo: IndicatorFigureData | null = null
 
-  setLastHoverFigure(figure: Figure | null): void {
-    this._lastHoverFigure = figure
+  setHoverInfo(info: IndicatorFigureData | null): void {
+    this._hoverInfo = info
+  }
+
+  getHoverInfo(): IndicatorFigureData | null {
+    return this._hoverInfo
   }
 
   override checkEventOn(_event: MouseTouchEvent, name: EventName): boolean {
-    return name === 'mouseMoveEvent' && this._lastHoverFigure != null
+    return name === 'mouseMoveEvent' && this._hoverInfo != null
   }
 
   override drawImp(ctx: CanvasRenderingContext2D): void {

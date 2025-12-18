@@ -14,7 +14,7 @@ export interface IndicatorFigureData {
   indicator: Indicator
 }
 
-type IndicatorFigureInstance = Figure<unknown, unknown, IndicatorFigureData>
+export type IndicatorFigureInstance = Figure<unknown, unknown, IndicatorFigureData>
 
 /**
  * 指标图层
@@ -40,22 +40,25 @@ export class IndicatorLayer implements Layer {
     }
   }
 
+  private _isSameFigure(a: IndicatorFigureData | null, b: IndicatorFigureData | null): boolean {
+    if (a == null && b == null) return true
+    if (a == null || b == null) return false
+    return a.indicator.id === b.indicator.id && a.figure.key === b.figure.key
+  }
+
+  private _isSameIndicator(a: IndicatorFigureData | null, b: IndicatorFigureData | null): boolean {
+    if (a == null && b == null) return true
+    if (a == null || b == null) return false
+    return a.indicator.id === b.indicator.id
+  }
+
   private _initEvent(widget: DrawWidget<DualYPane>): void {
-    let lastHoverFigure: IndicatorFigureInstance | null = null
-
-    // 鼠标移动事件 - 处理 onMouseEnter 和 onMouseLeave
     this._indicatorView.addEventListener('mouseMoveEvent', (e: MouseTouchEvent) => {
-      const currentFigure = e.target as IndicatorFigureInstance | undefined
-      const currentFigureData = currentFigure?.data ?? null
-      const lastHoverFigureData = lastHoverFigure?.data ?? null
+      const currentHoverInfo = e.target as IndicatorFigureInstance | undefined
+      const currentFigureData = currentHoverInfo?.data ?? null
+      const lastHoverFigureData = this._indicatorView.getHoverInfo()
 
-      // 检查是否切换了 figure（包括从有 figure 到无 figure 的情况）
-      const isSameFigure = lastHoverFigureData != null && currentFigureData != null &&
-        lastHoverFigureData.indicator?.name === currentFigureData.indicator?.name &&
-        lastHoverFigureData.figure?.key === currentFigureData.figure?.key &&
-        lastHoverFigureData.dataIndex === currentFigureData.dataIndex
-
-      if (!isSameFigure) {
+      if (!this._isSameFigure(lastHoverFigureData, currentFigureData)) {
         const chartStore = widget.getPane().getChart().getChartStore()
         const dataList = chartStore.getDataList()
 
@@ -63,18 +66,21 @@ export class IndicatorLayer implements Layer {
         if (lastHoverFigureData != null) {
           const { dataIndex, indicator, figure } = lastHoverFigureData
           figure.onMouseLeave?.(e, { dataIndex, dataList, figure, indicator })
-          indicator.onMouseLeave?.(e, { dataIndex, dataList, figure, indicator })
+          if (!this._isSameIndicator(lastHoverFigureData, currentFigureData)) {
+            indicator.onMouseLeave?.(e, { dataIndex, dataList, figure, indicator })
+          }
         }
 
         // 触发 onMouseEnter（仅当移入一个新的 figure）
         if (currentFigureData != null) {
           const { dataIndex, indicator, figure } = currentFigureData
           figure.onMouseEnter?.(e, { dataIndex, dataList, figure, indicator })
-          indicator.onMouseEnter?.(e, { dataIndex, dataList, figure, indicator })
+          if (!this._isSameIndicator(lastHoverFigureData, currentFigureData)) {
+            indicator.onMouseEnter?.(e, { dataIndex, dataList, figure, indicator })
+          }
         }
 
-        lastHoverFigure = currentFigure ?? null
-        this._indicatorView?.setLastHoverFigure(lastHoverFigure)
+        this._indicatorView.setHoverInfo(currentFigureData)
       }
 
       return false
