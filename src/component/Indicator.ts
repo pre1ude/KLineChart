@@ -83,7 +83,7 @@ export interface IndicatorCreateTooltipDataSourceParams<D = any> {
   yAxis: YAxis
 }
 
-export type IndicatorCreateTooltipDataSourceCallback<D = any> = (params: IndicatorCreateTooltipDataSourceParams<D>) => IndicatorTooltipData
+export type IndicatorCreateTooltipDataSourceCallback<D = any> = (params: IndicatorCreateTooltipDataSourceParams<D>) => Partial<IndicatorTooltipData>
 
 export interface IndicatorDrawParams<D = any> {
   ctx: CanvasRenderingContext2D
