@@ -20,7 +20,7 @@ const momentum: IndicatorTemplate<Mtm> = {
     { key: 'maMtm', title: 'MAMTM: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Mtm>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
     let mtmSum = 0
     const result: Mtm[] = []
     dataList.forEach((kLineData: KLineData, i: number) => {

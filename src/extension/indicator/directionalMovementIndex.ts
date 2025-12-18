@@ -45,7 +45,7 @@ const directionalMovementIndex: IndicatorTemplate<Dmi> = {
     { key: 'adxr', title: 'ADXR: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Dmi>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
     let trSum = 0
     let hSum = 0
     let lSum = 0

@@ -28,7 +28,7 @@ const easeOfMovementValue: IndicatorTemplate<Emv> = {
     { key: 'maEmv', title: 'MAEMV: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Emv>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
     let emvValueSum = 0
     const emvValueList: number[] = []
     return dataList.map((kLineData: KLineData, i: number) => {

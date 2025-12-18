@@ -49,7 +49,7 @@ const movingAverageConvergenceDivergence: IndicatorTemplate<Macd> = {
     }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Macd>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
     let closeSum = 0
     let emaShort: number
     let emaLong: number

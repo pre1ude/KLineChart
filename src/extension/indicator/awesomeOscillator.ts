@@ -34,7 +34,7 @@ const awesomeOscillator: IndicatorTemplate<Ao> = {
   }],
   calc: (dataList: KLineData[], indicator: Indicator<Ao>) => {
     const params = indicator.calcParams
-    const maxPeriod = Math.max(params[0] as number, params[1] as number)
+    const maxPeriod = Math.max(params[0], params[1])
     let shortSum = 0
     let longSum = 0
     let short = 0

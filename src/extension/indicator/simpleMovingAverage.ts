@@ -20,7 +20,7 @@ const simpleMovingAverage: IndicatorTemplate<Sma> = {
   ],
   shouldOhlc: true,
   calc: (dataList: KLineData[], indicator: Indicator<Sma>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
     let closeSum = 0
     let smaValue = 0
     return dataList.map((kLineData: KLineData, i: number) => {

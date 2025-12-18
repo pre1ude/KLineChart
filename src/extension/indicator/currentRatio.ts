@@ -50,7 +50,7 @@ const currentRatio: IndicatorTemplate<Cr> = {
     { key: 'ma4', title: 'MA4: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Cr>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
 
     const ma1ForwardPeriod = Math.ceil(params[1] / 2.5 + 1)
     const ma2ForwardPeriod = Math.ceil(params[2] / 2.5 + 1)

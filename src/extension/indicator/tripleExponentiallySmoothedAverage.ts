@@ -42,7 +42,7 @@ const tripleExponentiallySmoothedAverage: IndicatorTemplate<Trix> = {
     { key: 'maTrix', title: 'MATRIX: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Trix>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
     let closeSum = 0
     let ema1: number
     let ema2: number

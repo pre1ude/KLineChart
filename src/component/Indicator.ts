@@ -63,7 +63,7 @@ export interface IndicatorFigure<D = any> {
   onMouseLeave?: (event: MouseTouchEvent, context: InteractionContext) => void
 }
 
-export type IndicatorRegenerateFiguresCallback<D = any> = (calcParams: any[]) => Array<IndicatorFigure<D>>
+export type IndicatorRegenerateFiguresCallback<D = any> = (calcParams: number[]) => Array<IndicatorFigure<D>>
 
 export interface IndicatorTooltipData {
   name: string
@@ -85,7 +85,7 @@ export interface IndicatorCreateTooltipDataSourceParams<D = any> {
 
 export type IndicatorCreateTooltipDataSourceCallback<D = any> = (params: IndicatorCreateTooltipDataSourceParams<D>) => Partial<IndicatorTooltipData>
 
-export interface IndicatorDrawParams<D = any> {
+export interface IndicatorDrawParams<D = unknown> {
   ctx: CanvasRenderingContext2D
   kLineDataList: KLineData[]
   indicator: Indicator<D>
@@ -97,7 +97,7 @@ export interface IndicatorDrawParams<D = any> {
   yAxis: YAxis
 }
 
-export type IndicatorDrawCallback<D = any> = (params: IndicatorDrawParams<D>) => boolean
+export type IndicatorDrawCallback<D = unknown> = (params: IndicatorDrawParams<D>) => boolean
 export type IndicatorCalcCallback<D> = (dataList: KLineData[], indicator: Indicator<D>) => Promise<D[]> | D[]
 
 export interface IndicatorApi<D = unknown> {
@@ -127,9 +127,9 @@ export interface IndicatorApi<D = unknown> {
   precision: number
 
   /**
-   * Calculation parameters
+   * Calculation parameters (e.g., periods, thresholds)
    */
-  calcParams: unknown[]
+  calcParams: number[]
 
   /**
    * Whether ohlc column is required
@@ -233,7 +233,7 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
   name: string
   shortName: string
   precision: number
-  calcParams: unknown[]
+  calcParams: number[]
   shouldOhlc: boolean
   shouldFormatBigNumber: boolean
   visible: boolean

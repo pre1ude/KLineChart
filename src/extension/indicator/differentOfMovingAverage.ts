@@ -20,7 +20,7 @@ const differentOfMovingAverage: IndicatorTemplate<Dma> = {
     { key: 'ama', title: 'AMA: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Dma>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
     const maxPeriod = Math.max(params[0], params[1])
     let closeSum1 = 0
     let closeSum2 = 0

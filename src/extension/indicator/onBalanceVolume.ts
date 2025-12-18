@@ -20,7 +20,7 @@ const onBalanceVolume: IndicatorTemplate<Obv> = {
     { key: 'maObv', title: 'MAOBV: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Obv>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
     let obvSum = 0
     let oldObv = 0
     const result: Obv[] = []

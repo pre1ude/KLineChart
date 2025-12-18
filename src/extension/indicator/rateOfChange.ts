@@ -20,7 +20,7 @@ const rateOfChange: IndicatorTemplate<Roc> = {
     { key: 'maRoc', title: 'MAROC: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Roc>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
     const result: Roc[] = []
     let rocSum = 0
     dataList.forEach((kLineData: KLineData, i: number) => {

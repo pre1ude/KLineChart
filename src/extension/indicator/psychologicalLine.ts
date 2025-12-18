@@ -20,7 +20,7 @@ const psychologicalLine: IndicatorTemplate<Psy> = {
     { key: 'maPsy', title: 'MAPSY: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Psy>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
     let upCount = 0
     let psySum = 0
     const upList: number[] = []

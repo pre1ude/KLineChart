@@ -22,7 +22,7 @@ const bullAndBearIndex: IndicatorTemplate<Bbi> = {
     { key: 'bbi', title: 'BBI: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Bbi>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
     const maxPeriod = Math.max(...params)
     const closeSums: number[] = []
     const mas: number[] = []

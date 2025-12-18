@@ -24,7 +24,7 @@ const volumeRatio: IndicatorTemplate<Vr> = {
     { key: 'maVr', title: 'MAVR: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Vr>) => {
-    const params = indicator.calcParams as number[]
+    const params = indicator.calcParams
     let uvs = 0
     let dvs = 0
     let pvs = 0
