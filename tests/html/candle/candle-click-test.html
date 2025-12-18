@@ -102,6 +102,10 @@ limitations under the License.
         background: #fff7e6;
         border-left: 3px solid #fa8c16;
       }
+      .event-item.candle-rightclick {
+        background: #f6ffed;
+        border-left: 3px solid #52c41a;
+      }
     </style>
   </head>
   <body>
@@ -126,9 +130,10 @@ limitations under the License.
       <div class="test-section">
         <h4>2. 测试说明</h4>
         <ul>
-          <li><strong>左键点击</strong>：只有点击蜡烛实体部分才会触发 OnCandleBarClick 事件</li>
-          <li><strong>右键点击</strong>：在整个主图区域都能触发 OnCandleBarRightClick 事件</li>
-          <li><strong>OHLC 模式</strong>：左键点击不会触发事件（非蜡烛图类型）</li>
+          <li><strong>OnCandleBarClick（蓝色）</strong>：左键点击蜡烛实体部分触发</li>
+          <li><strong>OnCandleBarRightClick（绿色）</strong>：右键点击蜡烛实体部分触发</li>
+          <li><strong>OnRightClick（橙色）</strong>：右键点击整个主图区域都会触发</li>
+          <li><strong>OHLC 模式</strong>：点击事件不会触发（非蜡烛图类型）</li>
           <li><strong>面积图模式</strong>：不显示蜡烛，点击事件不会触发</li>
         </ul>
       </div>
@@ -168,10 +173,15 @@ limitations under the License.
         eventCount++
         const eventList = document.getElementById('event-list')
         const item = document.createElement('div')
-        item.className = `event-item ${type === 'click' ? 'click' : 'rightclick'}`
+        item.className = `event-item ${type === 'click' ? 'click' : type === 'candleRightClick' ? 'candle-rightclick' : 'rightclick'}`
 
         const time = new Date().toLocaleTimeString()
-        const eventName = type === 'click' ? 'OnCandleBarClick' : 'OnCandleBarRightClick'
+        const eventNameMap = {
+          'click': 'OnCandleBarClick',
+          'candleRightClick': 'OnCandleBarRightClick',
+          'rightclick': 'OnRightClick'
+        }
+        const eventName = eventNameMap[type] || type
         const dataInfo = data ? `dataIndex: ${data.dataIndex}, timestamp: ${data.data?.timestamp}, close: ${data.data?.close?.toFixed(2)}` : 'no data'
 
         item.textContent = `#${eventCount} [${time}] ${eventName} - ${dataInfo}`
@@ -225,11 +235,18 @@ limitations under the License.
           updateStatus(`左键点击 - dataIndex: ${data.dataIndex}`)
         })
 
-        // 订阅蜡烛右键事件
+        // 订阅蜡烛右键事件（仅命中蜡烛实体时触发）
         chart.subscribeAction('onCandleBarRightClick', (data) => {
           console.log('OnCandleBarRightClick:', data)
+          addEventLog('candleRightClick', data)
+          updateStatus(`右键点击蜡烛 - dataIndex: ${data.dataIndex}`)
+        })
+
+        // 订阅通用右键事件（整个主图区域都会触发）
+        chart.subscribeAction('onRightClick', (data) => {
+          console.log('OnRightClick:', data)
           addEventLog('rightclick', data)
-          updateStatus(`右键点击 - dataIndex: ${data.dataIndex}`)
+          updateStatus(`右键点击主图 - dataIndex: ${data.dataIndex}`)
         })
 
         // 默认选中实心蜡烛

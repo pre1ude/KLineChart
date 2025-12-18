@@ -5,6 +5,7 @@ import type { Layer, LayerClass } from './layer/Layer'
 import { setCursor } from '../common/utils/cursor'
 import { ActionType } from '../common/Action'
 import { PaneIdConstants } from '../pane/types'
+import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 
 /**
  * 主 Widget - 使用 Layer 组合模式
@@ -32,12 +33,13 @@ export default class MainWidget extends DrawWidget<DualYPane> {
       return false
     })
 
+    // 右键点击事件（整个主图区域，总是触发）
     if (pane.getId() === PaneIdConstants.CANDLE) {
       this.addEventListener('contextMenuEvent', (e) => {
         const chart = pane.getChart()
         const dataIndex = chart.coordinateToDataIndex(e.x)
         const data = chart.getDataByDataIndex(dataIndex)
-        chart.getChartStore().getActionStore().execute(ActionType.OnCandleBarRightClick, { ...e, data, dataIndex })
+        chart.getChartStore().getActionStore().execute(ActionType.OnRightClick, { ...e, data, dataIndex })
         return false
       })
     }
@@ -45,6 +47,11 @@ export default class MainWidget extends DrawWidget<DualYPane> {
 
   getName(): string {
     return WidgetNameConstants.MAIN
+  }
+
+  // 响应右键事件（整个主图区域）
+  override checkEventOn(_event: MouseTouchEvent, name: EventName, _other?: unknown): boolean {
+    return name === 'contextMenuEvent'
   }
 
   protected updateMain(ctx: CanvasRenderingContext2D): void {

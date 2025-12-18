@@ -41,12 +41,21 @@ export class CandleLayer implements Layer {
   private _initEvent(): void {
     const pane = this._widget.getPane()
     if (pane.getId() === PaneIdConstants.CANDLE) {
-      // 左键点击
+      // 左键点击（仅命中蜡烛实体时触发）
       this._candleBarView.addEventListener('mouseClickEvent', (e: MouseTouchEvent) => {
         const chart = pane.getChart()
         const dataIndex = chart.coordinateToDataIndex(e.x)
         const data = chart.getDataByDataIndex(dataIndex)
         chart.getChartStore().getActionStore().execute(ActionType.OnCandleBarClick, { ...e, data, dataIndex })
+        return false
+      })
+
+      // 右键点击（仅命中蜡烛实体时触发）
+      this._candleBarView.addEventListener('contextMenuEvent', (e: MouseTouchEvent) => {
+        const chart = pane.getChart()
+        const dataIndex = chart.coordinateToDataIndex(e.x)
+        const data = chart.getDataByDataIndex(dataIndex)
+        chart.getChartStore().getActionStore().execute(ActionType.OnCandleBarRightClick, { ...e, data, dataIndex })
         return false
       })
     }
