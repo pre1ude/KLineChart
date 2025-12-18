@@ -106,12 +106,12 @@ export class OverlayLayer implements Layer {
 
         if (lastHoverInfo?.overlay != null) {
           const hasCallback = lastHoverInfo.overlay.onMouseLeave?.(this._createOverlayEventFromInfo(event, lastHoverInfo))
-          if (!hasCallback) needUpdate = true
+          if (!hasCallback) needUpdate = true // hasCallback false 表示默认触发更新
         }
 
         if (hoverInfo?.overlay != null) {
           const hasCallback = hoverInfo.overlay.onMouseEnter?.(this._createOverlayEventFromInfo(event, hoverInfo))
-          if (!hasCallback) needUpdate = true
+          if (!hasCallback) needUpdate = true // hasCallback false 表示默认触发更新
         }
 
         if (needUpdate) {

@@ -35,14 +35,14 @@ export class Figure<A = unknown, S = unknown, T = unknown> extends Eventful {
     }
   }
 
-  override checkEventOn(event: MouseTouchEvent, name?: string): boolean {
+  override checkEventOn(event: MouseTouchEvent, eventName?: string): boolean {
     // 完全忽略
     if (this._ignoreEvent === true) {
       return false
     }
 
     // 部分忽略
-    if (Array.isArray(this._ignoreEvent) && name && this._ignoreEvent.includes(name)) {
+    if (Array.isArray(this._ignoreEvent) && eventName && this._ignoreEvent.includes(eventName)) {
       return false
     }
 
