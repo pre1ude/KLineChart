@@ -1,17 +1,57 @@
 import type { Layer } from './Layer'
 import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
+import type { MouseTouchEvent } from '../../common/SyntheticEvent'
+import type { Figure } from '../../component/Figure'
+import { type TooltipIcon } from '../../store/TooltipStore'
+import { ActionType } from '../../common/Action'
 import IndicatorTooltipView from '../../view/IndicatorTooltipView'
 import CandleTooltipView from '../../view/CandleTooltipView'
 
-export class IndicatorTooltipLayer implements Layer {
-  readonly name = 'indiatorTooltip'
-  private _tooltipView: IndicatorTooltipView
+type TooltipView = IndicatorTooltipView | CandleTooltipView
 
-  constructor(widget: DrawWidget<DualYPane>) {
-    this._tooltipView = new IndicatorTooltipView(widget)
-    // TooltipView 需要添加到 widget 的 children 中以接收事件
+abstract class BaseTooltipLayer implements Layer {
+  abstract readonly name: string
+  protected _tooltipView: TooltipView
+  private _hoverIconInfo: TooltipIcon | null = null
+
+  constructor(widget: DrawWidget<DualYPane>, view: TooltipView) {
+    this._tooltipView = view
+    this._initEvent(widget)
     widget.addChild(this._tooltipView)
+  }
+
+  private _extractIconInfo(target: unknown): TooltipIcon | null {
+    const figure = target as Figure<unknown, unknown, TooltipIcon>
+    return figure?.data ?? null
+  }
+
+  private _isSameIcon(a: TooltipIcon | null, b: TooltipIcon | null): boolean {
+    if (a == null && b == null) return true
+    if (a == null || b == null) return false
+    return a.paneId === b.paneId && a.indicatorName === b.indicatorName && a.iconId === b.iconId
+  }
+
+  private _initEvent(widget: DrawWidget<DualYPane>): void {
+    const chart = widget.getPane().getChart()
+
+    this._tooltipView.addEventListener('mouseMoveEvent', (event: MouseTouchEvent) => {
+      const iconInfo = this._extractIconInfo(event.target)
+      if (!this._isSameIcon(this._hoverIconInfo, iconInfo)) {
+        this._hoverIconInfo = iconInfo
+        this._tooltipView.setHasHoverIcon(iconInfo != null)
+        chart.getChartStore().getTooltipStore().setActiveIcon(iconInfo)
+      }
+      return false
+    })
+
+    this._tooltipView.addEventListener('mouseClickEvent', (event: MouseTouchEvent) => {
+      const iconInfo = this._extractIconInfo(event.target)
+      if (iconInfo != null) {
+        chart.getChartStore().getActionStore().execute(ActionType.OnTooltipIconClick, { ...iconInfo })
+      }
+      return false
+    })
   }
 
   drawOverlay = (ctx: CanvasRenderingContext2D): void => {
@@ -19,17 +59,18 @@ export class IndicatorTooltipLayer implements Layer {
   }
 }
 
-export class CandleTooltipLayer implements Layer {
-  readonly name = 'candleTooltip'
-  private _tooltipView: CandleTooltipView
+export class IndicatorTooltipLayer extends BaseTooltipLayer {
+  readonly name = 'indicatorTooltip'
 
   constructor(widget: DrawWidget<DualYPane>) {
-    this._tooltipView = new CandleTooltipView(widget)
-    // TooltipView 需要添加到 widget 的 children 中以接收事件
-    widget.addChild(this._tooltipView)
+    super(widget, new IndicatorTooltipView(widget))
   }
+}
 
-  drawOverlay = (ctx: CanvasRenderingContext2D): void => {
-    this._tooltipView?.draw(ctx)
+export class CandleTooltipLayer extends BaseTooltipLayer {
+  readonly name = 'candleTooltip'
+
+  constructor(widget: DrawWidget<DualYPane>) {
+    super(widget, new CandleTooltipView(widget))
   }
 }

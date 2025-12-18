@@ -28,10 +28,6 @@ export default class MainWidget extends DrawWidget<DualYPane> {
 
     // 设置通用样式和事件
     setCursor(this.getContainer(), 'crosshair')
-    this.addEventListener('mouseMoveEvent', () => {
-      pane.getChart().getChartStore().getTooltipStore().setActiveIcon(null)
-      return false
-    })
 
     // 右键点击事件（整个主图区域，总是触发）
     if (pane.getId() === PaneIdConstants.CANDLE) {

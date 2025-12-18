@@ -1,7 +1,6 @@
 import type KLineData from '../common/KLineData'
 import type Crosshair from '../common/Crosshair'
 import { type IndicatorStyle, type TooltipStyle, type TooltipIconStyle, type TooltipTextStyle, type TooltipLegend, TooltipShowRule, type TooltipLegendChild, TooltipIconPosition } from '../common/Styles'
-import { ActionType } from '../common/Action'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { isValid, isObject, isString, isNumber } from '../common/utils/typeChecks'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
@@ -9,23 +8,30 @@ import type Coordinate from '../common/Coordinate'
 import { type CustomApi } from '../Options'
 import { getFigureBaseStyles, getMergedDefaultStyles, type Indicator, type IndicatorTooltipData } from '../component/Indicator'
 import { type TooltipIcon } from '../store/TooltipStore'
+import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 import View from './View'
 import type DualYPane from '../pane/DualYPane'
 import type XAxisWidget from '../widget/XAxisWidget'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 
 export default class IndicatorTooltipView extends View {
-  private readonly _boundIconClickEvent = (currentIcon: TooltipIcon) => () => {
-    const pane = this.getWidget().getPane()
-    pane.getChart().getChartStore().getActionStore().execute(ActionType.OnTooltipIconClick, { ...currentIcon })
-    return true
+  private _hasHoverIcon = false
+  private _startTop: number | null = null
+
+  setHasHoverIcon(value: boolean): void {
+    this._hasHoverIcon = value
   }
 
-  private readonly _boundIconMouseMoveEvent = (currentIconInfo: TooltipIcon) => () => {
-    const pane = this.getWidget().getPane()
-    const tooltipStore = pane.getChart().getChartStore().getTooltipStore()
-    tooltipStore.setActiveIcon({ ...currentIconInfo })
-    return true
+  /** 设置起始 top 位置，用于在 CandleTooltipView 之后绘制 */
+  setStartTop(top: number | null): void {
+    this._startTop = top
+  }
+
+  // View 本身不响应事件，让事件传递到子元素（Figure）
+  // 当有 hover icon 时，View 响应 mouseMoveEvent 用于检测鼠标移出 icon
+  override checkEventOn(_event: MouseTouchEvent, name: EventName): boolean {
+    console.log('[IndicatorTooltipView] checkEventOn', name, 'children:', this.getChildren().length)
+    return name === 'mouseMoveEvent' && this._hasHoverIcon
   }
 
   override drawImp(ctx: CanvasRenderingContext2D): void {
@@ -42,11 +48,13 @@ export default class IndicatorTooltipView extends View {
       const activeIcon = chartStore.getTooltipStore().getActiveIcon()
       const defaultStyles = chartStore.getStyles().indicator
       const { offsetLeft, offsetTop, offsetRight } = defaultStyles.tooltip
+      // 如果设置了 startTop，使用它；否则使用默认的 offsetTop
+      const top = this._startTop ?? offsetTop
       this.drawIndicatorTooltip(
         ctx, pane.getId(), chartStore.getDataList(),
         crosshair, activeIcon, indicators, customApi,
         thousandsSeparator, decimalFoldThreshold,
-        offsetLeft, offsetTop,
+        offsetLeft, top,
         bounding.width - offsetRight, defaultStyles
       )
     }
@@ -167,21 +175,23 @@ export default class IndicatorTooltipView extends View {
           backgroundColor, activeBackgroundColor
         } = icon
         const active = activeIcon?.paneId === paneId && activeIcon?.indicatorName === indicatorName && activeIcon?.iconId === icon.id
-        const figureInstance = createFigure('text')
-        figureInstance.setAttrs({ text, x: coordinate.x + marginLeft, y: coordinate.y + marginTop }).setStyles({
-          paddingLeft,
-          paddingTop,
-          paddingRight,
-          paddingBottom,
-          color: active ? activeColor : color,
-          size,
-          family: fontFamily,
-          backgroundColor: active ? activeBackgroundColor : backgroundColor
-        }).draw(ctx)
+        const iconFigure = createFigure('text')
+          .setAttrs({ text, x: coordinate.x + marginLeft, y: coordinate.y + marginTop })
+          .setStyles({
+            paddingLeft,
+            paddingTop,
+            paddingRight,
+            paddingBottom,
+            color: active ? activeColor : color,
+            size,
+            family: fontFamily,
+            backgroundColor: active ? activeBackgroundColor : backgroundColor
+          })
+          .setData({ paneId, indicatorName, iconId: icon.id })
 
-        figureInstance.addEventListener('mouseClickEvent', this._boundIconClickEvent({ paneId, indicatorName, iconId: icon.id }))
-        figureInstance.addEventListener('mouseMoveEvent', this._boundIconMouseMoveEvent({ paneId, indicatorName, iconId: icon.id }))
-        this.addChild(figureInstance)
+        iconFigure.draw(ctx)
+
+        this.addChild(iconFigure)
 
         const font = createFont(size, 'normal', fontFamily)
         coordinate.x += (marginLeft + paddingLeft + calcTextWidth(text, font) + paddingRight + marginRight)
@@ -272,7 +282,7 @@ export default class IndicatorTooltipView extends View {
           const figureStyles = customStyles ? { ...figureBaseStyles, ...customStyles } : figureBaseStyles
           const color = figureStyles.color ?? mergedDefaultStyles.tooltip.text.color
 
-          let value = indicatorData[figure.key] ?? tooltipStyles.defaultValue
+          let value = (indicatorData as Record<string, unknown>)[figure.key] ?? tooltipStyles.defaultValue
           if (isNumber(value)) {
             value = formatPrecision(value, indicator.precision)
             if (indicator.shouldFormatBigNumber) {
@@ -280,7 +290,7 @@ export default class IndicatorTooltipView extends View {
             }
             value = formatFoldDecimal(formatThousands(value as string, thousandsSeparator), decimalFoldThreshold)
           }
-          legends.push({ title: { text: figure.title, color }, value: { text: value, color } })
+          legends.push({ title: { text: figure.title, color }, value: { text: value as string, color } })
         }
       })
       tooltipData.values = legends
