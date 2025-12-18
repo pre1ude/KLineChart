@@ -197,6 +197,9 @@ export class OverlayLayer implements Layer {
     // 鼠标按下事件
     let hasMoved = false
     this._overlayView.addEventListener('mouseDownEvent', (event: MouseTouchEvent) => {
+      // 绘制中不允许拖动已绘制的 overlay
+      if (overlayStore.getProgressOverlay()) return false
+
       const pressedInfo = this._extractEventOverlayInfo(event.target, paneId)
       if (pressedInfo?.overlay != null) {
         const { overlay } = pressedInfo
@@ -243,10 +246,13 @@ export class OverlayLayer implements Layer {
     // 鼠标右键事件 - 处理 onRightClick
     this._overlayView.addEventListener('contextMenuEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
-      if (progressOverlay) return false
 
       const rightClickInfo = this._extractEventOverlayInfo(event.target, paneId)
       if (rightClickInfo?.overlay != null) {
+        if (progressOverlay) {
+          if (rightClickInfo.interactType === 'control-point') return false
+          if (progressOverlay === rightClickInfo.overlay) return false
+        }
         const { overlay } = rightClickInfo
         if (!(overlay.onRightClick?.(this._createOverlayEventFromInfo(event, rightClickInfo)) ?? false)) {
           overlayStore.removeInstance(overlay)
