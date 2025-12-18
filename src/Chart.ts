@@ -90,7 +90,11 @@ export interface Chart {
   setLoadDataCallback: (cb: LoadDataCallback) => void
   createIndicator: (value: string | IndicatorCreate, isStack?: boolean, paneOptions?: PaneOptions, callback?: () => void) => string | undefined
   overrideIndicator: (override: IndicatorCreate, paneId?: string, callback?: () => void) => void
+  /**
+   * @deprecated
+   */
   getIndicatorByPaneId: (paneId?: string, name?: string) => Indicator | Map<string, Indicator> | Map<string, Map<string, Indicator>> | null
+  getIndicators: (filter?: IndicatorFilter) => Indicator[]
   removeIndicator: (paneId: string, name?: string) => void
   createOverlay: (value: string | OverlayCreate | Array<string | OverlayCreate>, paneId?: string) => undefined | string | Array<string | undefined>
   getOverlayById: (id: string) => Overlay | undefined
