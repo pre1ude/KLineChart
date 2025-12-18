@@ -46,7 +46,6 @@ export class Figure<A = unknown, S = unknown, T = unknown> extends Eventful {
       return false
     }
 
-    // 检查坐标
     return this._figure.checkEventOn(event, this.attrs, this.styles)
   }
 

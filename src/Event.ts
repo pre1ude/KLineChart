@@ -1,7 +1,6 @@
 import SyntheticEvent, { type EventHandler, type MouseTouchEvent, TOUCH_MIN_RADIUS } from './common/SyntheticEvent'
 import type Coordinate from './common/Coordinate'
 import { UpdateLevel } from './common/Updater'
-import type Crosshair from './common/Crosshair'
 import { requestAnimationFrame, cancelAnimationFrame } from './common/utils/compatible'
 import type Chart from './Chart'
 import type Pane from './pane/Pane'
@@ -14,6 +13,8 @@ import type XAxisWidget from './widget/XAxisWidget'
 import { isPointInBounding } from './common/Bounding'
 import type VisibleRange from './common/VisibleRange'
 import { setCursor } from './common/utils/cursor'
+
+let resetCursor: (() => void) | undefined = undefined
 
 interface EventTriggerWidgetInfo {
   pane?: Pane
@@ -163,14 +164,20 @@ export default class Event implements EventHandler {
         case WidgetNameConstants.MAIN: {
           const consumed = widget.dispatchEvent('mouseMoveEvent', event)
           const chartStore = this._chart.getChartStore()
-          let crosshair: Crosshair | undefined = { x: event.x, y: event.y, paneId: pane?.getId() }
-          if (consumed && chartStore.getTooltipStore().getActiveIcon()) {
-            crosshair = undefined
-            if (widget) {
-              setCursor(widget.getContainer(), 'pointer')
+          const tooltipStore = chartStore.getTooltipStore()
+          // 当 hover 在 icon 上时，保持 crosshair 不变，只改变鼠标样式
+          if (consumed) {
+            if (tooltipStore.getActiveIcon()) {
+              if (!resetCursor) {
+                resetCursor = setCursor(widget.getContainer(), 'pointer')
+              }
+            } else {
+              resetCursor?.()
+              resetCursor = undefined
             }
+          } else {
+            tooltipStore.setCrosshair({ x: event.x, y: event.y, paneId: pane?.getId() })
           }
-          this._chart.getChartStore().getTooltipStore().setCrosshair(crosshair)
           return consumed
         }
         case WidgetNameConstants.SEPARATOR:
