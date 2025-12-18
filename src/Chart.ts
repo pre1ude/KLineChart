@@ -26,7 +26,7 @@ import IndicatorPane from './pane/IndicatorPane'
 import XAxisPane from './pane/XAxisPane'
 import SeparatorPane from './pane/SeparatorPane'
 import { type PaneOptions, PanePosition, PANE_DEFAULT_HEIGHT, PaneIdConstants, type DrawPane } from './pane/types'
-import { type IndicatorFilter, type Indicator, type IndicatorCreate } from './component/Indicator'
+import { type IndicatorFilter, type Indicator, type IndicatorCreate, type IndicatorOverride } from './component/Indicator'
 import { type Overlay, type OverlayCreate, type OverlayFilter } from './component/Overlay'
 import { getIndicatorTemplate } from './extension/indicator/index'
 // import { getStyles as getExtensionStyles } from './extension/styles/index'
@@ -89,7 +89,7 @@ export interface Chart {
   loadMore: (cb: LoadMoreCallback) => void
   setLoadDataCallback: (cb: LoadDataCallback) => void
   createIndicator: (value: string | IndicatorCreate, isStack?: boolean, paneOptions?: PaneOptions, callback?: () => void) => string | undefined
-  overrideIndicator: (override: IndicatorCreate, paneId?: string, callback?: () => void) => void
+  overrideIndicator: (override: IndicatorOverride, paneId?: string, callback?: () => void) => void
   /**
    * @deprecated
    */
@@ -789,7 +789,7 @@ export default class ChartImp implements Chart {
     return realPaneId
   }
 
-  overrideIndicator(override: IndicatorCreate, paneId?: string, callback?: () => void): void {
+  overrideIndicator(override: IndicatorOverride, paneId?: string, callback?: () => void): void {
     this._chartStore.getIndicatorStore().override(override, paneId).then(
       ([onlyUpdateFlag, resizeFlag]) => {
         if (onlyUpdateFlag || resizeFlag) {

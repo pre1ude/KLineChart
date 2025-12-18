@@ -1,5 +1,5 @@
 import type ChartStore from './ChartStore'
-import { type IndicatorCreate, Indicator, type IndicatorFilter, IndicatorSeries } from '../component/Indicator'
+import { type IndicatorCreate, type IndicatorOverride, Indicator, type IndicatorFilter, IndicatorSeries } from '../component/Indicator'
 import { isValid, isString } from '../common/utils/typeChecks'
 import { getIndicatorTemplate } from '../extension/indicator/index'
 
@@ -22,18 +22,22 @@ export default class IndicatorStore {
   }
 
   addInstance(indicator: IndicatorCreate, paneId: string, isStack: boolean): Promise<boolean> {
-    const { name } = indicator
+    const { name, id } = indicator
     let paneInstances = this._instances.get(paneId)
-    if (isValid(paneInstances)) {
-      const instance = paneInstances.find((ins) => ins.name === name)
+    if (isValid(paneInstances) && isValid(id)) {
+      // Check for duplicate id, not name (allow multiple indicators with same name but different ids)
+      const instance = paneInstances.find((ins) => ins.id === id)
       if (isValid(instance)) {
-        return Promise.reject(new Error('Duplicate indicators.'))
+        return Promise.reject(new Error('Duplicate indicator id.'))
       }
     }
     if (!isValid(paneInstances)) {
       paneInstances = []
     }
-    const indicatorTemplate = getIndicatorTemplate(name)!
+    const indicatorTemplate = getIndicatorTemplate(name)
+    if (!indicatorTemplate) {
+      return Promise.reject(new Error(`Indicator template '${name}' not found.`))
+    }
     const indicatorInstance = new Indicator(indicatorTemplate, {
       id: indicator.id,
       paneId
@@ -162,33 +166,33 @@ export default class IndicatorStore {
     }
   }
 
-  async override(indicator: IndicatorCreate, paneId?: string): Promise<[boolean, boolean]> {
-    const { name } = indicator
-    let instances = new Map<string, Indicator[]>()
-    if (paneId) {
-      const paneInstances = this._instances.get(paneId)
-      if (isValid(paneInstances)) {
-        instances.set(paneId, paneInstances)
-      }
-    } else {
-      instances = this._instances
+  async override(indicator: IndicatorOverride, paneId?: string): Promise<[boolean, boolean]> {
+    const name = 'name' in indicator ? indicator.name : undefined
+    const id = 'id' in indicator ? indicator.id : undefined
+
+    // Use getIndicatorsByFilter to find matching indicators
+    const matchingIndicators = this.getIndicatorsByFilter({ paneId, name, id })
+
+    if (matchingIndicators.length === 0) {
+      const identifier = isString(id) ? `id '${id}'` : isString(name) ? `name '${name}'` : 'unknown'
+      throw new Error(`No indicator found with ${identifier}.`)
     }
+
     let onlyUpdateFlag = false
     const tasks: Array<Promise<boolean>> = []
     let sortFlag = false
-    instances.forEach((paneInstances) => {
-      const instance = paneInstances.find((ins) => ins.name === name)
-      if (isValid(instance)) {
-        instance.override(indicator)
-        const { draw, calc, sort } = instance.shouldUpdate()
-        sortFlag = sort
-        if (calc) {
-          tasks.push(instance.calcIndicator(this._chartStore.getDataList()))
-        } else if (draw) {
-          onlyUpdateFlag = true
-        }
+
+    matchingIndicators.forEach((instance) => {
+      instance.override(indicator)
+      const { draw, calc, sort } = instance.shouldUpdate()
+      sortFlag = sortFlag || sort
+      if (calc) {
+        tasks.push(instance.calcIndicator(this._chartStore.getDataList()))
+      } else if (draw) {
+        onlyUpdateFlag = true
       }
     })
+
     if (sortFlag) {
       this._sort()
     }

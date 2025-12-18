@@ -100,7 +100,7 @@ export interface IndicatorDrawParams<D = any> {
 export type IndicatorDrawCallback<D = any> = (params: IndicatorDrawParams<D>) => boolean
 export type IndicatorCalcCallback<D> = (dataList: KLineData[], indicator: Indicator<D>) => Promise<D[]> | D[]
 
-export interface IndicatorApi<D = any> {
+export interface IndicatorApi<D = unknown> {
   /**
    * Unique id
    */
@@ -129,7 +129,7 @@ export interface IndicatorApi<D = any> {
   /**
    * Calculation parameters
    */
-  calcParams: any[]
+  calcParams: unknown[]
 
   /**
    * Whether ohlc column is required
@@ -216,6 +216,10 @@ export type IndicatorTemplate<D = unknown> = PartialExcept<Omit<IndicatorApi<D>,
 export type IndicatorCreate<D = unknown> = PartialExcept<Omit<IndicatorApi<D>, 'result'>, 'name'> & {
   yAxisPosition?: 'left' | 'right'
 }
+
+export type IndicatorOverride<D = unknown> = Partial<Omit<IndicatorApi<D>, 'result' | 'id' | 'name'>> & {
+  yAxisPosition?: 'left' | 'right'
+} & ({ id: string, name?: string } | { name: string })
 
 export interface IndicatorFilter {
   id?: string
