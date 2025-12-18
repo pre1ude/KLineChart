@@ -5,11 +5,11 @@ import { type FigureCreate } from '../component/Figure'
 import { type RectAttrs } from '../extension/figure/rect'
 import View from './View'
 import { isValid } from '../common/utils/typeChecks'
-import { isPointInRect } from '../common/utils/hitTest'
 import type DualYPane from '../pane/DualYPane'
 import { createFigure } from '../extension/figure'
 import { PaneIdConstants } from '../pane/types'
 import { type EventName, type MouseTouchEvent } from '@/common/SyntheticEvent'
+import { isPointInBounding } from '@/common/Bounding'
 
 export interface CandleBarOptions {
   type: Exclude<CandleType, CandleType.Area>
@@ -35,17 +35,15 @@ export default class CandleBarView extends View {
     if (!isCandleType) {
       return false
     }
-    return this.candleBarHitTest(event.x, event.y, 'body')
+    return this.candleBarHitTest('body', { x: event.x, y: event.y })
   }
 
   /**
    * K线命中测试
-   * @param x 点击的x坐标
-   * @param y 点击的y坐标
    * @param mode 命中测试模式：'body' 只检测实体部分，'full' 检测整个K线范围(high-low)
    * @returns 是否命中K线
    */
-  candleBarHitTest(x: number, y: number, mode: CandleHitTestMode = 'body'): boolean {
+  candleBarHitTest(mode: CandleHitTestMode, point: { x: number, y: number }): boolean {
     const pane = this.getWidget().getPane()
     const chartStore = pane.getChart().getChartStore()
     const candleBarOptions = this.getCandleBarOptions(chartStore)
@@ -54,7 +52,7 @@ export default class CandleBarView extends View {
     }
 
     const timeScaleStore = chartStore.getTimeScaleStore()
-    const dataIndex = timeScaleStore.coordinateToDataIndex(x)
+    const dataIndex = timeScaleStore.coordinateToDataIndex(point.x)
     if (dataIndex == null) {
       return false
     }
@@ -92,8 +90,9 @@ export default class CandleBarView extends View {
     const height = Math.max(1, bottom - top)
     const left = barX - barSpace.halfGapBar
 
-    return isPointInRect(x, y, { x: left, y: top, width: barSpace.gapBar, height })
+    return isPointInBounding({ left, top, width: barSpace.gapBar, height }, point)
   }
+
   override drawImp(ctx: CanvasRenderingContext2D): void {
     const pane = this.getWidget().getPane()
     const chartStore = pane.getChart().getChartStore()
