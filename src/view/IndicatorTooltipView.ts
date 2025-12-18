@@ -88,7 +88,7 @@ export default class IndicatorTooltipView extends View {
           const [leftIcons, middleIcons, rightIcons] = this.classifyTooltipIcons(icons)
           prevRowHeight = this.drawStandardTooltipIcons(
             ctx, activeTooltipIcon, leftIcons,
-            coordinate, paneId, indicator.name,
+            coordinate, paneId, indicator.id, indicator.name,
             left, prevRowHeight, maxWidth
           )
 
@@ -111,7 +111,7 @@ export default class IndicatorTooltipView extends View {
 
           prevRowHeight = this.drawStandardTooltipIcons(
             ctx, activeTooltipIcon, middleIcons,
-            coordinate, paneId, indicator.name,
+            coordinate, paneId, indicator.id, indicator.name,
             left, prevRowHeight, maxWidth
           )
 
@@ -125,7 +125,7 @@ export default class IndicatorTooltipView extends View {
           // draw right icons
           prevRowHeight = this.drawStandardTooltipIcons(
             ctx, activeTooltipIcon, rightIcons,
-            coordinate, paneId, indicator.name,
+            coordinate, paneId, indicator.id, indicator.name,
             left, prevRowHeight, maxWidth
           )
           top = coordinate.y + prevRowHeight
@@ -142,6 +142,7 @@ export default class IndicatorTooltipView extends View {
     icons: TooltipIconStyle[],
     coordinate: Coordinate,
     paneId: string,
+    indicatorId: string,
     indicatorName: string,
     left: number,
     prevRowHeight: number,
@@ -174,7 +175,7 @@ export default class IndicatorTooltipView extends View {
           color, activeColor, size, fontFamily, icon: text,
           backgroundColor, activeBackgroundColor
         } = icon
-        const active = activeIcon?.paneId === paneId && activeIcon?.indicatorName === indicatorName && activeIcon?.iconId === icon.id
+        const active = activeIcon?.paneId === paneId && activeIcon?.indicatorId === indicatorId && activeIcon?.iconId === icon.id
         const iconFigure = createFigure('text')
           .setAttrs({ text, x: coordinate.x + marginLeft, y: coordinate.y + marginTop })
           .setStyles({
@@ -187,7 +188,7 @@ export default class IndicatorTooltipView extends View {
             family: fontFamily,
             backgroundColor: active ? activeBackgroundColor : backgroundColor
           })
-          .setData({ paneId, indicatorName, iconId: icon.id })
+          .setData({ paneId, indicatorId, indicatorName, iconId: icon.id })
 
         iconFigure.draw(ctx)
 

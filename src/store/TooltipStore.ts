@@ -7,6 +7,7 @@ import { clamp } from '@/common/utils/number'
 
 export interface TooltipIcon {
   paneId: string
+  indicatorId: string
   indicatorName: string
   iconId: string
 }

@@ -29,7 +29,7 @@ abstract class BaseTooltipLayer implements Layer {
   private _isSameIcon(a: TooltipIcon | null, b: TooltipIcon | null): boolean {
     if (a == null && b == null) return true
     if (a == null || b == null) return false
-    return a.paneId === b.paneId && a.indicatorName === b.indicatorName && a.iconId === b.iconId
+    return a.paneId === b.paneId && a.indicatorId === b.indicatorId && a.iconId === b.iconId
   }
 
   private _initEvent(widget: DrawWidget<DualYPane>): void {

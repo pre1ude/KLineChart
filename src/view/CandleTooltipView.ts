@@ -151,12 +151,12 @@ export default class CandleTooltipView extends IndicatorTooltipView {
 
       prevRowHeight = this.drawStandardTooltipIcons(
         ctx, activeTooltipIcon, leftIcons, coordinate,
-        paneId, '', left, prevRowHeight, maxWidth
+        paneId, '', '', left, prevRowHeight, maxWidth
       )
 
       prevRowHeight = this.drawStandardTooltipIcons(
         ctx, activeTooltipIcon, middleIcons, coordinate,
-        paneId, '', left, prevRowHeight, maxWidth
+        paneId, '', '', left, prevRowHeight, maxWidth
       )
 
       if (legends.length > 0) {
@@ -168,7 +168,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
 
       prevRowHeight = this.drawStandardTooltipIcons(
         ctx, activeTooltipIcon, rightIcons, coordinate,
-        paneId, '', left, prevRowHeight, maxWidth
+        paneId, '', '', left, prevRowHeight, maxWidth
       )
     }
     return coordinate.y + prevRowHeight
