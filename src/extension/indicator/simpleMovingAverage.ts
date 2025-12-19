@@ -7,7 +7,8 @@ interface Sma {
 }
 
 /**
- * sma
+ * TODO: 参考tradingview修正
+ * SMMA 平滑移动平均（Smoothed Moving Average）
  */
 const simpleMovingAverage: IndicatorTemplate<Sma> = {
   name: 'SMA',

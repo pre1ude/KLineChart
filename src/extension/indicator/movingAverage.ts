@@ -10,7 +10,7 @@ interface Ma {
 }
 
 /**
- * MA 移动平均
+ * MA 简单移动平均 (Simple Moving Average)
  */
 const movingAverage: IndicatorTemplate<Ma> = {
   name: 'MA',
