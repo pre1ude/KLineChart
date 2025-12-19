@@ -165,18 +165,17 @@ export default class Event implements EventHandler {
           const consumed = widget.dispatchEvent('mouseMoveEvent', event)
           const chartStore = this._chart.getChartStore()
           const tooltipStore = chartStore.getTooltipStore()
-          // 当 hover 在 icon 上时，保持 crosshair 不变，只改变鼠标样式
-          if (consumed) {
-            if (tooltipStore.getActiveIcon()) {
-              if (!resetCursor) {
-                resetCursor = setCursor(widget.getContainer(), 'pointer')
-              }
-            } else {
-              resetCursor?.()
-              resetCursor = undefined
+          // 始终更新十字星位置，保持位置参考
+          tooltipStore.setCrosshair({ x: event.x, y: event.y, paneId: pane?.getId() })
+          // 当 hover 在 overlay icon 上时，显示 pointer 光标
+          if (consumed && tooltipStore.getActiveIcon()) {
+            if (!resetCursor) {
+              resetCursor = setCursor(widget.getContainer(), 'pointer')
             }
           } else {
-            tooltipStore.setCrosshair({ x: event.x, y: event.y, paneId: pane?.getId() })
+            // 重置光标
+            resetCursor?.()
+            resetCursor = undefined
           }
           return consumed
         }
@@ -660,7 +659,7 @@ export default class Event implements EventHandler {
     }
     // 从原始坐标计算，避免重复减去偏移
     event.x = (event as any)._originalX - (bounding?.left ?? 0)
-    event.y = (event as any)._originalY - (bounding?.top ?? 0)
+    event.y = (event as unknown)._originalY - (bounding?.top ?? 0)
     return event
   }
 
