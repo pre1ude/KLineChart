@@ -419,7 +419,7 @@ export default class ChartStore {
             callback?.()
           }
         }
-        this._actionStore.execute(ActionType.OnDataReady)
+        this._actionStore.execute(ActionType.OnDataReady, undefined)
       } catch {}
     }
   }
