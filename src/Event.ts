@@ -659,7 +659,7 @@ export default class Event implements EventHandler {
     }
     // 从原始坐标计算，避免重复减去偏移
     event.x = (event as any)._originalX - (bounding?.left ?? 0)
-    event.y = (event as unknown)._originalY - (bounding?.top ?? 0)
+    event.y = (event as any)._originalY - (bounding?.top ?? 0)
     return event
   }
 

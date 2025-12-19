@@ -33,7 +33,6 @@ import {
   isBoolean
 } from './common/utils/typeChecks'
 import {
-  formatValue,
   formatPrecision,
   formatBigNumber,
   formatDate,
@@ -140,7 +139,6 @@ const utils = {
   isArray,
   isFunction,
   isBoolean,
-  formatValue,
   formatPrecision,
   formatBigNumber,
   formatDate,

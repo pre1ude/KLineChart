@@ -5,7 +5,7 @@ import Animation from '../common/Animation'
 import { isNumber, isArray, isValid } from '../common/utils/typeChecks'
 import { UpdateLevel } from '../common/Updater'
 import View from './View'
-import { lineTo } from '../extension/figure/line'
+import { lineTo, smoothNormalize } from '../extension/figure/line'
 import type DualYPane from '../pane/DualYPane'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 
@@ -77,7 +77,7 @@ export default class CandleAreaView extends View {
           ctx.beginPath()
           ctx.moveTo(currentPath[0].x, bounding.height)
           ctx.lineTo(currentPath[0].x, currentPath[0].y)
-          lineTo(ctx, currentPath, styles.smooth)
+          lineTo(ctx, currentPath, smoothNormalize(styles.smooth))
           ctx.lineTo(currentPath[currentPath.length - 1].x, bounding.height)
           ctx.closePath()
           ctx.fill()

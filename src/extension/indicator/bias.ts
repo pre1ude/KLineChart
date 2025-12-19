@@ -1,4 +1,3 @@
-
 import type KLineData from '../../common/KLineData'
 import { type Indicator, type IndicatorTemplate } from '../../component/Indicator'
 
@@ -21,22 +20,22 @@ const bias: IndicatorTemplate<Bias> = {
     { key: 'bias2', title: 'BIAS12: ', type: 'line' },
     { key: 'bias3', title: 'BIAS24: ', type: 'line' }
   ],
-  regenerateFigures: (params: any[]) => {
-    return params.map((p: number, i: number) => {
+  regenerateFigures: (params) => {
+    return params.map((p, i) => {
       return { key: `bias${i + 1}`, title: `BIAS${p}: `, type: 'line' }
     })
   },
   calc: (dataList: KLineData[], indicator: Indicator<Bias>) => {
     const { calcParams: params, figures } = indicator
     const closeSums: number[] = []
-    return dataList.map((kLineData: KLineData, i: number) => {
+    return dataList.map((kLineData, i) => {
       const bias: Bias = {}
       const close = kLineData.close
       params.forEach((p, index) => {
         closeSums[index] = (closeSums[index] ?? 0) + close
         if (i >= p - 1) {
           const mean = closeSums[index] / params[index]
-          bias[figures[index].key] = (close - mean) / mean * 100
+          bias[figures[index].key as keyof Bias] = (close - mean) / mean * 100
 
           closeSums[index] -= dataList[i - (p - 1)].close
         }

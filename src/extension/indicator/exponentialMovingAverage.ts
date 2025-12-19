@@ -1,4 +1,3 @@
-
 import type KLineData from '../../common/KLineData'
 import { type Indicator, type IndicatorTemplate, IndicatorSeries } from '../../component/Indicator'
 
@@ -23,8 +22,8 @@ const exponentialMovingAverage: IndicatorTemplate<Ema> = {
     { key: 'ema2', title: 'EMA12: ', type: 'line' },
     { key: 'ema3', title: 'EMA20: ', type: 'line' }
   ],
-  regenerateFigures: (params: any[]) => {
-    return params.map((p: number, i: number) => {
+  regenerateFigures: (params) => {
+    return params.map((p, i) => {
       return { key: `ema${i + 1}`, title: `EMA${p}: `, type: 'line' }
     })
   },
@@ -32,18 +31,18 @@ const exponentialMovingAverage: IndicatorTemplate<Ema> = {
     const { calcParams: params, figures } = indicator
     let closeSum = 0
     const emaValues: number[] = []
-    return dataList.map((kLineData: KLineData, i: number) => {
-      const ema = {}
+    return dataList.map((kLineData, i) => {
+      const ema: Ema = {}
       const close = kLineData.close
       closeSum += close
-      params.forEach((p: number, index: number) => {
+      params.forEach((p, index) => {
         if (i >= p - 1) {
           if (i > p - 1) {
             emaValues[index] = (2 * close + (p - 1) * emaValues[index]) / (p + 1)
           } else {
             emaValues[index] = closeSum / p
           }
-          ema[figures[index].key] = emaValues[index]
+          ema[figures[index].key as keyof Ema] = emaValues[index]
         }
       })
       return ema

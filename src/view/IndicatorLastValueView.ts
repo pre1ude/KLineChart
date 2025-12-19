@@ -31,7 +31,7 @@ export default class IndicatorLastValueView extends View {
           const mergedDefaultStyles = getMergedDefaultStyles(indicator, defaultStyles)
 
           indicator.figures.forEach((figure, figureIndex) => {
-            const value = indicatorData[figure.key]
+            const value = (indicatorData as Record<string, unknown>)[figure.key]
             if (isNumber(value)) {
               const figureBaseStyles = getFigureBaseStyles(figure.type ?? 'line', figureIndex, mergedDefaultStyles)
               const customStyles = figure.styles?.(dataIndex, indicator, dataList, mergedDefaultStyles)

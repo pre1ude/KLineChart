@@ -18,8 +18,8 @@ function isSupportedDevicePixelContentBox(): Promise<boolean> {
 
 export default class Canvas {
   private readonly _element: HTMLCanvasElement
-  private _resizeObserver: ResizeObserver
-  private _mediaQueryList: MediaQueryList
+  private _resizeObserver: ResizeObserver | undefined
+  private _mediaQueryList: MediaQueryList | undefined
 
   private readonly _ctx: CanvasRenderingContext2D
 

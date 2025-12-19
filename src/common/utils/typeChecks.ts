@@ -24,7 +24,7 @@ export function clone<T>(target: T): T {
     return target
   }
 
-  let copy
+  let copy: any
   if (isArray(target)) {
     copy = []
   } else {
@@ -40,7 +40,7 @@ export function clone<T>(target: T): T {
       }
     }
   }
-  return copy
+  return copy as T
 }
 
 export function isArray<T = any>(value: any): value is T[] {

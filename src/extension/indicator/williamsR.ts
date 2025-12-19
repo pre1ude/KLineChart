@@ -1,4 +1,3 @@
-
 import type KLineData from '../../common/KLineData'
 import { type Indicator, type IndicatorTemplate } from '../../component/Indicator'
 import { getMaxMin } from '../../common/utils/number'
@@ -22,8 +21,8 @@ const williamsR: IndicatorTemplate<Wr> = {
     { key: 'wr2', title: 'WR2: ', type: 'line' },
     { key: 'wr3', title: 'WR3: ', type: 'line' }
   ],
-  regenerateFigures: (params: any[]) => {
-    return params.map((_, i: number) => {
+  regenerateFigures: (params) => {
+    return params.map((_, i) => {
       return { key: `wr${i + 1}`, title: `WR${i + 1}: `, type: 'line' }
     })
   },
@@ -39,7 +38,7 @@ const williamsR: IndicatorTemplate<Wr> = {
           const hn = hln[0]
           const ln = hln[1]
           const hnSubLn = hn - ln
-          wr[figures[index].key] = hnSubLn === 0 ? 0 : (close - hn) / hnSubLn * 100
+          wr[figures[index].key as keyof Wr] = hnSubLn === 0 ? 0 : (close - hn) / hnSubLn * 100
         }
       })
       return wr

@@ -1,4 +1,3 @@
-
 import type KLineData from '../../common/KLineData'
 import { type Indicator, type IndicatorTemplate, IndicatorSeries } from '../../component/Indicator'
 
@@ -25,21 +24,21 @@ const movingAverage: IndicatorTemplate<Ma> = {
     { key: 'ma30', title: 'MA30: ', type: 'line' },
     { key: 'ma60', title: 'MA60: ', type: 'line' }
   ],
-  regenerateFigures: (params: any[]) => {
-    return params.map((p: number, i: number) => {
+  regenerateFigures: (params) => {
+    return params.map((p, i) => {
       return { key: `ma${i + 1}`, title: `MA${p}: `, type: 'line' }
     })
   },
   calc: (dataList: KLineData[], indicator: Indicator<Ma>) => {
     const { calcParams: params, figures } = indicator
     const closeSums: number[] = []
-    return dataList.map((kLineData: KLineData, i: number) => {
-      const ma = {}
+    return dataList.map((kLineData, i) => {
+      const ma: Ma = {}
       const close = kLineData.close
-      params.forEach((p: number, index: number) => {
+      params.forEach((p, index) => {
         closeSums[index] = (closeSums[index] ?? 0) + close
         if (i >= p - 1) {
-          ma[figures[index].key] = closeSums[index] / p
+          ma[figures[index].key as keyof Ma] = closeSums[index] / p
           closeSums[index] -= dataList[i - (p - 1)].close
         }
       })

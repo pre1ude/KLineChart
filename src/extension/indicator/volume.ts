@@ -1,4 +1,3 @@
-
 import type KLineData from '../../common/KLineData'
 import { type Indicator, type IndicatorTemplate, IndicatorSeries, type IndicatorFigure } from '../../component/Indicator'
 
@@ -44,8 +43,8 @@ const volume: IndicatorTemplate<Vol> = {
     { key: 'ma3', title: 'MA20: ', type: 'line' },
     getVolumeFigure()
   ],
-  regenerateFigures: (params: any[]) => {
-    const figures: Array<IndicatorFigure<Vol>> = params.map((p: number, i: number) => {
+  regenerateFigures: (params) => {
+    const figures: Array<IndicatorFigure<Vol>> = params.map((p, i) => {
       return { key: `ma${i + 1}`, title: `MA${p}: `, type: 'line' }
     })
     figures.push(getVolumeFigure())
@@ -54,13 +53,13 @@ const volume: IndicatorTemplate<Vol> = {
   calc: (dataList: KLineData[], indicator: Indicator<Vol>) => {
     const { calcParams: params, figures } = indicator
     const volSums: number[] = []
-    return dataList.map((kLineData: KLineData, i: number) => {
+    return dataList.map((kLineData, i) => {
       const volume = kLineData.volume ?? 0
       const vol: Vol = { volume }
       params.forEach((p, index) => {
         volSums[index] = (volSums[index] ?? 0) + volume
         if (i >= p - 1) {
-          vol[figures[index].key] = volSums[index] / p
+          vol[figures[index].key as keyof Vol] = volSums[index] / p
           volSums[index] -= (dataList[i - (p - 1)].volume ?? 0)
         }
       })

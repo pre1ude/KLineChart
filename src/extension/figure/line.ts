@@ -196,12 +196,13 @@ function drawSingleLine(ctx: CanvasRenderingContext2D, points: Coordinate[], smo
   ctx.closePath()
 }
 
+export const smoothNormalize = (smooth: number | boolean) => isNumber(smooth)
+  ? (smooth > 0 && smooth < 1 ? smooth : 0)
+  : (smooth ? DEFAULT_SMOOTH : 0)
+
 export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs[], styles: Partial<SmoothLineStyle>): void {
   const { style = LineType.Solid, smooth = false, size = 1, color = 'currentColor', dashedValue = [2, 2] } = styles
   const correction = size % 2 === 1 ? 0.5 : 0
-  const smoothParam = isNumber(smooth)
-    ? (smooth > 0 && smooth < 1 ? smooth : 0)
-    : (smooth ? DEFAULT_SMOOTH : 0)
 
   ctx.lineWidth = size
   ctx.strokeStyle = color
@@ -212,7 +213,7 @@ export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs[], styl
   }
 
   for (let i = 0; i < attrs.length; i++) {
-    drawSingleLine(ctx, attrs[i].coordinates, smoothParam, correction)
+    drawSingleLine(ctx, attrs[i].coordinates, smoothNormalize(smooth), correction)
   }
 }
 
