@@ -30,7 +30,6 @@ export default class IndicatorTooltipView extends View {
   // View 本身不响应事件，让事件传递到子元素（Figure）
   // 当有 hover icon 时，View 响应 mouseMoveEvent 用于检测鼠标移出 icon
   override checkEventOn(_event: MouseTouchEvent, name: EventName): boolean {
-    console.log('[IndicatorTooltipView] checkEventOn', name, 'children:', this.getChildren().length)
     return name === 'mouseMoveEvent' && this._hasHoverIcon
   }
 
