@@ -291,12 +291,21 @@ export default class IndicatorView extends View {
 }
 
 function isSameStyle(a: SmoothLineStyle, b: SmoothLineStyle): boolean {
-  return a === b || (
-    a.style === b.style &&
-    a.color === b.color &&
-    a.size === b.size &&
-    a.smooth === b.smooth &&
-    a.dashedValue[0] === b.dashedValue[0] &&
-    a.dashedValue[1] === b.dashedValue[1]
-  )
+  if (a === b) return true
+
+  if (
+    a.style !== b.style ||
+    a.color !== b.color ||
+    a.size !== b.size ||
+    a.smooth !== b.smooth
+  ) {
+    return false
+  }
+
+  // 安全比较 dashedValue 数组
+  const da = a.dashedValue
+  const db = b.dashedValue
+  if (da === db) return true
+  if (da?.length !== db?.length) return false
+  return da.every((v, i) => v === db[i])
 }
