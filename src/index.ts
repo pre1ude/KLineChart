@@ -246,7 +246,8 @@ export type {
   TooltipIconStyle,
   GradientColor,
   CandleTooltipCustomCallback,
-  CandleTooltipCustomCallbackData
+  CandleTooltipCustomCallbackData,
+  IndicatorFigureStyleConfig
 } from './common/Styles'
 
 // Layout Types

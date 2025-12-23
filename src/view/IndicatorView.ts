@@ -111,11 +111,17 @@ export default class IndicatorView extends View {
       mergedDefaultStyles: IndicatorStyle,
       yAxis: YAxisImp
     ): void => {
+      const figureStaticStyles = indicator.styles?.figures?.[figure.key] ?? {}
+      if (figureStaticStyles?.visible === false) {
+        return
+      }
+
       const type = figure.type ?? 'line'
       const baseStyles = getFigureBaseStyles(type, figureIndex, mergedDefaultStyles)
+
       const createFigureStyles = (dataIndex: number): IndicatorFigureStyle => {
-        const customStyles = figure.styles?.(dataIndex, indicator, dataList, mergedDefaultStyles)
-        return customStyles ? { ...baseStyles, ...customStyles } : baseStyles
+        const figureDynamicStyles = figure.styles?.(dataIndex, indicator, dataList, mergedDefaultStyles)
+        return { ...baseStyles, ...figureStaticStyles, ...figureDynamicStyles }
       }
 
       if (type === 'line') {

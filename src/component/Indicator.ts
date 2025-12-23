@@ -55,6 +55,14 @@ export interface IndicatorFigure<D = any> {
   type?: string
   baseValue?: number
 
+  /**
+   * 控制 figure 的可见性
+   * - boolean: 静态控制，true 显示，false 隐藏
+   * - function: 动态控制，根据每个数据点返回是否显示
+   * - undefined: 默认显示（等同于 true）
+   */
+  visible?: boolean | ((dataIndex: number, indicator: Indicator<D>, kLineDataList: KLineData[]) => boolean)
+
   attrs?: IndicatorFigureAttrsCallback<D>
   styles?: IndicatorFigureStylesCallback<D>
 
@@ -332,7 +340,16 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
     }
 
     if (isValid(styles)) {
-      merge(this.styles, styles)
+      // 对于 figures，直接覆盖而不是合并，方便 reset
+      if (styles.figures !== undefined) {
+        const { figures: newFigures, ...otherStyles } = styles
+        merge(this.styles, otherStyles)
+        if (this.styles) {
+          this.styles.figures = newFigures
+        }
+      } else {
+        merge(this.styles, styles)
+      }
     }
 
     merge(this, others)
