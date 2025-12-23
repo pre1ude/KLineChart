@@ -263,7 +263,14 @@ export default class IndicatorTooltipView extends View {
     let calcParamsText = ''
     const calcParams = indicator.calcParams
     if (calcParams.length > 0 && tooltipStyles.showParams) {
-      calcParamsText = `(${calcParams.join(',')})`
+      const visibleParams = calcParams.filter((_, index) => {
+        const name = indicator.name
+        const figureStaticStyles = indicator.styles?.figures?.[`${name.toLowerCase()}${index+1}`]
+        return figureStaticStyles?.visible !== false
+      })
+      if (visibleParams.length > 0) {
+        calcParamsText = `(${visibleParams.join(',')})`
+      }
     }
 
     const tooltipData: IndicatorTooltipData = { name, calcParamsText, values: [], icons: tooltipStyles.icons }
@@ -277,9 +284,14 @@ export default class IndicatorTooltipView extends View {
 
       indicator.figures.forEach((figure, figureIndex) => {
         if (isString(figure.title)) {
+          const figureStaticStyles = indicator.styles?.figures?.[figure.key] ?? {}
+          if (figureStaticStyles.visible === false) {
+            return
+          }
+
           const figureBaseStyles = getFigureBaseStyles(figure.type ?? 'line', figureIndex, mergedDefaultStyles)
-          const customStyles = figure.styles?.(dataIndex, indicator, dataList, mergedDefaultStyles)
-          const figureStyles = customStyles ? { ...figureBaseStyles, ...customStyles } : figureBaseStyles
+          const figureDynamicStyles = figure.styles?.(dataIndex, indicator, dataList, mergedDefaultStyles)
+          const figureStyles = { ...figureBaseStyles, ...figureStaticStyles, ...figureDynamicStyles }
           const color = figureStyles.color ?? mergedDefaultStyles.tooltip.text.color
 
           let value = (indicatorData as Record<string, unknown>)[figure.key] ?? tooltipStyles.defaultValue
