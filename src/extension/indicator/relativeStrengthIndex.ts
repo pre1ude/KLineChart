@@ -41,6 +41,13 @@ const relativeStrengthIndex: IndicatorTemplate<Rsi> = {
 
       params.forEach((period, index) => {
         const figureKey = figures[index].key as keyof Rsi
+
+        // 对于无效的周期参数（<= 0），设置为 NaN
+        if (period <= 0) {
+          rsi[figureKey] = NaN
+          return
+        }
+
         let avgGain: number = NaN
         let avgLoss: number = NaN
         let rsiValue: number = NaN

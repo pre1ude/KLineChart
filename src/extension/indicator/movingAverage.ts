@@ -36,6 +36,12 @@ const movingAverage: IndicatorTemplate<Ma> = {
       const ma: Ma = {}
       const close = kLineData.close
       params.forEach((p, index) => {
+        // 对于无效的周期参数（<= 0），设置为 NaN
+        if (p <= 0) {
+          ma[figures[index].key as keyof Ma] = NaN
+          return
+        }
+
         closeSums[index] = (closeSums[index] ?? 0) + close
         if (i >= p - 1) {
           ma[figures[index].key as keyof Ma] = closeSums[index] / p

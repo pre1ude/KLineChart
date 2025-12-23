@@ -32,6 +32,12 @@ const bias: IndicatorTemplate<Bias> = {
       const bias: Bias = {}
       const close = kLineData.close
       params.forEach((p, index) => {
+        // 对于无效的周期参数（<= 0），设置为 NaN
+        if (p <= 0) {
+          bias[figures[index].key as keyof Bias] = NaN
+          return
+        }
+
         closeSums[index] = (closeSums[index] ?? 0) + close
         if (i >= p - 1) {
           const mean = closeSums[index] / params[index]

@@ -32,6 +32,12 @@ const williamsR: IndicatorTemplate<Wr> = {
       const wr: Wr = {}
       const close = kLineData.close
       params.forEach((param, index) => {
+        // 对于无效的周期参数（<= 0），设置为 NaN
+        if (param <= 0) {
+          wr[figures[index].key as keyof Wr] = NaN
+          return
+        }
+
         const p = param - 1
         if (i >= p) {
           const hln = getMaxMin<KLineData>(dataList.slice(i - p, i + 1), 'high', 'low')

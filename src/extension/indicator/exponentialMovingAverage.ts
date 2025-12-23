@@ -36,6 +36,12 @@ const exponentialMovingAverage: IndicatorTemplate<Ema> = {
       const close = kLineData.close
       closeSum += close
       params.forEach((p, index) => {
+        // 对于无效的周期参数（<= 0），设置为 NaN
+        if (p <= 0) {
+          ema[figures[index].key as keyof Ema] = NaN
+          return
+        }
+
         if (i >= p - 1) {
           if (i > p - 1) {
             emaValues[index] = (2 * close + (p - 1) * emaValues[index]) / (p + 1)

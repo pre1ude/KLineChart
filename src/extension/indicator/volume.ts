@@ -57,6 +57,12 @@ const volume: IndicatorTemplate<Vol> = {
       const volume = kLineData.volume ?? 0
       const vol: Vol = { volume }
       params.forEach((p, index) => {
+        // 对于无效的周期参数（<= 0），设置为 NaN
+        if (p <= 0) {
+          vol[figures[index].key as keyof Vol] = NaN
+          return
+        }
+
         volSums[index] = (volSums[index] ?? 0) + volume
         if (i >= p - 1) {
           vol[figures[index].key as keyof Vol] = volSums[index] / p
