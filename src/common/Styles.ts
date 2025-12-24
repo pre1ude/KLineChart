@@ -458,7 +458,7 @@ function getDefaultGridStyle(): GridStyle {
       show: true,
       size: 1,
       color: '#EDEDED',
-      style: LineType.Dashed,
+      style: LineType.Solid,
       dashedValue: [2, 2]
     }
   }
