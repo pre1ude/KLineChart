@@ -813,7 +813,7 @@ function getDefaultOverlayStyle(): OverlayStyle {
       size: 12,
       // family: 'Helvetica Neue',
       family: 'Trebuchet MS, sans-serif',  // TradingView 字体
-      weight: 'bold',
+      weight: 'normal',
       borderStyle: LineType.Solid,
       borderDashedValue: [2, 2],
       borderSize: 0,
@@ -831,7 +831,7 @@ function getDefaultOverlayStyle(): OverlayStyle {
       size: 12,
       // family: 'Helvetica Neue',
       family: 'Trebuchet MS, sans-serif',  // TradingView 字体
-      weight: 'bold',
+      weight: 'normal',
       borderStyle: LineType.Solid,
       borderDashedValue: [2, 2],
       borderSize: 0,
