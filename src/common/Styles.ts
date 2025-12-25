@@ -298,50 +298,26 @@ export interface IndicatorStyle {
    * 基于 figure key 的样式配置
    * 用于覆盖特定 figure 的样式和可见性
    */
-  figures?: Record<string, IndicatorFigureStyleConfig>
+  figures?: Record<string, FigureStyleConfig>
   [key: string]: any
 }
 
 /**
  * Figure 级别的样式配置
- * 用于通过 overrideIndicator 方便地配置单个 figure
+ * 用于通过 key 配置单个 figure 的样式和可见性
+ * 适用于 Indicator 和 Overlay
  */
-export interface IndicatorFigureStyleConfig {
+export type FigureStyleConfig = (
+  | Partial<OverlayPointStyle>
+  | Partial<SmoothLineStyle>
+  | Partial<RectStyle>
+  | Partial<PolygonStyle>
+  | Partial<LineStyle>
+  | Partial<TextStyle>
+  | Partial<TextBoxStyle>
+) & {
   /** 控制 figure 的可见性 */
   visible?: boolean
-  /** 颜色（适用于 line, bar, circle） */
-  color?: string
-  /** 线宽/大小 */
-  size?: number
-  /** 线型或填充类型 - 使用 any 以兼容所有 figure 类型 */
-  style?: any
-  /** 平滑（适用于 line） */
-  smooth?: boolean | number
-  /** 虚线值（适用于 line） */
-  dashedValue?: number[]
-  /** 边框颜色（适用于 bar, circle） */
-  borderColor?: string
-  /** 边框大小（适用于 bar, circle） */
-  borderSize?: number
-  /** 边框样式（适用于 bar, circle） */
-  borderStyle?: LineType
-  /** 边框虚线值（适用于 bar, circle） */
-  borderDashedValue?: number[]
-  /** 边框圆角（适用于 rect） */
-  borderRadius?: number
-  /** 背景颜色（适用于 text） */
-  backgroundColor?: string | CanvasGradient
-  /** 字体（适用于 text） */
-  family?: string
-  /** 字重（适用于 text） */
-  weight?: number | string
-  /** 内边距（适用于 text） */
-  paddingLeft?: number
-  paddingTop?: number
-  paddingRight?: number
-  paddingBottom?: number
-  /** 其他样式属性 */
-  [key: string]: any
 }
 
 export type AxisLineStyle = Omit<StateLineStyle, 'style' | 'dashedValue'>
@@ -417,6 +393,11 @@ export interface OverlayStyle {
   arc: LineStyle
   text: TextStyle
   textBox: TextBoxStyle
+  /**
+   * 基于 figure key 的样式配置
+   * 用于覆盖特定 figure 的样式和可见性
+   */
+  figures?: Record<string, FigureStyleConfig>
   [key: string]: any
 }
 
