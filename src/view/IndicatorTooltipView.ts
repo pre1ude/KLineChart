@@ -292,7 +292,9 @@ export default class IndicatorTooltipView extends View {
           const figureBaseStyles = getFigureBaseStyles(figure.type ?? 'line', figureIndex, mergedDefaultStyles)
           const figureDynamicStyles = figure.styles?.(dataIndex, indicator, dataList, mergedDefaultStyles)
           const figureStyles = { ...figureBaseStyles, ...figureStaticStyles, ...figureDynamicStyles }
-          const color = figureStyles.color ?? mergedDefaultStyles.tooltip.text.color
+          // tooltip 颜色只支持字符串，CanvasGradient 回退到默认颜色
+          const figureColor = figureStyles.color
+          const color = (typeof figureColor === 'string' ? figureColor : null) ?? mergedDefaultStyles.tooltip.text.color
 
           let value = (indicatorData as Record<string, unknown>)[figure.key] ?? tooltipStyles.defaultValue
           if (isNumber(value)) {

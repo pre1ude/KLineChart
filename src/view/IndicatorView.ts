@@ -121,7 +121,9 @@ export default class IndicatorView extends View {
 
       const createFigureStyles = (dataIndex: number): IndicatorFigureStyle => {
         const figureDynamicStyles = figure.styles?.(dataIndex, indicator, dataList, mergedDefaultStyles)
-        return { ...baseStyles, ...figureStaticStyles, ...figureDynamicStyles }
+        // figureStaticStyles 来自 FigureStyleConfig 联合类型，需要断言
+        const result = { ...baseStyles, ...figureStaticStyles, ...figureDynamicStyles } as unknown as IndicatorFigureStyle
+        return result
       }
 
       if (type === 'line') {
