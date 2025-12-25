@@ -318,8 +318,21 @@ export default class OverlayView extends View {
   protected drawFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, figures: OverlayFigure[], defaultStyles: OverlayStyle, bindEvent: boolean = true): void {
     for (let i = 0; i < figures.length; i++) {
       const figure = figures[i]
-      const { type, styles, attrs, ignoreEvent } = figure
-      const finalStyles = { ...defaultStyles[type], ...overlay.styles?.[type], ...styles }
+      const { type, styles, attrs, ignoreEvent, key } = figure
+
+      // 检查 figure 是否被隐藏
+      const figureConfig = key ? overlay.styles?.figures?.[key] : undefined
+      if (figureConfig?.visible === false) {
+        continue
+      }
+
+      // 样式合并：defaultStyles[type] → overlay.styles[type] → figures[key] → figure.styles
+      const finalStyles = {
+        ...defaultStyles[type],
+        ...overlay.styles?.[type],
+        ...figureConfig,
+        ...styles
+      }
       const attrsArray = Array.isArray(attrs) ? attrs : [attrs]
 
       for (let j = 0; j < attrsArray.length; j++) {
