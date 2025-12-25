@@ -11,12 +11,12 @@ const priceChannelLine: OverlayTemplate = {
     return true
   },
   createFigures: ({ coordinates, bounding }) => {
-    return [
-      {
-        type: 'line',
-        attrs: getParallelLines(coordinates, bounding, 1)
-      }
-    ]
+    const attrArray = getParallelLines(coordinates, bounding, 1)
+    return attrArray.map((attr, i) => ({
+      key: `line${i}`,
+      type: 'line',
+      attrs: attr
+    }))
   }
 }
 

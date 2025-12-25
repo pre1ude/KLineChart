@@ -17,10 +17,12 @@ const eightWaves: OverlayTemplate = {
     }))
     return [
       {
+        key: 'line',
         type: 'line',
         attrs: { coordinates }
       },
       {
+        key: 'label',
         type: 'text',
         ignoreEvent: false,
         attrs: texts

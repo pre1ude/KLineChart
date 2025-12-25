@@ -15,10 +15,12 @@ const priceLine: OverlayTemplate = {
     const currentPrecision = (yAxis?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax
     return [
       {
+        key: 'line',
         type: 'line',
         attrs: { coordinates: [coordinates[0], { x: bounding.width, y: coordinates[0].y }] }
       },
       {
+        key: 'label',
         type: 'text',
         ignoreEvent: true,
         attrs: {

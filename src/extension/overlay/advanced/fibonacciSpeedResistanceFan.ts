@@ -1,4 +1,4 @@
-import { type OverlayTemplate } from '../../../component/Overlay'
+import { type OverlayTemplate, type OverlayFigure } from '../../../component/Overlay'
 import { type LineAttrs } from '../../figure/line'
 import { type TextAttrs } from '../../figure/text'
 import { getRayLine } from './utils'
@@ -13,59 +13,80 @@ const fibonacciSpeedResistanceFan: OverlayTemplate = {
     return true
   },
   createFigures: ({ coordinates, bounding }) => {
-    const lines1: LineAttrs[] = []
-    let lines2: LineAttrs[] = []
-    const texts: TextAttrs[] = []
-    if (coordinates.length > 1) {
-      const xOffset = coordinates[1].x > coordinates[0].x ? -38 : 4
-      const yOffset = coordinates[1].y > coordinates[0].y ? -2 : 20
-      const xDistance = coordinates[1].x - coordinates[0].x
-      const yDistance = coordinates[1].y - coordinates[0].y
-      const percents = [1, 0.75, 0.618, 0.5, 0.382, 0.25, 0]
-      percents.forEach(percent => {
-        const x = coordinates[1].x - xDistance * percent
-        const y = coordinates[1].y - yDistance * percent
-        lines1.push({
-          coordinates: [
-            { x, y: coordinates[0].y },
-            { x, y: coordinates[1].y }
-          ]
-        })
-        lines1.push({
-          coordinates: [
-            { x: coordinates[0].x, y },
-            { x: coordinates[1].x, y }
-          ]
-        })
-        lines2 = lines2.concat(getRayLine([coordinates[0], { x, y: coordinates[1].y }], bounding))
-        lines2 = lines2.concat(getRayLine([coordinates[0], { x: coordinates[1].x, y }], bounding))
-        texts.unshift({
-          x: coordinates[0].x + xOffset,
-          y: y + 10,
-          text: `${percent.toFixed(3)}`
-        })
-        texts.unshift({
-          x: x - 18,
-          y: coordinates[0].y + yOffset,
-          text: `${percent.toFixed(3)}`
-        })
-      })
-    }
-    return [
-      {
-        type: 'line',
-        attrs: lines1
-      },
-      {
-        type: 'line',
-        attrs: lines2
-      },
-      {
-        type: 'text',
-        ignoreEvent: false,
-        attrs: texts
+    if (coordinates.length < 2) return []
+
+    const figures: OverlayFigure[] = []
+    const xDistance = coordinates[1].x - coordinates[0].x
+    const yDistance = coordinates[1].y - coordinates[0].y
+
+    // 判断拖拽方向
+    const isDownward = yDistance > 0  // 从上往下拉
+    const isRightward = xDistance > 0 // 从左往右拉
+
+    // 文字偏移：根据方向调整
+    const xOffset = isRightward ? -38 : 4
+    const yTextOffset = isDownward ? -2 : 2  // 上方或下方
+    const yTextBaseline = isDownward ? 'bottom' : 'top'
+
+    const percents = [1, 0.75, 0.618, 0.5, 0.382, 0.25, 0]
+
+    percents.forEach(percent => {
+      const key = `fib_${percent}`
+      const x = coordinates[1].x - xDistance * percent
+      const y = coordinates[1].y - yDistance * percent
+
+      // 垂直网格线
+      const vLineAttrs: LineAttrs = {
+        coordinates: [
+          { x, y: coordinates[0].y },
+          { x, y: coordinates[1].y }
+        ]
       }
-    ]
+      figures.push({ key: `${key}_vline`, type: 'line', attrs: vLineAttrs })
+
+      // 水平网格线
+      const hLineAttrs: LineAttrs = {
+        coordinates: [
+          { x: coordinates[0].x, y },
+          { x: coordinates[1].x, y }
+        ]
+      }
+      figures.push({ key: `${key}_hline`, type: 'line', attrs: hLineAttrs })
+
+      // 射线（从原点到底边）
+      const ray1 = getRayLine([coordinates[0], { x, y: coordinates[1].y }], bounding)
+      const ray1Array = Array.isArray(ray1) ? ray1 : [ray1]
+      ray1Array.forEach((attrs, i) => {
+        figures.push({ key: `${key}_ray1_${i}`, type: 'line', attrs })
+      })
+
+      // 射线（从原点到右边）
+      const ray2 = getRayLine([coordinates[0], { x: coordinates[1].x, y }], bounding)
+      const ray2Array = Array.isArray(ray2) ? ray2 : [ray2]
+      ray2Array.forEach((attrs, i) => {
+        figures.push({ key: `${key}_ray2_${i}`, type: 'line', attrs })
+      })
+
+      // Y轴文字标签（紧贴水平线）
+      const textYAttrs: TextAttrs = {
+        x: coordinates[0].x + xOffset,
+        y: y + yTextOffset,
+        text: `${percent.toFixed(3)}`,
+        baseline: yTextBaseline
+      }
+      figures.push({ key: `${key}_text_y`, type: 'text', ignoreEvent: true, attrs: textYAttrs })
+
+      // X轴文字标签
+      const textXAttrs: TextAttrs = {
+        x: x - 18,
+        y: coordinates[0].y + (isDownward ? -2 : 2),
+        text: `${percent.toFixed(3)}`,
+        baseline: isDownward ? 'bottom' : 'top'
+      }
+      figures.push({ key: `${key}_text_x`, type: 'text', ignoreEvent: true, attrs: textXAttrs })
+    })
+
+    return figures
   }
 }
 

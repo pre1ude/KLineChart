@@ -46,6 +46,7 @@ const rayLine: OverlayTemplate = {
   createFigures: ({ coordinates, bounding }) => {
     return [
       {
+        key: 'line',
         type: 'line',
         attrs: getRayLine(coordinates, bounding)
       }

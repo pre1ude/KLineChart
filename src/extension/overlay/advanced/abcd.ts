@@ -28,6 +28,7 @@ const abcd: OverlayTemplate = {
     }
     return [
       {
+        key: 'line',
         type: 'line',
         attrs: { coordinates }
       },
@@ -37,6 +38,7 @@ const abcd: OverlayTemplate = {
         styles: { style: 'dashed' }
       },
       {
+        key: 'label',
         type: 'text',
         ignoreEvent: false,
         attrs: texts

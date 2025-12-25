@@ -86,10 +86,12 @@ const fibonacciSpiral: OverlayTemplate = {
       }
       return [
         {
+          key: 'spiralLine',
           type: 'arc',
           attrs: arcs
         },
         {
+          key: 'trendLine',
           type: 'line',
           attrs: getRayLine(coordinates, bounding)
         }

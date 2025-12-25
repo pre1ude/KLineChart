@@ -12,6 +12,7 @@ const verticalStraightLine: OverlayTemplate = {
   createFigures: ({ coordinates, bounding }) => {
     return [
       {
+        key: 'line',
         type: 'line',
         attrs: {
           coordinates: [

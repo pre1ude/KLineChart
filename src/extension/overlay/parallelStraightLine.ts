@@ -57,12 +57,12 @@ const parallelStraightLine: OverlayTemplate = {
     return true
   },
   createFigures: ({ coordinates, bounding }) => {
-    return [
-      {
-        type: 'line',
-        attrs: getParallelLines(coordinates, bounding)
-      }
-    ]
+    const attrArray = getParallelLines(coordinates, bounding)
+    return attrArray.map((attr, i) => ({
+      key: `line${i}`,
+      type: 'line',
+      attrs: attr
+    }))
   }
 }
 

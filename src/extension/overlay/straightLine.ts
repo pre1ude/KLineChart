@@ -32,6 +32,7 @@ const straightLine: OverlayTemplate = {
       }
       return [
         {
+          key: 'line',
           type: 'line',
           attrs: {
             coordinates: [

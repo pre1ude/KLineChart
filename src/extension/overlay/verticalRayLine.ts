@@ -17,6 +17,7 @@ const verticalRayLine: OverlayTemplate = {
       }
       return [
         {
+          key: 'line',
           type: 'line',
           attrs: { coordinates: [coordinates[0], coordinate] }
         }

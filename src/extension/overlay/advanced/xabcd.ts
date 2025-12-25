@@ -33,6 +33,7 @@ const xabcd: OverlayTemplate = {
     }
     return [
       {
+        key: 'line',
         type: 'line',
         attrs: { coordinates }
       },
@@ -42,11 +43,13 @@ const xabcd: OverlayTemplate = {
         styles: { style: 'dashed' }
       },
       {
+        key: 'bg',
         type: 'polygon',
         ignoreEvent: false,
         attrs: polygons
       },
       {
+        key: 'label',
         type: 'text',
         ignoreEvent: false,
         attrs: texts

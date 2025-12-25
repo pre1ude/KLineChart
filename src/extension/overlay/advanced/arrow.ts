@@ -35,10 +35,12 @@ const arrow: OverlayTemplate = {
       )
       return [
         {
+          key: 'line',
           type: 'line',
           attrs: { coordinates }
         },
         {
+          key: 'line',
           type: 'line',
           ignoreEvent: true,
           attrs: { coordinates: [rotateCoordinate1, coordinates[1], rotateCoordinate2] }

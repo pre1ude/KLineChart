@@ -13,6 +13,7 @@ const verticalSegment: OverlayTemplate = {
     if (coordinates.length === 2) {
       return [
         {
+          key: 'line',
           type: 'line',
           attrs: { coordinates }
         }

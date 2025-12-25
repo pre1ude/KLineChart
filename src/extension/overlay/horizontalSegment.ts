@@ -17,6 +17,7 @@ const horizontalSegment: OverlayTemplate = {
     }
     return [
       {
+        key: 'line',
         type: 'line',
         attrs: lines
       }
