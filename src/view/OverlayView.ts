@@ -326,12 +326,12 @@ export default class OverlayView extends View {
         continue
       }
 
-      // 样式合并：defaultStyles[type] → overlay.styles[type] → figures[key] → figure.styles
+      // 样式合并：defaultStyles[type] → overlay.styles[type] → figure.styles → figures[key]
       const finalStyles = {
         ...defaultStyles[type],
         ...overlay.styles?.[type],
+        ...styles,
         ...figureConfig,
-        ...styles
       }
       const attrsArray = Array.isArray(attrs) ? attrs : [attrs]
 
