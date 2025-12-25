@@ -284,8 +284,16 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     }
 
     if (isValid(styles)) {
-      this.styles ??= {}
-      merge(this.styles, styles)
+      // 对于 figures，直接覆盖而不是合并，方便 reset
+      if (styles.figures !== undefined) {
+        const { figures: newFigures, ...otherStyles } = styles
+        this.styles ??= {}
+        merge(this.styles, otherStyles)
+        this.styles.figures = newFigures
+      } else {
+        this.styles ??= {}
+        merge(this.styles, styles)
+      }
     }
 
     if (points) {

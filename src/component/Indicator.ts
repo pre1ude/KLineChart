@@ -343,11 +343,11 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
       // 对于 figures，直接覆盖而不是合并，方便 reset
       if (styles.figures !== undefined) {
         const { figures: newFigures, ...otherStyles } = styles
+        this.styles ??= {}
         merge(this.styles, otherStyles)
-        if (this.styles) {
-          this.styles.figures = newFigures
-        }
+        this.styles.figures = newFigures
       } else {
+        this.styles ??= {}
         merge(this.styles, styles)
       }
     }
