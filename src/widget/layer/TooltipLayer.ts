@@ -49,6 +49,8 @@ abstract class BaseTooltipLayer implements Layer {
       const iconInfo = this._extractIconInfo(event.target)
       if (iconInfo != null) {
         chart.getChartStore().getActionStore().execute(ActionType.OnTooltipIconClick, { ...iconInfo })
+        // TODO: temp solution
+        event.nativeEvent.stopPropagation()
       }
       return false
     })
