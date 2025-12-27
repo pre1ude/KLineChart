@@ -14,7 +14,7 @@ const circle: OverlayTemplate = {
     if (coordinates.length > 1) {
       const radius = getDistance(coordinates[0], coordinates[1])
       return {
-        key: 'circle',
+        key: 'shape',
         type: 'circle',
         attrs: {
           ...coordinates[0],

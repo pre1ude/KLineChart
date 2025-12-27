@@ -12,7 +12,7 @@ const triangle: OverlayTemplate = {
   createFigures: ({ coordinates }) => {
     return [
       {
-        key: 'triangle',
+        key: 'shape',
         type: 'polygon',
         attrs: { coordinates },
         styles: { style: 'stroke_fill' }

@@ -13,7 +13,7 @@ const rect: OverlayTemplate = {
     if (coordinates.length > 1) {
       return [
         {
-          key: 'rect',
+          key: 'shape',
           type: 'polygon',
           attrs: {
             coordinates: [

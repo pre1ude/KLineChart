@@ -23,7 +23,7 @@ const parallelogram: OverlayTemplate = {
       const coordinate = { x: coordinates[0].x + (coordinates[2].x - coordinates[1].x), y: coordinates[2].y }
       return [
         {
-          key: 'parallelogram',
+          key: 'shape',
           type: 'polygon',
           attrs: { coordinates: [coordinates[0], coordinates[1], coordinates[2], coordinate] },
           styles: { style: 'stroke_fill' }
