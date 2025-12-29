@@ -17,7 +17,8 @@ export default abstract class AxisView extends View {
     const chartStore = pane.getChart().getChartStore()
     const bounding = widget.getBounding()
     const axis = widget.getAxisComponent()
-    const styles: AxisStyle = this.getAxisStyles(pane.getChart().getStyles())
+    const chartStyles = pane.getChart().getStyles()
+    const styles: AxisStyle = this.getAxisStyles(chartStyles)
     if (styles.show) {
       if (styles.axisLine.show) {
         drawStaticFigure(ctx, 'line', {
@@ -38,7 +39,9 @@ export default abstract class AxisView extends View {
         })
       }
       if (styles.tickText.show) {
-        const tickHasColor = chartStore.getIsTimeShare() && pane.getId() === PaneIdConstants.CANDLE
+        const isTimeShare = chartStore.getIsTimeShare()
+        const isMainPane = pane.getId() === PaneIdConstants.CANDLE
+        const tickHasColor = isTimeShare && isMainPane
         if (tickHasColor) {
           const barStyles = chartStore.getStyles().candle.bar
           const tickTexts = this.createTickTexts(ticks, bounding, styles)
@@ -52,6 +55,17 @@ export default abstract class AxisView extends View {
               }
             })
           })
+        } else if (isTimeShare && !isMainPane) {
+          const tickTexts = this.createTickTexts(ticks, bounding, styles)
+          let color = styles.tickText.color
+          const customColor = this.getCustomYAxisColor()
+          if (customColor) {
+            color = customColor
+          }
+          drawStaticFigure(ctx, 'text', {
+            attrs: tickTexts,
+            styles: { ...styles.tickText, color }
+          })
         } else {
           const tickTexts = this.createTickTexts(ticks, bounding, styles)
           drawStaticFigure(ctx, 'text', {
@@ -64,6 +78,7 @@ export default abstract class AxisView extends View {
   }
 
   protected abstract getAxisStyles(styles: Styles): AxisStyle
+  protected abstract getCustomYAxisColor(): string | undefined
 
   protected abstract createAxisLine(bounding: Bounding, styles: AxisStyle): LineAttrs
   protected abstract createTickLines(ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): LineAttrs[]

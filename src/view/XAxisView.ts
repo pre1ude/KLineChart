@@ -61,4 +61,9 @@ export default class XAxisView extends AxisView {
       }
     })
   }
+
+  override getCustomYAxisColor() {
+    return undefined
+  }
+
 }

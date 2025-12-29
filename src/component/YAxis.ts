@@ -11,6 +11,7 @@ import { PaneIdConstants } from '../pane/types'
 import type YAxisWidget from '../widget/YAxisWidget'
 import type VisibleRange from '../common/VisibleRange'
 import type DualYPane from '../pane/DualYPane'
+import { type YAxisOptions } from '../widget/YAxisWidget'
 
 interface FiguresResult {
   figures: IndicatorFigure[]
@@ -68,6 +69,9 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
           const chartStore = chart.getChartStore()
           const indicators = chartStore.getIndicatorStore().getInstances(parent.getId())
           const type = this.getType()
+          const paneAxisOptions = parent.getMainWidget().getPane().getOptions().axisOptions
+          const position= (this.getParent().getOptions() as YAxisOptions).position
+          const formatterFn = paneAxisOptions?.YAxis?.[position]?.formatter
 
           let precision = 0
           let shouldFormatBigNumber = false
@@ -83,7 +87,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
           }
           defaultTicks = mainAxis.getTicks().map(tick => {
             let v = this.convertFromPixel(tick.coord)
-            let text = formatPrecision(v, precision)
+            let text = formatterFn ? formatterFn(v): formatPrecision(v, precision)
 
             if (type === YAxisType.MinutePercentage) {
               const firstData = chartStore.getVisibleFirstData()
