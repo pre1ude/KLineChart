@@ -1,4 +1,3 @@
-
 import type KLineData from '../../../common/KLineData'
 import { type IndicatorTemplate, IndicatorSeries, type IndicatorFigure } from '../../../component/Indicator'
 
@@ -9,7 +8,7 @@ interface Vol {
 function getVolumeFigure(): IndicatorFigure<Vol> {
   return {
     key: 'volume',
-    // title: 'VOLUME: ',
+    title: '成交量：',
     type: 'bar',
     baseValue: 0,
     styles: (dataIndex, _indicator, kLineDataList, defaultStyles) => {

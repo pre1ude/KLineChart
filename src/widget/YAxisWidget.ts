@@ -13,7 +13,7 @@ import { isString, isValid } from '../common/utils/typeChecks'
 import { getYAxisClass } from '../extension/y-axis'
 import { setCursor } from '../common/utils/cursor'
 
-interface YAxisOptions {
+export interface YAxisOptions {
   name?: string
   scrollZoomEnabled?: boolean
   position: Exclude<YAxisPosition, 'both'>

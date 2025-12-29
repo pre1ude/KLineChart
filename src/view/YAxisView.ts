@@ -94,4 +94,10 @@ export default class YAxisView extends AxisView {
       baseline: 'middle'
     }))
   }
+
+  override getCustomYAxisColor() {
+    const styles = this.getWidget().getPane().getChart().getStyles()
+    const position = (this.getWidget() as YAxisWidget).getOptions().position
+    return styles.indicator?.yAxisTextTickColor ? styles.indicator?.yAxisTextTickColor(position) : undefined
+  }
 }

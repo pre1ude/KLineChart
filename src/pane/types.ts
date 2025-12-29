@@ -11,6 +11,7 @@ export interface PaneGap {
 
 export interface PaneAxisOptionItem {
   type?: YAxisType
+  formatter?: (v: number) => string
 }
 
 export interface PaneAxisOptions {
