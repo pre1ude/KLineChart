@@ -538,7 +538,7 @@ function getDefaultCandleStyle(): CandleStyle {
       offsetTop: 6,
       offsetRight: 4,
       offsetBottom: 6,
-      showRule: TooltipShowRule.FollowCross,
+      showRule: TooltipShowRule.Always,
       showType: TooltipShowType.Rect,
       custom: [
         { title: 'time', value: '{time}' },
