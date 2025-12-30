@@ -51,6 +51,7 @@ export interface Chart {
   id: string
   getDom: (paneId?: string, position?: DomPosition) => HTMLElement | null
   getSize: (paneId?: string, position?: DomPosition) => Bounding | null
+  setOptions: (option: Options) => void
   setLocale: (locale: string) => void
   getLocale: () => string
   setStyles: (styles: string | DeepPartial<Styles>) => void
@@ -600,6 +601,11 @@ export default class ChartImp implements Chart {
 
   getStyles(): Styles {
     return this._chartStore.getStyles()
+  }
+
+  setOptions(options: Options): void {
+    this._chartStore.setOptions(options)
+    this.adjustPaneViewport(true, true, true, true, true)
   }
 
   setLocale(locale: string): void {

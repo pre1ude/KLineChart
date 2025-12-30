@@ -202,9 +202,7 @@ export default class ChartStore {
             this._timeShareTicks = options.timeShareTicks
           }
 
-          if (isValid(options.preferXTicks) && isArray(options.preferXTicks)) {
-            this._preferXTicks = options.preferXTicks
-          }
+          this._preferXTicks = options.preferXTicks
         }
         this._timeScaleStore.initBarSpaceLimit(this._isTimeShare)
       }
