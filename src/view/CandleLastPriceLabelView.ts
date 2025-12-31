@@ -5,6 +5,7 @@ import { isValid } from '../common/utils/typeChecks'
 import View from './View'
 import type YAxisWidget from '../widget/YAxisWidget'
 import { drawStaticFigure } from '../extension/figure'
+import { clamp } from '@/common/utils/number'
 
 export default class CandleLastPriceLabelView extends View {
   override drawImp(ctx: CanvasRenderingContext2D): void {
@@ -22,7 +23,9 @@ export default class CandleLastPriceLabelView extends View {
       const data = dataList[dataList.length - 1]
       if (isValid(data)) {
         const { close, open } = data
-        const priceY = yAxis.convertToNicePixel(close)
+        const y0 = yAxis.convertToPixel(close)
+        const y = clamp(y0, 10, bounding.height - 10)
+
         let backgroundColor: string
         if (close > open) {
           backgroundColor = lastPriceMarkStyles.upColor
@@ -51,7 +54,7 @@ export default class CandleLastPriceLabelView extends View {
         drawStaticFigure(ctx, 'text', {
           attrs: {
             x: bounding.width * (1 - +isAlignLeft),
-            y: priceY,
+            y,
             text,
             align,
             baseline: 'middle'

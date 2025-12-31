@@ -21,7 +21,7 @@ export default class CandleZeroPriceLineView extends View {
       const firstData = dataList[0]
       const prevClose: number | undefined = firstData?.prevClose
       if (prevClose != null) {
-        const yPos = yAxis.convertToNicePixel(prevClose)
+        const yPos = yAxis.convertToPixel(prevClose)
         drawStaticFigure(ctx, 'line', {
           attrs: {
             coordinates: [

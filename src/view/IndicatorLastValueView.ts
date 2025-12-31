@@ -5,6 +5,7 @@ import View from './View'
 import type YAxisWidget from '../widget/YAxisWidget'
 import { drawStaticFigure } from '../extension/figure'
 import { getFigureBaseStyles, getMergedDefaultStyles } from '../component/Indicator'
+import { clamp } from '@/common/utils/number'
 
 export default class IndicatorLastValueView extends View {
   override drawImp(ctx: CanvasRenderingContext2D): void {
@@ -38,7 +39,9 @@ export default class IndicatorLastValueView extends View {
               const figureStyles = customStyles ? { ...figureBaseStyles, ...customStyles } : figureBaseStyles
               const color = figureStyles.color ?? mergedDefaultStyles.lastValueMark.text.color
 
-              const y = yAxis.convertToNicePixel(value)
+              const y0 = yAxis.convertToPixel(value)
+              const y = clamp(y0, 10, bounding.height - 10)
+
               let text = formatPrecision(value, precision)
               if (indicator.shouldFormatBigNumber) {
                 text = customApi.formatBigNumber(text)

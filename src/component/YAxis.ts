@@ -779,12 +779,6 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     return this._innerConvertToPixel(v)
   }
 
-  convertToNicePixel(value: number): number {
-    const height = this.getParent()?.getBounding().height ?? 0
-    const pixel = this.convertToPixel(value)
-    return Math.round(Math.max(height * 0.05, Math.min(pixel, height * 0.98)))
-  }
-
   static extend(template: AxisTemplate): YAxisConstructor {
     class Custom extends YAxisImp {
       createTicks(params: AxisCreateTicksParams): AxisTick[] {
