@@ -67,7 +67,7 @@ export default class TimeScaleStore {
     }
   }
 
-  private computeVisibleRange(): VisibleRange {
+  private calcVisibleRange(): VisibleRange {
     const isTimeShare = this._chartStore.getIsTimeShare()
     const timeShareTicks = this._chartStore.getTimeShareTicks()
     const timeShareDays = this._chartStore.getTimeShareDays()
@@ -90,8 +90,6 @@ export default class TimeScaleStore {
 
     const diff = this._offsetRight + totalBarCount * this._barWidth - mainWidth
     const from = diff < 0 ? 0 : Math.floor(diff / this._barWidth)
-
-    //
 
     const domainTo = totalBarCount + this._offsetRight / this._barWidth
 
@@ -141,7 +139,7 @@ export default class TimeScaleStore {
     if (isTimeShare) {
       this.adjustForTimeShare()
     }
-    const visibleRange = this.computeVisibleRange()
+    const visibleRange = this.calcVisibleRange()
 
     this._visibleRange = visibleRange
     this._xScale = createScale(visibleRange, this._chartStore.mainWidth)

@@ -324,10 +324,8 @@ export default class SyntheticEvent {
           break
       }
 
-      if (deltaY !== 0) {
-        const normDeltaY = Math.sign(deltaY) * Math.min(1, Math.abs(deltaY))
-        this._handler.mouseWheelVertEvent(this._makeCompatEvent(wheelEvent), normDeltaY)
-      }
+      const normDeltaY = Math.sign(deltaY) * Math.min(1, Math.abs(deltaY))
+      this._handler.mouseWheelVertEvent(this._makeCompatEvent(wheelEvent), normDeltaY)
     }
   }
 
