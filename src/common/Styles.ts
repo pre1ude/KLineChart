@@ -452,7 +452,6 @@ function getDefaultGridStyle(): GridStyle {
 
 /**
  * Get default candle style
- * @type {{area: {backgroundColor: [{offset: number, color: string}, {offset: number, color: string}], lineColor: string, lineSize: number, value: string}, bar: {noChangeColor: string, upColor: string, downColor: string}, tooltip: {rect: {offsetTop: number, fillColor: string, borderColor: string, paddingBottom: number, borderRadius: number, paddingRight: number, borderSize: number, offsetLeft: number, paddingTop: number, paddingLeft: number, offsetRight: number}, showRule: string, values: null, showType: string, text: {marginRight: number, size: number, color: string, weight: string, marginBottom: number, family: string, marginTop: number, marginLeft: number}, labels: string[]}, type: string, priceMark: {high: {textMargin: number, textSize: number, color: string, textFamily: string, show: boolean, textWeight: string}, last: {noChangeColor: string, upColor: string, line: {dashValue: number[], size: number, show: boolean, style: string}, show: boolean, text: {paddingBottom: number, size: number, color: string, paddingRight: number, show: boolean, weight: string, paddingTop: number, family: string, paddingLeft: number}, downColor: string}, low: {textMargin: number, textSize: number, color: string, textFamily: string, show: boolean, textWeight: string}, show: boolean}}}
  */
 function getDefaultCandleStyle(): CandleStyle {
   const highLow = {
@@ -529,7 +528,7 @@ function getDefaultCandleStyle(): CandleStyle {
           color: white,
           family: 'Helvetica Neue',
           weight: 'normal',
-          borderRadius: 2
+          borderRadius: 0
         }
       }
     },
@@ -636,7 +635,7 @@ function getDefaultIndicatorStyle(): IndicatorStyle {
         paddingTop: 4,
         paddingRight: 4,
         paddingBottom: 4,
-        borderRadius: 2
+        borderRadius: 0
       }
     },
     tooltip: {
@@ -721,7 +720,7 @@ function getDefaultCrosshairStyle(): CrosshairStyle {
         borderDashedValue: [2, 2],
         borderSize: 1,
         borderColor: textColor,
-        borderRadius: 2,
+        borderRadius: 0,
         paddingLeft: 4,
         paddingRight: 4,
         paddingTop: 4,
