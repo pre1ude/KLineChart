@@ -138,14 +138,7 @@ export class OverlayLayer implements Layer {
 
           if (progressOverlay.isCreated()) {
             progressOverlay.onDrawStart?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
-          }
-          progressOverlay.nextStep()
-          progressOverlay.onDrawing?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
-
-          if (progressOverlay.isCompleted()) {
-            overlayStore.progressOverlayComplete()
-            progressOverlay.onDrawEnd?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
-            const completedInfo: EventOverlayInfo = {
+            const overlayInfo: EventOverlayInfo = {
               overlay: progressOverlay,
               interactType: 'body',
               figureKey: '',
@@ -153,8 +146,15 @@ export class OverlayLayer implements Layer {
               attrsIndex: 0,
               paneId
             }
-            overlayStore.setSelectedInfo(completedInfo)
-            this._overlayView.setClickInstanceInfo(completedInfo)
+            overlayStore.setSelectedInfo(overlayInfo)
+            this._overlayView.setClickInstanceInfo(overlayInfo)
+          }
+          progressOverlay.nextStep()
+          progressOverlay.onDrawing?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
+
+          if (progressOverlay.isCompleted()) {
+            overlayStore.progressOverlayComplete()
+            progressOverlay.onDrawEnd?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
           }
         }
         return false
