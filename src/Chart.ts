@@ -101,6 +101,7 @@ export interface Chart {
   getOverlayById: (id: string) => Overlay | undefined
   overrideOverlay: (override: Partial<OverlayCreate>) => void
   removeOverlay: (remove?: string | OverlayFilter) => void
+  deselectOverlay: () => void
   setPaneOptions: (options: PaneOptions) => void
   setZoomEnabled: (enabled: boolean) => void
   isZoomEnabled: () => boolean
@@ -912,6 +913,51 @@ export default class ChartImp implements Chart {
       }
     }
     this._chartStore.getOverlayStore().removeInstance(OverlayFilter)
+  }
+
+  deselectOverlay(): void {
+    const overlayStore = this._chartStore.getOverlayStore()
+    const selectedInfo = overlayStore.getSelectedInfo()
+
+    if (selectedInfo) {
+      // 触发取消选中回调
+      const overlay = overlayStore.getInstanceById(selectedInfo.overlay.id)
+      if (overlay) {
+        // 创建一个模拟的鼠标事件用于回调
+        const mockEvent = {
+          x: 0,
+          y: 0,
+          pageX: 0,
+          pageY: 0,
+          isTouch: false,
+          preventDefault: () => {},
+          stopPropagation: () => {}
+        } as any
+
+        // 使用现有的事件创建函数
+        const overlayEvent = {
+          ...mockEvent,
+          overlayData: {
+            overlay,
+            paneId: selectedInfo.paneId,
+            interactType: selectedInfo.interactType,
+            figureKey: selectedInfo.figureKey,
+            figureIndex: selectedInfo.figureIndex,
+            attrsIndex: selectedInfo.attrsIndex
+          }
+        }
+
+        overlay.onDeselected?.(overlayEvent)
+      }
+
+      // 清除选中状态
+      overlayStore.clearSelectedInfo()
+
+      // TODO: check
+      // 更新相关pane的显示
+      this.updatePane(UpdateLevel.Overlay, selectedInfo.paneId)
+      // this.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
+    }
   }
 
   setPaneOptions(options: PaneOptions): void {
