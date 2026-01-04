@@ -13,6 +13,7 @@ import type XAxisWidget from './widget/XAxisWidget'
 import { isPointInBounding } from './common/Bounding'
 import type VisibleRange from './common/VisibleRange'
 import { setCursor } from './common/utils/cursor'
+import { createOverlayEventFromInfo } from './common/utils/overlayEvent'
 
 let resetCursor: (() => void) | undefined = undefined
 
@@ -341,9 +342,54 @@ export default class Event implements EventHandler {
     const { widget } = this._findWidgetByEvent(e)
     if (widget) {
       const event = this._makeWidgetEvent(e, widget)
-      return widget.dispatchEvent('mouseClickEvent', event)
+      const consumed = widget.dispatchEvent('mouseClickEvent', event)
+
+      // 统一处理overlay取消选中逻辑
+      if (!consumed) {
+        this._handleOverlayDeselection(e)
+      }
+
+      return consumed
     }
     return false
+  }
+
+  /**
+   * 统一处理overlay取消选中逻辑
+   * 当点击空白区域时，取消当前选中的overlay
+   */
+  private _handleOverlayDeselection(e: MouseTouchEvent): void {
+    const overlayStore = this._chart.getChartStore().getOverlayStore()
+    const currentSelected = overlayStore.getSelectedInfo() // EventOverlayInfo | undefined
+
+    if (!currentSelected) {
+      return // 没有选中的overlay，无需处理
+    }
+
+    // 检查是否点击在overlay figure上
+    if (this._isOverlayFigure(e.target)) {
+      return // 点击在overlay上，不取消选中
+    }
+
+    // 触发取消选中事件
+    const overlayEvent = createOverlayEventFromInfo(e, currentSelected) as any
+    currentSelected.overlay.onDeselected?.(overlayEvent)
+
+    // 清除选中状态
+    overlayStore.clearSelectedInfo()
+
+    // TODO: check
+    // 更新相关的pane
+    this._chart.updatePane(UpdateLevel.Overlay, currentSelected.paneId)
+    // this._chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
+  }
+
+  /**
+   * 检查事件目标是否是overlay figure
+   */
+  private _isOverlayFigure(target: unknown): boolean {
+    const figure = target as { data?: { overlay?: unknown } }
+    return figure?.data?.overlay != null
   }
 
   mouseRightClickEvent(e: MouseTouchEvent): boolean {

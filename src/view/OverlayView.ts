@@ -42,7 +42,6 @@ interface GetFiguresParams {
 export default class OverlayView extends View {
   private readonly _type: OverlayViewType
   private _hoverInstanceInfo?: EventOverlayInfo
-  private _clickInstanceInfo?: EventOverlayInfo
   private _pressedInstanceInfo?: EventOverlayInfo
 
   constructor(widget: DrawWidget<Pane>, type: OverlayViewType = 'main') {
@@ -54,20 +53,12 @@ export default class OverlayView extends View {
     this._hoverInstanceInfo = info
   }
 
-  setClickInstanceInfo(info?: EventOverlayInfo): void {
-    this._clickInstanceInfo = info
-  }
-
   setPressedInstanceInfo(info?: EventOverlayInfo): void {
     this._pressedInstanceInfo = info
   }
 
   getHoverInstanceInfo(): EventOverlayInfo | undefined {
     return this._hoverInstanceInfo
-  }
-
-  getClickInstanceInfo(): EventOverlayInfo | undefined {
-    return this._clickInstanceInfo
   }
 
   getPressedInstanceInfo(): EventOverlayInfo | undefined {
@@ -80,7 +71,6 @@ export default class OverlayView extends View {
     if (overlayStore.getProgressOverlay()) return true // 还在画
     if (this._pressedInstanceInfo?.overlay != null) return true
     if (name === 'mouseMoveEvent' && this._hoverInstanceInfo) return true // 支持取消hover
-    if (name === 'mouseClickEvent' && this._clickInstanceInfo) return true // 支持取消选中
     return super.checkEventOn(event, name, other)
   }
 
@@ -169,10 +159,8 @@ export default class OverlayView extends View {
     const defaultStyles = chartStore.getStyles().overlay
     const overlayStore = chartStore.getOverlayStore()
     const hoverInfo = this._hoverInstanceInfo
-    // 对于 xAxis 和 yAxis，使用全局选中状态；对于 main，使用本地状态
-    const clickInfo = (this._type === 'xAxis' || this._type === 'yAxis')
-      ? overlayStore.getSelectedInfo()
-      : this._clickInstanceInfo
+    // 统一使用全局选中状态
+    const clickInfo = overlayStore.getSelectedInfo()
     const overlays = this._type === 'xAxis' ? overlayStore.getInstances() : overlayStore.getInstances(paneId)
     const paneIndicators = chartStore.getIndicatorStore().getInstances(paneId)
     const overlayPrecision: OverlayPrecision = {

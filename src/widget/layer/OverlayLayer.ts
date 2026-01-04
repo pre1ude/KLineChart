@@ -1,13 +1,14 @@
 import type { Layer } from './Layer'
 import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
-import type { MouseTouchEvent, OverlayEventData } from '../../common/SyntheticEvent'
-import type { EventOverlayInfo, OverlayFigureData, OverlayMouseTouchEvent, Overlay } from '../../component/Overlay'
+import type { MouseTouchEvent } from '../../common/SyntheticEvent'
+import type { EventOverlayInfo, OverlayFigureData } from '../../component/Overlay'
 import { OVERLAY_FIGURE_KEY_PREFIX } from '../../component/Overlay'
 import type { Figure } from '../../component/Figure'
 import { UpdateLevel } from '../../common/Updater'
 import { PaneIdConstants } from '../../pane/types'
 import OverlayView from '../../view/OverlayView'
+import { createOverlayEvent, createOverlayEventFromInfo } from '../../common/utils/overlayEvent'
 
 /**
  * 覆盖物图层
@@ -42,36 +43,6 @@ export class OverlayLayer implements Layer {
     return a.overlay.id === b.overlay.id && a.interactType === b.interactType && a.figureIndex === b.figureIndex
   }
 
-  /** 创建带 overlayData 的事件对象 */
-  private _createOverlayEvent<E>(
-    event: MouseTouchEvent,
-    overlay: Overlay<E>,
-    paneId: string,
-    extra?: Partial<Pick<OverlayEventData, 'interactType' | 'figureKey' | 'figureIndex' | 'attrsIndex' | 'pointIndex'>>
-  ): OverlayMouseTouchEvent<E> {
-    const overlayEvent = event as OverlayMouseTouchEvent<E>
-    overlayEvent.overlayData = {
-      overlay,
-      paneId,
-      interactType: extra?.interactType ?? 'body',
-      figureKey: extra?.figureKey ?? '',
-      figureIndex: extra?.figureIndex ?? 0,
-      attrsIndex: extra?.attrsIndex ?? 0,
-      pointIndex: extra?.pointIndex
-    }
-    return overlayEvent
-  }
-
-  /** 从 EventOverlayInfo 创建带 overlayData 的事件对象 */
-  private _createOverlayEventFromInfo<E>(event: MouseTouchEvent, info: EventOverlayInfo): OverlayMouseTouchEvent<E> {
-    return this._createOverlayEvent(event, info.overlay as Overlay<E>, info.paneId, {
-      interactType: info.interactType,
-      figureKey: info.figureKey,
-      figureIndex: info.figureIndex,
-      attrsIndex: info.attrsIndex
-    })
-  }
-
   private _initEvent(widget: DrawWidget<DualYPane>): void {
     const pane = widget.getPane()
     const paneId = pane.getId()
@@ -93,7 +64,7 @@ export class OverlayLayer implements Layer {
           const pointIndex = progressOverlay.points.length - 1
           const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
           progressOverlay.updateDrawPoint(this._overlayView.coordinateToPoint(progressOverlay, event))
-          progressOverlay.onDrawing?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
+          progressOverlay.onDrawing?.(createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
         }
         return false
       }
@@ -105,12 +76,12 @@ export class OverlayLayer implements Layer {
         let needUpdate = false
 
         if (lastHoverInfo?.overlay != null) {
-          const hasCallback = lastHoverInfo.overlay.onMouseLeave?.(this._createOverlayEventFromInfo(event, lastHoverInfo))
+          const hasCallback = lastHoverInfo.overlay.onMouseLeave?.(createOverlayEventFromInfo(event, lastHoverInfo))
           if (!hasCallback) needUpdate = true // hasCallback false 表示默认触发更新
         }
 
         if (hoverInfo?.overlay != null) {
-          const hasCallback = hoverInfo.overlay.onMouseEnter?.(this._createOverlayEventFromInfo(event, hoverInfo))
+          const hasCallback = hoverInfo.overlay.onMouseEnter?.(createOverlayEventFromInfo(event, hoverInfo))
           if (!hasCallback) needUpdate = true // hasCallback false 表示默认触发更新
         }
 
@@ -137,7 +108,7 @@ export class OverlayLayer implements Layer {
           progressOverlay.updateDrawPoint(this._overlayView.coordinateToPoint(progressOverlay, event))
 
           if (progressOverlay.isCreated()) {
-            progressOverlay.onDrawStart?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
+            progressOverlay.onDrawStart?.(createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
             const overlayInfo: EventOverlayInfo = {
               overlay: progressOverlay,
               interactType: 'body',
@@ -147,14 +118,13 @@ export class OverlayLayer implements Layer {
               paneId
             }
             overlayStore.setSelectedInfo(overlayInfo)
-            this._overlayView.setClickInstanceInfo(overlayInfo)
           }
           progressOverlay.nextStep()
-          progressOverlay.onDrawing?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
+          progressOverlay.onDrawing?.(createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
 
           if (progressOverlay.isCompleted()) {
             overlayStore.progressOverlayComplete()
-            progressOverlay.onDrawEnd?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
+            progressOverlay.onDrawEnd?.(createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
           }
         }
         return false
@@ -163,18 +133,18 @@ export class OverlayLayer implements Layer {
       const clickInfo = this._extractEventOverlayInfo(event.target, paneId)
 
       if (clickInfo?.overlay?.isCompleted()) {
-        clickInfo.overlay.onClick?.(this._createOverlayEventFromInfo(event, clickInfo))
+        clickInfo.overlay.onClick?.(createOverlayEventFromInfo(event, clickInfo))
       }
 
-      const lastClickInfo = this._overlayView.getClickInstanceInfo()
+      const lastClickInfo = overlayStore.getSelectedInfo()
 
       if (!this._isSameOverlay(lastClickInfo, clickInfo)) {
         if (lastClickInfo?.overlay != null) {
-          lastClickInfo.overlay.onDeselected?.(this._createOverlayEventFromInfo(event, lastClickInfo))
+          lastClickInfo.overlay.onDeselected?.(createOverlayEventFromInfo(event, lastClickInfo))
         }
 
         if (clickInfo?.overlay != null) {
-          clickInfo.overlay.onSelected?.(this._createOverlayEventFromInfo(event, clickInfo))
+          clickInfo.overlay.onSelected?.(createOverlayEventFromInfo(event, clickInfo))
         }
 
         overlayStore.setSelectedInfo(clickInfo)
@@ -184,11 +154,6 @@ export class OverlayLayer implements Layer {
           chart.updatePane(UpdateLevel.Overlay, lastClickInfo.paneId)
         }
         chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
-      }
-
-      // 始终更新 clickInfo（记录最后点击的 figure）
-      if (!this._isSameFigure(lastClickInfo, clickInfo)) {
-        this._overlayView.setClickInstanceInfo(clickInfo)
       }
 
       return false
@@ -220,7 +185,7 @@ export class OverlayLayer implements Layer {
             overlayStore.progressOverlayComplete()
             const pointIndex = progressOverlay.points.length - 1
             const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
-            progressOverlay.onDrawEnd?.(this._createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
+            progressOverlay.onDrawEnd?.(createOverlayEvent(event, progressOverlay, paneId, { figureKey, pointIndex }))
             const completedInfo: EventOverlayInfo = {
               overlay: progressOverlay,
               interactType: 'body',
@@ -230,7 +195,6 @@ export class OverlayLayer implements Layer {
               paneId
             }
             overlayStore.setSelectedInfo(completedInfo)
-            this._overlayView.setClickInstanceInfo(completedInfo)
           }
         }
         return false
@@ -238,7 +202,7 @@ export class OverlayLayer implements Layer {
 
       const doubleClickInfo = this._extractEventOverlayInfo(event.target, paneId)
       if (doubleClickInfo?.overlay != null) {
-        doubleClickInfo.overlay.onDoubleClick?.(this._createOverlayEventFromInfo(event, doubleClickInfo))
+        doubleClickInfo.overlay.onDoubleClick?.(createOverlayEventFromInfo(event, doubleClickInfo))
       }
       return false
     })
@@ -254,7 +218,7 @@ export class OverlayLayer implements Layer {
           if (progressOverlay === rightClickInfo.overlay) return false
         }
         const { overlay } = rightClickInfo
-        if (!(overlay.onRightClick?.(this._createOverlayEventFromInfo(event, rightClickInfo)) ?? false)) {
+        if (!(overlay.onRightClick?.(createOverlayEventFromInfo(event, rightClickInfo)) ?? false)) {
           overlayStore.removeInstance(overlay)
         }
       }
@@ -265,7 +229,7 @@ export class OverlayLayer implements Layer {
     this._overlayView.addEventListener('mouseUpEvent', (event: MouseTouchEvent) => {
       const pressedInfo = this._overlayView.getPressedInstanceInfo()
       if (pressedInfo?.overlay != null && hasMoved) {
-        pressedInfo.overlay.onPressedMoveEnd?.(this._createOverlayEventFromInfo(event, pressedInfo))
+        pressedInfo.overlay.onPressedMoveEnd?.(createOverlayEventFromInfo(event, pressedInfo))
       }
       this._overlayView.setPressedInstanceInfo()
       hasMoved = false
@@ -280,9 +244,9 @@ export class OverlayLayer implements Layer {
         if (!overlay.lock) {
           if (!hasMoved) {
             hasMoved = true
-            overlay.onPressedMoveStart?.(this._createOverlayEventFromInfo(event, pressedInfo))
+            overlay.onPressedMoveStart?.(createOverlayEventFromInfo(event, pressedInfo))
           }
-          const defaultPrevented = overlay.onPressedMoving?.(this._createOverlayEventFromInfo(event, pressedInfo)) ?? false
+          const defaultPrevented = overlay.onPressedMoving?.(createOverlayEventFromInfo(event, pressedInfo)) ?? false
           if (!defaultPrevented) {
             const point = this._overlayView.coordinateToPoint(overlay, event)
             if (pressedInfo.interactType === 'control-point') {

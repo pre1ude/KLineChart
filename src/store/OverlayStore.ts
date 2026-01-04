@@ -38,6 +38,10 @@ export default class OverlayStore {
     return this._selectedInfo
   }
 
+  clearSelectedInfo(): void {
+    this._selectedInfo = undefined
+  }
+
   getInstanceById(id: string): Overlay | undefined {
     for (const entry of this._instances) {
       const paneShapes = entry[1]
