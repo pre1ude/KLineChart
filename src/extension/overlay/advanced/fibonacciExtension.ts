@@ -19,7 +19,7 @@ const fibonacciExtension: OverlayTemplate = {
     // 连接线（虚线）
     if (coordinates.length > 0) {
       const connectLineAttrs: LineAttrs = { coordinates }
-      figures.push({ key: 'trendLine', type: 'line', attrs: connectLineAttrs, styles: { style: 'dashed', dashedValue: [2, 4] } })
+      figures.push({ key: 'trendLine', type: 'line', attrs: connectLineAttrs, styles: { style: 'dashed', dashedValue: [8, 4] } })
     }
 
     if (coordinates.length > 2) {
