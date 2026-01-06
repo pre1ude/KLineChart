@@ -68,7 +68,7 @@ export interface TextStyle extends Padding {
   style: PolygonType
   color: string
   size: number
-  family: string
+  fontFamily: string
   weight: number | string
   borderStyle: LineType
   borderDashedValue: number[]
@@ -128,7 +128,7 @@ export interface GridStyle {
   vertical: StateLineStyle
 }
 
-export type TooltipTextStyle = Pick<TextStyle, 'color' | 'size' | 'family' | 'weight'> & Margin
+export type TooltipTextStyle = Pick<TextStyle, 'color' | 'size' | 'fontFamily' | 'weight'> & Margin
 
 export interface TooltipLegendChild {
   text: string
@@ -203,7 +203,7 @@ export interface CandleHighLowPriceMarkStyle {
   color: string
   textOffset: number
   textSize: number
-  textFamily: string
+  fontFamily: string
   textWeight: string
 }
 
@@ -316,7 +316,6 @@ export type FigureStyleConfig = (
   | Partial<TextStyle>
   | Partial<TextBoxStyle>
 ) & {
-  /** 控制 figure 的可见性 */
   visible?: boolean
 }
 
@@ -326,7 +325,7 @@ export interface AxisTickLineStyle extends AxisLineStyle {
   length: number
 }
 
-export interface AxisTickTextStyle extends Pick<StateTextStyle, 'show' | 'color' | 'weight' | 'family' | 'size'> {
+export interface AxisTickTextStyle extends Pick<StateTextStyle, 'show' | 'color' | 'weight' | 'fontFamily' | 'size'> {
   marginStart: number
   marginEnd: number
 }
@@ -429,6 +428,8 @@ const noChangeColor = '#9CA3AD'
 const indicatorUpColor = 'rgba(255, 102, 0, 0.6)'
 const indicatorDownColor = 'rgba(52, 199, 52, 0.6)'
 
+const fontFamily = 'Trebuchet MS, sans-serif' // 统一使用 Trebuchet MS 字体
+
 function getAlphaBlue(alpha: number): string {
   return `rgba(22, 119, 255, ${alpha})`
 }
@@ -459,7 +460,7 @@ function getDefaultCandleStyle(): CandleStyle {
     color: '#B8CAE6',
     textOffset: 5,
     textSize: 10,
-    textFamily: 'Helvetica Neue',
+    fontFamily,
     textWeight: 'normal'
   }
   return {
@@ -526,7 +527,7 @@ function getDefaultCandleStyle(): CandleStyle {
           borderSize: 0,
           borderDashedValue: [2, 2],
           color: white,
-          family: 'Helvetica Neue',
+          fontFamily,
           weight: 'normal',
           borderRadius: 0
         }
@@ -565,7 +566,7 @@ function getDefaultCandleStyle(): CandleStyle {
       },
       text: {
         size: 12,
-        family: 'Helvetica Neue',
+        fontFamily,
         weight: 'normal',
         color: '#B8CAE6',
         marginLeft: 8,
@@ -625,7 +626,7 @@ function getDefaultIndicatorStyle(): IndicatorStyle {
         style: PolygonType.Fill,
         color: white,
         size: 12,
-        family: 'Helvetica Neue',
+        fontFamily,
         weight: 'normal',
         borderStyle: LineType.Solid,
         borderColor: 'transparent',
@@ -650,7 +651,7 @@ function getDefaultIndicatorStyle(): IndicatorStyle {
       defaultValue: 'n/a',
       text: {
         size: 12,
-        family: 'Helvetica Neue',
+        fontFamily,
         weight: 'normal',
         color: '#B8CAE6',
         marginLeft: 8,
@@ -676,7 +677,7 @@ function getDefaultXAxisStyle(): XAxisStyle {
       show: true,
       color: textColor,
       size: 12,
-      family: 'Helvetica Neue',
+      fontFamily,
       weight: 'normal',
       marginStart: 4,
       marginEnd: 4
@@ -714,7 +715,7 @@ function getDefaultCrosshairStyle(): CrosshairStyle {
         style: PolygonType.Fill,
         color: white,
         size: 12,
-        family: 'Helvetica Neue',
+        fontFamily,
         weight: 'normal',
         borderStyle: LineType.Solid,
         borderDashedValue: [2, 2],
@@ -791,8 +792,7 @@ function getDefaultOverlayStyle(): OverlayStyle {
       style: PolygonType.Fill,
       color: '#FFFFFF',
       size: 12,
-      // family: 'Helvetica Neue',
-      family: 'Trebuchet MS, sans-serif',  // TradingView 字体
+      fontFamily,
       weight: 'normal',
       borderStyle: LineType.Solid,
       borderDashedValue: [2, 2],
@@ -809,8 +809,7 @@ function getDefaultOverlayStyle(): OverlayStyle {
       style: PolygonType.Fill,
       color: '#FFFFFF',
       size: 12,
-      // family: 'Helvetica Neue',
-      family: 'Trebuchet MS, sans-serif',  // TradingView 字体
+      fontFamily,
       weight: 'normal',
       borderStyle: LineType.Solid,
       borderDashedValue: [2, 2],

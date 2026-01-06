@@ -24,8 +24,8 @@ export function getPixelRatio(canvas: HTMLCanvasElement): number {
   return dpr < 1 ? 1 : dpr > 3 ? 3 : dpr
 }
 
-export function createFont(size?: number, weight?: string | number, family?: string): string {
-  return `${weight ?? 'normal'} ${size ?? 12}px ${family ?? 'Helvetica Neue'}`
+export function createFont(size?: number, weight?: string | number, fontFamily?: string): string {
+  return `${weight ?? 'normal'} ${size ?? 12}px ${fontFamily ?? 'Trebuchet MS, sans-serif'}`
 }
 
 export function getMeasureContext(): CanvasRenderingContext2D {

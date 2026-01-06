@@ -9,9 +9,9 @@ import { type FigureTemplate } from '../../component/Figure'
 import { type RectAttrs, drawRect } from './rect'
 
 export function getTextRect(attrs: TextAttrs, styles: Partial<TextStyle>): RectAttrs {
-  const { size = 12, paddingLeft = 0, paddingTop = 0, paddingRight = 0, paddingBottom = 0, weight = 'normal', family } = styles
+  const { size = 12, paddingLeft = 0, paddingTop = 0, paddingRight = 0, paddingBottom = 0, weight = 'normal', fontFamily } = styles
   const { x, y, text, align = 'left', baseline = 'top', width: w, height: h } = attrs
-  const width = w ?? (paddingLeft + calcTextWidth(text, createFont(size, weight, family)) + paddingRight)
+  const width = w ?? (paddingLeft + calcTextWidth(text, createFont(size, weight, fontFamily)) + paddingRight)
   const height = h ?? (paddingTop + size + paddingBottom)
   let startX: number
   switch (align) {
@@ -74,7 +74,7 @@ export function drawText(ctx: CanvasRenderingContext2D, attrs: TextAttrs | TextA
   const {
     color = 'currentColor',
     size = 12,
-    family,
+    fontFamily,
     weight,
     paddingLeft = 0,
     paddingTop = 0,
@@ -85,7 +85,7 @@ export function drawText(ctx: CanvasRenderingContext2D, attrs: TextAttrs | TextA
 
   ctx.textAlign = 'left'
   ctx.textBaseline = 'top'
-  ctx.font = createFont(size, weight, family)
+  ctx.font = createFont(size, weight, fontFamily)
   ctx.fillStyle = color
 
   texts.forEach((text, index) => {

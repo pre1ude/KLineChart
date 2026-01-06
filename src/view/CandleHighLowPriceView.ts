@@ -127,7 +127,7 @@ export default class CandleHighLowPriceView extends View {
       styles: {
         color: styles.color,
         size: styles.textSize,
-        family: styles.textFamily,
+        fontFamily: styles.fontFamily,
         weight: styles.textWeight
       }
     })

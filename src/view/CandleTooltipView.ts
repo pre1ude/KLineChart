@@ -217,7 +217,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
         marginBottom: baseTextMarginBottom,
         size: baseTextSize,
         weight: baseTextWeight,
-        family: baseTextFamily
+        fontFamily: baseFontFamily
       } = candleTooltipStyles.text
 
       const {
@@ -240,7 +240,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
       let rectWidth = 0
       let rectHeight = 0
       if (isDrawCandleTooltip) {
-        const font = createFont(baseTextSize, baseTextWeight, baseTextFamily)
+        const font = createFont(baseTextSize, baseTextWeight, baseFontFamily)
         candleLegends.forEach(data => {
           const title = data.title as TooltipLegendChild
           const value = data.value as TooltipLegendChild
@@ -259,11 +259,11 @@ export default class CandleTooltipView extends IndicatorTooltipView {
         marginBottom: indicatorTextMarginBottom,
         size: indicatorTextSize,
         weight: indicatorTextWeight,
-        family: indicatorTextFamily
+        fontFamily: indicatorFontFamily
       } = indicatorTooltipStyles.text
       const indicatorLegendsArray: TooltipLegend[][] = []
       if (isDrawIndicatorTooltip) {
-        const font = createFont(indicatorTextSize, indicatorTextWeight, indicatorTextFamily)
+        const font = createFont(indicatorTextSize, indicatorTextWeight, indicatorFontFamily)
         indicators.forEach(indicator => {
           const tooltipDataValues = this.getIndicatorTooltipData(dataList, crosshair, indicator, customApi, thousandsSeparator, decimalFoldThreshold, indicatorStyles).values ?? []
           indicatorLegendsArray.push(tooltipDataValues)
@@ -346,7 +346,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
               styles: {
                 color: title.color,
                 size: baseTextSize,
-                family: baseTextFamily,
+                fontFamily: baseFontFamily,
                 weight: baseTextWeight
               }
             })
@@ -361,7 +361,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
               styles: {
                 color: value.color,
                 size: baseTextSize,
-                family: baseTextFamily,
+                fontFamily: baseFontFamily,
                 weight: baseTextWeight
               }
             })
@@ -385,7 +385,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
                 styles: {
                   color: title.color,
                   size: indicatorTextSize,
-                  family: indicatorTextFamily,
+                  fontFamily: indicatorFontFamily,
                   weight: indicatorTextWeight
                 }
               })
@@ -400,7 +400,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
                 styles: {
                   color: value.color,
                   size: indicatorTextSize,
-                  family: indicatorTextFamily,
+                  fontFamily: indicatorFontFamily,
                   weight: indicatorTextWeight
                 }
               })

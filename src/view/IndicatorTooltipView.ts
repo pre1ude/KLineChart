@@ -184,7 +184,7 @@ export default class IndicatorTooltipView extends View {
             paddingBottom,
             color: active ? activeColor : color,
             size,
-            family: fontFamily,
+            fontFamily,
             backgroundColor: active ? activeBackgroundColor : backgroundColor
           })
           .setData({ paneId, indicatorId, indicatorName, iconId: icon.id })
@@ -210,8 +210,8 @@ export default class IndicatorTooltipView extends View {
     styles: TooltipTextStyle
   ): number {
     if (legends.length > 0) {
-      const { marginLeft, marginTop, marginRight, marginBottom, size, family, weight } = styles
-      const font = createFont(size, weight, family)
+      const { marginLeft, marginTop, marginRight, marginBottom, size, fontFamily, weight } = styles
+      const font = createFont(size, weight, fontFamily)
       legends.forEach(data => {
         const title = data.title as TooltipLegendChild
         const value = data.value as TooltipLegendChild
@@ -229,12 +229,12 @@ export default class IndicatorTooltipView extends View {
         if (title.text.length > 0) {
           drawStaticFigure(ctx, 'text', {
             attrs: { x: coordinate.x + marginLeft, y: coordinate.y + marginTop, text: title.text },
-            styles: { color: title.color, size, family, weight }
+            styles: { color: title.color, size, fontFamily, weight }
           })
         }
         drawStaticFigure(ctx, 'text', {
           attrs: { x: coordinate.x + marginLeft + titleTextWidth, y: coordinate.y + marginTop, text: value.text },
-          styles: { color: value.color, size, family, weight }
+          styles: { color: value.color, size, fontFamily, weight }
         })
         coordinate.x += (marginLeft + totalTextWidth + marginRight)
       })

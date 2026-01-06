@@ -113,7 +113,7 @@ export default abstract class XAxisImp extends AxisImp {
       const dateTimeFormat = getDateTimeFormat()
       const tickTextStyles = chart.getStyles().xAxis.tickText
       // todo should consider period, for month period: 2025-06
-      const defaultLabelWidth = calcTextWidth('00-00 00:00', createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.family))
+      const defaultLabelWidth = calcTextWidth('00-00 00:00', createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.fontFamily))
       const pos = parseInt(ticks[0].value as string, 10)
       const x = this.convertToPixel(pos)
       let tickCountDif = 1
@@ -180,7 +180,7 @@ export default abstract class XAxisImp extends AxisImp {
     const optimalTicks: AxisTick[] = []
 
     const tickTextStyles = chart.getStyles().xAxis.tickText
-    const defaultLabelWidth = calcTextWidth('00:00', createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.family))
+    const defaultLabelWidth = calcTextWidth('00:00', createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.fontFamily))
 
     const preferXTicks = chartStore.getPreferXTicks()
     if (preferXTicks) {

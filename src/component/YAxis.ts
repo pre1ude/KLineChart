@@ -568,7 +568,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         let textWidth = 0
         // todo check
         this.getTicks().forEach(tick => {
-          textWidth = Math.max(textWidth, calcTextWidth(tick.text, createFont(yAxisStyles.tickText.size, yAxisStyles.tickText.weight, yAxisStyles.tickText.family)))
+          textWidth = Math.max(textWidth, calcTextWidth(tick.text, createFont(yAxisStyles.tickText.size, yAxisStyles.tickText.weight, yAxisStyles.tickText.fontFamily)))
         })
         yAxisWidth += (yAxisStyles.tickText.marginStart + yAxisStyles.tickText.marginEnd + textWidth)
       }
@@ -620,7 +620,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
           createFont(
             crosshairStyles.horizontal.text.size,
             crosshairStyles.horizontal.text.weight,
-            crosshairStyles.horizontal.text.family
+            crosshairStyles.horizontal.text.fontFamily
           )
         )
       )

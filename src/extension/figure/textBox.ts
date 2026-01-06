@@ -116,7 +116,7 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
   // 提取样式参数
   const fontSize = styles.size ?? 12
   const fontWeight = styles.weight ?? 'normal'
-  const fontFamily = styles.family ?? 'Helvetica Neue'
+  const fontFamily = styles.fontFamily ?? 'Trebuchet MS, sans-serif'
   const paddingLeft = styles.paddingLeft ?? 0
   const paddingTop = styles.paddingTop ?? 0
   const paddingRight = styles.paddingRight ?? 0
