@@ -1183,7 +1183,7 @@ export default class ChartImp implements Chart {
       )
     })
     ctx.restore()
-    return canvas.toDataURL(`image/${type ?? 'jpeg'}`)
+    return canvas.toDataURL(`image/${type ?? 'png'}`)
   }
 
   resize(): void {
