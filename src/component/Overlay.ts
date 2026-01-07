@@ -309,16 +309,15 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     const committedCount = this.currentStep
     const drawingPoint = this.points[committedCount]
 
-    for (let i = 0; i < committedCount && i < points.length; i++) {
-      const newPoint = points[i]
-      if (isValid(newPoint)) {
-        this._updatePoint(this.points[i] ??= {}, newPoint)
-        this.onDrawPointUpdate?.(this.points, i, this.points[i])
-      }
-    }
+    const committedPoints = points.slice(0, committedCount)
+    this.points = [...committedPoints]
 
     if (isValid(drawingPoint)) {
       this.points[committedCount] = drawingPoint
+    }
+
+    for (let i = 0; i < committedCount; i++) {
+      this.onDrawPointUpdate?.(this.points, i, this.points[i])
     }
   }
 
