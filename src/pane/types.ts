@@ -12,6 +12,9 @@ export interface PaneGap {
 export interface PaneAxisOptionItem {
   type?: YAxisType
   formatter?: (v: number) => string
+  axisStyle?: {
+    tickTextColor?: string
+  }
 }
 
 export interface PaneAxisOptions {

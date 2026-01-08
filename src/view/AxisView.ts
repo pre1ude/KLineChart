@@ -41,8 +41,8 @@ export default abstract class AxisView extends View {
       if (styles.tickText.show) {
         const isTimeShare = chartStore.getIsTimeShare()
         const isMainPane = pane.getId() === PaneIdConstants.CANDLE
-        const tickHasColor = isTimeShare && isMainPane
-        if (tickHasColor) {
+        const isTimeShareMain = isTimeShare && isMainPane
+        if (isTimeShareMain) {
           const barStyles = chartStore.getStyles().candle.bar
           const tickTexts = this.createTickTexts(ticks, bounding, styles)
           tickTexts.forEach((text, index) => {
@@ -54,17 +54,6 @@ export default abstract class AxisView extends View {
                 color: colorHint === 1 ? barStyles.upColor : colorHint === -1 ? barStyles.downColor : styles.tickText.color
               }
             })
-          })
-        } else if (isTimeShare && !isMainPane) {
-          const tickTexts = this.createTickTexts(ticks, bounding, styles)
-          let color = styles.tickText.color
-          const customColor = this.getCustomYAxisColor()
-          if (customColor) {
-            color = customColor
-          }
-          drawStaticFigure(ctx, 'text', {
-            attrs: tickTexts,
-            styles: { ...styles.tickText, color }
           })
         } else {
           const tickTexts = this.createTickTexts(ticks, bounding, styles)
@@ -78,7 +67,6 @@ export default abstract class AxisView extends View {
   }
 
   protected abstract getAxisStyles(styles: Styles): AxisStyle
-  protected abstract getCustomYAxisColor(): string | undefined
 
   protected abstract createAxisLine(bounding: Bounding, styles: AxisStyle): LineAttrs
   protected abstract createTickLines(ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): LineAttrs[]

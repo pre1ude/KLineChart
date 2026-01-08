@@ -9,7 +9,22 @@ import type YAxisWidget from '../widget/YAxisWidget'
 
 export default class YAxisView extends AxisView {
   override getAxisStyles(styles: Styles): AxisStyle {
-    return styles.yAxis
+    const baseStyles = styles.yAxis
+    const widget = this.getWidget() as unknown as YAxisWidget
+    const position = widget.getOptions().position
+    const paneAxisOptions = widget.getPane().getOptions().axisOptions
+    const tickTextColor = paneAxisOptions?.YAxis?.[position]?.axisStyle?.tickTextColor
+
+    if (tickTextColor) {
+      return {
+        ...baseStyles,
+        tickText: {
+          ...baseStyles.tickText,
+          color: tickTextColor
+        }
+      }
+    }
+    return baseStyles
   }
 
   override createAxisLine(bounding: Bounding, styles: AxisStyle): LineAttrs {
@@ -93,11 +108,5 @@ export default class YAxisView extends AxisView {
       align,
       baseline: 'middle'
     }))
-  }
-
-  override getCustomYAxisColor() {
-    const styles = this.getWidget().getPane().getChart().getStyles()
-    const position = (this.getWidget() as YAxisWidget).getOptions().position
-    return styles.indicator?.yAxisTextTickColor ? styles.indicator?.yAxisTextTickColor(position) : undefined
   }
 }
