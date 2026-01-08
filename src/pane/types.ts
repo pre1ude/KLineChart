@@ -15,6 +15,7 @@ export interface PaneAxisOptionItem {
   axisStyle?: {
     tickTextColor?: string
   }
+  axisTitle?: string
 }
 
 export interface PaneAxisOptions {

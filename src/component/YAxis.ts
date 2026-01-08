@@ -525,7 +525,11 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     })
     const isTimeShare = chartStore.getIsTimeShare()
     const isInCandle = this.isInCandle()
-    const optimalTicks = isTimeShare && isInCandle ? tempTicks : this._commonYTicksLayout(tempTicks, textHeight, height)
+    const optimalTicks = isTimeShare
+      ? isInCandle
+        ? tempTicks
+        : this._commonYTicksLayout(tempTicks, textHeight, height - textHeight / 2)
+      : this._commonYTicksLayout(tempTicks, textHeight, height)
     return optimalTicks
   }
 

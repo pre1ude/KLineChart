@@ -18,6 +18,7 @@ export interface YAxisOptions {
   scrollZoomEnabled?: boolean
   position: Exclude<YAxisPosition, 'both'>
   type: YAxisType
+  axisTitle: string
 }
 
 export default class YAxisWidget extends DrawWidget<DualYPane> {
@@ -26,7 +27,8 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     name: 'default',
     scrollZoomEnabled: true,
     position: YAxisPosition.Left,
-    type: YAxisType.Normal
+    type: YAxisType.Normal,
+    axisTitle: ''
   }
 
   private readonly _yAxisView = new YAxisView(this)
@@ -40,11 +42,13 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     setCursor(this.getContainer(), 'ns-resize')
 
     const axisType = options.axisOptions?.YAxis?.[position]?.type ?? YAxisType.Normal
+    const axisTitle = options.axisOptions?.YAxis?.[position]?.axisTitle ?? ''
     this.setOptions({
       name: options.axisOptions?.name,
       scrollZoomEnabled: options.axisOptions?.scrollZoomEnabled,
       position,
-      type: axisType
+      type: axisType,
+      axisTitle
     })
   }
 

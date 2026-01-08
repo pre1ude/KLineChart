@@ -76,6 +76,12 @@ export default class YAxisView extends AxisView {
 
   override createTickTexts(ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): TextAttrs[] {
     const widget = this.getWidget() as unknown as YAxisWidget
+    const chartStore = widget.getPane().getChart().getChartStore()
+    const isTimeShare = chartStore.getIsTimeShare()
+    const isInCandle = widget.isInCandle()
+    const height = widget?.getBounding().height ?? 0
+    const textHeight = chartStore.getStyles().xAxis.tickText.size
+    const axisTitle = widget.getOptions().axisTitle
     const isAlignLeft = widget.isAlignLeft()
     const axisLineStyles = styles.axisLine
     const tickLineStyles = styles.tickLine
@@ -100,8 +106,19 @@ export default class YAxisView extends AxisView {
       }
     }
 
+    let newTicks: AxisTick[] = ticks
+    if (isTimeShare && !isInCandle) {
+      if (axisTitle?.length) {
+        newTicks = [{
+          coord: height - textHeight / 2,
+          value: '--',
+          text: axisTitle
+        }, ...ticks]
+      }
+    }
+
     const align = isAlignLeft ? 'left' : 'right'
-    return ticks.map(tick => ({
+    return newTicks.map(tick => ({
       x,
       y: tick.coord,
       text: tick.text,
