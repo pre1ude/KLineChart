@@ -425,8 +425,20 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     const tooltipStyles = styles.tooltip
     const textColor = tooltipStyles.text.color
     const current = data.current
-    const prevClose = data.prev?.close ?? current.close
-    const changeValue = current.close - prevClose
+
+    // 获取基准价格：使用统一的 getMinutePercentageBasis 方法
+    const widget = this.getWidget()
+    const chartStore = widget.getPane().getChart().getChartStore()
+    const isTimeShare = chartStore.getIsTimeShare()
+
+    let basisPrice: number
+    if (isTimeShare) {
+      basisPrice = chartStore.getMinutePercentageBasis()
+    } else {
+      basisPrice = data.prev?.close ?? current.close
+    }
+
+    const changeValue = current.close - basisPrice
     const { price: pricePrecision, volume: volumePrecision } = precision
     const mapping: Record<string, string> = {
       '{time}': customApi.formatDate(dateTimeFormat, current.timestamp, 'YYYY-MM-DD HH:mm', FormatDateType.Tooltip),
@@ -442,7 +454,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
         formatPrecision(current.turnover ?? tooltipStyles.defaultValue, pricePrecision),
         thousandsSeparator
       ), decimalFoldThreshold),
-      '{change}': prevClose === 0 ? tooltipStyles.defaultValue : `${formatThousands(formatPrecision(changeValue / prevClose * 100), thousandsSeparator)}%`
+      '{change}': basisPrice === 0 ? tooltipStyles.defaultValue : `${formatThousands(formatPrecision(changeValue / basisPrice * 100), thousandsSeparator)}%`
     }
     const legends = (
       isFunction(tooltipStyles.custom)

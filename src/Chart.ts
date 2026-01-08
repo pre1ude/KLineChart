@@ -60,6 +60,7 @@ export interface Chart {
   setPriceVolumePrecision: (pricePrecision: number, volumePrecision: number) => void
   getPriceVolumePrecision: () => Precision
   setTimeShareDays: (days: number) => void
+  setTimeShareBasisPrice: (price: number) => void
   setTimezone: (timezone: string) => void
   getTimezone: () => string
   setOffsetRightDistance: (distance: number) => void
@@ -629,6 +630,10 @@ export default class ChartImp implements Chart {
 
   setTimeShareDays(days: number): void {
     this._chartStore.setTimeShareDays(days)
+  }
+
+  setTimeShareBasisPrice(price: number): void {
+    this._chartStore.setTimeShareBasisPrice(price)
   }
 
   getPriceVolumePrecision(): Precision {

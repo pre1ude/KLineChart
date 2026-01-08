@@ -10,18 +10,26 @@ export default class CandleZeroPriceLineView extends View {
     const pane = widget.getPane()
     const bounding = widget.getBounding()
     const chartStore = pane.getChart().getChartStore()
+
+    // 只在分时图模式下显示
+    if (!chartStore.getIsTimeShare()) {
+      return
+    }
+
     const styles = chartStore.getStyles()
     const gridStyles = styles.grid
     const priceMarkStyles = styles.candle.priceMark
     const lastPriceMarkStyles = priceMarkStyles.last
     const lastPriceMarkLineStyles = lastPriceMarkStyles.line
+
     if (priceMarkStyles.show && lastPriceMarkStyles.show && lastPriceMarkLineStyles.show) {
       const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
-      const dataList = chartStore.getDataList()
-      const firstData = dataList[0]
-      const prevClose: number | undefined = firstData?.prevClose
-      if (prevClose != null) {
-        const yPos = yAxis.convertToPixel(prevClose)
+
+      // 使用 getTimeShareBasisPrice 获取基准价格
+      const basisPrice = chartStore.getTimeShareBasisPrice()
+
+      if (basisPrice > 0) {
+        const yPos = yAxis.convertToPixel(basisPrice)
         drawStaticFigure(ctx, 'line', {
           attrs: {
             coordinates: [
@@ -31,8 +39,7 @@ export default class CandleZeroPriceLineView extends View {
           },
           styles: {
             style: lastPriceMarkLineStyles.style,
-            // color: lastPriceMarkStyles.noChangeColor,
-            color: '#b8cae665',
+            color: lastPriceMarkStyles.noChangeColor,
             size: lastPriceMarkLineStyles.size,
             dashedValue: gridStyles.horizontal.dashedValue
           }

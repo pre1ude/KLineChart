@@ -54,6 +54,8 @@ export default class ChartStore {
 
   private _preferXTicks: string[] | undefined
 
+  private _timeShareBasisPrice: number | undefined
+
   /**
    * Price and volume precision
    */
@@ -326,6 +328,26 @@ export default class ChartStore {
 
   getVisibleFirstData(): KLineData | undefined {
     return this._dataList[0]
+  }
+
+  getTimeShareBasisPrice(): number {
+    return this._timeShareBasisPrice ?? this._dataList[0]?.prevClose ?? 0
+  }
+
+  setTimeShareBasisPrice(v: number): void {
+    this._timeShareBasisPrice = v
+  }
+
+  /**
+   * 获取分钟百分比模式的基准价格
+   * 分时图模式使用 timeShareBasisPrice，否则使用 prevClose
+   */
+  getMinutePercentageBasis(): number {
+    if (this.getIsTimeShare()) {
+      return this.getTimeShareBasisPrice()
+    }
+    const firstData = this.getVisibleFirstData()
+    return firstData?.prevClose ?? firstData?.close ?? 0
   }
 
   getVisibleDataList(): VisibleData[] {

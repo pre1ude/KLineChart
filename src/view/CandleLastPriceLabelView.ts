@@ -1,7 +1,7 @@
 
 import { YAxisType } from '../common/Styles'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
-import { isValid } from '../common/utils/typeChecks'
+import { isValid, isNumber } from '../common/utils/typeChecks'
 import View from './View'
 import type YAxisWidget from '../widget/YAxisWidget'
 import { drawStaticFigure } from '../extension/figure'
@@ -16,12 +16,14 @@ export default class CandleLastPriceLabelView extends View {
     const priceMarkStyles = chartStore.getStyles().candle.priceMark
     const lastPriceMarkStyles = priceMarkStyles.last
     const lastPriceMarkTextStyles = lastPriceMarkStyles.text
+
     if (priceMarkStyles.show && lastPriceMarkStyles.show && lastPriceMarkTextStyles.show) {
       const precision = chartStore.getPrecision()
       const yAxis = widget.getAxisComponent()
       const dataList = chartStore.getDataList()
       const data = dataList[dataList.length - 1]
-      if (isValid(data)) {
+
+      if (isValid(data) && isNumber(data.close) && isNumber(data.open)) {
         const { close, open } = data
         const y0 = yAxis.convertToPixel(close)
         const y = clamp(y0, 10, bounding.height - 10)
@@ -34,19 +36,28 @@ export default class CandleLastPriceLabelView extends View {
         } else {
           backgroundColor = lastPriceMarkStyles.noChangeColor
         }
-        let text: string
 
-        if (widget.getAxisType() === YAxisType.MinutePercentage) {
+        let text: string
+        const axisType = widget.getAxisType()
+
+        if (axisType === YAxisType.MinutePercentage) {
+          const basisPrice = chartStore.getMinutePercentageBasis()
+          if (basisPrice > 0) {
+            text = `${((close - basisPrice) / basisPrice * 100).toFixed(2)}%`
+          } else {
+            text = '0.00%'
+          }
+        } else if (axisType === YAxisType.Percentage) {
           const fromData = chartStore.getVisibleFirstData()
-          const prevClose = fromData?.prevClose ?? fromData?.close
-          text = `${((close - prevClose) / prevClose * 100).toFixed(2)}%`
-        } else if (widget.getAxisType() === YAxisType.Percentage) {
-          const fromData = chartStore.getVisibleFirstData()
-          const fromClose = fromData!.close
-          text = `${((close - fromClose) / fromClose * 100).toFixed(2)}%`
+          if (isValid(fromData) && isNumber(fromData.close)) {
+            text = `${((close - fromData.close) / fromData.close * 100).toFixed(2)}%`
+          } else {
+            text = '0.00%'
+          }
         } else {
           text = formatPrecision(close, precision.price)
         }
+
         text = formatFoldDecimal(formatThousands(text, chartStore.getThousandsSeparator()), chartStore.getDecimalFoldThreshold())
 
         const isAlignLeft = widget.isAlignLeft()

@@ -29,14 +29,24 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
     }
     const value = yAxis.convertFromPixel(crosshair.y)
     let text: string
+
     if (axisType === YAxisType.Percentage || axisType === YAxisType.MinutePercentage) {
-      const fromData = chartStore.getVisibleFirstData()
-      if (!fromData) {
-        text = ''
-      } else if (axisType === YAxisType.MinutePercentage) {
-        text = `${((value - fromData.prevClose) / fromData.prevClose * 100).toFixed(2)}%`
+      if (axisType === YAxisType.MinutePercentage) {
+        // 分钟百分比模式：使用统一的基准价格方法
+        const basisPrice = chartStore.getMinutePercentageBasis()
+        if (basisPrice > 0) {
+          text = `${((value - basisPrice) / basisPrice * 100).toFixed(2)}%`
+        } else {
+          text = '0.00%'
+        }
       } else {
-        text = `${((value - fromData.close) / fromData.close * 100).toFixed(2)}%`
+        // 普通百分比模式：使用第一个数据的 close
+        const fromData = chartStore.getVisibleFirstData()
+        if (fromData && fromData.close > 0) {
+          text = `${((value - fromData.close) / fromData.close * 100).toFixed(2)}%`
+        } else {
+          text = '0.00%'
+        }
       }
     } else {
       const indicators = chartStore.getIndicatorStore().getInstances(crosshair.paneId ?? '')

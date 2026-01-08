@@ -90,15 +90,9 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
             let text = formatterFn ? formatterFn(v): formatPrecision(v, precision)
 
             if (type === YAxisType.MinutePercentage) {
-              const firstData = chartStore.getVisibleFirstData()
-              // 获取昨收
-              let prevClose = firstData?.prevClose
-              if (!prevClose) {
-                console.warn('YAxisImp: prevClose is not set, using first data close as prevClose')
-                prevClose = firstData?.close
-              }
-              if (isNumber(prevClose)) {
-                v = (v - prevClose) / prevClose * 100
+              const basisPrice = chartStore.getMinutePercentageBasis()
+              if (basisPrice > 0) {
+                v = (v - basisPrice) / basisPrice * 100
                 text = `${formatPrecision(v, 2)}%`
               }
             } else if (type === YAxisType.Percentage) {
@@ -311,15 +305,13 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     if (this.isInCandle()) {
       if (chartStore.getIsTimeShare()) {
         // 分时图需要特殊处理
-        const firstData = chartStore.getVisibleFirstData()
-        if (isValid(firstData) && isNumber(firstData.prevClose)) {
-          const maxDiff = Math.max(
-            Math.abs(max - firstData.prevClose),
-            Math.abs(min - firstData.prevClose)
-          )
-          min = firstData.prevClose - maxDiff
-          max = firstData.prevClose + maxDiff
-        }
+        const timeShareBasisPrice = chartStore.getTimeShareBasisPrice()
+        const maxDiff = Math.max(
+          Math.abs(max - timeShareBasisPrice),
+          Math.abs(min - timeShareBasisPrice)
+        )
+        min = timeShareBasisPrice - maxDiff
+        max = timeShareBasisPrice + maxDiff
       }
     }
 
@@ -336,11 +328,12 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         break
       }
       case YAxisType.MinutePercentage: {
-        const firstData = chartStore.getVisibleFirstData()
-        if (isValid(firstData) && isNumber(firstData.prevClose)) {
+        const chartStore = this.getParent().getPane().getChart().getChartStore()
+        const basisPrice = chartStore.getMinutePercentageBasis()
+        if (basisPrice > 0) {
           const maxPercent = Math.max(
-            Math.abs((max - firstData.prevClose) / firstData.prevClose * 100),
-            Math.abs((min - firstData.prevClose) / firstData.prevClose * 100)
+            Math.abs((max - basisPrice) / basisPrice * 100),
+            Math.abs((min - basisPrice) / basisPrice * 100)
           )
           min = -maxPercent
           max = maxPercent
@@ -394,14 +387,11 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         break
       }
       case YAxisType.MinutePercentage: {
-        const firstData = chartStore.getVisibleFirstData()
-        let prevClose = firstData?.prevClose
-        if (!prevClose) {
-          prevClose = firstData?.close
-        }
-        if (isNumber(prevClose)) {
-          domainFrom = prevClose * (min / 100 + 1)
-          domainTo = prevClose * (max / 100 + 1)
+        const chartStore = this.getParent().getPane().getChart().getChartStore()
+        const basisPrice = chartStore.getMinutePercentageBasis()
+        if (basisPrice > 0) {
+          domainFrom = basisPrice * (min / 100 + 1)
+          domainTo = basisPrice * (max / 100 + 1)
         }
         break
       }
@@ -713,15 +703,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const value = rate * (to - from) + from
     switch (this.getType()) {
       case YAxisType.MinutePercentage: {
-        const fromData = this.getParent().getPane().getChart().getChartStore().getVisibleFirstData()
-        // 获取昨收
-        let prevClose = fromData?.prevClose
-        if (!prevClose) {
-          console.warn('YAxisImp: prevClose is not set, using first data close as prevClose')
-          prevClose = fromData?.close
-        }
-        if (isNumber(prevClose)) {
-          return prevClose * (value / 100 + 1)
+        const chartStore = this.getParent().getPane().getChart().getChartStore()
+        const basisPrice = chartStore.getMinutePercentageBasis()
+        if (basisPrice > 0) {
+          return basisPrice * (value / 100 + 1)
         }
         return 0
       }
@@ -753,15 +738,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     let v = value
     switch (this.getType()) {
       case YAxisType.MinutePercentage: {
-        const fromData = this.getParent().getPane().getChart().getChartStore().getVisibleFirstData()
-        // 获取昨收
-        let prevClose = fromData?.prevClose
-        if (!prevClose) {
-          console.warn('YAxisImp: prevClose is not set, using first data close as prevClose')
-          prevClose = fromData?.close
-        }
-        if (isNumber(prevClose)) {
-          v = (value - prevClose) / prevClose * 100
+        const chartStore = this.getParent().getPane().getChart().getChartStore()
+        const basisPrice = chartStore.getMinutePercentageBasis()
+        if (basisPrice > 0) {
+          v = (value - basisPrice) / basisPrice * 100
         }
         break
       }
