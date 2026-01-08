@@ -31,6 +31,8 @@ export default class TimeScaleStore {
    */
   private readonly _minRemainWidth = { left: 0, right: 0 }
 
+  private _autoInitialAlignment: boolean = true
+
   private _visibleRange: VisibleRange = getDefaultVisibleRange()
 
   private _xScale: LinearScale
@@ -307,6 +309,116 @@ export default class TimeScaleStore {
   clear(): void {
     this._visibleRange = getDefaultVisibleRange()
   }
+
+  /**
+   * 将K线左对齐到屏幕左边
+   * 适用于数据量较少，希望充分利用屏幕空间的场景
+   */
+  alignLeft(): void {
+    const dataList = this._chartStore.getDataList()
+    const totalBarCount = dataList.length
+
+    if (totalBarCount === 0) {
+      return
+    }
+
+    const totalBarWidth = totalBarCount * this._barWidth
+    const mainWidth = this._chartStore.mainWidth
+
+    // 如果数据宽度超过屏幕宽度，左对齐就是显示最早的数据
+    if (totalBarWidth >= mainWidth) {
+      this._offsetRight = mainWidth - totalBarWidth
+    } else {
+      // 数据宽度小于屏幕宽度，左对齐并保持所有数据可见
+      this._offsetRight = mainWidth - totalBarWidth
+    }
+
+    this.adjustVisibleRange()
+    this._chartStore.getTooltipStore().recalculateCrosshair(true)
+    this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
+  }
+
+  /**
+   * 将K线右对齐到屏幕右边（恢复默认行为）
+   */
+  alignRight(): void {
+    this._offsetRight = DEFAULT_OFFSET_RIGHT
+    this.adjustVisibleRange()
+    this._chartStore.getTooltipStore().recalculateCrosshair(true)
+    this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
+  }
+
+  /**
+   * 将K线居中对齐
+   */
+  alignCenter(): void {
+    const dataList = this._chartStore.getDataList()
+    const totalBarCount = dataList.length
+
+    if (totalBarCount === 0) {
+      return
+    }
+
+    const totalBarWidth = totalBarCount * this._barWidth
+    const mainWidth = this._chartStore.mainWidth
+
+    if (totalBarWidth >= mainWidth) {
+      // 数据宽度超过屏幕，居中显示中间部分
+      const centerDataIndex = Math.floor(totalBarCount / 2)
+      const visibleBarCount = Math.floor(mainWidth / this._barWidth)
+      const startIndex = Math.max(0, centerDataIndex - Math.floor(visibleBarCount / 2))
+      this._offsetRight = mainWidth - (totalBarCount - startIndex) * this._barWidth
+    } else {
+      // 数据宽度小于屏幕，居中显示
+      this._offsetRight = (mainWidth - totalBarWidth) / 2 + DEFAULT_OFFSET_RIGHT
+    }
+
+    this.adjustVisibleRange()
+    this._chartStore.getTooltipStore().recalculateCrosshair(true)
+    this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
+  }
+
+  /**
+   * 智能初始对齐
+   * 根据数据量自动选择最合适的对齐方式
+   */
+  autoInitialAlignment(): void {
+    if (!this._autoInitialAlignment) {
+      return
+    }
+
+    const dataList = this._chartStore.getDataList()
+    const totalBarCount = dataList.length
+
+    if (totalBarCount === 0) {
+      return
+    }
+
+    const totalBarWidth = totalBarCount * this._barWidth
+    const mainWidth = this._chartStore.mainWidth
+
+    // 如果数据宽度小于窗口宽度，左对齐；否则右对齐
+    if (totalBarWidth < mainWidth) {
+      this.alignLeft()
+    } else {
+      this.alignRight()
+    }
+  }
+
+  /**
+   * 设置智能初始对齐开关
+   */
+  setAutoInitialAlignment(enabled: boolean): void {
+    this._autoInitialAlignment = enabled
+  }
+
+  /**
+   * 获取智能初始对齐开关状态
+   */
+  getAutoInitialAlignment(): boolean {
+    return this._autoInitialAlignment
+  }
+
 }
 
 function getKWidth(barWidth: number): number {

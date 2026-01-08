@@ -113,6 +113,11 @@ export interface Chart {
   scrollToRealTime: (animationDuration?: number) => void
   scrollToDataIndex: (dataIndex: number, animationDuration?: number) => void
   scrollToTimestamp: (timestamp: number, animationDuration?: number) => void
+  alignLeft: () => void
+  alignRight: () => void
+  alignCenter: () => void
+  setAutoInitialAlignment: (enabled: boolean) => void
+  getAutoInitialAlignment: () => boolean
   zoomAtCoordinate: (scale: number, coordinate?: Coordinate, animationDuration?: number) => void
   zoomAtDataIndex: (scale: number, dataIndex: number, animationDuration?: number) => void
   zoomAtTimestamp: (scale: number, timestamp: number, animationDuration?: number) => void
@@ -1022,6 +1027,26 @@ export default class ChartImp implements Chart {
   scrollToTimestamp(timestamp: number, animationDuration?: number): void {
     const dataIndex = binarySearchNearest(this.getDataList(), 'timestamp', timestamp)
     this.scrollToDataIndex(dataIndex, animationDuration)
+  }
+
+  alignLeft(): void {
+    this._chartStore.getTimeScaleStore().alignLeft()
+  }
+
+  alignRight(): void {
+    this._chartStore.getTimeScaleStore().alignRight()
+  }
+
+  alignCenter(): void {
+    this._chartStore.getTimeScaleStore().alignCenter()
+  }
+
+  setAutoInitialAlignment(enabled: boolean): void {
+    this._chartStore.getTimeScaleStore().setAutoInitialAlignment(enabled)
+  }
+
+  getAutoInitialAlignment(): boolean {
+    return this._chartStore.getTimeScaleStore().getAutoInitialAlignment()
   }
 
   zoomAtCoordinate(scale: number, coordinate?: Coordinate, animationDuration?: number): void {
