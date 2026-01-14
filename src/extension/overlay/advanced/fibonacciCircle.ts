@@ -19,8 +19,6 @@ const fibonacciCircle: OverlayTemplate = {
       const percents = [0.236, 0.382, 0.5, 0.618, 0.786, 1]
       const figures: OverlayFigure[] = []
 
-      // 连接线（虚线）
-      figures.push({ key: 'trendLine', type: 'line', attrs: { coordinates }, styles: { style: 'dashed', dashedValue: [2, 4] } })
       percents.forEach(percent => {
         const r = radius * percent
         const key = `fib_${percent}`
