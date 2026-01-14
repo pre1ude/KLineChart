@@ -33,7 +33,6 @@ const gannBox: OverlayTemplate = {
     figures.push({
       key: 'fill',
       type: 'polygon',
-      ignoreEvent: false,
       attrs: {
         coordinates: [p0, { x: p1.x, y: p0.y }, p1, { x: p0.x, y: p1.y }]
       },

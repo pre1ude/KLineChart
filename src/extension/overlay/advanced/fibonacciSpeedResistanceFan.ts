@@ -74,7 +74,7 @@ const fibonacciSpeedResistanceFan: OverlayTemplate = {
         text: `${percent.toFixed(3)}`,
         baseline: yTextBaseline
       }
-      figures.push({ key: `${key}_text_y`, type: 'text', ignoreEvent: true, attrs: textYAttrs })
+      figures.push({ key: `${key}_text_y`, type: 'text', attrs: textYAttrs })
 
       // X轴文字标签
       const textXAttrs: TextAttrs = {
@@ -83,7 +83,7 @@ const fibonacciSpeedResistanceFan: OverlayTemplate = {
         text: `${percent.toFixed(3)}`,
         baseline: isDownward ? 'bottom' : 'top'
       }
-      figures.push({ key: `${key}_text_x`, type: 'text', ignoreEvent: true, attrs: textXAttrs })
+      figures.push({ key: `${key}_text_x`, type: 'text', attrs: textXAttrs })
     })
 
     return figures

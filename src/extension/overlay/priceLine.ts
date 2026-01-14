@@ -22,7 +22,6 @@ const priceLine: OverlayTemplate = {
       {
         key: 'label',
         type: 'text',
-        ignoreEvent: true,
         attrs: {
           x: coordinates[0].x,
           y: coordinates[0].y,

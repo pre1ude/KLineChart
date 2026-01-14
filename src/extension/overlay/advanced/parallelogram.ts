@@ -14,7 +14,6 @@ const parallelogram: OverlayTemplate = {
       return [
         {
           type: 'line',
-          ignoreEvent: true,
           attrs: { coordinates }
         }
       ]
