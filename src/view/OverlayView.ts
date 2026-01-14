@@ -396,6 +396,8 @@ export default class OverlayView extends View {
     const pointStyles = { ...defaultStyles.point, ...overlay.styles?.point }
 
     coordinates.forEach(({ x, y }, index) => {
+      // 绘制中的最后一个点是预览点，不响应事件
+      const isPreviewPoint = isDrawing && index === coordinates.length - 1
       const isActive = isControlPointHovered && hoverInfo.figureIndex === index
       const style = isActive ? {
         radius: pointStyles.activeRadius,
@@ -421,11 +423,14 @@ export default class OverlayView extends View {
           attrsIndex: 0
         })
         .draw(ctx)
+      // 预览点只绘制不响应事件
+      if (!isPreviewPoint) {
+        this.addChild(dot)
+      }
       drawStaticFigure(ctx, 'circle', {
         attrs: { x, y, r: style.radius },
         styles: { color: style.color }
       })
-      this.addChild(dot)
     })
   }
 
