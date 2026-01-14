@@ -204,6 +204,7 @@ export default abstract class XAxisImp extends AxisImp {
           tickCountDif = Math.ceil(defaultLabelWidth * 1.5 / xDif)
         }
       }
+      let prevYear: string | null = null
       for (let i = 0; i < ticks.length; i += tickCountDif) {
         const index = (ticks[i].value as number) % timeShareTicks.length
         const x = this.convertToPixel(ticks[i].value as number)
@@ -217,7 +218,13 @@ export default abstract class XAxisImp extends AxisImp {
           const hintTs = getHintTs(i)
           let text = timeShareTicks[index]
           const timeStamp = genTimeStamp(text, hintTs)
-          text = formatDate(getDateTimeFormat(), timeStamp, i === 0 ? 'YYYY-MM-DD' : 'MM-DD')
+          const currentYear = formatDate(getDateTimeFormat(), timeStamp, 'YYYY')
+          if (prevYear === null || prevYear !== currentYear) {
+            text = formatDate(getDateTimeFormat(), timeStamp, 'YYYY-MM-DD')
+            prevYear = currentYear
+          } else {
+            text = formatDate(getDateTimeFormat(), timeStamp, 'MM-DD')
+          }
           optimalTicks.push({ text, coord: x, value: timeStamp })
         }
       }
