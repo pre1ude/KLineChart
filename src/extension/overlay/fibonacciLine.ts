@@ -19,7 +19,7 @@ const fibonacciLine: OverlayTemplate = {
       const currentPrecision = (yAxis?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax
       const figures: OverlayFigure[] = []
       // 连接线（虚线）
-      figures.push({ key: 'trendLine', type: 'line', attrs: { coordinates }, styles: { style: 'dashed', dashedValue: [8, 4] } })
+      figures.push({ key: 'trendLine', type: 'line', attrs: { coordinates }, styles: { style: 'dashed', dashedValue: [2, 4] } })
 
       const startX = 0
       const endX = bounding.width

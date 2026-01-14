@@ -19,7 +19,7 @@ const fibonacciSegment: OverlayTemplate = {
       const currentPrecision = (yAxis?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax
       const figures: OverlayFigure[] = []
       // 连接线（虚线）
-      figures.push({ key: 'trendLine', type: 'line', attrs: { coordinates }, styles: { style: 'dashed', dashedValue: [8, 4] } })
+      figures.push({ key: 'trendLine', type: 'line', attrs: { coordinates }, styles: { style: 'dashed', dashedValue: [2, 4] } })
 
       const textX = coordinates[1].x > coordinates[0].x ? coordinates[0].x : coordinates[1].x
       const percents = [1, 0.786, 0.618, 0.5, 0.382, 0.236, 0]
