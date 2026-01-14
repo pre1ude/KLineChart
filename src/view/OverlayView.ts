@@ -396,8 +396,6 @@ export default class OverlayView extends View {
     const pointStyles = { ...defaultStyles.point, ...overlay.styles?.point }
 
     coordinates.forEach(({ x, y }, index) => {
-      // 绘制中的最后一个点是预览点，不响应事件
-      const isPreviewPoint = isDrawing && index === coordinates.length - 1
       const isActive = isControlPointHovered && hoverInfo.figureIndex === index
       const style = isActive ? {
         radius: pointStyles.activeRadius,
@@ -411,7 +409,7 @@ export default class OverlayView extends View {
         borderSize: pointStyles.borderSize,
       }
 
-      // render control point - 外圆（边框）
+      // render control point
       const dot = createFigure('circle')
       dot.setAttrs({ x, y, r: style.radius + style.borderSize })
         .setStyles({ color: style.borderColor })
@@ -423,29 +421,11 @@ export default class OverlayView extends View {
           attrsIndex: 0
         })
         .draw(ctx)
-
-      // 预览点只绘制不响应事件
-      if (!isPreviewPoint) {
-        this.addChild(dot)
-      }
-
-      // 内圆
-      if (style.color === 'transparent') {
-        // 空心: 用 destination-out 挖空中间
-        ctx.save()
-        ctx.globalCompositeOperation = 'destination-out'
-        drawStaticFigure(ctx, 'circle', {
-          attrs: { x, y, r: style.radius },
-          styles: { color: '#000000' }
-        })
-        ctx.restore()
-      } else {
-        // 有颜色: 正常填充
-        drawStaticFigure(ctx, 'circle', {
-          attrs: { x, y, r: style.radius },
-          styles: { color: style.color }
-        })
-      }
+      drawStaticFigure(ctx, 'circle', {
+        attrs: { x, y, r: style.radius },
+        styles: { color: style.color }
+      })
+      this.addChild(dot)
     })
   }
 
