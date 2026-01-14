@@ -38,7 +38,6 @@ const fibonacciCircle: OverlayTemplate = {
           {
             key: `${key}_text`,
             type: 'text',
-            ignoreEvent: true,
             attrs: textAttrs
           }
         )

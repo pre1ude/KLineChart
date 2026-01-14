@@ -54,7 +54,7 @@ const fibonacciExtension: OverlayTemplate = {
 
         figures.push(
           { key, type: 'line', attrs: lineAttrs },
-          { key: `${key}_text`, type: 'text', ignoreEvent: true, attrs: textAttrs }
+          { key: `${key}_text`, type: 'text', attrs: textAttrs }
         )
       })
     }
