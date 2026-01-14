@@ -45,13 +45,11 @@ const xabcd: OverlayTemplate = {
       {
         key: 'bg',
         type: 'polygon',
-        ignoreEvent: false,
         attrs: polygons
       },
       {
         key: 'label',
         type: 'text',
-        ignoreEvent: false,
         attrs: texts
       }
     ]

@@ -24,7 +24,6 @@ const eightWaves: OverlayTemplate = {
       {
         key: 'label',
         type: 'text',
-        ignoreEvent: false,
         attrs: texts
       }
     ]
