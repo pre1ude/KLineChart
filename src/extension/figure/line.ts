@@ -37,9 +37,8 @@ function isPointOnSingleLine(point: Coordinate, attrs: LineAttrs): boolean {
 
   if (len <= 1) return false
 
-  let prev = coordinates[0]
-
   for (let j = 1; j < len; j++) {
+    const prev = coordinates[j - 1]
     const curr = coordinates[j]
     // fast bounding box check
     const minX = Math.min(prev.x, curr.x) - DEVIATION
@@ -54,7 +53,6 @@ function isPointOnSingleLine(point: Coordinate, attrs: LineAttrs): boolean {
     if (distance2 <= DEVIATION * DEVIATION) {
       return true
     }
-    prev = curr
   }
   return false
 }
