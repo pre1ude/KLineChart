@@ -104,6 +104,7 @@ export interface Chart {
     (value: OverlayCreate, paneId?: string): string | undefined
     (value: Array<string | OverlayCreate>, paneId?: string): Array<string | undefined>
   }
+  resetOverlay: (id: string) => void
   getOverlayById: (id: string) => Overlay | undefined
   overrideOverlay: (override: Partial<OverlayCreate>) => void
   removeOverlay: (remove?: string | OverlayFilter) => void
@@ -921,6 +922,14 @@ export default class ChartImp implements Chart {
       return ids
     }
     return ids[0]
+  }
+
+  resetOverlay(id: string): void {
+    const overlay = this.getOverlayById(id)
+    if (overlay) {
+      overlay.reset()
+      this.updatePane(UpdateLevel.Overlay)
+    }
   }
 
   getOverlayById(id: string): Overlay | undefined {
