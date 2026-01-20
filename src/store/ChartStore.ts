@@ -2,6 +2,8 @@ import type KLineData from '../common/KLineData'
 import type Precision from '../common/Precision'
 import type VisibleData from '../common/VisibleData'
 import type DeepPartial from '../common/DeepPartial'
+import type { IPoint } from '../common/Point'
+import type { Point } from '../common/Point'
 import { getDefaultStyles, type Styles, type TooltipLegend } from '../common/Styles'
 import { isArray, isNumber, isString, isValid, merge } from '../common/utils/typeChecks'
 import type LoadDataCallback from '../common/LoadDataCallback'
@@ -350,6 +352,96 @@ export default class ChartStore {
     return firstData?.prevClose ?? firstData?.close ?? 0
   }
 
+  /**
+   * 将外部点（timestamp + offset）转换为内部点（dataIndex + value）
+   */
+  externalToInternal(point: Partial<Point>): Partial<IPoint> {
+    const result: Partial<IPoint> = {}
+    if (isNumber(point.timestamp)) {
+      const baseDataIndex = this.timestampToDataIndex(point.timestamp)
+      result.dataIndex = baseDataIndex + (point.offset ?? 0)
+    }
+    if (isNumber(point.value)) {
+      result.value = point.value
+    }
+    return result
+  }
+
+  /**
+   * 将内部点（dataIndex + value）转换为外部点（timestamp + offset）
+   */
+  internalToExternal(point: Partial<IPoint>): Partial<Point> {
+    const result: Partial<Point> = {}
+    if (isNumber(point.dataIndex)) {
+      if (this._isTimeShare) {
+        // 分时模式：X 轴是预定义的时间槽，offset 始终为 0
+        result.timestamp = this._timeShareDataIndexToTimestamp(point.dataIndex)
+        result.offset = 0
+      } else {
+        // K 线模式：基于 dataList 计算
+        const dataList = this._dataList
+        const dataLength = dataList.length
+
+        if (dataLength === 0) {
+          result.timestamp = 0
+          result.offset = point.dataIndex
+        } else if (point.dataIndex < 0) {
+          // 超出左边界
+          result.timestamp = dataList[0].timestamp
+          result.offset = point.dataIndex
+        } else if (point.dataIndex >= dataLength) {
+          // 超出右边界
+          result.timestamp = dataList[dataLength - 1].timestamp
+          result.offset = point.dataIndex - (dataLength - 1)
+        } else {
+          // 在数据范围内
+          result.timestamp = this.dataIndexToTimestamp(point.dataIndex) ?? 0
+          result.offset = 0
+        }
+      }
+    }
+    if (isNumber(point.value)) {
+      result.value = point.value
+    }
+    return result
+  }
+
+  /**
+   * 分时模式：将 dataIndex 转换为 timestamp
+   * dataIndex 对应 timeShareTicks 的索引位置
+   */
+  private _timeShareDataIndexToTimestamp(dataIndex: number): number {
+    const ticksPerDay = this._timeShareTicks.length
+    if (ticksPerDay === 0) return 0
+
+    // 尝试从 dataList 获取对应数据的 timestamp
+    const data = this._dataList[dataIndex]
+    if (data) {
+      return data.timestamp
+    }
+
+    // 如果没有数据，根据时间槽计算 timestamp
+    // 找到最近的有数据的日期作为基准
+    const dayIndex = Math.floor(dataIndex / ticksPerDay)
+    const tickIndex = dataIndex % ticksPerDay
+    const tick = this._timeShareTicks[tickIndex] // 如 "09:30"
+
+    // 找基准日期：优先使用当天第一条数据，否则使用第一条数据
+    const dayStartIndex = dayIndex * ticksPerDay
+    const baseData = this._dataList[dayStartIndex] ?? this._dataList[0]
+    if (!baseData) return 0
+
+    // 解析基准日期
+    const baseDate = new Date(baseData.timestamp)
+    const [hours, minutes] = tick.split(':').map(Number)
+
+    // 构造目标 timestamp
+    const targetDate = new Date(baseDate)
+    targetDate.setHours(hours, minutes, 0, 0)
+
+    return targetDate.getTime()
+  }
+
   getVisibleDataList(): VisibleData[] {
     return this._visibleDataList
   }
@@ -369,12 +461,8 @@ export default class ChartStore {
   }
 
   addData(data: KLineData | KLineData[], type?: LoadDataType, more?: boolean, callback?: () => void): void {
-    let success = false
     let adjustFlag = false
-    let dataLengthChange = 0
     if (isArray<KLineData>(data)) {
-      // TODO if data.length is zero, we should ajust the visible range
-      dataLengthChange = data.length
       switch (type) {
         case LoadDataType.Init: {
           this.clear()
@@ -389,63 +477,94 @@ export default class ChartStore {
           break
         }
         case LoadDataType.Backward: {
-          this._dataList = data.concat(this._dataList)
+          const offset = data.length
+          if (offset > 0) {
+            this._dataList = data.concat(this._dataList)
+            this._overlayStore.updatePointPosition(offset)
+            adjustFlag = true
+          }
           this._backwardMore = more ?? false
-          adjustFlag = dataLengthChange > 0
           break
         }
         case LoadDataType.Forward: {
-          this._dataList = this._dataList.concat(data)
+          if (data.length > 0) {
+            this._dataList = this._dataList.concat(data)
+            adjustFlag = true
+          }
           this._forwardMore = more ?? false
-          adjustFlag = dataLengthChange > 0
+          break
         }
       }
       this._loading = false
-      success = true
     } else {
       const dataCount = this._dataList.length
-      // Determine where individual data should be added
       const timestamp = data.timestamp
       const lastDataTimestamp = this._dataList[dataCount - 1]?.timestamp ?? 0
       if (timestamp > lastDataTimestamp) {
+        // 追加新数据
         this._dataList.push(data)
         const nextOffsetRight = this._timeScaleStore.getOffsetRightDistance() - this._timeScaleStore.getBarSpace().bar
         this._timeScaleStore.setOffsetRightDistance(nextOffsetRight)
-        dataLengthChange = 1
-        success = true
         adjustFlag = true
       } else if (timestamp === lastDataTimestamp) {
+        // 更新最后一条
         this._dataList[dataCount - 1] = data
-        success = true
         adjustFlag = true
+      } else {
+        // 更新历史数据：二分查找匹配的 timestamp
+        const index = binarySearchNearest(this._dataList, 'timestamp', timestamp)
+        if (index >= 0 && index < dataCount && this._dataList[index].timestamp === timestamp) {
+          this._dataList[index] = data
+          adjustFlag = true
+        }
       }
     }
-    if (success) {
+    if (adjustFlag) {
       try {
-        this._overlayStore.updatePointPosition(dataLengthChange, type)
-        if (adjustFlag) {
-          this._timeScaleStore.adjustVisibleRange()
-          this._tooltipStore.recalculateCrosshair(true)
-          const filterIndicators = this._indicatorStore.getIndicatorsByFilter({})
+        this._timeScaleStore.adjustVisibleRange()
+        this._tooltipStore.recalculateCrosshair(true)
+        const filterIndicators = this._indicatorStore.getIndicatorsByFilter({})
 
-          if (filterIndicators.length > 0) {
-            // 有指标需要计算：先计算指标，TaskScheduler 完成后会自动调用 adjustPaneViewport
-            // 这样确保 calcRange() 使用的是最新的 indicator.result
-            this._indicatorStore.calcInstance(filterIndicators)
-            // 将回调加入队列，等待指标计算完成
-            if (callback) {
-              this._dataReadyCallbacks.push(callback)
-            }
-          } else {
-            // 没有指标：直接调整视口
-            this._chart.adjustPaneViewport(false, true, true, true)
-            // 立即执行回调
-            callback?.()
+        if (filterIndicators.length > 0) {
+          // 有指标需要计算：先计算指标，TaskScheduler 完成后会自动调用 adjustPaneViewport
+          // 这样确保 calcRange() 使用的是最新的 indicator.result
+          this._indicatorStore.calcInstance(filterIndicators)
+          // 将回调加入队列，等待指标计算完成
+          if (callback) {
+            this._dataReadyCallbacks.push(callback)
           }
+        } else {
+          // 没有指标：直接调整视口
+          this._chart.adjustPaneViewport(false, true, true, true)
+          // 立即执行回调
+          callback?.()
         }
         this._actionStore.execute(ActionType.OnDataReady, undefined)
       } catch {}
     }
+  }
+
+  replaceData(dataList: KLineData[], more?: boolean, callback?: () => void): void {
+    // 保存 overlay 点的外部格式（timestamp），数据替换后重新计算 dataIndex
+    this._overlayStore.savePointsAsExternal()
+    this._dataList = dataList
+    this._overlayStore.restorePointsFromExternal()
+    this._backwardMore = more ?? false
+
+    this._timeScaleStore.adjustVisibleRange()
+    this._tooltipStore.recalculateCrosshair(true)
+    const filterIndicators = this._indicatorStore.getIndicatorsByFilter({})
+
+    if (filterIndicators.length > 0) {
+      this._indicatorStore.calcInstance(filterIndicators)
+      if (callback) {
+        this._dataReadyCallbacks.push(callback)
+      }
+    } else {
+      this._chart.adjustPaneViewport(false, true, true, true)
+      callback?.()
+    }
+    this._actionStore.execute(ActionType.OnDataReady, undefined)
   }
 
   setLoadMoreCallback(callback: LoadMoreCallback): void {

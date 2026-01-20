@@ -1,5 +1,5 @@
 import type Coordinate from '../common/Coordinate'
-import type Point from '../common/Point'
+import type { IPoint } from '../common/Point'
 import type Bounding from '../common/Bounding'
 import type BarSpace from '../common/BarSpace'
 import { type OverlayStyle } from '../common/Styles'
@@ -18,7 +18,6 @@ import { WidgetNameConstants } from '../widget/types'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
-import type ChartStore from '../store/ChartStore'
 import type DualYPane from '../pane/DualYPane'
 import type DrawWidget from '@/widget/DrawWidget'
 import type Pane from '@/pane/Pane'
@@ -74,8 +73,8 @@ export default class OverlayView extends View {
     return super.checkEventOn(event, name, other)
   }
 
-  coordinateToPoint(overlay: Overlay, coordinate: Coordinate): Partial<Point> {
-    const point: Partial<Point> = {}
+  coordinateToPoint(overlay: Overlay, coordinate: Coordinate): Partial<IPoint> {
+    const point: Partial<IPoint> = {}
     const widget = this.getWidget()
     const pane = widget.getPane()
     const chart = pane.getChart()
@@ -85,18 +84,18 @@ export default class OverlayView extends View {
     if (this._type !== 'yAxis') {
       const xAxisWidget = chart.getXAxisPane().getMainWidget() as XAxisWidget
       const xAxis = xAxisWidget.getAxisComponent()
-      const dataIndex = xAxis.convertFromPixel(coordinate.x)
-      const timestamp = chartStore.dataIndexToTimestamp(dataIndex) ?? undefined
-      point.dataIndex = dataIndex
-      point.timestamp = timestamp
+      // 内部直接使用 dataIndex
+      point.dataIndex = xAxis.convertFromPixel(coordinate.x)
     }
 
     if (this._type !== 'xAxis') {
       const mainAxisWidget = (pane as DualYPane).getMainAxisWidget()
       const yAxis = mainAxisWidget.getAxisComponent()
       let value = yAxis.convertFromPixel(coordinate.y)
-      if (overlay.mode !== 'normal' && paneId === PaneIdConstants.CANDLE && isNumber(point.dataIndex)) {
-        const kLineData = chartStore.getDataByDataIndex(point.dataIndex)
+      const dataList = chartStore.getDataList()
+      const dataIndex = point.dataIndex ?? -1
+      if (overlay.mode !== 'normal' && paneId === PaneIdConstants.CANDLE && dataIndex >= 0 && dataIndex < dataList.length) {
+        const kLineData = chartStore.getDataByDataIndex(dataIndex)
         if (kLineData) {
           const modeSensitivity = overlay.modeSensitivity
           if (value > kLineData.high) {
@@ -184,8 +183,7 @@ export default class OverlayView extends View {
         this._drawOverlay(
           ctx, overlay, bounding, barSpace, overlayPrecision,
           dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
-          defaultStyles, chartStore,
-          hoverInfo, clickInfo, xAxis, yAxis,
+          defaultStyles, hoverInfo, clickInfo, xAxis, yAxis,
           true // bindEvent = true
         )
       }
@@ -201,8 +199,7 @@ export default class OverlayView extends View {
         this._drawOverlay(
           ctx, hoveredOverlay, bounding, barSpace, overlayPrecision,
           dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
-          defaultStyles, chartStore,
-          hoverInfo, clickInfo, xAxis, yAxis,
+          defaultStyles, hoverInfo, clickInfo, xAxis, yAxis,
           false // bindEvent = false，不添加到事件树
         )
       }
@@ -214,9 +211,7 @@ export default class OverlayView extends View {
       if (this._type === 'xAxis' || progressOverlay.paneId === paneId) {
         this._drawOverlay(
           ctx, progressOverlay, bounding, barSpace,
-          overlayPrecision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
-          defaultStyles, chartStore,
-          hoverInfo, clickInfo, xAxis, yAxis,
+          overlayPrecision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis,
           true // bindEvent = true
         )
       }
@@ -224,51 +219,14 @@ export default class OverlayView extends View {
   }
 
   private pointToCoordinate(
-    point: Partial<Point>,
-    chartStore: ChartStore,
+    point: IPoint,
     xAxis?: XAxis,
     yAxis?: YAxis
   ): Coordinate {
-    const { timestamp, dataIndex: cachedDataIndex } = point
-    let dataIndex: number | undefined
-
-    if (isNumber(timestamp)) {
-      // 有 timestamp 时，验证缓存的 dataIndex 是否有效
-      if (isNumber(cachedDataIndex)) {
-        const cachedData = chartStore.getDataByDataIndex(cachedDataIndex)
-        if (cachedData?.timestamp === timestamp) {
-          dataIndex = cachedDataIndex
-        }
-      }
-      if (dataIndex === undefined) {
-        // 缓存无效或不存在，重新计算
-        dataIndex = chartStore.timestampToDataIndex(timestamp)
-        point.dataIndex = dataIndex
-      }
-    } else if (isNumber(cachedDataIndex)) {
-      // 没有 timestamp（可能是拖动到数据范围外），直接使用 dataIndex
-      dataIndex = cachedDataIndex
+    return {
+      x: xAxis?.convertToPixel(point.dataIndex) ?? 0,
+      y: yAxis?.convertToPixel(point.value) ?? 0
     }
-
-    const coordinate = { x: 0, y: 0 }
-
-    if (isNumber(dataIndex)) {
-      coordinate.x = xAxis?.convertToPixel(dataIndex) ?? 0
-
-      if (typeof point.dataKey === 'string' && point.dataKey !== '') {
-        const data = chartStore.getDataByDataIndex(dataIndex)
-        if (data && point.dataKey in data) {
-          const v = Number(data[point.dataKey])
-          if (isNumber(v)) {
-            coordinate.y = yAxis?.convertToPixel(v) ?? 0
-          }
-        }
-      } else if (isNumber(point.value)) {
-        coordinate.y = yAxis?.convertToPixel(point.value) ?? 0
-      }
-    }
-
-    return coordinate
   }
 
   private _drawOverlay(
@@ -282,8 +240,6 @@ export default class OverlayView extends View {
     thousandsSeparator: string,
     decimalFoldThreshold: number,
     defaultStyles: OverlayStyle,
-    chartStore: ChartStore,
-
     hoverInfo?: EventOverlayInfo,
     clickInfo?: EventOverlayInfo,
     xAxis?: XAxis,
@@ -292,7 +248,7 @@ export default class OverlayView extends View {
   ): void {
     const { points } = overlay
     const coordinates = points.map(point =>
-      this.pointToCoordinate(point, chartStore, xAxis, yAxis)
+      this.pointToCoordinate(point, xAxis, yAxis)
     )
 
     if (coordinates.length > 0) {
@@ -453,23 +409,28 @@ export default class OverlayView extends View {
       })
     }
     // 遍历坐标，收集文本和计算边界
+    const chartStore = this.getWidget().getPane().getChart().getChartStore()
     coordinates.forEach((coordinate, index) => {
       leftX = Math.min(leftX, coordinate.x)
       rightX = Math.max(rightX, coordinate.x)
 
       const point = overlay.points[index]
-      if (point && isNumber(point.timestamp)) {
-        const text = customApi.formatDate(
-          dateTimeFormat,
-          point.timestamp,
-          'YYYY-MM-DD HH:mm',
-          FormatDateType.Crosshair
-        )
-        figures.push({
-          type: 'text',
-          attrs: { x: coordinate.x, y: 0, text, align: 'center' },
-          ignoreEvent: true
-        })
+      if (point && isNumber(point.dataIndex)) {
+        // 从 dataIndex 获取 timestamp
+        const timestamp = chartStore.dataIndexToTimestamp(point.dataIndex)
+        if (isNumber(timestamp)) {
+          const text = customApi.formatDate(
+            dateTimeFormat,
+            timestamp,
+            'YYYY-MM-DD HH:mm',
+            FormatDateType.Crosshair
+          )
+          figures.push({
+            type: 'text',
+            attrs: { x: coordinate.x, y: 0, text, align: 'center' },
+            ignoreEvent: true
+          })
+        }
       }
     })
 

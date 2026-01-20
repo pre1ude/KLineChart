@@ -1,6 +1,6 @@
 import type DeepPartial from '../common/DeepPartial'
 import type PartialExcept from '../common/PartialExcept'
-import type Point from '../common/Point'
+import type { IPoint, Point } from '../common/Point'
 import type Coordinate from '../common/Coordinate'
 import type Bounding from '../common/Bounding'
 import type BarSpace from '../common/BarSpace'
@@ -10,14 +10,10 @@ import { type MouseTouchEvent, type OverlayEventData } from '../common/Synthetic
 import { isNumber, isValid, merge } from '../common/utils/typeChecks'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
-import type ChartStore from '../store/ChartStore'
-
-// 辅助类型：表示数组索引访问总是返回非 undefined 的值
-type NonUndefinedArray<T> = ReadonlyArray<T> & { [K in number]: T }
 
 // 默认的 extendData 类型，允许任意属性
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type DefaultExtendData = Record<string, any>
+export type DefaultExtendData = Record<string, any>
 
 /** Overlay 事件回调的事件类型，包含 overlayData */
 export type OverlayMouseTouchEvent<E = DefaultExtendData> = MouseTouchEvent & {
@@ -129,27 +125,34 @@ export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers<
   needDefaultYAxisFigure: boolean
   mode: OverlayMode
   modeSensitivity: number
-  points: Array<Partial<Point>>
+  points: IPoint[]
   extendData: E
   styles?: DeepPartial<OverlayStyle>
   createFigures?: OverlayCreateFiguresCallback<E>
   createXAxisFigures?: OverlayCreateFiguresCallback<E>
   createYAxisFigures?: OverlayCreateFiguresCallback<E>
   /** 绘制点更新回调，可通过 this 访问 overlay 实例 */
-  onDrawPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
+  onDrawPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint) => void
   /** 控制点更新回调，可通过 this 访问 overlay 实例 */
-  onControlPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
+  onControlPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint) => void
   /** 拖动 overlay 主体时的回调，可通过 this 访问 overlay 实例 */
   onBodyDrag?: (this: Overlay<E>, params: {
-    point: Required<Point>
-    prevPoint: Required<Point>
-    prevPoints: NonUndefinedArray<Readonly<Required<Point>>>
-    chartStore: ChartStore
+    point: IPoint
+    prevPoint: IPoint
+    prevPoints: IPoint[]
   }) => void
 }
 
 export type OverlayTemplate<E = DefaultExtendData> = PartialExcept<Omit<OverlayApi<E>, 'id' | 'groupId' | 'paneId' | 'points' | 'currentStep' | 'state'>, 'name'>
-export type OverlayCreate<E = DefaultExtendData> = PartialExcept<Omit<OverlayApi<E>, 'currentStep' | 'totalStep' | 'state' | 'createFigures' | 'createXAxisFigures' | 'createYAxisFigures' | 'onBodyDrag' | 'onControlPointUpdate'>, 'name'>
+
+/** 外部 API 使用的 Overlay 创建类型，points 使用外部格式 (timestamp + offset + value) */
+export type OverlayCreate<E = DefaultExtendData> = Omit<
+  PartialExcept<Omit<OverlayApi<E>, 'currentStep' | 'totalStep' | 'state' | 'createFigures' | 'createXAxisFigures' | 'createYAxisFigures' | 'onBodyDrag' | 'onControlPointUpdate' | 'onDrawPointUpdate'>, 'name'>,
+  'points'
+> & {
+  /** 外部格式的点数据 (timestamp + offset + value) */
+  points?: Point[]
+}
 
 export interface OverlayFilter {
   id?: string
@@ -159,6 +162,9 @@ export interface OverlayFilter {
 }
 
 export type OverlayProps = Omit<OverlayCreate, keyof OverlayFilter>
+
+/** 内部使用的 Props 类型，points 使用内部格式 (dataIndex + value) */
+export type InternalOverlayProps = Omit<OverlayProps, 'points'> & { points?: IPoint[] }
 
 export interface ChangeInfo {
   sort: boolean
@@ -171,7 +177,7 @@ interface OverlayInitOption {
   groupId: string
   paneId: string
   zLevel?: number
-  points?: Partial<Point>[]
+  points?: IPoint[]
   [key: string]: unknown
 }
 
@@ -184,7 +190,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   paneId: string
   state: OverlayState = OverlayState.CREATED
   currentStep: number = 0
-  points: Array<Partial<Point>> = []
+  points: IPoint[] = []
 
   name: string = ''
   totalStep: number = 999 // 默认无限制步骤数(适用于anywave)
@@ -204,13 +210,12 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   createXAxisFigures?: OverlayCreateFiguresCallback<E>
   createYAxisFigures?: OverlayCreateFiguresCallback<E>
 
-  onDrawPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
-  onControlPointUpdate?: (this: Overlay<E>, points: Array<Partial<Point>>, updateIndex: number, point: Partial<Point>) => void
+  onDrawPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint) => void
+  onControlPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint) => void
   onBodyDrag?: (this: Overlay<E>, params: {
-    point: Required<Point>
-    prevPoint: Required<Point>
-    prevPoints: NonUndefinedArray<Readonly<Required<Point>>>
-    chartStore: ChartStore
+    point: IPoint
+    prevPoint: IPoint
+    prevPoints: IPoint[]
   }) => void
 
   // Event callbacks
@@ -233,8 +238,8 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   onDeselected?: OverlayEventCallback<E>
 
   private _originalZLevel: number = 0
-  private _prevPressedPoint?: Partial<Point>
-  private _prevPressedPoints: Array<Partial<Point>> = []
+  private _prevPressedPoint?: IPoint
+  private _prevPressedPoints: IPoint[] = []
 
   constructor(template: OverlayTemplate<E>, { id, groupId, paneId, zLevel, points, ...rest }: OverlayInitOption) {
     Object.assign(this, template)
@@ -305,7 +310,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     }
   }
 
-  private _applyCommittedPoints(points: Partial<Point>[]) {
+  private _applyCommittedPoints(points: IPoint[]) {
     const committedCount = this.currentStep
     const drawingPoint = this.points[committedCount]
 
@@ -321,7 +326,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     }
   }
 
-  private _applyPoints(points: Partial<Point>[]) {
+  private _applyPoints(points: IPoint[]) {
     const _points = points.length > this.totalStep ? points.slice(0, this.totalStep) : points
 
     this.currentStep = _points.length
@@ -344,7 +349,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     }
   }
 
-  shouldUpdate(nextProps: Partial<OverlayProps>): ChangeInfo {
+  shouldUpdate(nextProps: Partial<InternalOverlayProps>): ChangeInfo {
     const changes: string[] = []
 
     // 检测每个属性的变化
@@ -426,15 +431,15 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     return false
   }
 
-  updateDrawPoint(point: Partial<Point>): void {
+  updateDrawPoint(point: IPoint): void {
     if (this.onDrawPointUpdate) {
       this.onDrawPointUpdate(this.points, this.currentStep, point)
       return
     }
-    this._updatePoint(this.points[this.currentStep] ??= {}, point)
+    this._updatePoint(this.points[this.currentStep] ??= ({} as unknown as IPoint), point)
   }
 
-  onDragMoveControlPoint(point: Partial<Point>, pointIndex: number): void {
+  onDragMoveControlPoint(point: IPoint, pointIndex: number): void {
     if (this.onControlPointUpdate) {
       this.onControlPointUpdate(this.points, pointIndex, point)
       return
@@ -442,75 +447,40 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     this._updatePoint(this.points[pointIndex], point)
   }
 
-  private _updatePoint(p: Partial<Point>, np: Partial<Point>) {
-    if (isNumber(np.timestamp)) p.timestamp = np.timestamp
-    if (isNumber(np.dataIndex)) p.dataIndex = np.dataIndex
-    if (isNumber(np.value)) p.value = np.value
+  private _updatePoint(p: IPoint, np: IPoint) {
+    p.dataIndex = np.dataIndex
+    p.value = np.value
   }
 
-  startPressedMove(point: Partial<Point>, chartStore: ChartStore): void {
+  startPressedMove(point: IPoint): void {
     this._prevPressedPoint = { ...point }
-    this._prevPressedPoints = this.points.map(point => {
-      const normalized = { ...point }
-
-      // 如果没有 dataIndex，从 timestamp 计算
-      if (!isNumber(normalized.dataIndex) && isNumber(normalized.timestamp)) {
-        normalized.dataIndex = chartStore.timestampToDataIndex(normalized.timestamp)
-      }
-
-      // 如果没有 value 但有 dataKey，从数据中获取
-      if (!isNumber(normalized.value) && typeof normalized.dataKey === 'string' && normalized.dataKey !== '' && isNumber(normalized.dataIndex)) {
-        const data = chartStore.getDataByDataIndex(normalized.dataIndex)
-        if (data && normalized.dataKey in data) {
-          const v = Number(data[normalized.dataKey])
-          if (isNumber(v)) {
-            normalized.value = v
-          }
-        }
-      }
-
-      return normalized
-    })
+    this._prevPressedPoints = this.points.map(p => ({ ...p }))
   }
 
-  onDragMoveBody(point: Partial<Point>, chartStore: ChartStore): void {
+  onDragMoveBody(point: IPoint): void {
     if (!this._prevPressedPoint) return
 
     if (this.onBodyDrag) {
-      // todo here is unsafe as
       this.onBodyDrag({
-        point: point as Required<Point>,
-        prevPoint: this._prevPressedPoint as Required<Point>,
-        prevPoints: this._prevPressedPoints as NonUndefinedArray<Readonly<Required<Point>>>,
-        chartStore
+        point,
+        prevPoint: this._prevPressedPoint,
+        prevPoints: this._prevPressedPoints
       })
       return
     }
+
+    // 内部使用 dataIndex，计算简单直接
     const difDataIndex = isNumber(point.dataIndex) && isNumber(this._prevPressedPoint.dataIndex)
       ? point.dataIndex - this._prevPressedPoint.dataIndex
-      : undefined
+      : 0
 
     const difValue = isNumber(point.value) && isNumber(this._prevPressedPoint.value)
       ? point.value - this._prevPressedPoint.value
-      : undefined
+      : 0
 
-    this.points = this._prevPressedPoints.map((p) => {
-      if (isNumber(p.timestamp)) {
-        p.dataIndex = chartStore.timestampToDataIndex(p.timestamp)
-      }
-
-      const newPoint = { ...p }
-
-      if (isNumber(difDataIndex) && isNumber(p.dataIndex)) {
-        newPoint.dataIndex = p.dataIndex + difDataIndex
-        newPoint.timestamp = chartStore.dataIndexToTimestamp(newPoint.dataIndex) ?? undefined
-      }
-
-      if (isNumber(difValue) && isNumber(p.value)) {
-        newPoint.value = p.value + difValue
-      }
-
-      return newPoint
-    })
+    this.points = this._prevPressedPoints.map((p) => ({
+      dataIndex: p.dataIndex + difDataIndex,
+      value: p.value + difValue
+    }))
   }
 }

@@ -2,7 +2,7 @@ import type DeepPartial from './common/DeepPartial'
 import type Bounding from './common/Bounding'
 import type KLineData from './common/KLineData'
 import type Coordinate from './common/Coordinate'
-import type Point from './common/Point'
+import type { IPoint, Point } from './common/Point'
 import { UpdateLevel } from './common/Updater'
 import { type Styles, YAxisPosition } from './common/Styles'
 import type Crosshair from './common/Crosshair'
@@ -84,6 +84,7 @@ export interface Chart {
    */
   applyMoreData: (dataList: KLineData[], more?: boolean, callback?: () => void) => void
   updateData: (data: KLineData, callback?: () => void) => void
+  replaceData: (dataList: KLineData[], more?: boolean, callback?: () => void) => void
   /**
    * @deprecated
    * Since v9.8.0 deprecated, since v10 removed
@@ -98,7 +99,11 @@ export interface Chart {
   getIndicatorByPaneId: (paneId?: string, name?: string) => Indicator | Map<string, Indicator> | Map<string, Map<string, Indicator>> | null
   getIndicators: (filter?: IndicatorFilter) => Indicator[]
   removeIndicator: (paneId: string, name?: string) => void
-  createOverlay: (value: string | OverlayCreate | Array<string | OverlayCreate>, paneId?: string) => undefined | string | Array<string | undefined>
+  createOverlay: {
+    (value: string, paneId?: string): string | undefined
+    (value: OverlayCreate, paneId?: string): string | undefined
+    (value: Array<string | OverlayCreate>, paneId?: string): Array<string | undefined>
+  }
   getOverlayById: (id: string) => Overlay | undefined
   overrideOverlay: (override: Partial<OverlayCreate>) => void
   removeOverlay: (remove?: string | OverlayFilter) => void
@@ -125,6 +130,8 @@ export interface Chart {
   convertToPixel(points: Array<Partial<Point>>, finder: ConvertFinder): Array<Partial<Coordinate>>
   convertFromPixel(coordinate: Partial<Coordinate>, finder: ConvertFinder): Partial<Point>
   convertFromPixel(coordinates: Array<Partial<Coordinate>>, finder: ConvertFinder): Array<Partial<Point>>
+  externalToInternal: (point: Partial<Point>) => Partial<IPoint>
+  internalToExternal: (point: Partial<IPoint>) => Partial<Point>
   coordinateToDataIndex: (x: number) => number
   executeAction: (type: ActionType, data: object) => void
   subscribeAction: <T extends ActionType>(type: T, callback: ActionCallback<ActionCallbackParams[T]>) => void
@@ -736,6 +743,10 @@ export default class ChartImp implements Chart {
     this._chartStore.addData(data, undefined, undefined, callback)
   }
 
+  replaceData(dataList: KLineData[], more?: boolean, callback?: () => void): void {
+    this._chartStore.replaceData(dataList, more, callback)
+  }
+
   loadMore(cb: LoadMoreCallback): void {
     logWarn('', '', 'Api `loadMore` has been deprecated since version 9.8.0, use `setLoadDataCallback` instead.')
     this._chartStore.setLoadMoreCallback(cb)
@@ -878,7 +889,10 @@ export default class ChartImp implements Chart {
     }
   }
 
-  createOverlay(value: string | OverlayCreate | Array<string | OverlayCreate>, paneId?: string): undefined | string | Array<string | undefined> {
+  createOverlay(value: string, paneId?: string): string | undefined
+  createOverlay(value: OverlayCreate, paneId?: string): string | undefined
+  createOverlay(value: Array<string | OverlayCreate>, paneId?: string): Array<string | undefined>
+  createOverlay(value: string | OverlayCreate | Array<string | OverlayCreate>, paneId?: string): string | undefined | Array<string | undefined> {
     let overlays: OverlayCreate[] = []
     if (isString(value)) {
       overlays = [{ name: value }]
@@ -890,11 +904,19 @@ export default class ChartImp implements Chart {
         return v
       })
     } else {
-      const overlay = value as OverlayCreate
-      overlays = [overlay]
+      overlays = [value as OverlayCreate]
     }
 
-    const ids = this._chartStore.getOverlayStore().addInstances(overlays, paneId)
+    // 在 API 边界转换 points: 外部格式 -> 内部格式
+    const internalOverlays = overlays.map(overlay => {
+      if (overlay.points) {
+        const internalPoints = overlay.points.map(p => this._chartStore.externalToInternal(p) as IPoint)
+        return { ...overlay, points: internalPoints }
+      }
+      return overlay as Omit<OverlayCreate, 'points'> & { points?: IPoint[] }
+    })
+
+    const ids = this._chartStore.getOverlayStore().addInstances(internalOverlays, paneId)
     if (isArray(value)) {
       return ids
     }
@@ -909,8 +931,11 @@ export default class ChartImp implements Chart {
     return this._chartStore.getOverlayStore().find(filter ?? {})
   }
 
-  overrideOverlay({ id, name, groupId, paneId, ...props }: Partial<OverlayCreate>): void {
-    this._chartStore.getOverlayStore().update({ id, name, groupId, paneId }, props)
+  overrideOverlay({ id, name, groupId, paneId, points, ...props }: Partial<OverlayCreate>): void {
+    // 在 API 边界转换 points: 外部格式 -> 内部格式
+    const internalPoints = points?.map(p => this._chartStore.externalToInternal(p) as IPoint)
+    const internalProps = internalPoints ? { ...props, points: internalPoints } : props
+    this._chartStore.getOverlayStore().update({ id, name, groupId, paneId }, internalProps)
   }
 
   removeOverlay(remove?: string | OverlayFilter): void {
@@ -1098,17 +1123,15 @@ export default class ChartImp implements Chart {
         const xAxis = xAxisWidget.getAxisComponent()
         const yAxis = this._getYAxis(pane as DualYPane, yAxisPosition)
 
-        coordinates = ps.map(point => {
+        coordinates = ps.map(externalPoint => {
           const coordinate: Partial<Coordinate> = {}
-          let dataIndex = point.dataIndex
-          if (isNumber(point.timestamp)) {
-            dataIndex = this._chartStore.timestampToDataIndex(point.timestamp)
+          // 外部 -> 内部转换
+          const internalPoint = this._chartStore.externalToInternal(externalPoint)
+          if (isNumber(internalPoint.dataIndex)) {
+            coordinate.x = xAxis?.convertToPixel(internalPoint.dataIndex)
           }
-          if (isNumber(dataIndex)) {
-            coordinate.x = xAxis?.convertToPixel(dataIndex)
-          }
-          if (isNumber(point.value) && yAxis) {
-            const y = yAxis.convertToPixel(point.value)
+          if (isNumber(internalPoint.value) && yAxis) {
+            const y = yAxis.convertToPixel(internalPoint.value)
             coordinate.y = absolute ? bounding.top + y : y
           }
           return coordinate
@@ -1146,22 +1169,29 @@ export default class ChartImp implements Chart {
         const yAxis = this._getYAxis(pane as DualYPane, yAxisPosition)
 
         points = cs.map(coordinate => {
-          const point: Partial<Point> = {}
+          const internalPoint: Partial<IPoint> = {}
           if (isNumber(coordinate.x)) {
-            const dataIndex = xAxis?.convertFromPixel(coordinate.x) ?? -1
-            point.dataIndex = dataIndex
-            point.timestamp = this._chartStore.dataIndexToTimestamp(dataIndex) ?? undefined
+            internalPoint.dataIndex = xAxis?.convertFromPixel(coordinate.x) ?? 0
           }
           if (isNumber(coordinate.y) && yAxis) {
             const y = absolute ? coordinate.y - bounding.top : coordinate.y
-            point.value = yAxis.convertFromPixel(y)
+            internalPoint.value = yAxis.convertFromPixel(y)
           }
-          return point
+          // 内部 -> 外部转换
+          return this._chartStore.internalToExternal(internalPoint)
         })
       }
     }
 
     return isArrayInput ? points : (points[0] ?? {})
+  }
+
+  externalToInternal(point: Partial<Point>): Partial<IPoint> {
+    return this._chartStore.externalToInternal(point)
+  }
+
+  internalToExternal(point: Partial<IPoint>): Partial<Point> {
+    return this._chartStore.internalToExternal(point)
   }
 
   coordinateToDataIndex(x: number): number {

@@ -372,7 +372,8 @@ export default class Event implements EventHandler {
     }
 
     // 触发取消选中事件
-    const overlayEvent = createOverlayEventFromInfo(e, currentSelected) as any
+    const chartStore = this._chart.getChartStore()
+    const overlayEvent = createOverlayEventFromInfo(e, currentSelected, chartStore)
     currentSelected.overlay.onDeselected?.(overlayEvent)
 
     // 清除选中状态

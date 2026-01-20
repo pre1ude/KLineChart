@@ -1,7 +1,7 @@
 import { UpdateLevel } from '../common/Updater'
 import { isValid, isString } from '../common/utils/typeChecks'
 import { createId } from '../common/utils/id'
-import { LoadDataType } from '../common/LoadDataCallback'
+import type { IPoint, Point } from '../common/Point'
 import type { EventOverlayInfo, OverlayCreate, OverlayFilter, OverlayProps } from '../component/Overlay'
 import { OVERLAY_ID_PREFIX, Overlay } from '../component/Overlay'
 import { getOverlayTemplate } from '../extension/overlay'
@@ -56,6 +56,48 @@ export default class OverlayStore {
     return undefined
   }
 
+  /**
+   * 导出 overlay 数据为外部格式（用于持久化）
+   * 将内部 dataIndex 转换为外部 timestamp + offset
+   */
+  exportOverlay(id: string): { points: Array<Partial<Point>>, [key: string]: unknown } | undefined {
+    const overlay = this.getInstanceById(id)
+    if (!overlay) return undefined
+
+    const externalPoints = overlay.points.map(p => this._chartStore.internalToExternal(p))
+
+    return {
+      id: overlay.id,
+      groupId: overlay.groupId,
+      paneId: overlay.paneId,
+      name: overlay.name,
+      lock: overlay.lock,
+      visible: overlay.visible,
+      zLevel: overlay.zLevel,
+      mode: overlay.mode,
+      modeSensitivity: overlay.modeSensitivity,
+      extendData: overlay.extendData,
+      styles: overlay.styles,
+      points: externalPoints
+    }
+  }
+
+  /**
+   * 导出所有 overlay 数据为外部格式
+   */
+  exportAllOverlays(): Array<{ points: Array<Partial<Point>>, [key: string]: unknown }> {
+    const result: Array<{ points: Array<Partial<Point>>, [key: string]: unknown }> = []
+    this._instances.forEach(overlays => {
+      overlays.forEach(overlay => {
+        const exported = this.exportOverlay(overlay.id)
+        if (exported) {
+          result.push(exported)
+        }
+      })
+    })
+    return result
+  }
+
   find(filter: OverlayFilter): Overlay[] {
     const { id, groupId, paneId, name } = filter
 
@@ -98,7 +140,7 @@ export default class OverlayStore {
     }
   }
 
-  addInstances(overlays: OverlayCreate[], paneId?: string): Array<string | undefined> {
+  addInstances(overlays: Array<Omit<OverlayCreate, 'points'> & { points?: IPoint[] }>, paneId?: string): Array<string | undefined> {
     const updatePaneIds: string[] = []
 
     const ids = overlays.map((overlay) => {
@@ -188,7 +230,7 @@ export default class OverlayStore {
     return this._instances.get(paneId) ?? []
   }
 
-  update(filter: OverlayFilter, props: Partial<OverlayProps>): boolean {
+  update(filter: OverlayFilter, props: Partial<Omit<OverlayProps, 'points'> & { points?: IPoint[] }>): boolean {
     const updatePaneIds: string[] = []
     let shouldSort = false
 
@@ -284,23 +326,63 @@ export default class OverlayStore {
     return false
   }
 
-  updatePointPosition(dataChangeLength: number, type?: LoadDataType): void {
-    if (dataChangeLength > 0) {
-      const dataList = this._chartStore.getDataList()
+  /**
+   * 当数据变化时更新 overlay 点的 dataIndex
+   * 内部使用 dataIndex，当向前加载数据时需要调整
+   */
+  updatePointPosition(offset: number): void {
+    if (offset > 0) {
+      // 向前加载数据时，所有 dataIndex 需要增加
       this._instances.forEach(overlays => {
         overlays.forEach(o => {
-          const points = o.points
-          points.forEach(point => {
-            if (!isValid(point.timestamp) && isValid(point.dataIndex)) {
-              if (type === LoadDataType.Backward) {
-                point.dataIndex = point.dataIndex + dataChangeLength
-              }
-              const data = dataList[point.dataIndex]
-              point.timestamp = data?.timestamp
-            }
+          o.points.forEach(point => {
+            point.dataIndex += offset
           })
         })
       })
+      // 也要处理正在绘制的 overlay
+      this._progressOverlay?.points.forEach(point => {
+        point.dataIndex += offset
+      })
+    }
+  }
+
+  /**
+   * 保存所有 overlay 点为外部格式（timestamp + offset）
+   * 用于数据替换时保持 overlay 位置正确
+   */
+  savePointsAsExternal(): void {
+    const convert = (point: IPoint): Point => this._chartStore.internalToExternal(point) as Point
+    this._instances.forEach(overlays => {
+      overlays.forEach(o => {
+        (o as any)._savedPoints = o.points.map(convert)
+      })
+    })
+    if (this._progressOverlay) {
+      (this._progressOverlay as any)._savedPoints = this._progressOverlay.points.map(convert)
+    }
+  }
+
+  /**
+   * 从保存的外部格式恢复 overlay 点（重新计算 dataIndex）
+   */
+  restorePointsFromExternal(): void {
+    const convert = (point: Point): IPoint => this._chartStore.externalToInternal(point) as IPoint
+    this._instances.forEach(overlays => {
+      overlays.forEach(o => {
+        const saved = (o as any)._savedPoints as Point[] | undefined
+        if (saved) {
+          o.points = saved.map(convert)
+          delete (o as any)._savedPoints
+        }
+      })
+    })
+    if (this._progressOverlay) {
+      const saved = (this._progressOverlay as any)._savedPoints as Point[] | undefined
+      if (saved) {
+        this._progressOverlay.points = saved.map(convert)
+        delete (this._progressOverlay as any)._savedPoints
+      }
     }
   }
 

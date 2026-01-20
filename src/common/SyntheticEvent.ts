@@ -8,6 +8,7 @@
 
 import type Coordinate from './Coordinate'
 import type Eventful from './Eventful'
+import type { IPoint, Point } from './Point'
 import { setScale } from './utils/canvas'
 import { isFF, isIOS } from './utils/platform'
 import { isValid } from './utils/typeChecks'
@@ -40,6 +41,10 @@ export interface OverlayEventData {
   attrsIndex: number
   /** 绘制点索引（仅绘制事件） */
   pointIndex?: number
+  /**
+   * 将内部 dataIndex 转换为外部 timestamp + offset
+   */
+  internalToExternal: (point: IPoint) => Partial<Point>
 }
 
 export interface EventHandler {

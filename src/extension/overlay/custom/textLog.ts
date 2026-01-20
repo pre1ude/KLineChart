@@ -22,16 +22,15 @@ export const textLog: OverlayTemplate<ExtendDataType> = {
   onRightClick() {
     return true
   },
-  onBodyDrag({ point, prevPoint, prevPoints, chartStore }) {
+  onBodyDrag({ point, prevPoint, prevPoints }) {
     // 只移动 point[1]（文本框），point[0]（锚点）保持不动
+    // 内部使用 dataIndex，计算简单直接
     const difDataIndex = point.dataIndex - prevPoint.dataIndex
     const difValue = point.value - prevPoint.value
 
-    // 只更新 point[1]
     this.points[1] = {
       dataIndex: prevPoints[1].dataIndex + difDataIndex,
-      value: prevPoints[1].value + difValue,
-      timestamp: chartStore.dataIndexToTimestamp(prevPoints[1].dataIndex + difDataIndex)
+      value: prevPoints[1].value + difValue
     }
   },
   createFigures: ({ overlay, coordinates }) => {

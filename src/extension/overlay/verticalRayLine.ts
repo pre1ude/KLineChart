@@ -27,15 +27,13 @@ const verticalRayLine: OverlayTemplate = {
   },
   onControlPointUpdate: (points, index, point) => {
     points[index] = point
-    points[0].timestamp = point.timestamp
+    // 垂直线：所有点共享相同的 dataIndex
     points[0].dataIndex = point.dataIndex
-    points[1].timestamp = point.timestamp
     points[1].dataIndex = point.dataIndex
   },
   onDrawPointUpdate: (points, index, point) => {
     points[index] = point
     if (index === 1) {
-      points[0].timestamp = point.timestamp
       points[0].dataIndex = point.dataIndex
     }
   }
