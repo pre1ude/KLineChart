@@ -2,6 +2,7 @@ import abcd from './abcd'
 import anyWaves from './anyWaves'
 import arrow from './arrow'
 import circle from './circle'
+import ellipse from './ellipse'
 import eightWaves from './eightWaves'
 import fibonacciCircle from './fibonacciCircle'
 import fibonacciExtension from './fibonacciExtension'
@@ -25,6 +26,7 @@ const klineOverlays = [
   // textLogDetail,
   arrow,
   circle,
+  ellipse,
   rect,
   triangle,
   parallelogram,

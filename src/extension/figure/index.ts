@@ -2,13 +2,14 @@ import { Figure, type FigureTemplate } from '../../component/Figure'
 import { TemplateManager } from '../../common/TemplateManager'
 import arc from './arc'
 import circle from './circle'
+import ellipse from './ellipse'
 import line from './line'
 import polygon from './polygon'
 import rect from './rect'
 import text from './text'
 import textBox from './textBox'
 
-const extensions = [arc, circle, line, polygon, rect, text, textBox]
+const extensions = [arc, circle, ellipse, line, polygon, rect, text, textBox]
 
 const TM = new TemplateManager<FigureTemplate>(extensions as FigureTemplate[])
 

@@ -50,7 +50,7 @@ export default class OverlayStore {
         return overlay
       }
     }
-    if (this._progressOverlay && this._progressOverlay.id === id) {
+    if (this._progressOverlay?.id === id) {
       return this._progressOverlay
     }
     return undefined
