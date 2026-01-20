@@ -193,7 +193,7 @@ export default class Event implements EventHandler {
   }
 
   pressedMouseMoveEvent(e: MouseTouchEvent): boolean {
-    if (this._mouseDownWidget && this._mouseDownWidget.getName() === WidgetNameConstants.SEPARATOR) {
+    if (this._mouseDownWidget?.getName() === WidgetNameConstants.SEPARATOR) {
       return this._mouseDownWidget.dispatchEvent('pressedMouseMoveEvent', e)
     }
     const { pane, widget } = this._findWidgetByEvent(e)
@@ -637,7 +637,7 @@ export default class Event implements EventHandler {
 
   longTapEvent(e: MouseTouchEvent): boolean {
     const { pane, widget } = this._findWidgetByEvent(e)
-    if (widget && widget.getName() === WidgetNameConstants.MAIN) {
+    if (widget?.getName() === WidgetNameConstants.MAIN) {
       const event = this._makeWidgetEvent(e, widget)
       this._touchCoordinate = { x: event.x, y: event.y }
       this._chart.getChartStore().getTooltipStore().setCrosshair({ x: event.x, y: event.y, paneId: pane?.getId() })
