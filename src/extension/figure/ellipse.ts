@@ -14,10 +14,9 @@ export function checkCoordinateOnEllipse(coordinate: Coordinate, attrs: EllipseA
     if (rx <= 0 || ry <= 0) {
       continue
     }
-    const dx = coordinate.x - x
-    const dy = coordinate.y - y
-    const value = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry)
-    if (value <= 1) {
+    const dx = (coordinate.x - x) / rx
+    const dy = (coordinate.y - y) / ry
+    if (dx * dx + dy * dy <= 1) {
       return true
     }
   }

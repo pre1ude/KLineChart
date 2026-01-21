@@ -12,9 +12,9 @@ export function checkCoordinateOnCircle(coordinate: Coordinate, attrs: CircleAtt
 
   for (let i = 0; i < circles.length; i++) {
     const { x, y, r } = circles[i]
-    const difX = coordinate.x - x
-    const difY = coordinate.y - y
-    if (!(difX * difX + difY * difY > r * r)) {
+    const dx = (coordinate.x - x) / r
+    const dy = (coordinate.y - y) / r
+    if (dx * dx + dy * dy <= 1) {
       return true
     }
   }
