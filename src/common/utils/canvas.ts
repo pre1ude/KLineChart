@@ -124,7 +124,7 @@ function processLine(
   /**
    * 二分查找最佳断点位置
    * @param text 要测量的文本
-   * @param breakPoints 可能的断点位置数组（如果为空，则使用字符级别断点）
+   * @param breakPoints 可能的断点位置数组
    * @param fitWidth 目标宽度
    * @returns [断点位置, 实际宽度]
    */
@@ -133,15 +133,15 @@ function processLine(
     breakPoints: number[],
     fitWidth: number
   ): [number, number] => {
-    // 如果没有提供断点或第一个断点为 0，使用字符级别的断点
-    if (breakPoints.length === 0 || breakPoints[0] === 0) {
-      // 生成字符级别的断点数组：[1, 2, 3, ..., text.length]
+    // 如果没有有效的中间断点，使用字符级别断点
+    // 无效情况：空数组，或只有一个等于文本长度的断点
+    if (breakPoints.length === 0 || (breakPoints.length === 1 && breakPoints[0] === text.length)) {
       breakPoints = Array.from({ length: text.length }, (_, i) => i + 1)
     }
 
     let left = 0
     let right = breakPoints.length - 1
-    let bestFitIndex = 0
+    let bestFitIndex = -1
     let bestFitWidth = 0
 
     while (left <= right) {
@@ -159,7 +159,12 @@ function processLine(
       }
     }
 
-    return [breakPoints[bestFitIndex] ?? 0, bestFitWidth]
+    // 如果没找到合适断点（连1个字符都放不下），至少返回1个字符
+    if (bestFitIndex === -1) {
+      return [1, ctx.measureText(text.slice(0, 1)).width]
+    }
+
+    return [breakPoints[bestFitIndex], bestFitWidth]
   }
 
   // 预先计算整行的断点位置（只需计算一次）

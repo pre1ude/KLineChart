@@ -221,7 +221,7 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
     })
 
   // 计算包围盒
-  const maxLineWidth = Math.max(...tmplines.map(l => l.width + (l.isTruncated ? ellipsisWidth : 0)))
+  const maxLineWidth = Math.ceil(Math.max(...tmplines.map(l => l.width + (l.isTruncated ? ellipsisWidth : 0))))
 
   const boundsHeight = attrs.height ?? paddingTop + vLInfo.lineHeight * actualLineCount + paddingBottom
   const boundsWidth = attrs.width ?? paddingLeft + maxLineWidth + paddingRight
