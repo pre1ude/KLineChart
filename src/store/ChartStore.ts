@@ -297,7 +297,7 @@ export default class ChartStore {
     if (index === -1) throw new Error('invalid index')
     // 如果是分时模式
     if (this._isTimeShare) {
-      if (this.getDataByTimestamp(timestamp, { exact: true })) return index
+      if (this._dataList[index].timestamp === timestamp) return index
 
       const dayIndex = Math.floor(index / this._timeShareTicks.length)
       const date = new Date(timestamp)
