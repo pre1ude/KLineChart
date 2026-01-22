@@ -200,9 +200,10 @@ export default class ChartStore {
       if (isValid(options.isTimeShare)) {
         this._isTimeShare = options.isTimeShare
         if (this._isTimeShare) {
-          if (!isValid(options.timeShareTicks) || !isArray(options.timeShareTicks) || options.timeShareTicks.length === 0) {
+          if ((this._timeShareTicks.length === 0) && options.timeShareTicks == null) {
             console.warn('KLineChart: `timeShareTicks` is required when `isTimeShare` is true.')
-          } else {
+          }
+          if (options.timeShareTicks) {
             this._timeShareTicks = options.timeShareTicks
           }
 
