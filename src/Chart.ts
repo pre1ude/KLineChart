@@ -18,7 +18,6 @@ import { createDom } from './common/utils/dom'
 import { initCanvas } from './common/utils/canvas'
 import { isString, isArray, isValid, isNumber } from './common/utils/typeChecks'
 import { logWarn } from './common/utils/logger'
-import { binarySearchNearest } from './common/utils/number'
 import { LoadDataType } from './common/LoadDataCallback'
 import ChartStore from './store/ChartStore'
 import CandlePane from './pane/CandlePane'
@@ -1059,7 +1058,7 @@ export default class ChartImp implements Chart {
   }
 
   scrollToTimestamp(timestamp: number, animationDuration?: number): void {
-    const dataIndex = binarySearchNearest(this.getDataList(), 'timestamp', timestamp)
+    const dataIndex = this._chartStore.timestampToDataIndex(timestamp)
     this.scrollToDataIndex(dataIndex, animationDuration)
   }
 
@@ -1109,7 +1108,7 @@ export default class ChartImp implements Chart {
   }
 
   zoomAtTimestamp(scale: number, timestamp: number, animationDuration?: number): void {
-    const dataIndex = binarySearchNearest(this.getDataList(), 'timestamp', timestamp)
+    const dataIndex = this._chartStore.timestampToDataIndex(timestamp)
     this.zoomAtDataIndex(scale, dataIndex, animationDuration)
   }
 

@@ -1,39 +1,49 @@
+export function binarySearchNearest<T>(arr: T[], key: keyof T, value: number): number {
+  const lb = lowerBound(arr, item => (item[key] as number) - value)
+  if (lb === arr.length) return lb - 1
+  if (arr[lb][key] === value || lb === 0) return lb
 
-/**
- * Binary search for the nearest result
- * @param dataList
- * @param valueKey
- * @param targetValue
- * @return {number}
- */
-export function binarySearchNearest<T>(dataList: T[], valueKey: keyof T, targetValue: any): number {
-  let left = 0
-  let right = 0
-  for (right = dataList.length - 1; left !== right;) {
-    const midIndex = Math.floor((right + left) / 2)
-    const mid = right - left
-    const midValue = dataList[midIndex][valueKey]
-    if (targetValue === dataList[left][valueKey]) {
-      return left
-    }
-    if (targetValue === dataList[right][valueKey]) {
-      return right
-    }
-    if (targetValue === midValue) {
-      return midIndex
-    }
+  // eslint-disable-next-line @typescript-eslint/naming-convention
+  const lb_1 = lb - 1
+  const lDiff = value - (arr[lb_1][key] as number)
+  const rDiff = (arr[lb][key] as number) - value
+  return lDiff <= rDiff ? lb_1 : lb
+}
 
-    if (targetValue > midValue) {
-      left = midIndex
+// 参考 std::lower_bound
+// element >= value
+export function lowerBound<T>(arr: T[], cmp: (v: T) => number): number {
+  let low = 0
+  let high = arr.length
+
+  while (low < high) {
+    const mid = (low + high) >> 1
+
+    if (cmp(arr[mid]) < 0) {
+      low = mid + 1
     } else {
-      right = midIndex
-    }
-
-    if (mid <= 2) {
-      break
+      high = mid
     }
   }
-  return left
+  return low
+}
+
+// 参考 std::upper_bound
+// element > value
+export function upperBound<T>(arr: T[], cmp: (v: T) => number): number {
+  let low = 0
+  let high = arr.length
+
+  while (low < high) {
+    const mid = (low + high) >> 1
+
+    if (cmp(arr[mid]) <= 0) {
+      low = mid + 1
+    } else {
+      high = mid
+    }
+  }
+  return low
 }
 
 /**

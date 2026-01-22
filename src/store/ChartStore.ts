@@ -292,12 +292,23 @@ export default class ChartStore {
     return data?.timestamp
   }
 
-  // todo
   timestampToDataIndex(timestamp: number): number {
-    if (this._dataList.length === 0) {
-      return 0
+    const index = binarySearchNearest(this._dataList, 'timestamp', timestamp)
+    if (index === -1) throw new Error('invalid index')
+    // 如果是分时模式
+    if (this._isTimeShare) {
+      if (this.getDataByTimestamp(timestamp, { exact: true })) return index
+
+      const dayIndex = Math.floor(index / this._timeShareTicks.length)
+      const date = new Date(timestamp)
+      const tickStr = `${date.getHours()}:${date.getMinutes()}`
+      const tickIndex = this._timeShareTicks.indexOf(tickStr)
+      if (tickIndex !== -1) {
+        return dayIndex * this._timeShareTicks.length + tickIndex
+      }
+      throw new Error('invalid index')
     }
-    return binarySearchNearest(this._dataList, 'timestamp', timestamp)
+    return index
   }
 
   /**
@@ -307,23 +318,13 @@ export default class ChartStore {
    * @returns K-line data or undefined if not found
    */
   getDataByTimestamp(timestamp: number, options?: { exact?: boolean }): KLineData | undefined {
-    if (this._dataList.length === 0) {
-      return undefined
-    }
-
-    const exact = options?.exact ?? false
-    const index = binarySearchNearest(this._dataList, 'timestamp', timestamp)
-
-    if (index < 0 || index >= this._dataList.length) {
-      return undefined
-    }
+    const index = this.timestampToDataIndex(timestamp)
 
     const data = this._dataList[index]
+    const exact = options?.exact ?? false
 
     // If exact match is required, verify timestamp matches
-    if (exact && data.timestamp !== timestamp) {
-      return undefined
-    }
+    if (exact && data.timestamp !== timestamp) return
 
     return data
   }
@@ -512,8 +513,8 @@ export default class ChartStore {
         adjustFlag = true
       } else {
         // 更新历史数据：二分查找匹配的 timestamp
-        const index = binarySearchNearest(this._dataList, 'timestamp', timestamp)
-        if (index >= 0 && index < dataCount && this._dataList[index].timestamp === timestamp) {
+        const index = this.timestampToDataIndex(timestamp)
+        if (this._dataList[index].timestamp === timestamp) {
           this._dataList[index] = data
           adjustFlag = true
         }
