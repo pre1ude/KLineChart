@@ -1,5 +1,7 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
+import { playwright } from '@vitest/browser-playwright'
 import { resolve } from 'path'
 import { readFileSync } from 'fs'
 
@@ -43,76 +45,98 @@ export default defineConfig(({ mode }) => {
 
     // 构建配置
     build: {
-    // 库模式
-    lib: {
-      entry: resolve(import.meta.dirname, 'src/index.ts'),
-      formats: ['es'],
-      fileName: () => 'index.js'
-    },
-
-    // 输出目录
-    outDir: 'dist',
-    emptyOutDir: true,
-
-    // 目标环境
-    target: 'es2020',
-
-    // Source map
-    sourcemap: isDev,
-
-    // 代码压缩
-    minify: isProd ? 'terser' : false,
-    terserOptions: isProd ? {
-      compress: {
-        drop_console: false,
-        drop_debugger: true,
-        pure_funcs: ['console.debug', 'console.trace'],
-        passes: 2
+      // 库模式
+      lib: {
+        entry: resolve(import.meta.dirname, 'src/index.ts'),
+        formats: ['es'],
+        fileName: () => 'index.js'
       },
-      format: {
-        comments: false,
-        ecma: 2020
-      },
-      mangle: {
-        safari10: true
-      }
-    } : undefined,
 
-    // CSS 配置
-    cssCodeSplit: false,
+      // 输出目录
+      outDir: 'dist',
+      emptyOutDir: true,
 
-    // 性能优化
-    chunkSizeWarningLimit: 1000,
-    reportCompressedSize: !isDev,
+      // 目标环境
+      target: 'es2020',
 
-    // Rollup 配置
-    rollupOptions: {
-      // 输出配置
-      output: {
-        banner,
-        preserveModules: true,
-        preserveModulesRoot: 'src',
-        entryFileNames: '[name].js',
-        exports: 'named',
-        generatedCode: {
-          constBindings: true
+      // Source map
+      sourcemap: isDev,
+
+      // 代码压缩
+      minify: isProd ? 'terser' : false,
+      terserOptions: isProd ? {
+        compress: {
+          drop_console: false,
+          drop_debugger: true,
+          pure_funcs: ['console.debug', 'console.trace'],
+          passes: 2
+        },
+        format: {
+          comments: false,
+          ecma: 2020
+        },
+        mangle: {
+          safari10: true
         }
-      },
+      } : undefined,
 
-      // Tree-shaking 优化
-      treeshake: {
-        moduleSideEffects: false,
-        propertyReadSideEffects: false,
-        tryCatchDeoptimization: false
+      // CSS 配置
+      cssCodeSplit: false,
+
+      // 性能优化
+      chunkSizeWarningLimit: 1000,
+      reportCompressedSize: !isDev,
+
+      // Rollup 配置
+      rollupOptions: {
+        // 输出配置
+        output: {
+          banner,
+          preserveModules: true,
+          preserveModulesRoot: 'src',
+          entryFileNames: '[name].js',
+          exports: 'named',
+          generatedCode: {
+            constBindings: true
+          }
+        },
+
+        // Tree-shaking 优化
+        treeshake: {
+          moduleSideEffects: false,
+          propertyReadSideEffects: false,
+          tryCatchDeoptimization: false
+        }
       }
-    }
-  },
+    },
 
     // 解析配置
     resolve: {
       alias: {
         '@': resolve(import.meta.dirname, 'src')
       }
+    },
+
+    // Vitest 配置
+    test: {
+      globals: true,
+      environment: 'node',
+      include: ['src/**/*.test.ts'],
+      coverage: {
+        provider: 'v8',
+        reporter: ['text', 'html'],
+        include: ['src/**/*.ts'],
+        exclude: ['src/**/*.test.ts', 'src/**/*.d.ts']
+      },
+      browser: {
+        enabled: false,
+        headless: false,
+        // https://vitest.dev/config/browser/playwright
+        provider: playwright(),
+        instances: [
+          { browser: 'chromium' },
+        ],
+      },
     }
   }
 })

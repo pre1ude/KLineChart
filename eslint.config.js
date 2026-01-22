@@ -29,12 +29,13 @@ export default tseslint.config(
   // TypeScript 文件配置
   {
     files: ['**/*.ts', '**/*.tsx'],
+    ignores: ['**/*.test.ts', '**/*.spec.ts'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
       parser: tseslint.parser,
       parserOptions: {
-        project: true,
+        project: './tsconfig.json',
         tsconfigRootDir: import.meta.dirname
       }
     },
@@ -229,6 +230,26 @@ export default tseslint.config(
       // 错误处理
       'no-throw-literal': 'error',
       'prefer-promise-reject-errors': 'error'
+    }
+  },
+
+  // 测试文件配置
+  {
+    files: ['**/*.test.ts', '**/*.spec.ts'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parser: tseslint.parser,
+      parserOptions: {
+        project: './tsconfig.test.json',
+        tsconfigRootDir: import.meta.dirname
+      }
+    },
+    plugins: {
+      '@typescript-eslint': tseslint.plugin
+    },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off'
     }
   }
 )
