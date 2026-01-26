@@ -309,10 +309,11 @@ export default abstract class XAxisImp extends AxisImp {
     return chartStore.dataIndexToTimestamp(dataIndex)
   }
 
-  convertTimestampToPixel(timestamp: number): number {
+  convertTimestampToPixel(timestamp: number): number | undefined {
     const chartStore = this.getParent().getPane().getChart().getChartStore()
     const timeScaleStore = chartStore.getTimeScaleStore()
     const dataIndex = chartStore.timestampToDataIndex(timestamp)
+    if (dataIndex === undefined) return undefined
     return timeScaleStore.dataIndexToCoordinate(dataIndex)
   }
 

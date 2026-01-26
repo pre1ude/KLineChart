@@ -19,7 +19,7 @@ import ActionStore from './ActionStore'
 import { getStyles } from '../extension/styles/index'
 import type Chart from '../Chart'
 import { setTimezone } from '../common/utils/dateTimeFormat'
-import { binarySearchNearest } from '../common/utils/number'
+import { lowerBound, binarySearchNearest } from '../common/utils/number'
 import TaskScheduler from '@/common/TaskScheduler'
 
 export default class ChartStore {
@@ -293,23 +293,42 @@ export default class ChartStore {
     return data?.timestamp
   }
 
-  timestampToDataIndex(timestamp: number): number {
-    const index = binarySearchNearest(this._dataList, 'timestamp', timestamp)
-    if (index === -1) throw new Error('invalid index')
-    // 如果是分时模式
-    if (this._isTimeShare) {
-      if (this._dataList[index].timestamp === timestamp) return index
+  timestampToDataIndex(timestamp: number): number | undefined {
+    if (this._dataList.length === 0) return undefined
 
-      const dayIndex = Math.floor(index / this._timeShareTicks.length)
+    const lb = lowerBound(this._dataList, d => d.timestamp - timestamp)
+
+    // 精确匹配
+    if (lb < this._dataList.length && this._dataList[lb].timestamp === timestamp) {
+      return lb
+    }
+
+    // 分时模式：只要能在时间轴上找到对应的时间槽就可以
+    if (this._isTimeShare) {
       const date = new Date(timestamp)
       const tickStr = `${date.getHours()}:${date.getMinutes()}`
       const tickIndex = this._timeShareTicks.indexOf(tickStr)
-      if (tickIndex !== -1) {
-        return dayIndex * this._timeShareTicks.length + tickIndex
-      }
-      throw new Error('invalid index')
+      if (tickIndex === -1) return undefined
+
+      const dayIndex = Math.floor(Math.min(lb, this._dataList.length - 1) / this._timeShareTicks.length)
+      return dayIndex * this._timeShareTicks.length + tickIndex
     }
-    return index
+
+    // K线模式：超出数据范围返回 undefined
+    if (lb === this._dataList.length || (lb === 0 && this._dataList[0].timestamp > timestamp)) {
+      return undefined
+    }
+
+    return lb
+  }
+
+  /**
+   * 将 timestamp 转换为最近的 dataIndex
+   * 超出范围时返回边界索引，而不是 undefined
+   */
+  timestampToNearestDataIndex(timestamp: number): number | undefined {
+    const index = binarySearchNearest(this._dataList, 'timestamp', timestamp)
+    return index === -1 ? undefined : index
   }
 
   /**
@@ -320,6 +339,7 @@ export default class ChartStore {
    */
   getDataByTimestamp(timestamp: number, options?: { exact?: boolean }): KLineData | undefined {
     const index = this.timestampToDataIndex(timestamp)
+    if (index === undefined) return undefined
 
     const data = this._dataList[index]
     const exact = options?.exact ?? false
@@ -361,7 +381,9 @@ export default class ChartStore {
     const result: Partial<IPoint> = {}
     if (isNumber(point.timestamp)) {
       const baseDataIndex = this.timestampToDataIndex(point.timestamp)
-      result.dataIndex = baseDataIndex + (point.offset ?? 0)
+      if (baseDataIndex !== undefined) {
+        result.dataIndex = baseDataIndex + (point.offset ?? 0)
+      }
     }
     if (isNumber(point.value)) {
       result.value = point.value
@@ -482,7 +504,10 @@ export default class ChartStore {
           const offset = data.length
           if (offset > 0) {
             this._dataList = data.concat(this._dataList)
+            // 现有 overlay 的 dataIndex 偏移
             this._overlayStore.updatePointPosition(offset)
+            // 尝试恢复之前因为超出左边界而 skipDraw 的 overlay
+            this._overlayStore.tryRecoverSkippedOverlays('left')
             adjustFlag = true
           }
           this._backwardMore = more ?? false
@@ -491,6 +516,8 @@ export default class ChartStore {
         case LoadDataType.Forward: {
           if (data.length > 0) {
             this._dataList = this._dataList.concat(data)
+            // 尝试恢复之前因为超出右边界而 skipDraw 的 overlay
+            this._overlayStore.tryRecoverSkippedOverlays('right')
             adjustFlag = true
           }
           this._forwardMore = more ?? false
@@ -515,7 +542,7 @@ export default class ChartStore {
       } else {
         // 更新历史数据：二分查找匹配的 timestamp
         const index = this.timestampToDataIndex(timestamp)
-        if (this._dataList[index].timestamp === timestamp) {
+        if (index !== undefined && this._dataList[index].timestamp === timestamp) {
           this._dataList[index] = data
           adjustFlag = true
         }
@@ -547,10 +574,10 @@ export default class ChartStore {
   }
 
   replaceData(dataList: KLineData[], more?: boolean, callback?: () => void): void {
-    // 保存 overlay 点的外部格式（timestamp），数据替换后重新计算 dataIndex
-    this._overlayStore.savePointsAsExternal()
+    // 数据替换：需要全量重新转换
+    this._overlayStore.syncPointsToRaw()
     this._dataList = dataList
-    this._overlayStore.restorePointsFromExternal()
+    this._overlayStore.reconvertAllFromRaw()
     this._backwardMore = more ?? false
 
     this._timeScaleStore.adjustVisibleRange()

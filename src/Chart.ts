@@ -907,16 +907,7 @@ export default class ChartImp implements Chart {
       overlays = [value as OverlayCreate]
     }
 
-    // 在 API 边界转换 points: 外部格式 -> 内部格式
-    const internalOverlays = overlays.map(overlay => {
-      if (overlay.points) {
-        const internalPoints = overlay.points.map(p => this._chartStore.externalToInternal(p) as IPoint)
-        return { ...overlay, points: internalPoints }
-      }
-      return overlay as Omit<OverlayCreate, 'points'> & { points?: IPoint[] }
-    })
-
-    const ids = this._chartStore.getOverlayStore().addInstances(internalOverlays, paneId)
+    const ids = this._chartStore.getOverlayStore().addInstances(overlays, paneId)
     if (isArray(value)) {
       return ids
     }
@@ -939,11 +930,8 @@ export default class ChartImp implements Chart {
     return this._chartStore.getOverlayStore().find(filter ?? {})
   }
 
-  overrideOverlay({ id, name, groupId, paneId, points, ...props }: Partial<OverlayCreate>): void {
-    // 在 API 边界转换 points: 外部格式 -> 内部格式
-    const internalPoints = points?.map(p => this._chartStore.externalToInternal(p) as IPoint)
-    const internalProps = internalPoints ? { ...props, points: internalPoints } : props
-    this._chartStore.getOverlayStore().update({ id, name, groupId, paneId }, internalProps)
+  overrideOverlay({ id, name, groupId, paneId, ...props }: Partial<OverlayCreate>): void {
+    this._chartStore.getOverlayStore().update({ id, name, groupId, paneId }, props)
   }
 
   removeOverlay(remove?: string | OverlayFilter): void {
@@ -1058,8 +1046,10 @@ export default class ChartImp implements Chart {
   }
 
   scrollToTimestamp(timestamp: number, animationDuration?: number): void {
-    const dataIndex = this._chartStore.timestampToDataIndex(timestamp)
-    this.scrollToDataIndex(dataIndex, animationDuration)
+    const dataIndex = this._chartStore.timestampToNearestDataIndex(timestamp)
+    if (dataIndex !== undefined) {
+      this.scrollToDataIndex(dataIndex, animationDuration)
+    }
   }
 
   alignLeft(): void {
@@ -1108,8 +1098,10 @@ export default class ChartImp implements Chart {
   }
 
   zoomAtTimestamp(scale: number, timestamp: number, animationDuration?: number): void {
-    const dataIndex = this._chartStore.timestampToDataIndex(timestamp)
-    this.zoomAtDataIndex(scale, dataIndex, animationDuration)
+    const dataIndex = this._chartStore.timestampToNearestDataIndex(timestamp)
+    if (dataIndex !== undefined) {
+      this.zoomAtDataIndex(scale, dataIndex, animationDuration)
+    }
   }
 
   convertToPixel(point: Partial<Point>, finder: ConvertFinder): Partial<Coordinate>

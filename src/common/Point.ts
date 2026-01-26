@@ -34,9 +34,9 @@ export interface Point {
 
   /**
    * 相对于 timestamp 对应数据点的偏移量（以 bar 为单位）
-   * - 0: 无偏移，在数据范围内
+   * - 0: 无偏移，在数据范围内, 与 undefined 等价
    * - 正数: 向右偏移，超出最后一个数据点
    * - 负数: 向左偏移，超出第一个数据点
    */
-  offset: number
+  offset?: number
 }

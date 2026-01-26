@@ -1,13 +1,15 @@
+/**
+ * 二分查找最近的元素索引
+ * @returns 最近元素的索引，空数组返回 -1
+ */
 export function binarySearchNearest<T>(arr: T[], key: keyof T, value: number): number {
   const lb = lowerBound(arr, item => (item[key] as number) - value)
   if (lb === arr.length) return lb - 1
   if (arr[lb][key] === value || lb === 0) return lb
 
-  // eslint-disable-next-line @typescript-eslint/naming-convention
-  const lb_1 = lb - 1
-  const lDiff = value - (arr[lb_1][key] as number)
+  const lDiff = value - (arr[lb - 1][key] as number)
   const rDiff = (arr[lb][key] as number) - value
-  return lDiff <= rDiff ? lb_1 : lb
+  return lDiff <= rDiff ? lb - 1 : lb
 }
 
 // 参考 std::lower_bound

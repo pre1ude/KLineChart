@@ -246,6 +246,8 @@ export default class OverlayView extends View {
     yAxis?: YAxis,
     bindEvent: boolean = true
   ): void {
+    if (overlay.getSkipDraw()) return
+
     const { points } = overlay
     const coordinates = points.map(point =>
       this.pointToCoordinate(point, xAxis, yAxis)

@@ -178,6 +178,7 @@ interface OverlayInitOption {
   paneId: string
   zLevel?: number
   points?: IPoint[]
+  rawPoints?: Point[]
   [key: string]: unknown
 }
 
@@ -191,6 +192,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   state: OverlayState = OverlayState.CREATED
   currentStep: number = 0
   points: IPoint[] = []
+  rawPoints?: Point[]
 
   name: string = ''
   totalStep: number = 999 // 默认无限制步骤数(适用于anywave)
@@ -237,11 +239,12 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   onSelected?: OverlayEventCallback<E>
   onDeselected?: OverlayEventCallback<E>
 
+  private _skipDraw: boolean = false
   private _originalZLevel: number = 0
   private _prevPressedPoint?: IPoint
   private _prevPressedPoints: IPoint[] = []
 
-  constructor(template: OverlayTemplate<E>, { id, groupId, paneId, zLevel, points, ...rest }: OverlayInitOption) {
+  constructor(template: OverlayTemplate<E>, { id, groupId, paneId, zLevel, points, rawPoints, ...rest }: OverlayInitOption) {
     Object.assign(this, template)
 
     this.id = id
@@ -250,13 +253,33 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     if (isValid(zLevel)) {
       this.zLevel = zLevel
     }
-    if (points) {
+
+    // 保存原始点数据
+    if (rawPoints && rawPoints.length > 0) {
+      this.rawPoints = rawPoints
+    }
+
+    // 应用内部格式的点
+    if (points && points.length > 0) {
       this._applyPoints(points)
     }
 
     Object.assign(this, rest)
 
     this.onCreated?.()
+  }
+
+  getSkipDraw(): boolean {
+    return this._skipDraw
+  }
+
+  setSkipDraw(skip: boolean): void {
+    this._skipDraw = skip
+  }
+
+  updateInternalPoints(points: IPoint[]): void {
+    this.points = points
+    this._skipDraw = false
   }
 
   setOriginalZLevel(zLevel: number): void {
