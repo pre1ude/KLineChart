@@ -7,7 +7,6 @@ import { UpdateLevel } from './common/Updater'
 import { type Styles, YAxisPosition } from './common/Styles'
 import type Crosshair from './common/Crosshair'
 import { ActionType, type ActionCallback, type ActionCallbackParams } from './common/Action'
-import type LoadMoreCallback from './common/LoadMoreCallback'
 import type LoadDataCallback from './common/LoadDataCallback'
 import type Precision from './common/Precision'
 import type VisibleRange from './common/VisibleRange'
@@ -84,11 +83,6 @@ export interface Chart {
   applyMoreData: (dataList: KLineData[], more?: boolean, callback?: () => void) => void
   updateData: (data: KLineData, callback?: () => void) => void
   replaceData: (dataList: KLineData[], more?: boolean, callback?: () => void) => void
-  /**
-   * @deprecated
-   * Since v9.8.0 deprecated, since v10 removed
-   */
-  loadMore: (cb: LoadMoreCallback) => void
   setLoadDataCallback: (cb: LoadDataCallback) => void
   createIndicator: (value: string | IndicatorCreate, isStack?: boolean, paneOptions?: PaneOptions, callback?: () => void) => string | undefined
   overrideIndicator: (override: IndicatorOverride, paneId?: string, callback?: () => void) => void
@@ -745,11 +739,6 @@ export default class ChartImp implements Chart {
 
   replaceData(dataList: KLineData[], more?: boolean, callback?: () => void): void {
     this._chartStore.replaceData(dataList, more, callback)
-  }
-
-  loadMore(cb: LoadMoreCallback): void {
-    logWarn('', '', 'Api `loadMore` has been deprecated since version 9.8.0, use `setLoadDataCallback` instead.')
-    this._chartStore.setLoadMoreCallback(cb)
   }
 
   setLoadDataCallback(cb: LoadDataCallback): void {

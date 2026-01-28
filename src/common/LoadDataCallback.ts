@@ -9,7 +9,8 @@ enum LoadDataType {
 interface LoadDataParams {
   type: LoadDataType
   data?: KLineData
-  callback: (dataList: KLineData[], more?: boolean) => void
+  callback: () => void
+  addData: (dataList: KLineData[], more?: boolean) => void
 }
 
 export { LoadDataType, type LoadDataParams }

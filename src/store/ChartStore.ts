@@ -8,7 +8,6 @@ import { getDefaultStyles, type Styles, type TooltipLegend } from '../common/Sty
 import { isArray, isNumber, isString, isValid, merge } from '../common/utils/typeChecks'
 import type LoadDataCallback from '../common/LoadDataCallback'
 import { type LoadDataParams, LoadDataType } from '../common/LoadDataCallback'
-import type LoadMoreCallback from '../common/LoadMoreCallback'
 import { ActionType } from '../common/Action'
 import { getDefaultCustomApi, type CustomApi, defaultLocale, type Options } from '../Options'
 import TimeScaleStore from './TimeScaleStore'
@@ -77,21 +76,15 @@ export default class ChartStore {
   private _dataList: KLineData[] = []
 
   /**
-   * Load more data callback
-   * Since v9.8.0 deprecated, since v10 removed
-   * @deprecated
-   */
-  private _loadMoreCallback?: LoadMoreCallback
-
-  /**
    * Load data callback
    */
   private _loadDataCallback?: LoadDataCallback
 
   /**
-   * Is loading data flag
+   * Loading state for each direction
    */
-  private _loading = true
+  private _loadingForward = false
+  private _loadingBackward = false
 
   /**
    * Whether there are forward more flag
@@ -524,7 +517,6 @@ export default class ChartStore {
           break
         }
       }
-      this._loading = false
     } else {
       const dataCount = this._dataList.length
       const timestamp = data.timestamp
@@ -596,42 +588,52 @@ export default class ChartStore {
     this._actionStore.execute(ActionType.OnDataReady, undefined)
   }
 
-  setLoadMoreCallback(callback: LoadMoreCallback): void {
-    this._loadMoreCallback = callback
-  }
-
-  executeLoadMoreCallback(timestamp?: number): void {
-    if (this._forwardMore && !this._loading && isValid(this._loadMoreCallback)) {
-      this._loading = true
-      this._loadMoreCallback(timestamp)
-    }
-  }
-
   setLoadDataCallback(callback: LoadDataCallback): void {
     this._loadDataCallback = callback
   }
 
-  executeLoadDataCallback(params: Omit<LoadDataParams, 'callback'>): void {
-    if (
-      !this._loading &&
-      isValid(this._loadDataCallback) &&
-      (
-        (this._forwardMore && params.type === LoadDataType.Forward) ||
-        (this._backwardMore && params.type === LoadDataType.Backward)
-      )
-    ) {
-      const cb: ((data: KLineData[], more?: boolean) => void) = (data: KLineData[], more?: boolean) => {
-        this.addData(data, params.type, more)
-      }
-      this._loading = true
-      this._loadDataCallback({ ...params, callback: cb })
+  private canLoadForward(): boolean {
+    return !this._loadingForward && this._forwardMore && isValid(this._loadDataCallback)
+  }
+
+  private canLoadBackward(): boolean {
+    return !this._loadingBackward && this._backwardMore && isValid(this._loadDataCallback)
+  }
+
+  executeLoadDataCallback(params: Omit<LoadDataParams, 'callback' | 'addData'>): void {
+    if (params.type === LoadDataType.Init) return
+
+    const isForward = params.type === LoadDataType.Forward
+    const canLoad = isForward ? this.canLoadForward() : this.canLoadBackward()
+
+    if (!canLoad) return
+
+    if (isForward) {
+      this._loadingForward = true
+    } else {
+      this._loadingBackward = true
     }
+
+    const cb = (): void => {
+      if (isForward) {
+        this._loadingForward = false
+      } else {
+        this._loadingBackward = false
+      }
+    }
+
+    const addData = (data: KLineData[], more?: boolean): void => {
+      this.addData(data, params.type, more)
+    }
+
+    this._loadDataCallback?.({ ...params, callback: cb, addData })
   }
 
   clear(): void {
     this._forwardMore = true
     this._backwardMore = true
-    this._loading = true
+    this._loadingForward = false
+    this._loadingBackward = false
     this._dataList = []
     this._visibleDataList = []
     this._timeScaleStore.clear()
