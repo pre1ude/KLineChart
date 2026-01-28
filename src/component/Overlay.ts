@@ -262,6 +262,9 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     // 应用内部格式的点
     if (points && points.length > 0) {
       this._applyPoints(points)
+    } else if (rawPoints && rawPoints.length > 0) {
+      // 有 rawPoints 但没有 points（转换失败），根据 rawPoints 设置状态
+      this._applyStateFromRawPoints(rawPoints.length)
     }
 
     Object.assign(this, rest)
@@ -369,6 +372,23 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     this.points = _points
     for (let i = 0; i < this.currentStep; i++) {
       this.onDrawPointUpdate?.(this.points, i, this.points[i])
+    }
+  }
+
+  /**
+   * 根据 rawPoints 数量设置状态（用于转换失败时）
+   * 不设置 points，只设置 state 和 currentStep
+   */
+  private _applyStateFromRawPoints(rawPointsCount: number) {
+    const count = Math.min(rawPointsCount, this.totalStep)
+    this.currentStep = count
+
+    if (count === 0) {
+      this.state = OverlayState.CREATED
+    } else if (count >= this.totalStep || this.totalStep >= 999) {
+      this.state = OverlayState.COMPLETED
+    } else {
+      this.state = OverlayState.DRAWING
     }
   }
 
