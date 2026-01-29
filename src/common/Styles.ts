@@ -135,22 +135,10 @@ export interface TooltipLegendChild {
   color: string
 }
 
-/**
- * @deprecated
- * Starting from v10, it will be deleted
- */
-export type TooltipDataChild = TooltipLegendChild
-
 export interface TooltipLegend {
   title: string | TooltipLegendChild
   value: string | TooltipLegendChild
 }
-
-/**
- * @deprecated
- * Starting from v10, it will be deleted
- */
-export type TooltipData = TooltipLegend
 
 export enum TooltipIconPosition {
   Left = 'left',
