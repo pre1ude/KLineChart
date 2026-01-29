@@ -76,11 +76,6 @@ export interface Chart {
   getDataByDataIndex: (dataIndex: number) => KLineData | undefined
   getDataByTimestamp: (timestamp: number, options?: { exact?: boolean }) => KLineData | undefined
   applyNewData: (dataList: KLineData[], more?: boolean, callback?: () => void) => void
-  /**
-   * @deprecated
-   * Since v9.8.0 deprecated, since v10 removed
-   */
-  applyMoreData: (dataList: KLineData[], more?: boolean, callback?: () => void) => void
   updateData: (data: KLineData, callback?: () => void) => void
   replaceData: (dataList: KLineData[], more?: boolean, callback?: () => void) => void
   setLoadDataCallback: (cb: LoadDataCallback) => void
@@ -727,10 +722,6 @@ export default class ChartImp implements Chart {
 
   applyNewData(data: KLineData[], more?: boolean, callback?: () => void): void {
     this._chartStore.addData(data, LoadDataType.Init, more, callback)
-  }
-
-  applyMoreData(data: KLineData[], more?: boolean, callback?: () => void): void {
-    this._chartStore.addData(data, LoadDataType.Backward, more ?? true, callback)
   }
 
   updateData(data: KLineData, callback?: () => void): void {
