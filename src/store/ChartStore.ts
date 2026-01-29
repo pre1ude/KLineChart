@@ -642,6 +642,14 @@ export default class ChartStore {
     this._dataReadyCallbacks = []
   }
 
+  /**
+   * 销毁 ChartStore，清理所有引用防止内存泄漏
+   */
+  destroy(): void {
+    this.clear()
+    this._loadDataCallback = undefined
+  }
+
   getTimeScaleStore(): TimeScaleStore {
     return this._timeScaleStore
   }

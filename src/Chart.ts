@@ -1244,6 +1244,7 @@ export default class ChartImp implements Chart {
   }
 
   destroy(): void {
+    this._chartStore.destroy()
     this._chartEvent.destroy()
     this._drawPanes.forEach(pane => {
       pane.destroy()
