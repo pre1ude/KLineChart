@@ -373,7 +373,11 @@ export default class ChartStore {
   externalToInternal(point: Partial<Point>): Partial<IPoint> {
     const result: Partial<IPoint> = {}
     if (isNumber(point.timestamp)) {
-      const baseDataIndex = this.timestampToDataIndex(point.timestamp)
+      let baseDataIndex = this.timestampToDataIndex(point.timestamp)
+      // 分时模式：如果 timestampToDataIndex 返回 undefined，说明在数据范围外，走额外逻辑
+      if (baseDataIndex === undefined && this._isTimeShare) {
+        baseDataIndex = this._timestampToTimeShareDataIndex(point.timestamp)
+      }
       if (baseDataIndex !== undefined) {
         result.dataIndex = baseDataIndex + (point.offset ?? 0)
       }
@@ -382,6 +386,32 @@ export default class ChartStore {
       result.value = point.value
     }
     return result
+  }
+
+  /**
+   * 分时模式：将 timestamp 转换为 dataIndex
+   * 与 timestampToDataIndex 不同，此方法允许返回超出数据范围的 dataIndex
+   * 用于支持在未来时间位置绘制 overlay
+   */
+  private _timestampToTimeShareDataIndex(timestamp: number): number | undefined {
+    const ticksPerDay = this._timeShareTicks.length
+    if (ticksPerDay === 0 || this._dataList.length === 0) return undefined
+
+    const date = new Date(timestamp)
+    const tickStr = `${date.getHours()}:${date.getMinutes()}`
+    const tickIndex = this._timeShareTicks.indexOf(tickStr)
+    if (tickIndex === -1) return undefined
+
+    const firstTs = this._dataList[0].timestamp
+    const firstDate = new Date(firstTs)
+    const firstTickStr = `${firstDate.getHours()}:${firstDate.getMinutes()}`
+    const firstTickIndex = this._timeShareTicks.indexOf(firstTickStr)
+
+    const msDiff = timestamp - firstTs
+    const dayDiff = Math.floor(msDiff / (24 * 60 * 60 * 1000))
+    const tickDiff = tickIndex - firstTickIndex
+
+    return dayDiff * ticksPerDay + tickDiff
   }
 
   /**
