@@ -90,21 +90,16 @@ export class OverlayLayer implements Layer {
       const lastHoverInfo = this._overlayView.getHoverInstanceInfo()
 
       if (!this._isSameOverlay(lastHoverInfo, hoverInfo)) {
-        let needUpdate = false
-
         if (lastHoverInfo?.overlay != null) {
-          const hasCallback = lastHoverInfo.overlay.onMouseLeave?.(createOverlayEventFromInfo(event, lastHoverInfo, chartStore))
-          if (!hasCallback) needUpdate = true // hasCallback false 表示默认触发更新
+          lastHoverInfo.overlay.onMouseLeave?.(createOverlayEventFromInfo(event, lastHoverInfo, chartStore))
         }
 
         if (hoverInfo?.overlay != null) {
-          const hasCallback = hoverInfo.overlay.onMouseEnter?.(createOverlayEventFromInfo(event, hoverInfo, chartStore))
-          if (!hasCallback) needUpdate = true // hasCallback false 表示默认触发更新
+          hoverInfo.overlay.onMouseEnter?.(createOverlayEventFromInfo(event, hoverInfo, chartStore))
         }
 
-        if (needUpdate) {
-          chart.updatePane(UpdateLevel.Overlay, paneId)
-        }
+        // 触发更新
+        chart.updatePane(UpdateLevel.Overlay, paneId)
       }
 
       // 始终更新 hoverInfo（用于其他用途，如高亮当前 figure）
@@ -234,7 +229,7 @@ export class OverlayLayer implements Layer {
           figureKey: rightClickInfo.figureKey,
           figureIndex: rightClickInfo.figureIndex,
           attrsIndex: rightClickInfo.attrsIndex,
-          internalToExternal: (point) => chartStore.internalToExternal(point)
+          internalToExternal: (point: IPoint) => chartStore.internalToExternal(point)
         }
 
         if (progressOverlay) {

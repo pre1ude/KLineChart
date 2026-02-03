@@ -6,7 +6,7 @@ import type Bounding from '../common/Bounding'
 import type BarSpace from '../common/BarSpace'
 import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
-import { type MouseTouchEvent, type OverlayEventData } from '../common/SyntheticEvent'
+import { type MouseTouchEvent } from '../common/SyntheticEvent'
 import { isNumber, isValid, merge } from '../common/utils/typeChecks'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
@@ -15,9 +15,36 @@ import { type YAxis } from './YAxis'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DefaultExtendData = Record<string, any>
 
-/** Overlay 事件回调的事件类型，包含 overlayData */
-export type OverlayMouseTouchEvent<E = DefaultExtendData> = MouseTouchEvent & {
-  overlayData: OverlayEventData<Overlay<E>>
+/**
+ * Overlay 事件的附加数据
+ */
+export interface OverlayEventData<E = DefaultExtendData> {
+  /** Overlay 实例 */
+  overlay: Overlay<E>
+  /** 所在 pane 的 ID */
+  paneId: string
+  /** 交互类型：控制点或主体 */
+  interactType: 'control-point' | 'body'
+  /** Figure 的 key */
+  figureKey: string
+  /** Figure 索引 */
+  figureIndex: number
+  /** attrs 索引 */
+  attrsIndex: number
+  /** 绘制点索引（仅绘制事件） */
+  pointIndex?: number
+  /**
+   * 将内部 dataIndex 转换为外部 timestamp + offset
+   */
+  internalToExternal: (point: IPoint) => Partial<Point>
+}
+
+/**
+ * Overlay 事件回调的事件类型
+ * 扩展 MouseTouchEvent，明确 overlayData 的类型
+ */
+export type OverlayMouseTouchEvent<E = DefaultExtendData> = Omit<MouseTouchEvent, 'overlayData'> & {
+  overlayData: OverlayEventData<E>
 }
 
 export type OverlayMode = 'normal' | 'weak_magnet' | 'strong_magnet'
@@ -83,7 +110,7 @@ export interface OverlayCreateFiguresCallbackParams<E = DefaultExtendData> {
 /** Overlay 绘制事件回调 */
 export type OverlayDrawEventCallback<E = DefaultExtendData> = (event: OverlayMouseTouchEvent<E>) => void
 
-/** Overlay 交互事件回调，返回 true 阻止默认行为 */
+/** Overlay 交互事件回调 */
 export type OverlayEventCallback<E = DefaultExtendData> = (event: OverlayMouseTouchEvent<E>) => void
 
 export type OverlayCreateFiguresCallback<E = DefaultExtendData> = (params: OverlayCreateFiguresCallbackParams<E>) => OverlayFigure | OverlayFigure[]

@@ -6,9 +6,9 @@
  * </licenses/LICENSE-lightweight-charts>).
  */
 
+import { type OverlayEventData } from '@/component/Overlay'
 import type Coordinate from './Coordinate'
 import type Eventful from './Eventful'
-import type { IPoint, Point } from './Point'
 import { setScale } from './utils/canvas'
 import { isFF, isIOS } from './utils/platform'
 import { isValid } from './utils/typeChecks'
@@ -24,28 +24,6 @@ export type MouseTouchEventCallback = (event: MouseTouchEvent, other?: unknown) 
 export type PinchEventCallback = (event: MouseTouchEvent<TouchEvent>, scale: number) => void
 export type MouseWheelHortEventCallback = (event: MouseTouchEvent<MouseEvent>, distance: number) => void
 export type MouseWheelVertEventCallback = (event: MouseTouchEvent<MouseEvent>, normDeltaY: number) => void
-
-/** Overlay 事件的附加数据 */
-export interface OverlayEventData<E = unknown> {
-  /** Overlay 实例 */
-  overlay: E
-  /** 所在 pane 的 ID */
-  paneId: string
-  /** 交互类型：控制点或主体 */
-  interactType: 'control-point' | 'body'
-  /** Figure 的 key */
-  figureKey: string
-  /** Figure 索引 */
-  figureIndex: number
-  /** attrs 索引 */
-  attrsIndex: number
-  /** 绘制点索引（仅绘制事件） */
-  pointIndex?: number
-  /**
-   * 将内部 dataIndex 转换为外部 timestamp + offset
-   */
-  internalToExternal: (point: IPoint) => Partial<Point>
-}
 
 export interface EventHandler {
   pinchStartEvent?: MouseTouchEventCallback
@@ -99,7 +77,7 @@ export interface MouseTouchEvent<TSourceEvent = MouseEvent | TouchEvent> extends
   stopPropagation: () => void
   stopImmediatePropagation: () => void
   /** Overlay 事件附加数据（仅在 overlay 相关事件中存在） */
-  overlayData?: OverlayEventData<unknown>
+  overlayData?: OverlayEventData
 }
 
 export interface EventOptions {

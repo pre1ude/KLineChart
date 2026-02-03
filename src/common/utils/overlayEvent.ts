@@ -1,6 +1,6 @@
-import type { MouseTouchEvent, OverlayEventData } from '../SyntheticEvent'
+import type { MouseTouchEvent } from '../SyntheticEvent'
 import type { IPoint, Point } from '../Point'
-import type { Overlay, OverlayMouseTouchEvent, EventOverlayInfo, DefaultExtendData } from '../../component/Overlay'
+import type { Overlay, OverlayMouseTouchEvent, OverlayEventData, EventOverlayInfo, DefaultExtendData } from '../../component/Overlay'
 import type ChartStore from '../../store/ChartStore'
 
 /** 创建带 overlayData 的事件对象 */
@@ -9,7 +9,7 @@ export function createOverlayEvent<E>(
   overlay: Overlay<E>,
   paneId: string,
   chartStore: ChartStore,
-  extra?: Partial<Pick<OverlayEventData<Overlay<E>>, 'interactType' | 'figureKey' | 'figureIndex' | 'attrsIndex' | 'pointIndex'>>
+  extra?: Partial<Pick<OverlayEventData<E>, 'interactType' | 'figureKey' | 'figureIndex' | 'attrsIndex' | 'pointIndex'>>
 ): OverlayMouseTouchEvent<E> {
   const overlayEvent = event as OverlayMouseTouchEvent<E>
   overlayEvent.overlayData = {
