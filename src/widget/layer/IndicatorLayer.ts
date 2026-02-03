@@ -82,8 +82,6 @@ export class IndicatorLayer implements Layer {
 
         this._indicatorView.setHoverInfo(currentFigureData)
       }
-
-      return false
     })
 
     // 鼠标点击事件
@@ -104,8 +102,6 @@ export class IndicatorLayer implements Layer {
           indicator.onClick?.(e, { dataIndex, dataList, figure, indicator })
         }
       }
-
-      return false
     })
   }
 

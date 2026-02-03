@@ -33,10 +33,11 @@ export default class MainWidget extends DrawWidget<DualYPane> {
     if (pane.getId() === PaneIdConstants.CANDLE) {
       this.addEventListener('contextMenuEvent', (e) => {
         const chart = pane.getChart()
+        const chartStore = chart.getChartStore()
         const dataIndex = chart.coordinateToDataIndex(e.x)
         const data = chart.getDataByDataIndex(dataIndex)
-        chart.getChartStore().getActionStore().execute(ActionType.OnRightClick, { ...e, data, dataIndex })
-        return false
+        // overlay 信息直接从事件对象读取（由 OverlayLayer 设置）
+        chartStore.getActionStore().execute(ActionType.OnRightClick, { ...e, data, dataIndex })
       })
     }
   }

@@ -42,7 +42,6 @@ abstract class BaseTooltipLayer implements Layer {
         this._tooltipView.setHasHoverIcon(iconInfo != null)
         chart.getChartStore().getTooltipStore().setActiveIcon(iconInfo)
       }
-      return false
     })
 
     this._tooltipView.addEventListener('mouseClickEvent', (event: MouseTouchEvent) => {
@@ -52,7 +51,6 @@ abstract class BaseTooltipLayer implements Layer {
         // TODO: temp solution
         event.nativeEvent.stopPropagation()
       }
-      return false
     })
   }
 

@@ -9,7 +9,7 @@ export function createOverlayEvent<E>(
   overlay: Overlay<E>,
   paneId: string,
   chartStore: ChartStore,
-  extra?: Partial<Pick<OverlayEventData, 'interactType' | 'figureKey' | 'figureIndex' | 'attrsIndex' | 'pointIndex'>>
+  extra?: Partial<Pick<OverlayEventData<Overlay<E>>, 'interactType' | 'figureKey' | 'figureIndex' | 'attrsIndex' | 'pointIndex'>>
 ): OverlayMouseTouchEvent<E> {
   const overlayEvent = event as OverlayMouseTouchEvent<E>
   overlayEvent.overlayData = {

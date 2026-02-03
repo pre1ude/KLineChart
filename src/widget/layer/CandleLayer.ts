@@ -47,7 +47,6 @@ export class CandleLayer implements Layer {
         const dataIndex = chart.coordinateToDataIndex(e.x)
         const data = chart.getDataByDataIndex(dataIndex)
         chart.getChartStore().getActionStore().execute(ActionType.OnCandleBarClick, { ...e, data, dataIndex })
-        return false
       })
 
       // 右键点击（仅命中蜡烛实体时触发）
@@ -56,7 +55,6 @@ export class CandleLayer implements Layer {
         const dataIndex = chart.coordinateToDataIndex(e.x)
         const data = chart.getDataByDataIndex(dataIndex)
         chart.getChartStore().getActionStore().execute(ActionType.OnCandleBarRightClick, { ...e, data, dataIndex })
-        return false
       })
     }
   }

@@ -20,15 +20,15 @@ export const enum EventPhase {
   BUBBLING_PHASE = 3
 }
 
-export type MouseTouchEventCallback = (event: MouseTouchEvent, other?: unknown) => boolean
-export type PinchEventCallback = (event: MouseTouchEvent<TouchEvent>, scale: number) => boolean
-export type MouseWheelHortEventCallback = (event: MouseTouchEvent<MouseEvent>, distance: number) => boolean
-export type MouseWheelVertEventCallback = (event: MouseTouchEvent<MouseEvent>, normDeltaY: number) => boolean
+export type MouseTouchEventCallback = (event: MouseTouchEvent, other?: unknown) => void
+export type PinchEventCallback = (event: MouseTouchEvent<TouchEvent>, scale: number) => void
+export type MouseWheelHortEventCallback = (event: MouseTouchEvent<MouseEvent>, distance: number) => void
+export type MouseWheelVertEventCallback = (event: MouseTouchEvent<MouseEvent>, normDeltaY: number) => void
 
 /** Overlay 事件的附加数据 */
-export interface OverlayEventData {
+export interface OverlayEventData<E = unknown> {
   /** Overlay 实例 */
-  overlay: unknown
+  overlay: E
   /** 所在 pane 的 ID */
   paneId: string
   /** 交互类型：控制点或主体 */
@@ -89,6 +89,7 @@ export interface MouseTouchEvent<TSourceEvent = MouseEvent | TouchEvent> extends
   pageY: number
   isTouch?: boolean
   preventDefault?: () => void
+  defaultPrevented?: boolean
   nativeEvent: TSourceEvent
   target?: Eventful
   currentTarget?: Eventful
@@ -98,7 +99,7 @@ export interface MouseTouchEvent<TSourceEvent = MouseEvent | TouchEvent> extends
   stopPropagation: () => void
   stopImmediatePropagation: () => void
   /** Overlay 事件附加数据（仅在 overlay 相关事件中存在） */
-  overlayData?: OverlayEventData
+  overlayData?: OverlayEventData<unknown>
 }
 
 export interface EventOptions {
@@ -957,11 +958,13 @@ export default class SyntheticEvent {
       isTouch: !event.type.startsWith('mouse') && event.type !== 'contextmenu' && event.type !== 'click' && event.type !== 'wheel',
 
       preventDefault: () => {
+        _event.defaultPrevented = true
         if (event.type !== 'touchstart') {
           // touchstart is passive and cannot be prevented
           this._preventDefault(event)
         }
       },
+      defaultPrevented: false,
       nativeEvent: event,
       eventPhase: EventPhase.NONE,
       propagationStopped: false,

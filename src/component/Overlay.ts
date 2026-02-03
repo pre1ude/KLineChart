@@ -17,7 +17,7 @@ export type DefaultExtendData = Record<string, any>
 
 /** Overlay 事件回调的事件类型，包含 overlayData */
 export type OverlayMouseTouchEvent<E = DefaultExtendData> = MouseTouchEvent & {
-  overlayData: OverlayEventData & { overlay: Overlay<E> }
+  overlayData: OverlayEventData<Overlay<E>>
 }
 
 export type OverlayMode = 'normal' | 'weak_magnet' | 'strong_magnet'
@@ -41,15 +41,20 @@ export interface OverlayFigure {
 export type InteractType = 'control-point' | 'body'
 
 export interface OverlayFigureData {
-  overlay: Overlay
+  overlayId: string      // Overlay ID（避免循环引用）
   interactType: InteractType
   figureKey: string
   figureIndex: number
   attrsIndex: number
 }
 
-export interface EventOverlayInfo extends OverlayFigureData {
+export interface EventOverlayInfo {
+  overlay: Overlay       // 事件处理时才需要完整的 overlay 引用
   paneId: string
+  interactType: InteractType
+  figureKey: string
+  figureIndex: number
+  attrsIndex: number
 }
 
 export interface OverlayPrecision extends Precision {
@@ -79,7 +84,7 @@ export interface OverlayCreateFiguresCallbackParams<E = DefaultExtendData> {
 export type OverlayDrawEventCallback<E = DefaultExtendData> = (event: OverlayMouseTouchEvent<E>) => void
 
 /** Overlay 交互事件回调，返回 true 阻止默认行为 */
-export type OverlayEventCallback<E = DefaultExtendData> = (event: OverlayMouseTouchEvent<E>) => boolean
+export type OverlayEventCallback<E = DefaultExtendData> = (event: OverlayMouseTouchEvent<E>) => void
 
 export type OverlayCreateFiguresCallback<E = DefaultExtendData> = (params: OverlayCreateFiguresCallbackParams<E>) => OverlayFigure | OverlayFigure[]
 
@@ -97,10 +102,8 @@ export interface OverlayEventHandlers<E = DefaultExtendData> {
 
   onClick?: OverlayEventCallback<E>
   onDoubleClick?: OverlayEventCallback<E>
-  /** 返回 Truthy 阻止右键点击删除 */
   onRightClick?: OverlayEventCallback<E>
   onPressedMoveStart?: OverlayEventCallback<E>
-  /** 返回 Truthy 阻止原有的默认拖动行为 */
   onPressedMoving?: OverlayEventCallback<E>
   onPressedMoveEnd?: OverlayEventCallback<E>
   onMouseEnter?: OverlayEventCallback<E>

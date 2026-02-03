@@ -3,7 +3,7 @@ import { UpdateLevel } from '../common/Updater'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
 import { ActionType } from '../common/Action'
 import { createDom } from '../common/utils/dom'
-import { throttle } from '@/common/utils/performance'
+import { throttle } from '../common/utils/performance'
 import Widget from './Widget'
 import { WidgetNameConstants, REAL_SEPARATOR_HEIGHT } from './types'
 import type SeparatorPane from '../pane/SeparatorPane'
@@ -12,28 +12,24 @@ import type DualYPane from '../pane/DualYPane'
 export default class SeparatorWidget extends Widget<SeparatorPane> {
   private _dragFlag = false
   private _dragStartY = 0
-
   private _topPaneHeight = 0
   private _bottomPaneHeight = 0
 
   constructor(rootContainer: HTMLElement, pane: SeparatorPane) {
     super(rootContainer, pane)
+    this._initEventListeners()
+  }
 
-    this.addEventListener('touchStartEvent', this._mouseDownEvent.bind(this))
-
-      .addEventListener('touchMoveEvent', this._pressedMouseMoveEvent.bind(this))
-
-      .addEventListener('touchEndEvent', this._mouseUpEvent.bind(this))
-
-      .addEventListener('mouseDownEvent', this._mouseDownEvent.bind(this))
-
-      .addEventListener('mouseUpEvent', this._mouseUpEvent.bind(this))
-
-      .addEventListener('pressedMouseMoveEvent', this._pressedMouseMoveEvent.bind(this))
-
-      .addEventListener('mouseEnterEvent', this._mouseEnterEvent.bind(this))
-
-      .addEventListener('mouseLeaveEvent', this._mouseLeaveEvent.bind(this))
+  private _initEventListeners(): void {
+    this
+      .addEventListener('touchStartEvent', this._mouseDownEvent)
+      .addEventListener('touchMoveEvent', this._pressedMouseMoveEvent)
+      .addEventListener('touchEndEvent', this._mouseUpEvent)
+      .addEventListener('mouseDownEvent', this._mouseDownEvent)
+      .addEventListener('mouseUpEvent', this._mouseUpEvent)
+      .addEventListener('pressedMouseMoveEvent', this._pressedMouseMoveEvent)
+      .addEventListener('mouseEnterEvent', this._mouseEnterEvent)
+      .addEventListener('mouseLeaveEvent', this._mouseLeaveEvent)
   }
 
   override getName(): string {
@@ -44,84 +40,92 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
     return true
   }
 
-  private _mouseDownEvent(event: MouseTouchEvent): boolean {
+  private readonly _mouseDownEvent = (event: MouseTouchEvent): void => {
     this._dragFlag = true
     this._dragStartY = event.pageY
     const pane = this.getPane()
     this._topPaneHeight = pane.getTopPane().getBounding().height
     this._bottomPaneHeight = pane.getBottomPane().getBounding().height
-    return true
   }
 
-  private _mouseUpEvent(): boolean {
+  private readonly _mouseUpEvent = (): void => {
     this._dragFlag = false
-    return this._mouseLeaveEvent()
+    this._mouseLeaveEvent()
   }
 
-  private readonly _throttledPressedMouseMove = throttle(this._pressedTouchMouseMoveEvent.bind(this), 20)
-
-  private _pressedMouseMoveEvent(event: MouseTouchEvent): boolean {
-    this._throttledPressedMouseMove(event)
-    return true
-  }
-
-  private _pressedTouchMouseMoveEvent(event: MouseTouchEvent): boolean {
+  private readonly _pressedTouchMouseMoveEvent = (event: MouseTouchEvent): void => {
     const dragDistance = event.pageY - this._dragStartY
     const currentPane = this.getPane()
     const topPane = currentPane.getTopPane() as DualYPane
     const bottomPane = currentPane.getBottomPane() as DualYPane
-    const isUpDrag = dragDistance < 0
-    if (
-      topPane !== null &&
-      bottomPane?.getOptions().dragEnabled
-    ) {
-      let reducedPane: DualYPane
-      let increasedPane: DualYPane
-      let startDragReducedPaneHeight: number
-      let startDragIncreasedPaneHeight: number
-      if (isUpDrag) {
-        reducedPane = topPane
-        increasedPane = bottomPane
-        startDragReducedPaneHeight = this._topPaneHeight
-        startDragIncreasedPaneHeight = this._bottomPaneHeight
-      } else {
-        reducedPane = bottomPane
-        increasedPane = topPane
-        startDragReducedPaneHeight = this._bottomPaneHeight
-        startDragIncreasedPaneHeight = this._topPaneHeight
-      }
-      const reducedPaneMinHeight = reducedPane.getOptions().minHeight
-      if (startDragReducedPaneHeight > reducedPaneMinHeight) {
-        const reducedPaneHeight = Math.max(startDragReducedPaneHeight - Math.abs(dragDistance), reducedPaneMinHeight)
-        const diffHeight = startDragReducedPaneHeight - reducedPaneHeight
-        reducedPane.setBounding({ height: reducedPaneHeight })
-        increasedPane.setBounding({ height: startDragIncreasedPaneHeight + diffHeight })
-        const chart = currentPane.getChart()
-        chart.getChartStore().getActionStore().execute(ActionType.OnPaneDrag, { paneId: currentPane.getId() })
-        chart.adjustPaneViewport(true, true, true, true, true)
-      }
+
+    // 检查是否允许拖动
+    if (!topPane || !bottomPane?.getOptions().dragEnabled) {
+      return
     }
-    return true
+
+    const isUpDrag = dragDistance < 0
+
+    // 确定哪个 pane 缩小，哪个 pane 放大
+    const { reducedPane, increasedPane, reducedPaneStartHeight, increasedPaneStartHeight } = isUpDrag
+      ? {
+        reducedPane: topPane,
+        increasedPane: bottomPane,
+        reducedPaneStartHeight: this._topPaneHeight,
+        increasedPaneStartHeight: this._bottomPaneHeight
+      }
+      : {
+        reducedPane: bottomPane,
+        increasedPane: topPane,
+        reducedPaneStartHeight: this._bottomPaneHeight,
+        increasedPaneStartHeight: this._topPaneHeight
+      }
+
+    const reducedPaneMinHeight = reducedPane.getOptions().minHeight
+
+    // 检查是否超过最小高度限制
+    if (reducedPaneStartHeight <= reducedPaneMinHeight) {
+      return
+    }
+
+    // 计算新的高度
+    const reducedPaneHeight = Math.max(
+      reducedPaneStartHeight - Math.abs(dragDistance),
+      reducedPaneMinHeight
+    )
+    const diffHeight = reducedPaneStartHeight - reducedPaneHeight
+
+    // 更新 pane 高度
+    reducedPane.setBounding({ height: reducedPaneHeight })
+    increasedPane.setBounding({ height: increasedPaneStartHeight + diffHeight })
+
+    // 触发事件和更新
+    const chart = currentPane.getChart()
+    chart.getChartStore().getActionStore().execute(ActionType.OnPaneDrag, { paneId: currentPane.getId() })
+    chart.adjustPaneViewport(true, true, true, true, true)
   }
 
-  private _mouseEnterEvent(): boolean {
+  private readonly _throttledPressedMouseMove = throttle(this._pressedTouchMouseMoveEvent, 20)
+
+  private readonly _pressedMouseMoveEvent = (event: MouseTouchEvent): void => {
+    this._throttledPressedMouseMove(event)
+  }
+
+  private readonly _mouseEnterEvent = (): void => {
     const pane = this.getPane()
     const bottomPane = pane.getBottomPane() as DualYPane
-    if (bottomPane?.getOptions().dragEnabled ?? false) {
+
+    if (bottomPane?.getOptions().dragEnabled) {
       const chart = pane.getChart()
       const styles = chart.getStyles().separator
       this.getContainer().style.background = styles.activeBackgroundColor
-      return true
     }
-    return false
   }
 
-  private _mouseLeaveEvent(): boolean {
+  private readonly _mouseLeaveEvent = (): void => {
     if (!this._dragFlag) {
       this.getContainer().style.background = ''
-      return true
     }
-    return false
   }
 
   override createContainer(): HTMLElement {

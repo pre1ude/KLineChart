@@ -294,7 +294,7 @@ export default class OverlayView extends View {
         fig.setAttrs(attrsArray[j])
           .setStyles(finalStyles)
           .setData({
-            overlay,
+            overlayId: overlay.id,
             interactType: 'body',
             figureKey: figure.key ?? '',
             figureIndex: i,
@@ -374,7 +374,7 @@ export default class OverlayView extends View {
       dot.setAttrs({ x, y, r: style.radius + style.borderSize })
         .setStyles({ color: style.borderColor })
         .setData({
-          overlay,
+          overlayId: overlay.id,
           interactType: 'control-point',
           figureKey: `${OVERLAY_FIGURE_KEY_PREFIX}point_${index}`,
           figureIndex: index,
