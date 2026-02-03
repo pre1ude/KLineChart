@@ -107,9 +107,6 @@ export interface OverlayCreateFiguresCallbackParams<E = DefaultExtendData> {
   isAlignLeft?: boolean
 }
 
-/** Overlay 绘制事件回调 */
-export type OverlayDrawEventCallback<E = DefaultExtendData> = (event: OverlayMouseTouchEvent<E>) => void
-
 /** Overlay 交互事件回调 */
 export type OverlayEventCallback<E = DefaultExtendData> = (event: OverlayMouseTouchEvent<E>) => void
 
@@ -121,11 +118,11 @@ export interface OverlayEventHandlers<E = DefaultExtendData> {
   onRemoved?: () => void
 
   /** 开始绘制（第一个点） */
-  onDrawStart?: OverlayDrawEventCallback<E>
+  onDrawStart?: OverlayEventCallback<E>
   /** 绘制中（每次添加点） */
-  onDrawing?: OverlayDrawEventCallback<E>
+  onDrawing?: OverlayEventCallback<E>
   /** 绘制完成（最后一个点） */
-  onDrawEnd?: OverlayDrawEventCallback<E>
+  onDrawEnd?: OverlayEventCallback<E>
 
   onClick?: OverlayEventCallback<E>
   onDoubleClick?: OverlayEventCallback<E>
@@ -254,9 +251,9 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   onCreated?: (this: Overlay<E>) => void
   onRemoved?: () => void
 
-  onDrawStart?: OverlayDrawEventCallback<E>
-  onDrawing?: OverlayDrawEventCallback<E>
-  onDrawEnd?: OverlayDrawEventCallback<E>
+  onDrawStart?: OverlayEventCallback<E>
+  onDrawing?: OverlayEventCallback<E>
+  onDrawEnd?: OverlayEventCallback<E>
 
   onClick?: OverlayEventCallback<E>
   onDoubleClick?: OverlayEventCallback<E>
