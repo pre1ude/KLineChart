@@ -8,9 +8,6 @@ const fibonacciSpiral: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates, bounding }) => {
     if (coordinates.length > 1) {
       const startRadius = getDistance(coordinates[0], coordinates[1]) / Math.sqrt(24)

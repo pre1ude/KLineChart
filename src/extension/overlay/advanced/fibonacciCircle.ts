@@ -8,9 +8,6 @@ const fibonacciCircle: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates }) => {
     if (coordinates.length > 1) {
       const xDis = Math.abs(coordinates[0].x - coordinates[1].x)

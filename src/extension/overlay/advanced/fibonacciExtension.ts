@@ -10,9 +10,6 @@ const fibonacciExtension: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates, overlay, precision, thousandsSeparator, decimalFoldThreshold, yAxis }) => {
     const figures: OverlayFigure[] = []
 

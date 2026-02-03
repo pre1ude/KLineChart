@@ -6,9 +6,6 @@ const rect: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates }) => {
     if (coordinates.length > 1) {
       return [

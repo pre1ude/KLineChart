@@ -9,9 +9,6 @@ const gannBox: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates }) => {
     if (coordinates.length < 2) return []
 

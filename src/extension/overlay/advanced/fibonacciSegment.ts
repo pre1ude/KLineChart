@@ -10,9 +10,6 @@ const fibonacciSegment: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates, overlay, precision, thousandsSeparator, decimalFoldThreshold, yAxis }) => {
     const points = overlay.points
     if (coordinates.length > 1 && isNumber(points[0].value) && isNumber(points[1].value)) {

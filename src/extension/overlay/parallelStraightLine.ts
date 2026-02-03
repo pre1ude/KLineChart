@@ -53,9 +53,6 @@ const parallelStraightLine: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates, bounding }) => {
     const attrArray = getParallelLines(coordinates, bounding)
     return attrArray.map((attr, i) => ({

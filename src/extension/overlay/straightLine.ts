@@ -7,9 +7,6 @@ const straightLine: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates, bounding }) => {
     if (coordinates.length === 2) {
       if (coordinates[0].x === coordinates[1].x) {

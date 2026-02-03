@@ -8,9 +8,6 @@ const arrow: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates }) => {
     if (coordinates.length > 1) {
       const flag = coordinates[1].x > coordinates[0].x ? 0 : 1

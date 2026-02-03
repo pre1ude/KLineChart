@@ -7,9 +7,6 @@ const circle: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates }) => {
     if (coordinates.length > 1) {
       const radius = getDistance(coordinates[0], coordinates[1])

@@ -9,9 +9,6 @@ const simpleTag: OverlayTemplate = {
   styles: {
     line: { style: LineType.Dashed }
   },
-  onRightClick() {
-    return true
-  },
   createFigures: ({ bounding, coordinates }) => {
     return {
       type: 'line',

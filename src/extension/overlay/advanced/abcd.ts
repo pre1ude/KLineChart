@@ -7,9 +7,6 @@ const abcd: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates }) => {
     let acLineCoordinates: Coordinate[] = []
     let bdLineCoordinates: Coordinate[] = []

@@ -19,9 +19,6 @@ export const textLog: OverlayTemplate<ExtendDataType> = {
   totalStep: 2,
   zLevel: 100, // 默认设为100, 确保比普通画线层级高
   needDefaultPointFigure: true,
-  onRightClick() {
-    return true
-  },
   onBodyDrag({ point, prevPoint, prevPoints }) {
     // 只移动 point[1]（文本框），point[0]（锚点）保持不动
     // 内部使用 dataIndex，计算简单直接

@@ -7,9 +7,6 @@ const horizontalRayLine: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates, bounding }) => {
     const coordinate = { x: 0, y: coordinates[0].y }
     if (isValid(coordinates[1]) && coordinates[0].x < coordinates[1].x) {

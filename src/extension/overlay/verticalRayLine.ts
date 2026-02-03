@@ -6,9 +6,6 @@ const verticalRayLine: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates, bounding }) => {
     if (coordinates.length === 2) {
       const coordinate = { x: coordinates[0].x, y: 0 }

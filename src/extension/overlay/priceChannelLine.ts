@@ -7,9 +7,6 @@ const priceChannelLine: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates, bounding }) => {
     const attrArray = getParallelLines(coordinates, bounding, 1)
     return attrArray.map((attr, i) => ({

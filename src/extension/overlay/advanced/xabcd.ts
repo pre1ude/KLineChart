@@ -8,9 +8,6 @@ const xabcd: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates }) => {
     const dashedLines: LineAttrs[] = []
     const polygons: PolygonAttrs[] = []

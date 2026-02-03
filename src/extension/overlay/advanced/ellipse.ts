@@ -6,9 +6,6 @@ const ellipse: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  onRightClick() {
-    return true
-  },
   createFigures: ({ coordinates }) => {
     if (coordinates.length > 1) {
       const rx = Math.abs(coordinates[1].x - coordinates[0].x)
