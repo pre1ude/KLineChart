@@ -351,6 +351,8 @@ export default class Event implements EventHandler {
 
       return consumed
     }
+    this._handleOverlayDeselection(e)
+
     return false
   }
 
@@ -367,7 +369,7 @@ export default class Event implements EventHandler {
     }
 
     // 检查是否点击在overlay figure上
-    if (this._isOverlayFigure(e.target)) {
+    if (e.overlayData != null) {
       return // 点击在overlay上，不取消选中
     }
 
@@ -383,14 +385,6 @@ export default class Event implements EventHandler {
     // 更新相关的pane
     this._chart.updatePane(UpdateLevel.Overlay, currentSelected.paneId)
     // this._chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
-  }
-
-  /**
-   * 检查事件目标是否是overlay figure
-   */
-  private _isOverlayFigure(target: unknown): boolean {
-    const figure = target as { data?: { overlay?: unknown } }
-    return figure?.data?.overlay != null
   }
 
   mouseRightClickEvent(e: MouseTouchEvent): boolean {
