@@ -43,8 +43,11 @@ export class IndicatorLayer implements Layer {
   private _isSameFigure(a: IndicatorFigureData | null, b: IndicatorFigureData | null): boolean {
     if (a == null && b == null) return true
     if (a == null || b == null) return false
-    return a.indicator.id === b.indicator.id && a.figure.key === b.figure.key
+    return a.dataIndex === b.dataIndex && a.indicator.id === b.indicator.id && a.figure.key === b.figure.key
   }
+
+  // TODO: _isSameSeries
+  // a.indicator.id === b.indicator.id && a.figure.key === b.figure.key
 
   private _isSameIndicator(a: IndicatorFigureData | null, b: IndicatorFigureData | null): boolean {
     if (a == null && b == null) return true
