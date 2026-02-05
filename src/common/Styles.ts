@@ -732,11 +732,11 @@ function getDefaultOverlayStyle(): OverlayStyle {
       color: '#FFC62B',
       borderColor: '#FFC62B',
       borderSize: 1,
-      radius: 5,
+      radius: 3,
       activeColor: '#FFC62B',
       activeBorderColor: '#FFC62B',
-      activeBorderSize: 3,
-      activeRadius: 5
+      activeBorderSize: 1,
+      activeRadius: 4
     },
     line: {
       style: LineType.Solid,
