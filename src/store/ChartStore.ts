@@ -19,6 +19,7 @@ import { getStyles } from '../extension/styles/index'
 import type Chart from '../Chart'
 import { setTimezone } from '../common/utils/dateTimeFormat'
 import { lowerBound, binarySearchNearest } from '../common/utils/number'
+import { formatToHHmm } from '../common/utils/format'
 import TaskScheduler from '@/common/TaskScheduler'
 
 export default class ChartStore {
@@ -298,8 +299,7 @@ export default class ChartStore {
 
     // 分时模式：只要能在时间轴上找到对应的时间槽就可以
     if (this._isTimeShare) {
-      const date = new Date(timestamp)
-      const tickStr = `${date.getHours()}:${date.getMinutes()}`
+      const tickStr = formatToHHmm(timestamp)
       const tickIndex = this._timeShareTicks.indexOf(tickStr)
       if (tickIndex === -1) return undefined
 
@@ -397,14 +397,12 @@ export default class ChartStore {
     const ticksPerDay = this._timeShareTicks.length
     if (ticksPerDay === 0 || this._dataList.length === 0) return undefined
 
-    const date = new Date(timestamp)
-    const tickStr = `${date.getHours()}:${date.getMinutes()}`
+    const tickStr = formatToHHmm(timestamp)
     const tickIndex = this._timeShareTicks.indexOf(tickStr)
     if (tickIndex === -1) return undefined
 
     const firstTs = this._dataList[0].timestamp
-    const firstDate = new Date(firstTs)
-    const firstTickStr = `${firstDate.getHours()}:${firstDate.getMinutes()}`
+    const firstTickStr = formatToHHmm(firstTs)
     const firstTickIndex = this._timeShareTicks.indexOf(firstTickStr)
 
     const msDiff = timestamp - firstTs
