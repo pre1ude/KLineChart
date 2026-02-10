@@ -1,11 +1,12 @@
 
-import { YAxisType } from '../common/Styles'
-import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
-import { isValid, isNumber } from '../common/utils/typeChecks'
-import View from './View'
-import type YAxisWidget from '../widget/YAxisWidget'
-import { drawStaticFigure } from '../extension/figure'
 import { clamp } from '@/common/utils/number'
+import { YAxisType } from '../common/Styles'
+import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
+import { isNumber, isValid } from '../common/utils/typeChecks'
+import { drawStaticFigure } from '../extension/figure'
+import type YAxisWidget from '../widget/YAxisWidget'
+import { calculateYAxisLabelX } from './utils/labelPosition'
+import View from './View'
 
 export default class CandleLastPriceLabelView extends View {
   override drawImp(ctx: CanvasRenderingContext2D): void {
@@ -61,10 +62,13 @@ export default class CandleLastPriceLabelView extends View {
         text = formatFoldDecimal(formatThousands(text, chartStore.getThousandsSeparator()), chartStore.getDecimalFoldThreshold())
 
         const isAlignLeft = widget.isAlignLeft()
+        const yAxisStyles = chartStore.getStyles().yAxis
+        const x = calculateYAxisLabelX(bounding, yAxisStyles, lastPriceMarkTextStyles, isAlignLeft)
         const align = isAlignLeft ? 'left' : 'right'
+
         drawStaticFigure(ctx, 'text', {
           attrs: {
-            x: bounding.width * (1 - +isAlignLeft),
+            x,
             y,
             text,
             align,

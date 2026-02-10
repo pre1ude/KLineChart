@@ -1,12 +1,13 @@
 import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
-import { type CrosshairStyle, type CrosshairDirectionStyle, type StateTextStyle } from '../common/Styles'
+import { type CrosshairDirectionStyle, type CrosshairStyle, type StateTextStyle } from '../common/Styles'
+import { genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import { isValid } from '../common/utils/typeChecks'
+import { type TextAttrs } from '../extension/figure/text'
 import { FormatDateType } from '../Options'
 import type ChartStore from '../store/ChartStore'
 import CrosshairLabelView from './CrosshairLabelView'
-import { type TextAttrs } from '../extension/figure/text'
-import { genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
+import { calculateXAxisLabelY } from './utils/labelPosition'
 
 export default class CrosshairVerticalLabelView extends CrosshairLabelView {
   override compare(crosshair: Crosshair): boolean {
@@ -56,6 +57,10 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
 
   // todo need optimize
   override getTextAttrs(text: string, textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs {
+    const chartStore = this.getWidget().getPane().getChart().getChartStore()
+    const xAxisStyles = chartStore.getStyles().xAxis
+    const y = calculateXAxisLabelY(xAxisStyles, styles)
+
     const x = crosshair.realX ?? 0
     let optimalX: number
     let align: CanvasTextAlign = 'center'
@@ -68,6 +73,6 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
     } else {
       optimalX = x
     }
-    return { x: optimalX, y: 0, text, align, baseline: 'top' }
+    return { x: optimalX, y, text, align, baseline: 'top' }
   }
 }

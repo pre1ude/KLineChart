@@ -1,11 +1,12 @@
 
-import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
-import { isNumber, isValid } from '../common/utils/typeChecks'
-import View from './View'
-import type YAxisWidget from '../widget/YAxisWidget'
-import { drawStaticFigure } from '../extension/figure'
-import { getFigureBaseStyles, getMergedDefaultStyles } from '../component/Indicator'
 import { clamp } from '@/common/utils/number'
+import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
+import { isNumber, isValid } from '../common/utils/typeChecks'
+import { getFigureBaseStyles, getMergedDefaultStyles } from '../component/Indicator'
+import { drawStaticFigure } from '../extension/figure'
+import type YAxisWidget from '../widget/YAxisWidget'
+import { calculateYAxisLabelX } from './utils/labelPosition'
+import View from './View'
 
 export default class IndicatorLastValueView extends View {
   override drawImp(ctx: CanvasRenderingContext2D): void {
@@ -24,6 +25,12 @@ export default class IndicatorLastValueView extends View {
       const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
       const thousandsSeparator = chartStore.getThousandsSeparator()
       const decimalFoldThreshold = chartStore.getDecimalFoldThreshold()
+
+      const isAlignLeft = widget.isAlignLeft()
+      const yAxisStyles = chartStore.getStyles().yAxis
+      const x = calculateYAxisLabelX(bounding, yAxisStyles, lastValueMarkTextStyles, isAlignLeft)
+      const align = isAlignLeft ? 'left' : 'right'
+
       indicators.forEach(indicator => {
         const result = indicator.result
         const indicatorData = result[dataIndex]
@@ -48,11 +55,9 @@ export default class IndicatorLastValueView extends View {
               }
               text = formatFoldDecimal(formatThousands(text, thousandsSeparator), decimalFoldThreshold)
 
-              const isAlignLeft = widget.isAlignLeft()
-              const align = isAlignLeft ? 'left' : 'right'
               drawStaticFigure(ctx, 'text', {
                 attrs: {
-                  x: bounding.width * (1 - +isAlignLeft),
+                  x,
                   y,
                   text,
                   align,

@@ -1,11 +1,12 @@
 import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
-import { type CrosshairStyle, type CrosshairDirectionStyle, YAxisType, type StateTextStyle } from '../common/Styles'
-import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
+import { YAxisType, type CrosshairDirectionStyle, type CrosshairStyle, type StateTextStyle } from '../common/Styles'
+import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { type TextAttrs } from '../extension/figure/text'
 import type ChartStore from '../store/ChartStore'
-import CrosshairLabelView from './CrosshairLabelView'
 import type YAxisWidget from '../widget/YAxisWidget'
+import CrosshairLabelView from './CrosshairLabelView'
+import { calculateYAxisLabelX } from './utils/labelPosition'
 
 export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
   protected compare(crosshair: Crosshair, paneId: string): boolean {
@@ -70,11 +71,15 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
     return formatFoldDecimal(formatThousands(text, chartStore.getThousandsSeparator()), chartStore.getDecimalFoldThreshold())
   }
 
-  protected getTextAttrs(text: string, _textWidth: number, crosshair: Crosshair, bounding: Bounding, _styles: StateTextStyle): TextAttrs {
+  protected getTextAttrs(text: string, _textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs {
     const widget = this.getWidget() as unknown as YAxisWidget
+    const chartStore = widget.getPane().getChart().getChartStore()
+    const yAxisStyles = chartStore.getStyles().yAxis
     const isAlignLeft = widget.isAlignLeft()
+
+    const x = calculateYAxisLabelX(bounding, yAxisStyles, styles, isAlignLeft)
     const align = isAlignLeft ? 'left' : 'right'
 
-    return { x: bounding.width * (1 - +isAlignLeft), y: crosshair.y ?? 0, text, align, baseline: 'middle' }
+    return { x, y: crosshair.y ?? 0, text, align, baseline: 'middle' }
   }
 }
