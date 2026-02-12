@@ -139,3 +139,8 @@ export function index10(value: number): number {
 export function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v))
 }
+
+export function inBetween(v: number, min: number, max: number, inclusive = true) {
+  if (inclusive) return v >= min && v <= max
+  return v > min && v < max
+}
