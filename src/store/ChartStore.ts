@@ -299,12 +299,16 @@ export default class ChartStore {
 
     // 分时模式：只要能在时间轴上找到对应的时间槽就可以
     if (this._isTimeShare) {
+      const ticksPerDay = this._timeShareTicks.length
       const tickStr = formatToHHmm(timestamp)
       const tickIndex = this._timeShareTicks.indexOf(tickStr)
       if (tickIndex === -1) return undefined
 
-      const dayIndex = Math.floor(Math.min(lb, this._dataList.length - 1) / this._timeShareTicks.length)
-      return dayIndex * this._timeShareTicks.length + tickIndex
+      if (lb > 0) {
+        const dayIndex = Math.floor(Math.min(lb, this._dataList.length) / ticksPerDay)
+        return dayIndex * ticksPerDay + tickIndex
+      }
+      return tickIndex - ticksPerDay
     }
 
     // K线模式：超出数据范围返回 undefined
@@ -373,11 +377,8 @@ export default class ChartStore {
   externalToInternal(point: Partial<Point>): Partial<IPoint> {
     const result: Partial<IPoint> = {}
     if (isNumber(point.timestamp)) {
-      let baseDataIndex = this.timestampToDataIndex(point.timestamp)
-      // 分时模式：如果 timestampToDataIndex 返回 undefined，说明在数据范围外，走额外逻辑
-      if (baseDataIndex === undefined && this._isTimeShare) {
-        baseDataIndex = this._timestampToTimeShareDataIndex(point.timestamp)
-      }
+      const baseDataIndex = this.timestampToDataIndex(point.timestamp)
+
       if (baseDataIndex !== undefined) {
         result.dataIndex = baseDataIndex + (point.offset ?? 0)
       }
@@ -389,102 +390,35 @@ export default class ChartStore {
   }
 
   /**
-   * 分时模式：将 timestamp 转换为 dataIndex
-   * 与 timestampToDataIndex 不同，此方法允许返回超出数据范围的 dataIndex
-   * 用于支持在未来时间位置绘制 overlay
-   */
-  private _timestampToTimeShareDataIndex(timestamp: number): number | undefined {
-    const ticksPerDay = this._timeShareTicks.length
-    if (ticksPerDay === 0 || this._dataList.length === 0) return undefined
-
-    const tickStr = formatToHHmm(timestamp)
-    const tickIndex = this._timeShareTicks.indexOf(tickStr)
-    if (tickIndex === -1) return undefined
-
-    const firstTs = this._dataList[0].timestamp
-    const firstTickStr = formatToHHmm(firstTs)
-    const firstTickIndex = this._timeShareTicks.indexOf(firstTickStr)
-
-    const msDiff = timestamp - firstTs
-    const dayDiff = Math.floor(msDiff / (24 * 60 * 60 * 1000))
-    const tickDiff = tickIndex - firstTickIndex
-
-    return dayDiff * ticksPerDay + tickDiff
-  }
-
-  /**
    * 将内部点（dataIndex + value）转换为外部点（timestamp + offset）
    */
   internalToExternal(point: Partial<IPoint>): Partial<Point> {
     const result: Partial<Point> = {}
     if (isNumber(point.dataIndex)) {
-      if (this._isTimeShare) {
-        // 分时模式：X 轴是预定义的时间槽，offset 始终为 0
-        result.timestamp = this._timeShareDataIndexToTimestamp(point.dataIndex)
-        result.offset = 0
-      } else {
-        // K 线模式：基于 dataList 计算
-        const dataList = this._dataList
-        const dataLength = dataList.length
+      const dataList = this._dataList
+      const dataLength = dataList.length
 
-        if (dataLength === 0) {
-          result.timestamp = 0
-          result.offset = point.dataIndex
-        } else if (point.dataIndex < 0) {
-          // 超出左边界
-          result.timestamp = dataList[0].timestamp
-          result.offset = point.dataIndex
-        } else if (point.dataIndex >= dataLength) {
-          // 超出右边界
-          result.timestamp = dataList[dataLength - 1].timestamp
-          result.offset = point.dataIndex - (dataLength - 1)
-        } else {
-          // 在数据范围内
-          result.timestamp = this.dataIndexToTimestamp(point.dataIndex) ?? 0
-          result.offset = 0
-        }
+      if (dataLength === 0) {
+        result.timestamp = 0
+        result.offset = point.dataIndex
+      } else if (point.dataIndex < 0) {
+        // 超出左边界
+        result.timestamp = dataList[0].timestamp
+        result.offset = point.dataIndex
+      } else if (point.dataIndex >= dataLength) {
+        // 超出右边界
+        result.timestamp = dataList[dataLength - 1].timestamp
+        result.offset = point.dataIndex - (dataLength - 1)
+      } else {
+        // 在数据范围内
+        result.timestamp = this.dataIndexToTimestamp(point.dataIndex) ?? 0
+        result.offset = 0
       }
     }
     if (isNumber(point.value)) {
       result.value = point.value
     }
     return result
-  }
-
-  /**
-   * 分时模式：将 dataIndex 转换为 timestamp
-   * dataIndex 对应 timeShareTicks 的索引位置
-   */
-  private _timeShareDataIndexToTimestamp(dataIndex: number): number {
-    const ticksPerDay = this._timeShareTicks.length
-    if (ticksPerDay === 0) return 0
-
-    // 尝试从 dataList 获取对应数据的 timestamp
-    const data = this._dataList[dataIndex]
-    if (data) {
-      return data.timestamp
-    }
-
-    // 如果没有数据，根据时间槽计算 timestamp
-    // 找到最近的有数据的日期作为基准
-    const dayIndex = Math.floor(dataIndex / ticksPerDay)
-    const tickIndex = dataIndex % ticksPerDay
-    const tick = this._timeShareTicks[tickIndex] // 如 "09:30"
-
-    // 找基准日期：优先使用当天第一条数据，否则使用第一条数据
-    const dayStartIndex = dayIndex * ticksPerDay
-    const baseData = this._dataList[dayStartIndex] ?? this._dataList[0]
-    if (!baseData) return 0
-
-    // 解析基准日期
-    const baseDate = new Date(baseData.timestamp)
-    const [hours, minutes] = tick.split(':').map(Number)
-
-    // 构造目标 timestamp
-    const targetDate = new Date(baseDate)
-    targetDate.setHours(hours, minutes, 0, 0)
-
-    return targetDate.getTime()
   }
 
   getVisibleDataList(): VisibleData[] {
