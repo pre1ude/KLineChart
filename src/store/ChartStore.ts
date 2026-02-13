@@ -297,7 +297,7 @@ export default class ChartStore {
       return lb
     }
 
-    // 分时模式：只要能在时间轴上找到对应的时间槽就可以
+    // 分时模式：需确保单日分时的复盘日志均可见
     if (this._isTimeShare) {
       const ticksPerDay = this._timeShareTicks.length
       const tickStr = formatToHHmm(timestamp)
