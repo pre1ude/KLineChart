@@ -145,7 +145,7 @@ export default class ChartStore {
       this._chart.adjustPaneViewport(false, true, true, true)
       // 执行待处理的回调
       this._executeDataReadyCallbacks()
-    }, (error) => { console.error(error) })
+    }, ({ key, error }) => { console.error(`Task ${key} error:`, error) })
   }
 
   private _executeDataReadyCallbacks(): void {

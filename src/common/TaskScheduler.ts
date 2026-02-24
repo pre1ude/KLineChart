@@ -1,8 +1,8 @@
 type TaskFinishedCallback = () => void
-type TaskErrorCallback = (error: Error) => void
+type TaskErrorCallback = (errorInfo: { key: string, error: unknown }) => void
 
 export default class TaskScheduler {
-  private _holdingTasks: Record<string, Promise<unknown>> | null = null
+  private _pending: Record<string, Promise<unknown>> = {}
   private _running = false
   private readonly _onFinish?: TaskFinishedCallback
   private readonly _onError?: TaskErrorCallback
@@ -13,42 +13,35 @@ export default class TaskScheduler {
   }
 
   add(tasks: Record<string, Promise<unknown>>): void {
-    if (!this._running) {
-      void this._runTask(tasks)
-    } else if (this._holdingTasks) {
-      this._holdingTasks = {
-        ...this._holdingTasks,
-        ...tasks
-      }
-    } else {
-      this._holdingTasks = tasks
-    }
+    Object.assign(this._pending, tasks) // same key => latest wins
+    void this._drain()
   }
 
-  private async _runTask(tasks: Record<string, Promise<unknown>>): Promise<void> {
+  private async _drain(): Promise<void> {
+    if (this._running) return
     this._running = true
     try {
-      const results = await Promise.allSettled(Object.values(tasks))
-      // 收集错误
-      const errors = results
-        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
-        .map(r => r.reason)
+      while (Object.keys(this._pending).length > 0) {
+        const batch = this._pending
+        this._pending = {}
 
-      if (errors.length > 0 && this._onError) {
-        errors.forEach(error => this._onError?.(error))
+        const results = await Promise.allSettled(Object.values(batch))
+        const keys = Object.keys(batch)
+        for (let i = 0; i < results.length; i++) {
+          const r = results[i]
+          if (r.status === 'rejected') {
+            // 传递任务 key 以便调试
+            this._onError?.({ key: keys[i], error: r.reason })
+          }
+        }
+        this._onFinish?.()
       }
     } finally {
       this._running = false
-      this._onFinish?.()
-      if (this._holdingTasks) {
-        const next = this._holdingTasks
-        this._holdingTasks = null
-        void this._runTask(next)
-      }
     }
   }
 
   clear(): void {
-    this._holdingTasks = null
+    this._pending = {}
   }
 }
