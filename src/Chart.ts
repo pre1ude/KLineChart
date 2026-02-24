@@ -808,6 +808,9 @@ export default class ChartImp implements Chart {
     ).catch(() => {})
   }
 
+  /**
+   * @deprecated Use `getIndicators` instead.
+   */
   getIndicatorByPaneId(paneId?: string, name?: string): Indicator | Map<string, Indicator> | Map<string, Map<string, Indicator>> | null {
     return this._chartStore.getIndicatorStore().getInstanceByPaneId(paneId, name)
   }

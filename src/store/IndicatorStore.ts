@@ -93,6 +93,9 @@ export default class IndicatorStore {
     }
   }
 
+  /**
+   * @deprecated Use `getIndicatorsByFilter` instead.
+   */
   getInstanceByPaneId(paneId?: string, name?: string): Indicator | Map<string, Indicator> | Map<string, Map<string, Indicator>> | null {
     const createMapping: ((instances: Indicator[]) => Map<string, Indicator>) = (instances: Indicator[]) => {
       const mapping = new Map<string, Indicator>()
