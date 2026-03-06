@@ -5,7 +5,7 @@ import { isNumber, isValid } from '../common/utils/typeChecks'
 import { getFigureBaseStyles, getMergedDefaultStyles } from '../component/Indicator'
 import { drawStaticFigure } from '../extension/figure'
 import type YAxisWidget from '../widget/YAxisWidget'
-import { calculateYAxisLabelX } from './utils/labelPosition'
+import { calculateYAxisLabelLayout } from './utils/labelPosition'
 import View from './View'
 
 export default class IndicatorLastValueView extends View {
@@ -17,7 +17,7 @@ export default class IndicatorLastValueView extends View {
     const customApi = chartStore.getCustomApi()
     const defaultStyles = chartStore.getStyles().indicator
     const lastValueMarkStyles = defaultStyles.lastValueMark
-    const lastValueMarkTextStyles = lastValueMarkStyles.text
+    const lastValueMarkTextStyles = { ...lastValueMarkStyles.text }
     if (lastValueMarkStyles.show) {
       const yAxis = widget.getAxisComponent()
       const dataList = chartStore.getDataList()
@@ -28,8 +28,9 @@ export default class IndicatorLastValueView extends View {
 
       const isAlignLeft = widget.isAlignLeft()
       const yAxisStyles = chartStore.getStyles().yAxis
-      const x = calculateYAxisLabelX(bounding, yAxisStyles, lastValueMarkTextStyles, isAlignLeft)
-      const align = isAlignLeft ? 'left' : 'right'
+      const layout = calculateYAxisLabelLayout(bounding, yAxisStyles, lastValueMarkTextStyles, isAlignLeft)
+      lastValueMarkTextStyles.paddingLeft = layout.paddingLeft
+      lastValueMarkTextStyles.paddingRight = layout.paddingRight
 
       indicators.forEach(indicator => {
         const result = indicator.result
@@ -57,10 +58,10 @@ export default class IndicatorLastValueView extends View {
 
               drawStaticFigure(ctx, 'text', {
                 attrs: {
-                  x,
+                  x: layout.x,
                   y,
                   text,
-                  align,
+                  align: layout.align,
                   baseline: 'middle'
                 },
                 styles: {

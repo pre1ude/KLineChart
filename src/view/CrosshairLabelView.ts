@@ -23,7 +23,7 @@ export default abstract class CrosshairLabelView extends View {
     if (isString(crosshair.paneId) && this.compare(crosshair, pane.getId())) {
       if (styles.show) {
         const directionStyles = this.getDirectionStyles(styles)
-        const textStyles = directionStyles.text
+        const textStyles = { ...directionStyles.text }
         if (directionStyles.show && textStyles.show) {
           const text = this.getText(crosshair, chartStore)
           const textWidth = calcTextWidth(text, createFont(textStyles.size, textStyles.weight, textStyles.fontFamily))

@@ -6,7 +6,7 @@ import { type TextAttrs } from '../extension/figure/text'
 import type ChartStore from '../store/ChartStore'
 import type YAxisWidget from '../widget/YAxisWidget'
 import CrosshairLabelView from './CrosshairLabelView'
-import { calculateYAxisLabelX } from './utils/labelPosition'
+import { calculateYAxisLabelLayout } from './utils/labelPosition'
 
 export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
   protected compare(crosshair: Crosshair, paneId: string): boolean {
@@ -76,10 +76,10 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
     const chartStore = widget.getPane().getChart().getChartStore()
     const yAxisStyles = chartStore.getStyles().yAxis
     const isAlignLeft = widget.isAlignLeft()
+    const layout = calculateYAxisLabelLayout(bounding, yAxisStyles, styles, isAlignLeft)
+    styles.paddingLeft = layout.paddingLeft
+    styles.paddingRight = layout.paddingRight
 
-    const x = calculateYAxisLabelX(bounding, yAxisStyles, styles, isAlignLeft)
-    const align = isAlignLeft ? 'left' : 'right'
-
-    return { x, y: crosshair.y ?? 0, text, align, baseline: 'middle' }
+    return { x: layout.x, y: crosshair.y ?? 0, text, align: layout.align, baseline: 'middle' }
   }
 }

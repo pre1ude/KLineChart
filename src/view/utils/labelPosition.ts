@@ -4,58 +4,75 @@
 
 import type { AxisStyle, StateTextStyle } from '../../common/Styles'
 
+export interface YAxisLabelLayout {
+  x: number
+  align: 'left' | 'right'
+  paddingLeft: number
+  paddingRight: number
+}
+
+export interface XAxisLabelLayout {
+  y: number
+  baseline: 'top'
+  paddingTop: number
+  paddingBottom: number
+}
+
 /**
- * 计算 Y 轴标签的 X 坐标
- * 与 YAxisView.createTickTexts 保持一致的对齐逻辑
+ * 计算 Y 轴标签布局：
+ * - 背景贴住 axisLine 外侧边缘（不压住 axisLine）
+ * - 文本仍与 tick 文本对齐
  */
-export function calculateYAxisLabelX(
+export function calculateYAxisLabelLayout(
   bounding: { width: number },
   yAxisStyles: AxisStyle,
   textStyles: { paddingLeft?: number, paddingRight?: number },
   isAlignLeft: boolean
-): number {
-  let x = 0
+): YAxisLabelLayout {
   const paddingLeft = textStyles.paddingLeft ?? 0
   const paddingRight = textStyles.paddingRight ?? 0
+  const axisLineSize = yAxisStyles.axisLine.show ? yAxisStyles.axisLine.size : 0
+  let axisTextOffset = isAlignLeft ? yAxisStyles.tickText.marginStart : yAxisStyles.tickText.marginEnd
 
-  if (isAlignLeft) {
-    x = yAxisStyles.tickText.marginStart
-    if (yAxisStyles.axisLine.show) {
-      x += yAxisStyles.axisLine.size
-    }
-    if (yAxisStyles.tickLine.show) {
-      x += yAxisStyles.tickLine.length
-    }
-    // 减去 paddingLeft，因为 text figure 会在绘制时加上
-    x -= paddingLeft
-  } else {
-    x = bounding.width - yAxisStyles.tickText.marginEnd
-    if (yAxisStyles.axisLine.show) {
-      x -= yAxisStyles.axisLine.size
-    }
-    if (yAxisStyles.tickLine.show) {
-      x -= yAxisStyles.tickLine.length
-    }
-    // 加上 paddingRight，因为 text figure 会在绘制时减去（align: 'right'）
-    x += paddingRight
+  if (yAxisStyles.tickLine.show) {
+    axisTextOffset += yAxisStyles.tickLine.length
   }
 
-  return x
+  if (isAlignLeft) {
+    return {
+      x: axisLineSize,
+      align: 'left',
+      paddingLeft: axisTextOffset,
+      paddingRight
+    }
+  }
+
+  return {
+    x: bounding.width - axisLineSize,
+    align: 'right',
+    paddingLeft,
+    paddingRight: axisTextOffset
+  }
 }
 
 /**
- * 计算 X 轴标签的 Y 坐标
- * 与 XAxisView.createTickTexts 保持一致的对齐逻辑
+ * 计算 X 轴标签布局：
+ * - 背景贴住 axisLine 外侧边缘（不压住 axisLine）
+ * - 文本仍与 tick 文本对齐
  */
-export function calculateXAxisLabelY(
+export function calculateXAxisLabelLayout(
   xAxisStyles: AxisStyle,
   textStyles: StateTextStyle
-): number {
-  const axisLineSize = xAxisStyles.axisLine.size
+): XAxisLabelLayout {
+  const axisLineSize = xAxisStyles.axisLine.show ? xAxisStyles.axisLine.size : 0
   const tickLineLength = xAxisStyles.tickLine.show ? xAxisStyles.tickLine.length : 0
   const tickTextMarginStart = xAxisStyles.tickText.marginStart
-  const paddingTop = textStyles.paddingTop ?? 0
+  const paddingBottom = textStyles.paddingBottom ?? 0
 
-  // 需要减去 paddingTop，因为 text figure 会在绘制时加上 paddingTop
-  return axisLineSize + tickLineLength + tickTextMarginStart - paddingTop
+  return {
+    y: axisLineSize,
+    baseline: 'top',
+    paddingTop: tickLineLength + tickTextMarginStart,
+    paddingBottom
+  }
 }

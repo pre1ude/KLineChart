@@ -4,7 +4,7 @@ import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/u
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import { drawStaticFigure } from '../extension/figure'
 import type YAxisWidget from '../widget/YAxisWidget'
-import { calculateYAxisLabelX } from './utils/labelPosition'
+import { calculateYAxisLabelLayout } from './utils/labelPosition'
 import View from './View'
 
 export default class CandleLastPriceLabelView extends View {
@@ -15,7 +15,7 @@ export default class CandleLastPriceLabelView extends View {
     const chartStore = pane.getChart().getChartStore()
     const priceMarkStyles = chartStore.getStyles().candle.priceMark
     const lastPriceMarkStyles = priceMarkStyles.last
-    const lastPriceMarkTextStyles = lastPriceMarkStyles.text
+    const lastPriceMarkTextStyles = { ...lastPriceMarkStyles.text }
 
     if (priceMarkStyles.show && lastPriceMarkStyles.show && lastPriceMarkTextStyles.show) {
       const precision = chartStore.getPrecision()
@@ -62,15 +62,16 @@ export default class CandleLastPriceLabelView extends View {
 
         const isAlignLeft = widget.isAlignLeft()
         const yAxisStyles = chartStore.getStyles().yAxis
-        const x = calculateYAxisLabelX(bounding, yAxisStyles, lastPriceMarkTextStyles, isAlignLeft)
-        const align = isAlignLeft ? 'left' : 'right'
+        const layout = calculateYAxisLabelLayout(bounding, yAxisStyles, lastPriceMarkTextStyles, isAlignLeft)
+        lastPriceMarkTextStyles.paddingLeft = layout.paddingLeft
+        lastPriceMarkTextStyles.paddingRight = layout.paddingRight
 
         drawStaticFigure(ctx, 'text', {
           attrs: {
-            x,
+            x: layout.x,
             y,
             text,
-            align,
+            align: layout.align,
             baseline: 'middle'
           },
           styles: {

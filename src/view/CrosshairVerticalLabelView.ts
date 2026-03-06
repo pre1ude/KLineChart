@@ -7,7 +7,7 @@ import { type TextAttrs } from '../extension/figure/text'
 import { FormatDateType } from '../Options'
 import type ChartStore from '../store/ChartStore'
 import CrosshairLabelView from './CrosshairLabelView'
-import { calculateXAxisLabelY } from './utils/labelPosition'
+import { calculateXAxisLabelLayout } from './utils/labelPosition'
 
 export default class CrosshairVerticalLabelView extends CrosshairLabelView {
   override compare(crosshair: Crosshair): boolean {
@@ -59,7 +59,9 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
   override getTextAttrs(text: string, textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs {
     const chartStore = this.getWidget().getPane().getChart().getChartStore()
     const xAxisStyles = chartStore.getStyles().xAxis
-    const y = calculateXAxisLabelY(xAxisStyles, styles)
+    const layout = calculateXAxisLabelLayout(xAxisStyles, styles)
+    styles.paddingTop = layout.paddingTop
+    styles.paddingBottom = layout.paddingBottom
 
     const x = crosshair.realX ?? 0
     let optimalX: number
@@ -73,6 +75,6 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
     } else {
       optimalX = x
     }
-    return { x: optimalX, y, text, align, baseline: 'top' }
+    return { x: optimalX, y: layout.y, text, align, baseline: layout.baseline }
   }
 }
