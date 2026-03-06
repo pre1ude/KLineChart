@@ -15,9 +15,8 @@ const version = pkg.version
 const banner = `
 /**
  * @license
- * KLineChart v${version}
- * Copyright (c) 2019 lihu.
- * Licensed under Apache License 2.0 https://www.apache.org/licenses/LICENSE-2.0
+ * @dm/kchart v${version}
+ * Copyright © 2026 Innodealing Matrix Inc.
  */`.trim()
 
 export default defineConfig(({ mode }) => {
@@ -91,7 +90,6 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         // 输出配置
         output: {
-          banner,
           preserveModules: true,
           preserveModulesRoot: 'src',
           entryFileNames: '[name].js',
@@ -116,6 +114,10 @@ export default defineConfig(({ mode }) => {
         '@': resolve(import.meta.dirname, 'src')
       }
     },
+
+    // esbuild: {
+    //   banner
+    // },
 
     // Vitest 配置
     test: {
