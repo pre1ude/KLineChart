@@ -1,7 +1,7 @@
 import type Coordinate from '../../common/Coordinate'
 import { type SmoothLineStyle, LineType } from '../../common/Styles'
-import { type FigureTemplate, DEVIATION } from '../../component/Figure'
 import { isNumber } from '../../common/utils/typeChecks'
+import { type FigureTemplate, DEVIATION } from '../../component/Figure'
 
 const DEFAULT_SMOOTH = 0.5
 

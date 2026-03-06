@@ -1,4 +1,3 @@
-
 import { drawStaticFigure } from '../extension/figure'
 import { type LineAttrs } from '../extension/figure/line'
 import type DualYPane from '../pane/DualYPane'

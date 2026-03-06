@@ -1,23 +1,27 @@
 import type Bounding from '../common/Bounding'
+import type Crosshair from '../common/Crosshair'
 import type KLineData from '../common/KLineData'
 import type Precision from '../common/Precision'
-import type Crosshair from '../common/Crosshair'
 import {
-  type Styles, type CandleStyle, type TooltipLegend, type TooltipLegendChild, TooltipShowType, CandleTooltipRectPosition,
-  type CandleTooltipCustomCallbackData, PolygonType
+  type CandleStyle,
+  type CandleTooltipCustomCallbackData,
+  CandleTooltipRectPosition,
+  PolygonType,
+  type Styles,
+  type TooltipLegend, type TooltipLegendChild, TooltipShowType
 } from '../common/Styles'
-import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
-import { isFunction, isObject, isValid } from '../common/utils/typeChecks'
-import { type CustomApi, FormatDateType } from '../Options'
-import { PaneIdConstants } from '../pane/types'
-import type { Indicator } from '../component/Indicator'
-import IndicatorTooltipView from './IndicatorTooltipView'
-import { type TooltipIcon } from '../store/TooltipStore'
-import { i18n } from '../extension/i18n/index'
-import type DualYPane from '../pane/DualYPane'
-import { drawStaticFigure } from '../extension/figure'
 import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
+import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
+import { isFunction, isObject, isValid } from '../common/utils/typeChecks'
+import type { Indicator } from '../component/Indicator'
+import { drawStaticFigure } from '../extension/figure'
+import { i18n } from '../extension/i18n/index'
+import { type CustomApi, FormatDateType } from '../Options'
+import type DualYPane from '../pane/DualYPane'
+import { PaneIdConstants } from '../pane/types'
+import { type TooltipIcon } from '../store/TooltipStore'
+import IndicatorTooltipView from './IndicatorTooltipView'
 
 export default class CandleTooltipView extends IndicatorTooltipView {
   override drawImp(ctx: CanvasRenderingContext2D): void {

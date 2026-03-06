@@ -1,4 +1,3 @@
-
 export default interface BarSpace {
   bar: number
   halfBar: number

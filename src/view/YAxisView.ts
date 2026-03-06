@@ -1,11 +1,10 @@
-
 import type Bounding from '../common/Bounding'
 import { type AxisStyle, type Styles } from '../common/Styles'
+import { type AxisTick } from '../component/Axis'
 import { type LineAttrs } from '../extension/figure/line'
 import { type TextAttrs } from '../extension/figure/text'
-import { type AxisTick } from '../component/Axis'
-import AxisView from './AxisView'
 import type YAxisWidget from '../widget/YAxisWidget'
+import AxisView from './AxisView'
 
 export default class YAxisView extends AxisView {
   override getAxisStyles(styles: Styles): AxisStyle {

@@ -1,14 +1,13 @@
-
 import type Bounding from '../common/Bounding'
 import { type AxisStyle, type Styles } from '../common/Styles'
+import { type AxisTick } from '../component/Axis'
+import { drawStaticFigure } from '../extension/figure'
 import { type LineAttrs } from '../extension/figure/line'
 import { type TextAttrs } from '../extension/figure/text'
-import { type AxisTick } from '../component/Axis'
+import { PaneIdConstants } from '../pane/types'
 import type XAxisWidget from '../widget/XAxisWidget'
 import type YAxisWidget from '../widget/YAxisWidget'
 import View from './View'
-import { drawStaticFigure } from '../extension/figure'
-import { PaneIdConstants } from '../pane/types'
 
 export default abstract class AxisView extends View {
   override drawImp(ctx: CanvasRenderingContext2D): void {

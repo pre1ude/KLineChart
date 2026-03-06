@@ -1,6 +1,5 @@
-
-import type DualYPane from '../pane/DualYPane'
 import { drawStaticFigure } from '../extension/figure'
+import type DualYPane from '../pane/DualYPane'
 import View from './View'
 
 /** 分时 0% 的线 */

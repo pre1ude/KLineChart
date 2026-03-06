@@ -1,4 +1,3 @@
-
 import { isValid, merge } from './utils/typeChecks'
 
 export default interface Bounding {

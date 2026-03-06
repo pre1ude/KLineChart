@@ -1,17 +1,16 @@
-
-import { YAxisType, CandleType } from '../common/Styles'
 import type Bounding from '../common/Bounding'
-import { isNumber, isValid } from '../common/utils/typeChecks'
-import { getPrecision, index10, log10, nice, round } from '../common/utils/number'
+import { CandleType, YAxisType } from '../common/Styles'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
-import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
-import AxisImp, { type AxisTemplate, type Axis, type AxisTick, type AxisCreateTicksParams } from './Axis'
-import { type IndicatorFigure } from './Indicator'
-import { PaneIdConstants } from '../pane/types'
-import type YAxisWidget from '../widget/YAxisWidget'
+import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
+import { getPrecision, index10, log10, nice, round } from '../common/utils/number'
+import { isNumber, isValid } from '../common/utils/typeChecks'
 import type VisibleRange from '../common/VisibleRange'
 import type DualYPane from '../pane/DualYPane'
+import { PaneIdConstants } from '../pane/types'
+import type YAxisWidget from '../widget/YAxisWidget'
 import { type YAxisOptions } from '../widget/YAxisWidget'
+import AxisImp, { type Axis, type AxisCreateTicksParams, type AxisTemplate, type AxisTick } from './Axis'
+import { type IndicatorFigure } from './Indicator'
 
 interface FiguresResult {
   figures: IndicatorFigure[]

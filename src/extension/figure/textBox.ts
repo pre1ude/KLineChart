@@ -1,10 +1,9 @@
-
 import type Coordinate from '../../common/Coordinate'
 import { type TextBoxStyle } from '../../common/Styles'
 import {
-  createFont,
+  calcBreakIndex,
   calcTextWidth,
-  calcBreakIndex
+  createFont
 } from '../../common/utils/canvas'
 import { type FigureTemplate } from '../../component/Figure'
 import { type RectAttrs, drawRect } from './rect'

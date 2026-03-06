@@ -1,7 +1,7 @@
-import type { MouseTouchEvent } from '../SyntheticEvent'
-import type { IPoint, Point } from '../Point'
-import type { Overlay, OverlayMouseTouchEvent, OverlayEventData, EventOverlayInfo, DefaultExtendData } from '../../component/Overlay'
+import type { DefaultExtendData, EventOverlayInfo, Overlay, OverlayEventData, OverlayMouseTouchEvent } from '../../component/Overlay'
 import type ChartStore from '../../store/ChartStore'
+import type { IPoint, Point } from '../Point'
+import type { MouseTouchEvent } from '../SyntheticEvent'
 
 /** 创建带 overlayData 的事件对象 */
 export function createOverlayEvent<E>(

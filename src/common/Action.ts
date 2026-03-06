@@ -1,8 +1,8 @@
-import { isFunction } from './utils/typeChecks'
-import type KLineData from './KLineData'
-import type Crosshair from './Crosshair'
-import { type MouseTouchEvent } from './SyntheticEvent'
 import { type TooltipIcon } from '../store/TooltipStore'
+import type Crosshair from './Crosshair'
+import type KLineData from './KLineData'
+import { type MouseTouchEvent } from './SyntheticEvent'
+import { isFunction } from './utils/typeChecks'
 
 export type ActionCallback<T = unknown> = (data: T) => void
 

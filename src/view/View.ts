@@ -1,7 +1,6 @@
-
 import Eventful from '../common/Eventful'
-import type DrawWidget from '../widget/DrawWidget'
 import type Pane from '../pane/Pane'
+import type DrawWidget from '../widget/DrawWidget'
 
 export default abstract class View extends Eventful {
   /**

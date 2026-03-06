@@ -1,4 +1,3 @@
-
 import { EventPhase, type EventName, type MouseTouchEvent, type MouseTouchEventCallback } from './SyntheticEvent'
 
 export default abstract class Eventful {

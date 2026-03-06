@@ -1,5 +1,5 @@
 import type KLineData from '../../../common/KLineData'
-import { type IndicatorTemplate, IndicatorSeries, type IndicatorFigure } from '../../../component/Indicator'
+import { IndicatorSeries, type IndicatorFigure, type IndicatorTemplate } from '../../../component/Indicator'
 
 interface Vol {
   volume?: number

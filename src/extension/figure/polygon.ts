@@ -1,9 +1,7 @@
-
 import type Coordinate from '../../common/Coordinate'
-import { type PolygonStyle, PolygonType, LineType } from '../../common/Styles'
-import { isString } from '../../common/utils/typeChecks'
+import { LineType, type PolygonStyle, PolygonType } from '../../common/Styles'
 import { isTransparent } from '../../common/utils/color'
-
+import { isString } from '../../common/utils/typeChecks'
 import { type FigureTemplate } from '../../component/Figure'
 
 export function checkCoordinateOnPolygon(coordinate: Coordinate, attrs: PolygonAttrs | PolygonAttrs[]): boolean {

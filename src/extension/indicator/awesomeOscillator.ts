@@ -1,4 +1,3 @@
-
 import type KLineData from '../../common/KLineData'
 import { PolygonType } from '../../common/Styles'
 import { type Indicator, type IndicatorTemplate } from '../../component/Indicator'

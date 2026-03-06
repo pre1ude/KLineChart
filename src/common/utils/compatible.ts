@@ -1,4 +1,3 @@
-
 import { isFunction } from './typeChecks'
 
 export const DEFAULT_REQUEST_ID = -1

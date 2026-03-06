@@ -1,4 +1,3 @@
-
 export function merge(target: any, source: any): void {
   if ((!isObject(target) && !isObject(source))) {
     return

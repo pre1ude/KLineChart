@@ -1,5 +1,5 @@
-import { Figure, type FigureTemplate } from '../../component/Figure'
 import { TemplateManager } from '../../common/TemplateManager'
+import { Figure, type FigureTemplate } from '../../component/Figure'
 import arc from './arc'
 import circle from './circle'
 import ellipse from './ellipse'
@@ -37,4 +37,4 @@ function drawStaticFigure<A = unknown, S = unknown>(ctx: CanvasRenderingContext2
   template.draw(ctx, attrs, styles)
 }
 
-export { registerFigure, getFigureTemplate, getSupportedFigures, createFigure, drawStaticFigure }
+export { createFigure, drawStaticFigure, getFigureTemplate, getSupportedFigures, registerFigure }

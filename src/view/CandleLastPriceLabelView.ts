@@ -1,4 +1,3 @@
-
 import { clamp } from '@/common/utils/number'
 import { YAxisType } from '../common/Styles'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'

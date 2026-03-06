@@ -1,4 +1,3 @@
-
 import type KLineData from '../../../common/KLineData'
 import { type IndicatorTemplate, IndicatorSeries } from '../../../component/Indicator'
 

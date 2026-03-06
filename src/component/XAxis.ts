@@ -1,13 +1,13 @@
 import type Bounding from '../common/Bounding'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
-import { isValid } from '../common/utils/typeChecks'
-import { type FormatDate, FormatDateType } from '../Options'
-import AxisImp, { type AxisTemplate, type Axis, type AxisTick, type AxisCreateTicksParams } from './Axis'
-import type XAxisWidget from '../widget/XAxisWidget'
 import { genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
-import type VisibleRange from '../common/VisibleRange'
-import { type LinearScale } from './scale'
 import { formatDate } from '../common/utils/format'
+import { isValid } from '../common/utils/typeChecks'
+import type VisibleRange from '../common/VisibleRange'
+import { type FormatDate, FormatDateType } from '../Options'
+import type XAxisWidget from '../widget/XAxisWidget'
+import AxisImp, { type Axis, type AxisCreateTicksParams, type AxisTemplate, type AxisTick } from './Axis'
+import { type LinearScale } from './scale'
 
 export type XAxis = Axis
 

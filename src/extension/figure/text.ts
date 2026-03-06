@@ -1,11 +1,7 @@
-
 import type Coordinate from '../../common/Coordinate'
 import { type TextStyle } from '../../common/Styles'
-
-import { createFont, calcTextWidth } from '../../common/utils/canvas'
-
+import { calcTextWidth, createFont } from '../../common/utils/canvas'
 import { type FigureTemplate } from '../../component/Figure'
-
 import { type RectAttrs, drawRect } from './rect'
 
 export function getTextRect(attrs: TextAttrs, styles: Partial<TextStyle>): RectAttrs {

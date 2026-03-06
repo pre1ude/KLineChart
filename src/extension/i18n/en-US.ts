@@ -1,4 +1,3 @@
-
 import { type Locales } from '../../Options'
 
 const enUS: Locales = {

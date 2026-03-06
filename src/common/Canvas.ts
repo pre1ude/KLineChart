@@ -1,8 +1,7 @@
-
 import { getPixelRatio, getScale } from './utils/canvas'
+import { DEFAULT_REQUEST_ID, requestAnimationFrame } from './utils/compatible'
 import { createDom } from './utils/dom'
 import { isValid } from './utils/typeChecks'
-import { requestAnimationFrame, DEFAULT_REQUEST_ID } from './utils/compatible'
 
 type DrawListener = () => void
 

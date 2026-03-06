@@ -1,13 +1,12 @@
-
-import type Coordinate from '../common/Coordinate'
-import type VisibleData from '../common/VisibleData'
 import type BarSpace from '../common/BarSpace'
+import type Coordinate from '../common/Coordinate'
 import { type CandleHighLowPriceMarkStyle } from '../common/Styles'
+import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
+import { isValid } from '../common/utils/typeChecks'
+import type VisibleData from '../common/VisibleData'
+import { drawStaticFigure } from '../extension/figure'
 import type DualYPane from '../pane/DualYPane'
 import View from './View'
-import { formatPrecision, formatThousands, formatFoldDecimal } from '../common/utils/format'
-import { isValid } from '../common/utils/typeChecks'
-import { drawStaticFigure } from '../extension/figure'
 
 export type EachChildCallback = (
   data: VisibleData,

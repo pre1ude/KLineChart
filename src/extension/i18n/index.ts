@@ -1,6 +1,4 @@
-
 import { type Locales } from '../../Options'
-
 import zhCN from './zh-CN'
 import enUS from './en-US'
 

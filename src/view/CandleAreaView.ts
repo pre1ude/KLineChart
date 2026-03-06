@@ -1,13 +1,13 @@
-import type Coordinate from '../common/Coordinate'
-import type VisibleData from '../common/VisibleData'
-import { type GradientColor } from '../common/Styles'
 import Animation from '../common/Animation'
-import { isNumber, isArray, isValid } from '../common/utils/typeChecks'
+import type Coordinate from '../common/Coordinate'
+import { type GradientColor } from '../common/Styles'
 import { UpdateLevel } from '../common/Updater'
-import View from './View'
+import { isArray, isNumber, isValid } from '../common/utils/typeChecks'
+import type VisibleData from '../common/VisibleData'
+import { createFigure, drawStaticFigure } from '../extension/figure'
 import { lineTo, smoothNormalize } from '../extension/figure/line'
 import type DualYPane from '../pane/DualYPane'
-import { createFigure, drawStaticFigure } from '../extension/figure'
+import View from './View'
 
 export default class CandleAreaView extends View {
   private readonly _ripplePoint = createFigure('circle')

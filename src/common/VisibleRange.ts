@@ -1,4 +1,3 @@
-
 export default interface VisibleRange {
   readonly from: number
   readonly to: number

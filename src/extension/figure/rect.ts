@@ -1,9 +1,7 @@
-
 import type Coordinate from '../../common/Coordinate'
-import { type RectStyle, PolygonType, LineType } from '../../common/Styles'
+import { type RectStyle, LineType, PolygonType } from '../../common/Styles'
 import { isTransparent } from '../../common/utils/color'
 import { isString } from '../../common/utils/typeChecks'
-
 import { type FigureTemplate, DEVIATION } from '../../component/Figure'
 
 export function checkCoordinateOnRect(coordinate: Coordinate, attrs: RectAttrs | RectAttrs[]): boolean {

@@ -1,4 +1,3 @@
-
 import type KLineData from './KLineData'
 
 export default interface Crosshair {

@@ -1,8 +1,7 @@
 import type Coordinate from '../../common/Coordinate'
-import { type PolygonStyle, PolygonType, LineType } from '../../common/Styles'
-import { isString } from '../../common/utils/typeChecks'
+import { type PolygonStyle, LineType, PolygonType } from '../../common/Styles'
 import { isTransparent } from '../../common/utils/color'
-
+import { isString } from '../../common/utils/typeChecks'
 import { type FigureTemplate, DEVIATION } from '../../component/Figure'
 
 export function checkCoordinateOnEllipse(coordinate: Coordinate, attrs: EllipseAttrs | EllipseAttrs[]): boolean {

@@ -1,4 +1,3 @@
-
 export function isFF(): boolean {
   if (typeof window === 'undefined') {
     return false

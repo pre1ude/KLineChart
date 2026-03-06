@@ -1,12 +1,12 @@
 import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
-import { type CrosshairStyle, type CrosshairDirectionStyle, type StateTextStyle } from '../common/Styles'
-import { isString } from '../common/utils/typeChecks'
+import { type CrosshairDirectionStyle, type CrosshairStyle, type StateTextStyle } from '../common/Styles'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
+import { isString } from '../common/utils/typeChecks'
+import { drawStaticFigure } from '../extension/figure'
 import { type TextAttrs } from '../extension/figure/text'
 import type ChartStore from '../store/ChartStore'
 import View from './View'
-import { drawStaticFigure } from '../extension/figure'
 
 /**
  * 十字光标标签视图抽象基类
