@@ -69,7 +69,7 @@ export default class ChartStore {
   private _thousandsSeparator = ','
 
   // Decimal fold threshold
-  private _decimalFoldThreshold = 3
+  private _decimalFoldThreshold = 4
 
   /**
    * Data source
