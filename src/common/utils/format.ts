@@ -1,4 +1,4 @@
-import { isNumber, isValid } from './typeChecks'
+import { isNumber } from './typeChecks'
 
 export function formatDate(dateTimeFormat: Intl.DateTimeFormat, timestamp: number, format: string): string {
   const date: Record<string, string> = {}
@@ -69,20 +69,69 @@ export function formatThousands(value: string | number, sign: string): string {
   return vl.replace(/(\d)(?=(\d{3})+$)/g, $1 => `${$1}${sign}`)
 }
 
-export function formatFoldDecimal(value: string | number, threshold: number): string {
-  const vl = `${value}`
-  const reg = new RegExp(`\\.0{${  threshold  },}[1-9][0-9]*$`)
-  if (reg.test(vl)) {
-    const result = vl.split('.')
-    const v = result[result.length - 1]
-    const match = v.match(/0*/)
-    if (isValid(match)) {
-      const count = match[0].length
-      result[result.length - 1] = v.replace(/0*/, `0{${count}}`)
-      return result.join('.')
-    }
+const subscriptNumbers = ['₀', '₁', '₂', '₃', '₄', '₅', '₆', '₇', '₈', '₉'] as const
+
+const scientificNotationPattern = /^[+-]?(?:\d+\.?\d*|\.\d+)[eE][+-]?\d+$/
+
+function toSubscriptNumbers(value: number): string {
+  return `${value}`.split('').map(char => subscriptNumbers[Number(char)]).join('')
+}
+
+function normalizeDecimal(value: string | number): string {
+  const raw = `${value}`
+  const eIndex = raw.indexOf('e')
+  const exponentIndex = eIndex > -1 ? eIndex : raw.indexOf('E')
+  if (exponentIndex < 0) {
+    return raw
   }
-  return vl
+
+  const text = raw.trim()
+  if (!scientificNotationPattern.test(text)) {
+    return raw
+  }
+
+  const normalizedExponentIndex = text.indexOf('e') > -1 ? text.indexOf('e') : text.indexOf('E')
+  const coefficient = text.slice(0, normalizedExponentIndex)
+  const exponent = Number(text.slice(normalizedExponentIndex + 1))
+  const isNegative = coefficient.startsWith('-')
+  const unsignedCoefficient = coefficient.replace(/^[+-]/, '')
+  const decimalIndex = unsignedCoefficient.indexOf('.')
+  const integerPart = decimalIndex > -1 ? unsignedCoefficient.slice(0, decimalIndex) : unsignedCoefficient
+  const fractionalPart = decimalIndex > -1 ? unsignedCoefficient.slice(decimalIndex + 1) : ''
+  const digits = `${integerPart}${fractionalPart}`
+  const nextDecimalIndex = integerPart.length + exponent
+  const sign = isNegative ? '-' : ''
+
+  if (nextDecimalIndex <= 0) {
+    return `${sign}0.${'0'.repeat(-nextDecimalIndex)}${digits}`
+  }
+  if (nextDecimalIndex >= digits.length) {
+    return `${sign}${digits}${'0'.repeat(nextDecimalIndex - digits.length)}`
+  }
+  return `${sign}${digits.slice(0, nextDecimalIndex)}.${digits.slice(nextDecimalIndex)}`
+}
+
+export function formatFoldDecimal(value: string | number, threshold: number): string {
+  const vl = normalizeDecimal(value)
+  if (!Number.isInteger(threshold) || threshold <= 0) {
+    return vl
+  }
+
+  const decimalIndex = vl.indexOf('.')
+  if (decimalIndex < 0 || decimalIndex === vl.length - 1) {
+    return vl
+  }
+
+  const decimal = vl.slice(decimalIndex + 1)
+  let zeroCount = 0
+  while (zeroCount < decimal.length && decimal[zeroCount] === '0') {
+    zeroCount++
+  }
+  if (zeroCount < threshold || zeroCount === decimal.length) {
+    return vl
+  }
+
+  return `${vl.slice(0, decimalIndex + 1)}0${toSubscriptNumbers(zeroCount)}${decimal.slice(zeroCount)}`
 }
 
 export function formatToHHmm(timestamp: number): string {
