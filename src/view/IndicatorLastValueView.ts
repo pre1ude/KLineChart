@@ -2,7 +2,7 @@
 import { clamp } from '@/common/utils/number'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { isNumber, isValid } from '../common/utils/typeChecks'
-import { getFigureBaseStyles, getMergedDefaultStyles } from '../component/Indicator'
+import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorFigureVisible } from '../component/Indicator'
 import { drawStaticFigure } from '../extension/figure'
 import type YAxisWidget from '../widget/YAxisWidget'
 import { calculateYAxisLabelLayout } from './utils/labelPosition'
@@ -40,6 +40,9 @@ export default class IndicatorLastValueView extends View {
           const mergedDefaultStyles = getMergedDefaultStyles(indicator, defaultStyles)
 
           indicator.figures.forEach((figure, figureIndex) => {
+            if (!isIndicatorFigureVisible(indicator, figure)) {
+              return
+            }
             const value = (indicatorData as Record<string, unknown>)[figure.key]
             if (isNumber(value)) {
               const figureBaseStyles = getFigureBaseStyles(figure.type ?? 'line', figureIndex, mergedDefaultStyles)

@@ -6,7 +6,7 @@ import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { isNumber, isObject, isString, isValid } from '../common/utils/typeChecks'
-import { getFigureBaseStyles, getMergedDefaultStyles, type Indicator, type IndicatorTooltipData } from '../component/Indicator'
+import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorFigureVisible, type Indicator, type IndicatorTooltipData } from '../component/Indicator'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import { type CustomApi } from '../Options'
 import type DualYPane from '../pane/DualYPane'
@@ -259,13 +259,13 @@ export default class IndicatorTooltipView extends View {
   ): IndicatorTooltipData {
     const mergedDefaultStyles = getMergedDefaultStyles(indicator, styles)
     const tooltipStyles = mergedDefaultStyles.tooltip
+    const dataIndex = crosshair.dataIndex ?? 0
     const name = tooltipStyles.showName ? indicator.shortName : ''
     let calcParamsText = ''
     const calcParams = indicator.calcParams
     if (calcParams.length > 0 && tooltipStyles.showParams) {
       const visibleParams = calcParams.filter((_, index) => {
-        const name = indicator.name
-        const figureStaticStyles = indicator.styles?.figures?.[`${name.toLowerCase()}${index+1}`]
+        const figureStaticStyles = indicator.styles?.figures?.[`${indicator.name.toLowerCase()}${index + 1}`]
         return figureStaticStyles?.visible !== false
       })
       if (visibleParams.length > 0) {
@@ -275,7 +275,6 @@ export default class IndicatorTooltipView extends View {
 
     const tooltipData: IndicatorTooltipData = { name, calcParamsText, values: [], icons: tooltipStyles.icons }
 
-    const dataIndex = crosshair.dataIndex ?? 0
     const result = indicator.result ?? []
 
     const legends: TooltipLegend[] = []
@@ -283,11 +282,8 @@ export default class IndicatorTooltipView extends View {
       const indicatorData = result[dataIndex] ?? {}
 
       indicator.figures.forEach((figure, figureIndex) => {
-        if (isString(figure.title)) {
+        if (isString(figure.title) && isIndicatorFigureVisible(indicator, figure)) {
           const figureStaticStyles = indicator.styles?.figures?.[figure.key] ?? {}
-          if (figureStaticStyles.visible === false) {
-            return
-          }
 
           const figureBaseStyles = getFigureBaseStyles(figure.type ?? 'line', figureIndex, mergedDefaultStyles)
           const figureDynamicStyles = figure.styles?.(dataIndex, indicator, dataList, mergedDefaultStyles)

@@ -10,9 +10,10 @@ import { PaneIdConstants } from '../pane/types'
 import type YAxisWidget from '../widget/YAxisWidget'
 import { type YAxisOptions } from '../widget/YAxisWidget'
 import AxisImp, { type Axis, type AxisCreateTicksParams, type AxisTemplate, type AxisTick } from './Axis'
-import { type IndicatorFigure } from './Indicator'
+import { isIndicatorFigureVisible, type Indicator, type IndicatorFigure } from './Indicator'
 
 interface FiguresResult {
+  indicator: Indicator
   figures: IndicatorFigure[]
   result: unknown[]
 }
@@ -242,6 +243,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         indicatorMax = Math.max(indicatorMax, indicator.maxValue)
       }
       figuresResultList.push({
+        indicator,
         figures: indicator.figures ?? [],
         result: indicator.result ?? []
       })
@@ -278,9 +280,12 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
           }
         }
       }
-      figuresResultList.forEach(({ figures, result }) => {
+      figuresResultList.forEach(({ indicator, figures, result }) => {
         const indicatorData = result[dataIndex] ?? {}
         figures.forEach(figure => {
+          if (!isIndicatorFigureVisible(indicator, figure)) {
+            return
+          }
           const value = (indicatorData as Record<string, unknown>)[figure.key]
           if (isNumber(value)) {
             min = Math.min(min, value)

@@ -58,10 +58,9 @@ export interface IndicatorFigure<D = any> {
   /**
    * 控制 figure 的可见性
    * - boolean: 静态控制，true 显示，false 隐藏
-   * - function: 动态控制，根据每个数据点返回是否显示
    * - undefined: 默认显示（等同于 true）
    */
-  visible?: boolean | ((dataIndex: number, indicator: Indicator<D>, kLineDataList: KLineData[]) => boolean)
+  visible?: boolean
 
   attrs?: IndicatorFigureAttrsCallback<D>
   styles?: IndicatorFigureStylesCallback<D>
@@ -428,6 +427,16 @@ export function getMergedDefaultStyles(indicator: Indicator, defaultStyles: Indi
   }
 
   return merged
+}
+
+export function isIndicatorFigureVisible(
+  indicator: Indicator,
+  figure: IndicatorFigure
+): boolean {
+  if (figure.visible === false) {
+    return false
+  }
+  return indicator.styles?.figures?.[figure.key]?.visible !== false
 }
 
 export function getFigureBaseStyles(type: string, index: number, styles: IndicatorStyle): IndicatorFigureStyle {

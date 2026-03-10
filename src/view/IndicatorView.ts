@@ -3,7 +3,7 @@ import type Coordinate from '../common/Coordinate'
 import { type IndicatorStyle, type SmoothLineStyle } from '../common/Styles'
 import type { EventName, MouseTouchEvent } from '../common/SyntheticEvent'
 import { isNumber, isValid } from '../common/utils/typeChecks'
-import { getFigureBaseStyles, getMergedDefaultStyles, type Indicator, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
+import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorFigureVisible, type Indicator, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
 import type YAxisImp from '../component/YAxis'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import type DualYPane from '../pane/DualYPane'
@@ -112,7 +112,7 @@ export default class IndicatorView extends View {
       yAxis: YAxisImp
     ): void => {
       const figureStaticStyles = indicator.styles?.figures?.[figure.key] ?? {}
-      if (figureStaticStyles?.visible === false) {
+      if (figure.visible === false || figureStaticStyles.visible === false) {
         return
       }
 
@@ -134,7 +134,7 @@ export default class IndicatorView extends View {
         for (const data of visibleDataList) {
           const { dataIndex, x } = data
           const resultData = indicator.result[dataIndex] as IndicatorResultData | undefined
-          if (!isValid(resultData?.[figure.key])) continue
+          if (!isIndicatorFigureVisible(indicator, figure) || !isValid(resultData?.[figure.key])) continue
 
           const figureStyles = createFigureStyles(dataIndex)
 
