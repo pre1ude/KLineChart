@@ -212,8 +212,6 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     let max = Number.MIN_SAFE_INTEGER
     const figuresResultList: FiguresResult[] = []
     let shouldOhlc = false
-    let indicatorMin = Number.MAX_SAFE_INTEGER
-    let indicatorMax = Number.MIN_SAFE_INTEGER
     let indicatorPrecision = Number.MAX_SAFE_INTEGER
     const paneIndicators = chartStore.getIndicatorStore().getInstances(pane.getId())
     const inCandle = this.isInCandle()
@@ -236,12 +234,6 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         shouldOhlc = indicator.shouldOhlc ?? false
       }
       indicatorPrecision = Math.min(indicatorPrecision, indicator.precision)
-      if (isNumber(indicator.minValue)) {
-        indicatorMin = Math.min(indicatorMin, indicator.minValue)
-      }
-      if (isNumber(indicator.maxValue)) {
-        indicatorMax = Math.max(indicatorMax, indicator.maxValue)
-      }
       figuresResultList.push({
         indicator,
         figures: indicator.figures ?? [],
@@ -288,6 +280,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
           }
           const value = (indicatorData as Record<string, unknown>)[figure.key]
           if (isNumber(value)) {
+            if ((figure.type === 'bar' || figure.type === 'rect') && isNumber(figure.baseValue)) {
+              min = Math.min(min, figure.baseValue)
+              max = Math.max(max, figure.baseValue)
+            }
             min = Math.min(min, value)
             max = Math.max(max, value)
           }
@@ -296,8 +292,6 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     })
 
     if (min !== Number.MAX_SAFE_INTEGER && max !== Number.MIN_SAFE_INTEGER) {
-      min = Math.min(indicatorMin, min)
-      max = Math.max(indicatorMax, max)
       this._hasValidData = true
     } else {
       // 没有有效数据时，标记状态并设置默认范围（用于内部计算）
@@ -359,10 +353,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       min === max ||
       Math.abs(min - max) < dif
     ) {
-      const minCheck = indicatorMin === min
-      const maxCheck = indicatorMax === max
-      min = minCheck ? min : (maxCheck ? min - 8 * dif : min - 4 * dif)
-      max = maxCheck ? max : (minCheck ? max + 8 * dif : max + 4 * dif)
+      min -= 4 * dif
+      max += 4 * dif
     }
 
     const height = this.getParent()?.getBounding().height ?? 0

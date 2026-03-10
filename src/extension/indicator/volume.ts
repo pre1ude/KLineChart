@@ -36,7 +36,6 @@ const volume: IndicatorTemplate<Vol> = {
   calcParams: [5, 10, 20],
   shouldFormatBigNumber: true,
   precision: 0,
-  minValue: 0,
   figures: [
     { key: 'vol1', title: 'MA5: ', type: 'line' },
     { key: 'vol2', title: 'MA10: ', type: 'line' },

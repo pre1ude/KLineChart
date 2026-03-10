@@ -174,16 +174,6 @@ export interface IndicatorApi<D = unknown> {
   figures: Array<IndicatorFigure<D>>
 
   /**
-   * Specified minimum value
-   */
-  minValue?: number
-
-  /**
-   * Specified maximum value
-   */
-  maxValue?: number
-
-  /**
    * Style configuration
    */
   styles?: Partial<IndicatorStyle>
@@ -248,8 +238,6 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
   extendData: unknown
   series: IndicatorSeries
   figures: Array<IndicatorFigure<D>>
-  minValue?: number
-  maxValue?: number
   styles?: Partial<IndicatorStyle>
   regenerateFigures?: IndicatorRegenerateFiguresCallback<D>
   createTooltipDataSource?: IndicatorCreateTooltipDataSourceCallback
@@ -279,8 +267,6 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
     this.shouldFormatBigNumber = template.shouldFormatBigNumber ?? false
     this.visible = template.visible ?? true
     this.zLevel = template.zLevel ?? 0
-    this.minValue = template.minValue
-    this.maxValue = template.maxValue
     this.styles = clone(template.styles ?? {})
     this.extendData = template.extendData
     this.regenerateFigures = template.regenerateFigures
@@ -310,8 +296,6 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
       this._prevIndicator.styles !== this.styles ||
       this._prevIndicator.shortName !== this.shortName ||
       this._prevIndicator.series !== this.series ||
-      this._prevIndicator.minValue !== this.minValue ||
-      this._prevIndicator.maxValue !== this.maxValue ||
       this._prevIndicator.precision !== this.precision ||
       this._prevIndicator.shouldOhlc !== this.shouldOhlc ||
       this._prevIndicator.shouldFormatBigNumber !== this.shouldFormatBigNumber ||

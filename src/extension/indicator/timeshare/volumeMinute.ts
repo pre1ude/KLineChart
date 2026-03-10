@@ -34,7 +34,6 @@ const volume: IndicatorTemplate<Vol> = {
   series: IndicatorSeries.Volume,
   shouldFormatBigNumber: true,
   precision: 0,
-  minValue: 0,
   figures: [
     getVolumeFigure()
   ],
