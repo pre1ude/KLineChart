@@ -480,7 +480,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       })
     }
     const textHeight = chartStore.getStyles().xAxis.tickText.size
-    const tempTicks = ticks.map(({ value, colorHint }) => {
+    const tempTicks = ticks.map(({ text, value, colorHint }) => {
       let v: string
       let y = this._innerConvertToPixel(+value)
       switch (type) {
@@ -501,7 +501,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         default: {
           v = formatPrecision(value, precision)
           if (shouldFormatBigNumber) {
-            v = customApi.formatBigNumber(value)
+            v = customApi.formatBigNumber(text || v)
           }
           break
         }
