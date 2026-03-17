@@ -4,7 +4,7 @@ import type KLineData from './common/KLineData'
 import type Coordinate from './common/Coordinate'
 import type { IPoint, Point } from './common/Point'
 import { UpdateLevel } from './common/Updater'
-import { type Styles, YAxisPosition } from './common/Styles'
+import type { Styles } from './common/Styles'
 import type Crosshair from './common/Crosshair'
 import { ActionType, type ActionCallback, type ActionCallbackParams } from './common/Action'
 import type LoadDataCallback from './common/LoadDataCallback'
@@ -18,6 +18,11 @@ import { initCanvas } from './common/utils/canvas'
 import { isString, isArray, isValid, isNumber } from './common/utils/typeChecks'
 import { logWarn } from './common/utils/logger'
 import { LoadDataType } from './common/LoadDataCallback'
+import {
+  materializeHorizontalViewportBounds,
+  type HorizontalViewportSizes
+} from './common/layout/computeHorizontalViewportLayout'
+import { resolveChartViewportWidth } from './common/layout/resolveChartViewportWidth'
 import ChartStore from './store/ChartStore'
 import CandlePane from './pane/CandlePane'
 import IndicatorPane from './pane/IndicatorPane'
@@ -341,63 +346,49 @@ export default class ChartImp implements Chart {
 
   // todo read the pane axisOptions
   // todo deprecated partial of yAxis style
-  private _measurePaneWidth(): void {
-    const totalWidth = Math.floor(this._container.clientWidth)
-    const styles = this._chartStore.getStyles()
-    const yAxisStyles = styles.yAxis
-    const isOutside = !yAxisStyles.inside
-    let mainWidth = 0
-    let yLeftAxisWidth = 0
-    let yRightAxisWidth = 0
-    let yLeftAxisLeft = 0
-    let yRightAxisLeft = 0
-    let mainLeft = 0
+  private _measureYAxisWidthDemand(totalWidth: number): { left: number, right: number } {
+    let left = 0
+    let right = 0
     this._drawPanes.forEach(pane => {
       if (pane.getId() !== PaneIdConstants.X_AXIS) {
-        yLeftAxisWidth = Math.max(yLeftAxisWidth, (pane as DualYPane).getYLeftAxisWidget()?.getAxisComponent().getAutoSize() ?? 0)
-        yRightAxisWidth = Math.max(yRightAxisWidth, (pane as DualYPane).getYRightAxisWidget()?.getAxisComponent().getAutoSize() ?? 0)
+        const dualPane = pane as DualYPane
+        left = Math.max(left, dualPane.getYLeftAxisWidget().getAxisComponent().getAutoSize())
+        right = Math.max(right, dualPane.getYRightAxisWidget().getAxisComponent().getAutoSize())
       }
     })
-    if (yLeftAxisWidth > totalWidth) {
-      yLeftAxisWidth = totalWidth
+    return {
+      left: Math.min(Math.ceil(left), totalWidth),
+      right: Math.min(Math.ceil(right), totalWidth)
     }
-    if (yRightAxisWidth > totalWidth) {
-      yRightAxisWidth = totalWidth
-    }
-    if (isOutside) {
-      if (yAxisStyles.position === YAxisPosition.Left) {
-        yLeftAxisLeft = 0
-        mainLeft = yLeftAxisWidth
-        yRightAxisWidth = 0
-      } else if (yAxisStyles.position === YAxisPosition.Right) {
-        yRightAxisLeft = totalWidth - yRightAxisWidth
-        mainLeft = 0
-        yLeftAxisWidth = 0
-      } else {
-        // both
-        yLeftAxisLeft = 0
-        mainLeft = yLeftAxisWidth
-        yRightAxisLeft = totalWidth - yRightAxisWidth
-      }
-      mainWidth = totalWidth - yLeftAxisWidth - yRightAxisWidth
-    } else {
-      mainWidth = totalWidth
-      mainLeft = 0
-      yLeftAxisLeft = 0
-      yRightAxisLeft = totalWidth - yRightAxisWidth
-    }
+  }
 
-    this._chartStore.mainWidth = mainWidth
+  private _snapshotHorizontalViewportSizes(totalWidth: number): HorizontalViewportSizes {
+    const pane = this._drawPanes.find(drawPane => drawPane.getId() !== PaneIdConstants.X_AXIS) as DualYPane | undefined
+    const leftAxisWidth = pane?.getYLeftAxisWidget().getBounding().width ?? 0
+    const rightAxisWidth = pane?.getYRightAxisWidget().getBounding().width ?? 0
+    const mainWidth = pane?.getMainWidget().getBounding().width ?? this._chartStore.mainWidth
+    return [
+      Math.min(Math.max(0, Math.ceil(leftAxisWidth)), totalWidth),
+      Math.max(0, Math.ceil(mainWidth)),
+      Math.min(Math.max(0, Math.ceil(rightAxisWidth)), totalWidth)
+    ]
+  }
+
+  private _applyHorizontalViewportSizes(sizes: HorizontalViewportSizes): void {
+    const styles = this._chartStore.getStyles()
+    const bounds = materializeHorizontalViewportBounds(sizes, {
+      inside: styles.yAxis.inside,
+      position: styles.yAxis.position
+    })
+    this._chartStore.mainWidth = bounds.main.width
     this._chartStore.getTimeScaleStore().adjustVisibleRange()
-    this._chartStore.getTooltipStore().recalculateCrosshair(true)
-
-    const paneBounding = { width: totalWidth }
-    const mainBounding = { width: mainWidth, left: mainLeft }
-    const yLeftAxisBounding = { width: yLeftAxisWidth, left: yLeftAxisLeft }
-    const yRightAxisBounding = { width: yRightAxisWidth, left: yRightAxisLeft }
+    const paneBounding = { width: bounds.totalWidth }
+    const mainBounding = { width: bounds.main.width, left: bounds.main.left }
+    const yLeftAxisBounding = { width: bounds.leftAxis.width, left: bounds.leftAxis.left }
+    const yRightAxisBounding = { width: bounds.rightAxis.width, left: bounds.rightAxis.left }
     const separatorFill = styles.separator.fill
     let separatorBounding: Partial<Bounding>
-    if (isOutside && !separatorFill) {
+    if (!styles.yAxis.inside && !separatorFill) {
       separatorBounding = mainBounding
     } else {
       separatorBounding = paneBounding
@@ -406,6 +397,42 @@ export default class ChartImp implements Chart {
       this._separatorPanes.get(pane)?.setBounding(separatorBounding)
       pane.setBounding(paneBounding, mainBounding, yLeftAxisBounding, yRightAxisBounding)
     })
+  }
+
+  private _buildYAxisTicks(force: boolean): void {
+    this._drawPanes.forEach(pane => {
+      if (pane.getId() !== PaneIdConstants.X_AXIS) {
+        const dualPane = pane as DualYPane
+        dualPane.getYLeftAxisWidget().getAxisComponent().buildTicks(force)
+        dualPane.getYRightAxisWidget().getAxisComponent().buildTicks(force)
+      }
+    })
+  }
+
+  private _buildXAxisTicks(force: boolean): void {
+    const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
+    xAxisWidget.getAxisComponent().buildTicks(force)
+  }
+
+  private _resolveHorizontalViewportWidth(): void {
+    resolveChartViewportWidth({
+      getTotalWidth: () => Math.floor(this._container.clientWidth),
+      getLayoutOptions: () => {
+        const yAxisStyles = this._chartStore.getStyles().yAxis
+        return {
+          inside: yAxisStyles.inside,
+          position: yAxisStyles.position
+        }
+      },
+      snapshotSizes: totalWidth => this._snapshotHorizontalViewportSizes(totalWidth),
+      buildYAxisTicks: force => { this._buildYAxisTicks(force) },
+      buildXAxisTicks: force => { this._buildXAxisTicks(force) },
+      measureYAxisWidthDemand: totalWidth => this._measureYAxisWidthDemand(totalWidth),
+      applySizes: sizes => { this._applyHorizontalViewportSizes(sizes) }
+    }, {
+      maxCycles: 4
+    })
+    this._chartStore.getTooltipStore().recalculateCrosshair(true)
   }
 
   private _setPaneOptions(options: PaneOptions, forceShouldAdjust: boolean): void {
@@ -464,32 +491,16 @@ export default class ChartImp implements Chart {
     if (shouldMeasureHeight) {
       this._measurePaneHeight()
     }
-    let forceMeasureWidth = shouldMeasureWidth
     const adjustYAxis = shouldAdjustYAxis ?? false
     const forceAdjustYAxis = shouldForceAdjustYAxis ?? false
-    if (adjustYAxis || forceAdjustYAxis) {
-      this._drawPanes.forEach(pane => {
-        let adjust = false
-        if (pane.getId() === PaneIdConstants.X_AXIS) {
-          adjust = (pane.getMainWidget() as XAxisWidget).getAxisComponent().buildTicks(forceAdjustYAxis)
-        } else {
-          const leftAdjust = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent().buildTicks(forceAdjustYAxis)
-          const rightAdjust = (pane as DualYPane).getYRightAxisWidget().getAxisComponent().buildTicks(forceAdjustYAxis)
-          adjust = leftAdjust || rightAdjust
-        }
-
-        if (!forceMeasureWidth) {
-          forceMeasureWidth = adjust
-        }
-      })
-    }
-    if (forceMeasureWidth) {
-      this._measurePaneWidth()
+    const shouldResolveWidth = shouldMeasureWidth || adjustYAxis || forceAdjustYAxis
+    if (shouldResolveWidth) {
+      this._resolveHorizontalViewportWidth()
     }
     if (shouldUpdate ?? false) {
-      const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
-      const xAxis = xAxisWidget.getAxisComponent()
-      xAxis.buildTicks(true)
+      if (!shouldResolveWidth) {
+        this._buildXAxisTicks(true)
+      }
       this.updatePane(UpdateLevel.All)
     }
   }
