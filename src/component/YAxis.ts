@@ -18,6 +18,48 @@ interface FiguresResult {
   result: unknown[]
 }
 
+function normalizePaneGapRate(value: number | undefined, defaultValue: number, height: number): number {
+  let rate = value ?? defaultValue
+  if (!Number.isFinite(rate)) {
+    rate = defaultValue
+  }
+  if (rate >= 1 && height > 0) {
+    rate = rate / height
+  }
+  return rate > 0 ? rate : 0
+}
+
+function normalizeReservedSpace(value: number | undefined): number {
+  return isNumber(value) && value > 0 ? value : 0
+}
+
+function applyReservedSpace(topRate: number, bottomRate: number, height: number, reservedTop: number, reservedBottom: number): number[] {
+  if (height <= 0 || (reservedTop <= 0 && reservedBottom <= 0)) {
+    return [topRate, bottomRate]
+  }
+
+  const denominator = 1 + topRate + bottomRate
+  const baseTopSpace = height * topRate / denominator
+  const baseBottomSpace = height * bottomRate / denominator
+
+  let targetTopSpace = Math.max(baseTopSpace, reservedTop)
+  let targetBottomSpace = Math.max(baseBottomSpace, reservedBottom)
+  const maxReservedSpace = Math.max(height - 1, 0)
+  const totalReservedSpace = targetTopSpace + targetBottomSpace
+  if (totalReservedSpace > maxReservedSpace && totalReservedSpace > 0) {
+    const scale = maxReservedSpace / totalReservedSpace
+    targetTopSpace *= scale
+    targetBottomSpace *= scale
+  }
+
+  const contentHeight = height - targetTopSpace - targetBottomSpace
+  if (contentHeight <= 0) {
+    return [topRate, bottomRate]
+  }
+
+  return [targetTopSpace / contentHeight, targetBottomSpace / contentHeight]
+}
+
 export interface YAxis extends Axis {
   isInCandle: () => boolean
 }
@@ -358,16 +400,18 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     }
 
     const height = this.getParent()?.getBounding().height ?? 0
-    const { gap: paneGap } = pane.getOptions()
-    let topRate = paneGap?.top ?? 0.2
-    // todo this should be in options normalize
-    if (topRate >= 1) {
-      topRate = topRate / height
-    }
-    let bottomRate = paneGap?.bottom ?? 0.1
-    if (bottomRate >= 1) {
-      bottomRate = bottomRate / height
-    }
+    const { gap: paneGap, reservedSpace } = pane.getOptions()
+    let topRate = normalizePaneGapRate(paneGap?.top, 0.2, height)
+    let bottomRate = normalizePaneGapRate(paneGap?.bottom, 0.1, height)
+    const [nextTopRate, nextBottomRate] = applyReservedSpace(
+      topRate,
+      bottomRate,
+      height,
+      normalizeReservedSpace(reservedSpace?.top),
+      normalizeReservedSpace(reservedSpace?.bottom)
+    )
+    topRate = nextTopRate
+    bottomRate = nextBottomRate
     // 保存原始数据范围作为domain（在应用gap之前）
     let domainFrom = min
     let domainTo = max

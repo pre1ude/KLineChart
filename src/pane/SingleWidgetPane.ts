@@ -17,6 +17,7 @@ export default abstract class SingleWidgetPane extends Pane {
     minHeight: PANE_MIN_HEIGHT,
     dragEnabled: true,
     gap: { top: 0.2, bottom: 0.1 },
+    reservedSpace: { top: 0, bottom: 0 },
     axisOptions: {
       name: 'default', scrollZoomEnabled: true
     }

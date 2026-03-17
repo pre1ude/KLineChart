@@ -9,6 +9,11 @@ export interface PaneGap {
   bottom?: number
 }
 
+export interface PaneReservedSpace {
+  top?: number
+  bottom?: number
+}
+
 export interface PaneAxisOptionItem {
   type?: YAxisType
   formatter?: (v: number) => string
@@ -38,6 +43,7 @@ export interface PaneOptions {
   dragEnabled?: boolean
   position?: PanePosition
   gap?: PaneGap
+  reservedSpace?: PaneReservedSpace
   axisOptions?: PaneAxisOptions
 }
 
