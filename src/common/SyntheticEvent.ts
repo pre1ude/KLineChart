@@ -655,7 +655,7 @@ export default class SyntheticEvent {
   private _calcScale(): void {
     const box = this._target.getBoundingClientRect() ?? { left: 0, top: 0 }
 
-    const scale = box.width / this._target.offsetWidth
+    const scale = Math.round(box.width / this._target.offsetWidth * 100)/100
     setScale(scale)
   }
 
