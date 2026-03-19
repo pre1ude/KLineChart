@@ -770,6 +770,14 @@ function getDefaultOverlayStyle(): OverlayStyle {
       borderStyle: LineType.Solid,
       borderDashedValue: [2, 2]
     },
+    ellipse: {
+      style: PolygonType.Fill,
+      color: 'rgba(255,198,43,0.15)',
+      borderColor: '#FFC62B',
+      borderSize: 1,
+      borderStyle: LineType.Solid,
+      borderDashedValue: [2, 2]
+    },
     arc: {
       style: LineType.Solid,
       color: '#FFC62B',
