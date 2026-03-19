@@ -14,6 +14,7 @@ import { isPointInBounding } from './common/Bounding'
 import type VisibleRange from './common/VisibleRange'
 import { setCursor } from './common/utils/cursor'
 import { createOverlayEventFromInfo } from './common/utils/overlayEvent'
+import { ActionType } from './common/Action'
 
 let resetCursor: (() => void) | undefined = undefined
 
@@ -431,12 +432,14 @@ export default class Event implements EventHandler {
 
   mouseDoubleClickEvent(e: MouseTouchEvent): boolean {
     const { pane, widget } = this._findWidgetByEvent(e)
+    let consumed = false
     if (widget) {
       const name = widget.getName()
       switch (name) {
         case WidgetNameConstants.MAIN: {
           const event = this._makeWidgetEvent(e, widget)
-          return widget.dispatchEvent('mouseDoubleClickEvent', event)
+          consumed = widget.dispatchEvent('mouseDoubleClickEvent', event)
+          break
         }
         case WidgetNameConstants.Y_AXIS: {
           const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
@@ -445,9 +448,15 @@ export default class Event implements EventHandler {
           yLeftAxis.setAutoCalcTickFlag(true)
           yRightAxis.setAutoCalcTickFlag(true)
           this._chart.adjustPaneViewport(false, true, true, true)
-          return true
+          consumed = true
+          break
         }
       }
+    }
+    if (!consumed) {
+      const chartStore = this._chart.getChartStore()
+      //Todo
+      chartStore.getActionStore().execute(ActionType.OnDblClick, {} as any)
     }
     return false
   }

@@ -21,7 +21,7 @@ export type CandleHitTestMode = 'body' | 'full'
 export default class CandleBarView extends View {
   // 响应点击和右键事件，仅蜡烛图类型走命中测试
   override checkEventOn(event: MouseTouchEvent, name: EventName): boolean {
-    if (name !== 'contextMenuEvent' && name !== 'mouseClickEvent') {
+    if (name !== 'contextMenuEvent' && name !== 'mouseClickEvent' && name !== 'mouseDoubleClickEvent') {
       return false
     }
     const pane = this.getWidget().getPane()

@@ -16,6 +16,7 @@ export enum ActionType {
   OnCandleBarClick = 'onCandleBarClick',
   OnCandleBarRightClick = 'onCandleBarRightClick',
   OnRightClick = 'onRightClick',
+  OnDblClick = 'onDblClick',
   OnPaneDrag = 'onPaneDrag'
 }
 
@@ -65,6 +66,7 @@ export interface ActionCallbackParams {
   [ActionType.OnCandleBarClick]: ClickEventData
   [ActionType.OnCandleBarRightClick]: ClickEventData
   [ActionType.OnRightClick]: ClickEventData
+  [ActionType.OnDblClick]: ClickEventData
   [ActionType.OnPaneDrag]: PaneDragEventData
 }
 
