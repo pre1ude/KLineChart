@@ -439,6 +439,10 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
       changes.push('extendData')
     }
 
+    if (nextProps.mode !== undefined && nextProps.mode !== this.mode) {
+      changes.push('mode')
+    }
+
     if (nextProps.styles !== this.styles) {
       changes.push('styles')
     }
