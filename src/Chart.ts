@@ -72,8 +72,10 @@ export interface Chart {
   setMaxOffsetRightDistance: (distance: number) => void
   setLeftMinVisibleBarCount: (barCount: number) => void
   setRightMinVisibleBarCount: (barCount: number) => void
+  setBarSpaceLimit: (limit: { min?: number, max?: number }) => void
   setBarSpace: (space: number) => void
   getBarSpace: () => number
+  fitToWidth: (options?: { align?: 'left' | 'center' | 'right' }) => void
   getVisibleRange: () => VisibleRange
   clearData: () => void
   getDataList: () => KLineData[]
@@ -703,12 +705,43 @@ export default class ChartImp implements Chart {
     this._chartStore.getTimeScaleStore().setRightMinVisibleBarCount(Math.ceil(barCount))
   }
 
+  setBarSpaceLimit(limit: { min?: number, max?: number } = {}): void {
+    const min = limit?.min
+    const max = limit?.max
+    if (isValid(min) && (!isNumber(min) || min <= 0)) {
+      logWarn('setBarSpaceLimit', 'min', 'min must greater than zero!!!')
+      return
+    }
+    if (isValid(max) && (!isNumber(max) || max <= 0)) {
+      logWarn('setBarSpaceLimit', 'max', 'max must greater than zero!!!')
+      return
+    }
+    if (isValid(min) && isValid(max) && min > max) {
+      logWarn('setBarSpaceLimit', 'min/max', 'min must less than or equal to max!!!')
+      return
+    }
+    this._chartStore.getTimeScaleStore().setBarSpaceLimit(limit)
+  }
+
   setBarSpace(space: number): void {
     this._chartStore.getTimeScaleStore().setBarSpace(space)
   }
 
   getBarSpace(): number {
     return this._chartStore.getTimeScaleStore().getBarSpace().bar
+  }
+
+  fitToWidth(options?: { align?: 'left' | 'center' | 'right' }): void {
+    const align = options?.align ?? 'left'
+    if (align !== 'left' && align !== 'center' && align !== 'right') {
+      logWarn('fitToWidth', 'align', 'align only supports `left`, `center`, `right`!!!')
+      return
+    }
+    if (this._chartStore.getIsTimeShare()) {
+      logWarn('fitToWidth', '', 'fitToWidth is not supported in timeShare mode!!!')
+      return
+    }
+    this._chartStore.getTimeScaleStore().fitToWidth(align)
   }
 
   getVisibleRange(): VisibleRange {

@@ -7,6 +7,7 @@ import { LoadDataType } from '../common/LoadDataCallback'
 import { clamp } from '@/common/utils/number'
 import { createLinear, type LinearScale } from '../component/scale'
 import { formatToHHmm } from '../common/utils/format'
+import { logWarn } from '../common/utils/logger'
 
 const DEFAULT_BAR_WIDTH = 8
 const DEFAULT_OFFSET_RIGHT = 10
@@ -41,6 +42,12 @@ export default class TimeScaleStore {
     this._chartStore = chartStore
     this._xScale = createScale(this._visibleRange, this._chartStore.mainWidth)
     this._kWidth = getKWidth(this._barWidth)
+  }
+
+  private _refreshTimeScale(): void {
+    this.adjustVisibleRange()
+    this._chartStore.getTooltipStore().recalculateCrosshair(true)
+    this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
   }
 
   public initBarSpaceLimit(isTimeShare: boolean): void {
@@ -175,23 +182,45 @@ export default class TimeScaleStore {
     }
   }
 
+  setBarSpaceLimit(limit: { min?: number, max?: number } = {}): void {
+    const nextLimit = {
+      min: limit.min ?? this._barSpaceLimit.min,
+      max: limit.max ?? this._barSpaceLimit.max
+    }
+    if (nextLimit.min > nextLimit.max) {
+      logWarn('setBarSpaceLimit', 'min/max', 'min must less than or equal to max!!!')
+      return
+    }
+    if (nextLimit.min === this._barSpaceLimit.min && nextLimit.max === this._barSpaceLimit.max) {
+      return
+    }
+
+    this._barSpaceLimit = nextLimit
+
+    const nextBarWidth = clamp(this._barWidth, nextLimit.min, nextLimit.max)
+    const shouldRefresh = this._chartStore.getIsTimeShare() || nextBarWidth !== this._barWidth
+
+    this._barWidth = nextBarWidth
+    this._kWidth = getKWidth(this._barWidth)
+
+    if (shouldRefresh) {
+      this._refreshTimeScale()
+    }
+  }
+
   setBarSpace(barWidth: number): void {
     if (this._barWidth === barWidth) {
       return
     }
     this._barWidth = clamp(barWidth, this._barSpaceLimit.min, this._barSpaceLimit.max)
     this._kWidth = getKWidth(this._barWidth)
-    this.adjustVisibleRange()
-    this._chartStore.getTooltipStore().recalculateCrosshair(true)
-    this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
+    this._refreshTimeScale()
   }
 
   setOffsetRightDistance(distance: number, update?: boolean): this {
     this._offsetRight = distance
     if (update ?? false) {
-      this.adjustVisibleRange()
-      this._chartStore.getTooltipStore().recalculateCrosshair(true)
-      this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
+      this._refreshTimeScale()
     }
     return this
   }
@@ -228,6 +257,38 @@ export default class TimeScaleStore {
     this._calcMode = 'BARCOUNT_MODE'
   }
 
+  fitToWidth(align: 'left' | 'center' | 'right' = 'left'): void {
+    if (this._chartStore.getIsTimeShare()) {
+      return
+    }
+
+    const totalBarCount = this._chartStore.getDataList().length
+    const mainWidth = this._chartStore.mainWidth
+
+    if (totalBarCount === 0 || mainWidth <= 0) {
+      return
+    }
+
+    this._barWidth = clamp(mainWidth / totalBarCount, this._barSpaceLimit.min, this._barSpaceLimit.max)
+    this._kWidth = getKWidth(this._barWidth)
+
+    const totalBarWidth = totalBarCount * this._barWidth
+
+    switch (align) {
+      case 'left':
+        this._offsetRight = mainWidth - totalBarWidth
+        break
+      case 'center':
+        this._offsetRight = (mainWidth - totalBarWidth) / 2
+        break
+      case 'right':
+        this._offsetRight = 0
+        break
+    }
+
+    this._refreshTimeScale()
+  }
+
   getVisibleRange(): VisibleRange {
     return this._visibleRange
   }
@@ -242,9 +303,7 @@ export default class TimeScaleStore {
     }
     const prevOffsetRight = this._offsetRight
     this._offsetRight -= distance
-    this.adjustVisibleRange()
-    this._chartStore.getTooltipStore().recalculateCrosshair(true)
-    this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
+    this._refreshTimeScale()
     const realDistance = Math.round(prevOffsetRight - this._offsetRight)
     if (realDistance !== 0) {
       this._chartStore.getActionStore().execute(ActionType.OnScroll, { distance: realDistance })
@@ -288,9 +347,7 @@ export default class TimeScaleStore {
     this._barWidth = nextBarWidth
 
     this._kWidth = getKWidth(this._barWidth)
-    this.adjustVisibleRange()
-    this._chartStore.getTooltipStore().recalculateCrosshair(true)
-    this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
+    this._refreshTimeScale()
 
     if (realScaleRatio !== 1) {
       this._chartStore.getActionStore().execute(ActionType.OnZoom, { scale: realScaleRatio })
@@ -332,9 +389,7 @@ export default class TimeScaleStore {
       this._offsetRight = mainWidth - totalBarWidth
     }
 
-    this.adjustVisibleRange()
-    this._chartStore.getTooltipStore().recalculateCrosshair(true)
-    this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
+    this._refreshTimeScale()
   }
 
   /**
@@ -342,9 +397,7 @@ export default class TimeScaleStore {
    */
   alignRight(): void {
     this._offsetRight = DEFAULT_OFFSET_RIGHT
-    this.adjustVisibleRange()
-    this._chartStore.getTooltipStore().recalculateCrosshair(true)
-    this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
+    this._refreshTimeScale()
   }
 
   /**
@@ -372,9 +425,7 @@ export default class TimeScaleStore {
       this._offsetRight = (mainWidth - totalBarWidth) / 2 + DEFAULT_OFFSET_RIGHT
     }
 
-    this.adjustVisibleRange()
-    this._chartStore.getTooltipStore().recalculateCrosshair(true)
-    this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
+    this._refreshTimeScale()
   }
 
   /**
