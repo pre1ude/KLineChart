@@ -1,9 +1,9 @@
 /// <reference types="vitest" />
+import { playwright } from '@vitest/browser-playwright'
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
 import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
-import { playwright } from '@vitest/browser-playwright'
-import { resolve } from 'path'
-import { readFileSync } from 'fs'
 
 // 读取版本号
 const pkg = JSON.parse(
@@ -11,12 +11,15 @@ const pkg = JSON.parse(
 )
 const version = pkg.version
 
+const bundledLicenseFile = 'licenses/dependencies.md'
+
 // License Banner
 const banner = `
 /**
  * @license
  * @dm/kchart v${version}
  * Copyright © 2026 Innodealing Matrix Inc.
+ * Bundled dependency licenses: dist/${bundledLicenseFile}
  */`.trim()
 
 export default defineConfig(({ mode }) => {
@@ -55,6 +58,11 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       emptyOutDir: true,
 
+      // 生成打包依赖许可证清单
+      license: {
+        fileName: bundledLicenseFile
+      },
+
       // 目标环境
       target: 'es2020',
 
@@ -62,48 +70,23 @@ export default defineConfig(({ mode }) => {
       sourcemap: isDev,
 
       // 代码压缩
-      minify: isProd ? 'terser' : false,
-      terserOptions: isProd ? {
-        compress: {
-          drop_console: false,
-          drop_debugger: true,
-          pure_funcs: ['console.debug', 'console.trace'],
-          passes: 2
-        },
-        format: {
-          comments: false,
-          ecma: 2020
-        },
-        mangle: {
-          safari10: true
-        }
-      } : undefined,
+      minify: isProd ? 'oxc' : false,
 
-      // CSS 配置
-      cssCodeSplit: false,
-
-      // 性能优化
-      chunkSizeWarningLimit: 1000,
-      reportCompressedSize: !isDev,
-
-      // Rollup 配置
-      rollupOptions: {
+      // Rolldown 配置
+      rolldownOptions: {
         // 输出配置
         output: {
           preserveModules: true,
           preserveModulesRoot: 'src',
           entryFileNames: '[name].js',
           exports: 'named',
-          generatedCode: {
-            constBindings: true
-          }
+          // postBanner: banner
         },
 
         // Tree-shaking 优化
         treeshake: {
           moduleSideEffects: false,
-          propertyReadSideEffects: false,
-          tryCatchDeoptimization: false
+          propertyReadSideEffects: false
         }
       }
     },
@@ -114,10 +97,6 @@ export default defineConfig(({ mode }) => {
         '@': resolve(import.meta.dirname, 'src')
       }
     },
-
-    // esbuild: {
-    //   banner
-    // },
 
     // Vitest 配置
     test: {
