@@ -11,7 +11,7 @@ import {
   type TooltipLegend, type TooltipLegendChild, TooltipShowType
 } from '../common/Styles'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
-import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
+import { type DateTimeFormat, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { isFunction, isObject, isValid } from '../common/utils/typeChecks'
 import type { Indicator } from '../component/Indicator'
@@ -126,7 +126,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     crosshair: Crosshair,
     activeTooltipIcon: TooltipIcon | null,
     precision: Precision,
-    dateTimeFormat: Intl.DateTimeFormat,
+    dateTimeFormat: DateTimeFormat,
     locale: string,
     customApi: CustomApi,
     thousandsSeparator: string,
@@ -187,7 +187,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     yLeftAxisBounding: Bounding, yRightAxisBounding: Bounding,
     crosshair: Crosshair,
     precision: Precision,
-    dateTimeFormat: Intl.DateTimeFormat,
+    dateTimeFormat: DateTimeFormat,
     locale: string,
     customApi: CustomApi,
     thousandsSeparator: string,
@@ -419,7 +419,7 @@ export default class CandleTooltipView extends IndicatorTooltipView {
   private _getCandleTooltipLegends(
     data: CandleTooltipCustomCallbackData,
     precision: Precision,
-    dateTimeFormat: Intl.DateTimeFormat,
+    dateTimeFormat: DateTimeFormat,
     locale: string,
     customApi: CustomApi,
     thousandsSeparator: string,

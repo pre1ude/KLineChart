@@ -1,6 +1,6 @@
 import type Bounding from '../common/Bounding'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
-import { genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
+import { type DateTimeFormat, genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import { formatDate } from '../common/utils/format'
 import { isValid } from '../common/utils/typeChecks'
 import type VisibleRange from '../common/VisibleRange'
@@ -234,7 +234,7 @@ export default abstract class XAxisImp extends AxisImp {
   }
 
   // should only call once
-  private _optimalTickLabel(formatDate: FormatDate, dateTimeFormat: Intl.DateTimeFormat, timestamp: number, comparedTimestamp: number): string | null {
+  private _optimalTickLabel(formatDate: FormatDate, dateTimeFormat: DateTimeFormat, timestamp: number, comparedTimestamp: number): string | null {
     const year = formatDate(dateTimeFormat, timestamp, 'YYYY', FormatDateType.XAxis)
     const month = formatDate(dateTimeFormat, timestamp, 'YYYY-MM', FormatDateType.XAxis)
     const day = formatDate(dateTimeFormat, timestamp, 'MM-DD', FormatDateType.XAxis)

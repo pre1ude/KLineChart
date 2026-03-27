@@ -7,7 +7,7 @@ import type Coordinate from '../common/Coordinate'
 import type { IPoint } from '../common/Point'
 import { type OverlayStyle } from '../common/Styles'
 import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
-import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
+import { type DateTimeFormat, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { isNumber } from '../common/utils/typeChecks'
 import type { EventOverlayInfo, Overlay, OverlayFigure, OverlayFigureData, OverlayPrecision } from '../component/Overlay'
@@ -32,7 +32,7 @@ interface GetFiguresParams {
   precision: OverlayPrecision
   thousandsSeparator: string
   decimalFoldThreshold: number
-  dateTimeFormat: Intl.DateTimeFormat
+  dateTimeFormat: DateTimeFormat
   defaultStyles: OverlayStyle
   xAxis?: XAxis
   yAxis?: YAxis
@@ -235,7 +235,7 @@ export default class OverlayView extends View {
     bounding: Bounding,
     barSpace: BarSpace,
     precision: OverlayPrecision,
-    dateTimeFormat: Intl.DateTimeFormat,
+    dateTimeFormat: DateTimeFormat,
     customApi: CustomApi,
     thousandsSeparator: string,
     decimalFoldThreshold: number,
@@ -324,7 +324,7 @@ export default class OverlayView extends View {
     }
   }
 
-  protected drawDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, dateTimeFormat: Intl.DateTimeFormat, customApi: CustomApi, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, _xAxis?: XAxis, _yAxis?: YAxis): void {
+  protected drawDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, dateTimeFormat: DateTimeFormat, customApi: CustomApi, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, _xAxis?: XAxis, _yAxis?: YAxis): void {
     switch (this._type) {
       case 'xAxis':
         this._drawXAxisDefaultFigures(ctx, overlay, coordinates, bounding, dateTimeFormat, customApi, defaultStyles, clickInfo)
@@ -392,7 +392,7 @@ export default class OverlayView extends View {
     })
   }
 
-  private _drawXAxisDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, dateTimeFormat: Intl.DateTimeFormat, customApi: CustomApi, defaultStyles: OverlayStyle, clickInfo?: EventOverlayInfo): void {
+  private _drawXAxisDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, dateTimeFormat: DateTimeFormat, customApi: CustomApi, defaultStyles: OverlayStyle, clickInfo?: EventOverlayInfo): void {
     if (!overlay.needDefaultXAxisFigure) return
     if (overlay.id !== clickInfo?.overlay?.id) return
     if (coordinates.length === 0) return

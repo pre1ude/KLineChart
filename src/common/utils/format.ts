@@ -1,36 +1,36 @@
+import type { DateTimeFormat } from './dateTimeFormat'
 import { isNumber } from './typeChecks'
 
-export function formatDate(dateTimeFormat: Intl.DateTimeFormat, timestamp: number, format: string): string {
-  const date: Record<string, string> = {}
-  dateTimeFormat.formatToParts(new Date(timestamp)).forEach(({ type, value }) => {
-    switch (type) {
-      case 'year': {
-        date.YYYY = value
-        break
-      }
-      case 'month': {
-        date.MM = value
-        break
-      }
-      case 'day': {
-        date.DD = value
-        break
-      }
-      case 'hour': {
-        date.HH = value === '24' ? '00' : value
-        break
-      }
-      case 'minute': {
-        date.mm = value
-        break
-      }
-      case 'second': {
-        date.ss = value
-        break
-      }
-    }
-  })
-  return format.replace(/YYYY|MM|DD|HH|mm|ss/g, key => date[key])
+function normalizeHour(hour: string): string {
+  return hour === '24' ? '00' : hour
+}
+
+function padDatePart(value: string): string {
+  return value.length < 2 ? `0${value}` : value
+}
+
+export function formatDate(dateTimeFormat: DateTimeFormat, timestamp: number, format: string): string {
+  const date = new Date(timestamp)
+  let text = format
+  if (text.includes('YYYY')) {
+    text = text.replace(/YYYY/g, dateTimeFormat.year.format(date))
+  }
+  if (text.includes('MM')) {
+    text = text.replace(/MM/g, padDatePart(dateTimeFormat.month.format(date)))
+  }
+  if (text.includes('DD')) {
+    text = text.replace(/DD/g, padDatePart(dateTimeFormat.day.format(date)))
+  }
+  if (text.includes('HH')) {
+    text = text.replace(/HH/g, padDatePart(normalizeHour(dateTimeFormat.hour.format(date))))
+  }
+  if (text.includes('mm')) {
+    text = text.replace(/mm/g, padDatePart(dateTimeFormat.minute.format(date)))
+  }
+  if (text.includes('ss')) {
+    text = text.replace(/ss/g, padDatePart(dateTimeFormat.second.format(date)))
+  }
+  return text
 }
 
 export function formatPrecision(value: string | number, precision?: number): string {

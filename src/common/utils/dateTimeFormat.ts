@@ -1,31 +1,55 @@
 import { logWarn } from './logger'
 import { isString } from './typeChecks'
 
-let _dateTimeFormat: Intl.DateTimeFormat = buildDateTimeFormat()!
+const dateTimeFormatLocale = 'en'
 
-export function buildDateTimeFormat(timezone?: string): Intl.DateTimeFormat | undefined {
-  const options: Intl.DateTimeFormatOptions = {
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  }
+const yearFormatOptions = { year: 'numeric' } as const
+const monthFormatOptions = { month: 'numeric' } as const
+const dayFormatOptions = { day: 'numeric' } as const
+const hourFormatOptions = { hour: 'numeric', hour12: false } as const
+const minuteFormatOptions = { minute: 'numeric' } as const
+const secondFormatOptions = { second: 'numeric' } as const
+
+export interface DateTimeFormat {
+  readonly year: Intl.DateTimeFormat
+  readonly month: Intl.DateTimeFormat
+  readonly day: Intl.DateTimeFormat
+  readonly hour: Intl.DateTimeFormat
+  readonly minute: Intl.DateTimeFormat
+  readonly second: Intl.DateTimeFormat
+  readonly timeZone: string
+}
+
+let _dateTimeFormat: DateTimeFormat = buildDateTimeFormat()!
+
+function buildPartFormat(options: Intl.DateTimeFormatOptions, timezone?: string): Intl.DateTimeFormat {
+  const formatOptions: Intl.DateTimeFormatOptions = { ...options }
   if (isString(timezone)) {
-    options.timeZone = timezone
+    formatOptions.timeZone = timezone
   }
-  let dateTimeFormat: Intl.DateTimeFormat | undefined
+  return new Intl.DateTimeFormat(dateTimeFormatLocale, formatOptions)
+}
+
+export function buildDateTimeFormat(timezone?: string): DateTimeFormat | undefined {
+  let dateTimeFormat: DateTimeFormat | undefined
   try {
-    dateTimeFormat = new Intl.DateTimeFormat('en', options)
+    const year = buildPartFormat(yearFormatOptions, timezone)
+    dateTimeFormat = {
+      year,
+      month: buildPartFormat(monthFormatOptions, timezone),
+      day: buildPartFormat(dayFormatOptions, timezone),
+      hour: buildPartFormat(hourFormatOptions, timezone),
+      minute: buildPartFormat(minuteFormatOptions, timezone),
+      second: buildPartFormat(secondFormatOptions, timezone),
+      timeZone: year.resolvedOptions().timeZone
+    }
   } catch (_e) {
     logWarn('', '', 'Timezone is error!!!')
   }
   return dateTimeFormat
 }
 
-export function getDateTimeFormat(): Intl.DateTimeFormat {
+export function getDateTimeFormat(): DateTimeFormat {
   return _dateTimeFormat
 }
 
@@ -34,7 +58,7 @@ export function setTimezone(timezone: string): void {
 }
 
 export function getTimezone(): string {
-  return _dateTimeFormat.resolvedOptions().timeZone
+  return _dateTimeFormat.timeZone
 }
 
 export function genTimeStamp(text: string, hintTs: number): number {

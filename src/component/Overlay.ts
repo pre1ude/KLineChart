@@ -7,6 +7,7 @@ import type { IPoint, Point } from '../common/Point'
 import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
+import type { DateTimeFormat } from '../common/utils/dateTimeFormat'
 import { isNumber, isValid, merge } from '../common/utils/typeChecks'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
@@ -100,7 +101,7 @@ export interface OverlayCreateFiguresCallbackParams<E = DefaultExtendData> {
   precision: OverlayPrecision
   thousandsSeparator: string
   decimalFoldThreshold: number
-  dateTimeFormat: Intl.DateTimeFormat
+  dateTimeFormat: DateTimeFormat
   defaultStyles: OverlayStyle
   xAxis?: XAxis
   yAxis?: YAxis
