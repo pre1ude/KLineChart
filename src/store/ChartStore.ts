@@ -348,11 +348,25 @@ export default class ChartStore {
   }
 
   getVisibleFirstData(): KLineData | undefined {
+    const { from } = this._timeScaleStore.getVisibleRange()
+    return this.getDataByDataIndex(from)
+  }
+
+  getFirstLoadedData(): KLineData | undefined {
     return this._dataList[0]
   }
 
   getTimeShareBasisPrice(): number {
-    return this._timeShareBasisPrice ?? this._dataList[0]?.prevClose ?? 0
+    const firstData = this.getFirstLoadedData()
+    let basisPirce = this._timeShareBasisPrice
+    if (basisPirce == null) {
+      if (this._backwardMore === false) {
+        basisPirce = firstData?.open
+      } else {
+        basisPirce = firstData?.prevClose
+      }
+    }
+    return basisPirce ?? 0
   }
 
   setTimeShareBasisPrice(v: number): void {
@@ -360,7 +374,7 @@ export default class ChartStore {
   }
 
   /**
-   * 获取分钟百分比模式的基准价格
+   * 获取分时百分比模式的基准价格
    * 分时图模式使用 timeShareBasisPrice，否则使用 prevClose
    */
   getMinutePercentageBasis(): number {
@@ -368,7 +382,7 @@ export default class ChartStore {
       return this.getTimeShareBasisPrice()
     }
     const firstData = this.getVisibleFirstData()
-    return firstData?.prevClose ?? firstData?.close ?? 0
+    return firstData?.close ?? 0
   }
 
   /**
