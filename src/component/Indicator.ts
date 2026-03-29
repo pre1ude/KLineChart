@@ -54,6 +54,7 @@ export interface IndicatorFigure<D = any> {
   title?: string
   type?: string
   baseValue?: number
+  drawOrder?: number
 
   /**
    * 控制 figure 的可见性

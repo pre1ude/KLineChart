@@ -98,9 +98,16 @@ export default class IndicatorView extends View {
         const customDrawCovered = tryCustomDraw(indicator, yAxis, mergedDefaultStyles)
         if (customDrawCovered) return
 
-        for (let i = 0; i < indicator.figures.length; i++) {
-          drawSingleFigure(indicator.figures[i], i, indicator, mergedDefaultStyles, yAxis)
-        }
+        indicator.figures
+          .map((figure, figureIndex) => ({
+            figure,
+            figureIndex,
+            drawOrder: figure.drawOrder ?? 0
+          }))
+          .sort((a, b) => a.drawOrder - b.drawOrder || a.figureIndex - b.figureIndex)
+          .forEach(({ figure, figureIndex }) => {
+            drawSingleFigure(figure, figureIndex, indicator, mergedDefaultStyles, yAxis)
+          })
       })
     }
 

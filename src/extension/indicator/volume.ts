@@ -14,6 +14,7 @@ function getVolumeFigure(): IndicatorFigure<Vol> {
     title: 'VOLUME: ',
     type: 'bar',
     baseValue: 0,
+    drawOrder: -1,
     styles: (dataIndex, _indicator, kLineDataList, defaultStyles) => {
       const kLineData = kLineDataList[dataIndex]
 

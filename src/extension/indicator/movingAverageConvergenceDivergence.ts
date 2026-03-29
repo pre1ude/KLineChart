@@ -29,6 +29,7 @@ const movingAverageConvergenceDivergence: IndicatorTemplate<Macd> = {
       title: 'MACD: ',
       type: 'bar',
       baseValue: 0,
+      drawOrder: -1,
       styles: (dataIndex, indicator, _kLineDataList, defaultStyles) => {
         const prevMacd = indicator.result[dataIndex - 1]?.macd ?? Number.MIN_SAFE_INTEGER
         const currentMacd = indicator.result[dataIndex]?.macd ?? Number.MIN_SAFE_INTEGER
