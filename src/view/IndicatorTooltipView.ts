@@ -267,7 +267,7 @@ export default class IndicatorTooltipView extends View {
       const visibleParams = calcParams.filter((_, index) => {
         const figureStaticStyles = indicator.styles?.figures?.[`${indicator.name.toLowerCase()}${index + 1}`]
         return figureStaticStyles?.visible !== false
-      })
+      }).filter(v => v != null)
       if (visibleParams.length > 0) {
         calcParamsText = `(${visibleParams.join(',')})`
       }
@@ -300,7 +300,9 @@ export default class IndicatorTooltipView extends View {
             }
             value = formatFoldDecimal(formatThousands(value as string, thousandsSeparator), decimalFoldThreshold)
           }
-          legends.push({ title: { text: figure.title, color }, value: { text: value as string, color } })
+          if (!figure.title.includes('null')) {
+            legends.push({ title: { text: figure.title, color }, value: { text: value as string, color } })
+          }
         }
       })
       tooltipData.values = legends
