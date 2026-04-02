@@ -4,13 +4,58 @@ import { isTransparent } from '../../common/utils/color'
 import { isString } from '../../common/utils/typeChecks'
 import { type FigureTemplate, DEVIATION } from '../../component/Figure'
 
+function pointToSegmentDistance2(point: Coordinate, start: Coordinate, end: Coordinate): number {
+  const dx = end.x - start.x
+  const dy = end.y - start.y
+  const lengthSquared = dx * dx + dy * dy
+
+  if (lengthSquared === 0) {
+    const distX = point.x - start.x
+    const distY = point.y - start.y
+    return distX * distX + distY * distY
+  }
+
+  let t = ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared
+  t = Math.max(0, Math.min(1, t))
+
+  const nearestX = start.x + t * dx
+  const nearestY = start.y + t * dy
+  const distX = point.x - nearestX
+  const distY = point.y - nearestY
+  return distX * distX + distY * distY
+}
+
+function checkCoordinateOnDegenerateEllipse(coordinate: Coordinate, attrs: EllipseAttrs): boolean {
+  const { x, y, rx, ry } = attrs
+
+  let start: Coordinate
+  let end: Coordinate
+
+  if (rx <= DEVIATION && ry <= DEVIATION) {
+    start = { x: x - DEVIATION, y }
+    end = { x: x + DEVIATION, y }
+  } else if (rx <= DEVIATION) {
+    const halfLength = Math.max(ry, DEVIATION)
+    start = { x, y: y - halfLength }
+    end = { x, y: y + halfLength }
+  } else {
+    const halfLength = Math.max(rx, DEVIATION)
+    start = { x: x - halfLength, y }
+    end = { x: x + halfLength, y }
+  }
+
+  return pointToSegmentDistance2(coordinate, start, end) <= DEVIATION * DEVIATION
+}
+
 export function checkCoordinateOnEllipse(coordinate: Coordinate, attrs: EllipseAttrs | EllipseAttrs[]): boolean {
-  let ellipses: EllipseAttrs[] = []
-  ellipses = ellipses.concat(attrs)
+  const ellipses = Array.isArray(attrs) ? attrs : [attrs]
 
   for (let i = 0; i < ellipses.length; i++) {
     const { x, y, rx, ry } = ellipses[i]
-    if (rx <= 0 || ry <= 0) {
+    if (rx <= DEVIATION || ry <= DEVIATION) {
+      if (checkCoordinateOnDegenerateEllipse(coordinate, ellipses[i])) {
+        return true
+      }
       continue
     }
     const dx = (coordinate.x - x) / rx
