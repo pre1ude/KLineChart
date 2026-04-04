@@ -16,11 +16,15 @@ const waPrice: IndicatorTemplate<WaPrice> = {
       key: 'waPrice',
       // title: '分时均价: ',
       type: 'line',
-      styles: () => {
-        return { color: '#FFC62B' }
-      }
     }
   ],
+  styles: {
+    figures: {
+      waPrice: {
+        color: '#FFC62B'
+      }
+    }
+  },
   calc: (dataList: KLineData[]) => {
     return dataList.map((kLineData: KLineData) => {
       const waPrice = kLineData.waPrice ?? 0
