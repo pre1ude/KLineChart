@@ -21,7 +21,10 @@ const waPrice: IndicatorTemplate<WaPrice> = {
   styles: {
     figures: {
       waPrice: {
-        color: '#FFC62B'
+        color: '#FFC62B',
+        symbol: {
+          show: true
+        }
       }
     }
   },

@@ -37,8 +37,18 @@ export interface LineStyle {
   dashedValue: number[]
 }
 
+export interface LineSymbolStyle {
+  show: boolean
+  radius: number
+  borderSize: number
+  fillColor: string
+  borderColor: string
+  minSpacing: number
+}
+
 export interface SmoothLineStyle extends LineStyle {
   smooth: boolean | number
+  symbol?: Partial<LineSymbolStyle>
 }
 
 export interface StateLineStyle extends LineStyle {

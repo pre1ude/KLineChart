@@ -3,9 +3,8 @@ import type Coordinate from '../common/Coordinate'
 import { type GradientColor } from '../common/Styles'
 import { UpdateLevel } from '../common/Updater'
 import { isArray, isNumber, isValid } from '../common/utils/typeChecks'
-import type VisibleData from '../common/VisibleData'
 import { createFigure, drawStaticFigure } from '../extension/figure'
-import { lineTo, smoothNormalize } from '../extension/figure/line'
+import { getLineSymbolStepBySpacing, lineTo, smoothNormalize } from '../extension/figure/line'
 import type DualYPane from '../pane/DualYPane'
 import View from './View'
 
@@ -25,6 +24,7 @@ export default class CandleAreaView extends View {
     const pane = widget.getPane()
     const chart = pane.getChart()
     const chartStore = chart.getChartStore()
+    const timeScaleStore = chartStore.getTimeScaleStore()
     const dataList = chart.getDataList()
     const lastDataIndex = dataList.length - 1
     const bounding = widget.getBounding()
@@ -32,14 +32,20 @@ export default class CandleAreaView extends View {
     const styles = chart.getStyles().candle.area
     let ripplePointCoordinate: Coordinate | undefined
 
-    const visibleDataList = chartStore.getVisibleDataList()
+    const visibleRange = timeScaleStore.getVisibleRange()
+    const barSpace = timeScaleStore.getBarSpace()
     const isTimeShare = chartStore.getIsTimeShare()
     const timeShareTicks = chartStore.getTimeShareTicks()
     const ticksPerDay = timeShareTicks.length
     const breakOnCrossDays = chartStore.getTimeShareBreakOnCrossDays()
+    const lineSymbolStep = getLineSymbolStepBySpacing({ symbol: { show: true } }, barSpace.bar)
+    const startDataIndex = Math.max(0, visibleRange.from)
+    const endDataIndex = Math.min(lastDataIndex, visibleRange.to - 1)
+    const isLastDataVisible = lastDataIndex >= visibleRange.from && lastDataIndex < visibleRange.to
 
     // 流式绘制：收集连续的坐标点
     const currentPath: Coordinate[] = []
+    let currentPathStartDataIndex = -1
     let lastVisitedIndex = -1
 
     // 绘制当前路径并重置
@@ -47,11 +53,18 @@ export default class CandleAreaView extends View {
       if (currentPath.length >= 2) {
         // 绘制线条
         drawStaticFigure(ctx, 'line', {
-          attrs: { coordinates: currentPath },
+          attrs: {
+            coordinates: currentPath,
+            startDataIndex: currentPathStartDataIndex,
+            symbolStep: lineSymbolStep
+          },
           styles: {
             color: styles.lineColor,
             size: styles.lineSize,
-            smooth: styles.smooth
+            smooth: styles.smooth,
+            symbol: {
+              show: true
+            }
           }
         })
 
@@ -59,7 +72,10 @@ export default class CandleAreaView extends View {
         if (!styles.lineOnly) {
           const backgroundColor = styles.backgroundColor
           let color: string | CanvasGradient
-          const segmentMinY = Math.min(...currentPath.map(c => c.y))
+          let segmentMinY = currentPath[0].y
+          for (let i = 1; i < currentPath.length; i++) {
+            segmentMinY = Math.min(segmentMinY, currentPath[i].y)
+          }
           if (isArray<GradientColor>(backgroundColor)) {
             const gradient = ctx.createLinearGradient(0, bounding.height, 0, segmentMinY)
             try {
@@ -85,22 +101,24 @@ export default class CandleAreaView extends View {
         }
       }
       currentPath.length = 0
+      currentPathStartDataIndex = -1
       lastVisitedIndex = -1
     }
 
     // 流式处理每个数据点
-    visibleDataList.forEach((data: VisibleData, index: number) => {
-      const { data: kLineData, x, dataIndex } = data
+    for (let dataIndex = startDataIndex; dataIndex <= endDataIndex; dataIndex++) {
+      const kLineData = dataList[dataIndex]
+      const x = timeScaleStore.dataIndexToCoordinate(dataIndex)
       const value = kLineData?.[styles.value]
 
       // 值无效 → 绘制当前路径并重置
       if (!isNumber(value)) {
         drawCurrentPath()
-        return
+        continue
       }
 
       // 跨日检查 → 绘制当前路径并重置（仅当配置启用时）
-      if (breakOnCrossDays && isTimeShare && ticksPerDay > 0 && index > 0) {
+      if (breakOnCrossDays && isTimeShare && ticksPerDay > 0 && dataIndex > startDataIndex) {
         if (dataIndex % ticksPerDay === 0) {
           drawCurrentPath()
         }
@@ -112,14 +130,17 @@ export default class CandleAreaView extends View {
       }
 
       const y = yAxis.convertToPixel(value)
+      if (currentPath.length === 0) {
+        currentPathStartDataIndex = dataIndex
+      }
       currentPath.push({ x, y })
       lastVisitedIndex = dataIndex
 
       // 记录最后一个点用于涟漪效果
-      if (dataIndex === lastDataIndex) {
+      if (isLastDataVisible && dataIndex === lastDataIndex) {
         ripplePointCoordinate = { x, y }
       }
-    })
+    }
 
     // 绘制最后一段路径
     drawCurrentPath()

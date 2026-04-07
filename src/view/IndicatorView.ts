@@ -1,11 +1,12 @@
 import { type IndicatorFigureData } from '@/widget/layer/IndicatorLayer'
 import type Coordinate from '../common/Coordinate'
-import { type IndicatorStyle, type SmoothLineStyle } from '../common/Styles'
+import { type IndicatorStyle } from '../common/Styles'
 import type { EventName, MouseTouchEvent } from '../common/SyntheticEvent'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorFigureVisible, type Indicator, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
 import type YAxisImp from '../component/YAxis'
 import { createFigure, drawStaticFigure } from '../extension/figure'
+import { getLineSymbolStepBySpacing, resolveLineSymbolStyle } from '../extension/figure/line'
 import type DualYPane from '../pane/DualYPane'
 import { PaneIdConstants } from '../pane/types'
 import type XAxisWidget from '../widget/XAxisWidget'
@@ -125,12 +126,14 @@ export default class IndicatorView extends View {
 
       const type = figure.type ?? 'line'
       const baseStyles = getFigureBaseStyles(type, figureIndex, mergedDefaultStyles)
-
       const createFigureStyles = (dataIndex: number): IndicatorFigureStyle => {
         const figureDynamicStyles = figure.styles?.(dataIndex, indicator, dataList, mergedDefaultStyles)
         // figureStaticStyles 来自 FigureStyleConfig 联合类型，需要断言
-        const result = { ...baseStyles, ...figureStaticStyles, ...figureDynamicStyles } as unknown as IndicatorFigureStyle
-        return result
+        return mergeIndicatorFigureStyles(
+          baseStyles,
+          figureStaticStyles as unknown as IndicatorFigureStyle,
+          figureDynamicStyles
+        )
       }
 
       if (type === 'line') {
@@ -177,26 +180,34 @@ export default class IndicatorView extends View {
     ): void {
       const key = figure.key
       const result = indicator.result
+      const startDataIndex = Math.max(0, visibleRange.from)
+      const endDataIndex = Math.min(result.length - 1, visibleRange.to)
 
       const currentPath: Coordinate[] = []
-      let currentStyles: SmoothLineStyle | null = null
+      let currentStyles: IndicatorFigureStyle | null = null
+      let currentSymbolStep = 1
+      let currentPathStartDataIndex = -1
       let lastDataIndex = -1
 
       // 绘制当前 path 并重置
       const drawCurrentPath = (): void => {
         if (currentPath.length >= 2 && currentStyles) {
           drawStaticFigure(ctx, 'line', {
-            attrs: { coordinates: currentPath },
+            attrs: {
+              coordinates: currentPath,
+              startDataIndex: currentPathStartDataIndex,
+              symbolStep: currentSymbolStep
+            },
             styles: currentStyles
           })
         }
         currentPath.length = 0
         currentStyles = null
+        currentSymbolStep = 1
+        currentPathStartDataIndex = -1
       }
 
-      for (const data of visibleDataList) {
-        const { dataIndex, x } = data
-
+      for (let dataIndex = startDataIndex; dataIndex < endDataIndex; dataIndex++) {
         const currentResultData = result[dataIndex] as IndicatorResultData | undefined
         const nextResultData = result[dataIndex + 1] as IndicatorResultData | undefined
         const currentValue = currentResultData?.[key]
@@ -223,20 +234,23 @@ export default class IndicatorView extends View {
           drawCurrentPath()
         }
 
-        const figureStyles = createFigureStyles(dataIndex) as unknown as SmoothLineStyle
+        const figureStyles = createFigureStyles(dataIndex)
 
         // 样式变化 → 绘制当前 path 并重置
         if (currentStyles && !isSameStyle(currentStyles, figureStyles)) {
           drawCurrentPath()
         }
 
+        const x = xAxis.convertToPixel(dataIndex)
         const y1 = yAxis.convertToPixel(currentValue)
         const x2 = xAxis.convertToPixel(dataIndex + 1)
         const y2 = yAxis.convertToPixel(nextValue)
 
         if (currentPath.length === 0) {
           currentPath.push({ x, y: y1 }, { x: x2, y: y2 })
+          currentPathStartDataIndex = dataIndex
           currentStyles = figureStyles
+          currentSymbolStep = getLineSymbolStepBySpacing(figureStyles, barSpace.bar)
         } else {
           currentPath.push({ x: x2, y: y2 })
         }
@@ -299,14 +313,48 @@ export default class IndicatorView extends View {
   }
 }
 
-function isSameStyle(a: SmoothLineStyle, b: SmoothLineStyle): boolean {
+function mergeIndicatorFigureStyles(...stylesList: Array<IndicatorFigureStyle | undefined>): IndicatorFigureStyle {
+  const result:IndicatorFigureStyle = {}
+  let symbol = result.symbol
+
+  stylesList.forEach(styles => {
+    if (!styles) {
+      return
+    }
+
+    Object.assign(result, styles)
+
+    if (styles.symbol) {
+      symbol = {
+        ...(symbol ?? {}),
+        ...styles.symbol
+      }
+    }
+  })
+
+  if (symbol) {
+    result.symbol = symbol
+  }
+
+  return result
+}
+
+function isSameStyle(a: IndicatorFigureStyle, b: IndicatorFigureStyle): boolean {
   if (a === b) return true
 
+  const symbolA = resolveLineSymbolStyle(a)
+  const symbolB = resolveLineSymbolStyle(b)
   if (
     a.style !== b.style ||
     a.color !== b.color ||
     a.size !== b.size ||
-    a.smooth !== b.smooth
+    a.smooth !== b.smooth ||
+    symbolA.show !== symbolB.show ||
+    symbolA.radius !== symbolB.radius ||
+    symbolA.borderSize !== symbolB.borderSize ||
+    symbolA.fillColor !== symbolB.fillColor ||
+    symbolA.borderColor !== symbolB.borderColor ||
+    symbolA.minSpacing !== symbolB.minSpacing
   ) {
     return false
   }
@@ -315,6 +363,7 @@ function isSameStyle(a: SmoothLineStyle, b: SmoothLineStyle): boolean {
   const da = a.dashedValue
   const db = b.dashedValue
   if (da === db) return true
+  if (da == null || db == null) return false
   if (da?.length !== db?.length) return false
   return da.every((v, i) => v === db[i])
 }

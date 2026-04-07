@@ -1,9 +1,82 @@
 import type Coordinate from '../../common/Coordinate'
-import { type SmoothLineStyle, LineType } from '../../common/Styles'
+import { type LineSymbolStyle, type SmoothLineStyle, LineType } from '../../common/Styles'
+import { isTransparent } from '../../common/utils/color'
 import { isNumber } from '../../common/utils/typeChecks'
 import { type FigureTemplate, DEVIATION } from '../../component/Figure'
 
 const DEFAULT_SMOOTH = 0.5
+export const LINE_SYMBOL_MIN_SPACING = 40
+const LINE_SYMBOL_SPARSE_TRIGGER_SPACING = 8
+export const LINE_SYMBOL_RADIUS = 2
+const LINE_SYMBOL_BORDER_SIZE = 1.5
+const LINE_SYMBOL_FILL_COLOR = '#fff'
+type LineSymbolResolverStyle = Pick<Partial<SmoothLineStyle>, 'color' | 'symbol'>
+
+export function resolveLineSymbolStyle(styles: LineSymbolResolverStyle): LineSymbolStyle {
+  const color = styles.color ?? 'currentColor'
+  const symbol = styles.symbol
+  return {
+    show: symbol?.show === true,
+    radius: Math.max(0, symbol?.radius ?? LINE_SYMBOL_RADIUS),
+    borderSize: Math.max(0, symbol?.borderSize ?? LINE_SYMBOL_BORDER_SIZE),
+    fillColor: symbol?.fillColor ?? LINE_SYMBOL_FILL_COLOR,
+    borderColor: symbol?.borderColor ?? color,
+    minSpacing: Math.max(1, symbol?.minSpacing ?? LINE_SYMBOL_MIN_SPACING)
+  }
+}
+
+export function getLineSymbolStepBySpacing(styles: LineSymbolResolverStyle, pointSpacing: number): number {
+  const symbolStyle = resolveLineSymbolStyle(styles)
+  if (!symbolStyle.show || pointSpacing <= 0 || pointSpacing >= LINE_SYMBOL_SPARSE_TRIGGER_SPACING) {
+    return 1
+  }
+  return Math.max(1, Math.ceil(symbolStyle.minSpacing / pointSpacing))
+}
+
+function drawLineSymbols(ctx: CanvasRenderingContext2D, attrs: LineAttrs, styles: Partial<SmoothLineStyle>): void {
+  const symbolStyle = resolveLineSymbolStyle(styles)
+  if (!symbolStyle.show || symbolStyle.radius <= 0) {
+    return
+  }
+
+  const { coordinates, startDataIndex = 0 } = attrs
+  const symbolStep = Math.max(1, attrs.symbolStep ?? 1)
+  const shouldFill = !isTransparent(symbolStyle.fillColor)
+  const shouldStroke = symbolStyle.borderSize > 0 && !isTransparent(symbolStyle.borderColor)
+  if (!shouldFill && !shouldStroke) {
+    return
+  }
+
+  const shouldStrokePoint = shouldStroke && (!shouldFill || symbolStyle.radius > symbolStyle.borderSize)
+  let hasPath = false
+  ctx.beginPath()
+
+  for (let i = 0; i < coordinates.length; i++) {
+    if ((startDataIndex + i) % symbolStep !== 0) {
+      continue
+    }
+
+    const point = coordinates[i]
+    ctx.moveTo(point.x + symbolStyle.radius, point.y)
+    ctx.arc(point.x, point.y, symbolStyle.radius, 0, Math.PI * 2)
+    hasPath = true
+  }
+
+  if (!hasPath) {
+    return
+  }
+
+  if (shouldFill) {
+    ctx.fillStyle = symbolStyle.fillColor
+    ctx.fill()
+  }
+  if (shouldStrokePoint) {
+    ctx.strokeStyle = symbolStyle.borderColor
+    ctx.lineWidth = symbolStyle.borderSize
+    ctx.setLineDash([])
+    ctx.stroke()
+  }
+}
 
 function pointToSegmentDistance2(point: Coordinate, p1: Coordinate, p2: Coordinate): number {
   const dx = p2.x - p1.x
@@ -213,10 +286,16 @@ export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs[], styl
   for (let i = 0; i < attrs.length; i++) {
     drawSingleLine(ctx, attrs[i].coordinates, smoothNormalize(smooth), correction)
   }
+
+  for (let i = 0; i < attrs.length; i++) {
+    drawLineSymbols(ctx, attrs[i], styles)
+  }
 }
 
 export interface LineAttrs {
   coordinates: Coordinate[]
+  startDataIndex?: number
+  symbolStep?: number
 }
 
 const line: FigureTemplate<LineAttrs | LineAttrs[], Partial<SmoothLineStyle>> = {
