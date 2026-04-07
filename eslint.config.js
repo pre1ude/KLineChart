@@ -174,7 +174,7 @@ export default tseslint.config(
       }],
       '@stylistic/quotes': ['error', 'single', {
         avoidEscape: true,
-        allowTemplateLiterals: true
+        allowTemplateLiterals: 'always'
       }],
       '@stylistic/semi': ['error', 'never'],
       '@stylistic/comma-dangle': 'off',
