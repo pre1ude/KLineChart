@@ -10,6 +10,8 @@ const LINE_SYMBOL_SPARSE_TRIGGER_SPACING = 8
 export const LINE_SYMBOL_RADIUS = 2
 const LINE_SYMBOL_BORDER_SIZE = 1.5
 const LINE_SYMBOL_FILL_COLOR = '#fff'
+const EMPTY_LINE_DASH: number[] = []
+const DEFAULT_LINE_DASH: number[] = [2, 2]
 type LineSymbolResolverStyle = Pick<Partial<SmoothLineStyle>, 'color' | 'symbol'>
 
 export function resolveLineSymbolStyle(styles: LineSymbolResolverStyle): LineSymbolStyle {
@@ -33,9 +35,26 @@ export function getLineSymbolStepBySpacing(styles: LineSymbolResolverStyle, poin
   return Math.max(1, Math.ceil(symbolStyle.minSpacing / pointSpacing))
 }
 
-function drawLineSymbols(ctx: CanvasRenderingContext2D, attrs: LineAttrs, styles: Partial<SmoothLineStyle>): void {
-  const symbolStyle = resolveLineSymbolStyle(styles)
-  if (!symbolStyle.show || symbolStyle.radius <= 0) {
+function isLineStyleVisible(styles: Partial<SmoothLineStyle>): boolean {
+  const { size = 1, color = 'currentColor' } = styles
+  return size > 0 && !isTransparent(color)
+}
+
+function hasDrawableLineCoordinates(coordinates: Coordinate[]): boolean {
+  return coordinates.length > 1
+}
+
+function canDrawLineSymbols(symbolStyle: LineSymbolStyle): boolean {
+  return symbolStyle.show &&
+    symbolStyle.radius > 0 &&
+    (
+      !isTransparent(symbolStyle.fillColor) ||
+      (symbolStyle.borderSize > 0 && !isTransparent(symbolStyle.borderColor))
+    )
+}
+
+function drawLineSymbols(ctx: CanvasRenderingContext2D, attrs: LineAttrs, symbolStyle: LineSymbolStyle): void {
+  if (!hasDrawableLineCoordinates(attrs.coordinates) || !canDrawLineSymbols(symbolStyle)) {
     return
   }
 
@@ -49,7 +68,6 @@ function drawLineSymbols(ctx: CanvasRenderingContext2D, attrs: LineAttrs, styles
 
   const shouldStrokePoint = shouldStroke && (!shouldFill || symbolStyle.radius > symbolStyle.borderSize)
   let hasPath = false
-  ctx.beginPath()
 
   for (let i = 0; i < coordinates.length; i++) {
     if ((startDataIndex + i) % symbolStep !== 0) {
@@ -57,9 +75,12 @@ function drawLineSymbols(ctx: CanvasRenderingContext2D, attrs: LineAttrs, styles
     }
 
     const point = coordinates[i]
+    if (!hasPath) {
+      ctx.beginPath()
+      hasPath = true
+    }
     ctx.moveTo(point.x + symbolStyle.radius, point.y)
     ctx.arc(point.x, point.y, symbolStyle.radius, 0, Math.PI * 2)
-    hasPath = true
   }
 
   if (!hasPath) {
@@ -73,7 +94,7 @@ function drawLineSymbols(ctx: CanvasRenderingContext2D, attrs: LineAttrs, styles
   if (shouldStrokePoint) {
     ctx.strokeStyle = symbolStyle.borderColor
     ctx.lineWidth = symbolStyle.borderSize
-    ctx.setLineDash([])
+    ctx.setLineDash(EMPTY_LINE_DASH)
     ctx.stroke()
   }
 }
@@ -131,13 +152,16 @@ function isPointOnSingleLine(point: Coordinate, attrs: LineAttrs): boolean {
 }
 
 export function isPointOnLine(point: Coordinate, attrs: LineAttrs | LineAttrs[]): boolean {
-  attrs = Array.isArray(attrs) ? attrs : [attrs]
-  for (let i = 0; i < attrs.length; i++) {
-    if (isPointOnSingleLine(point, attrs[i])) {
-      return true
+  if (Array.isArray(attrs)) {
+    for (let i = 0; i < attrs.length; i++) {
+      if (isPointOnSingleLine(point, attrs[i])) {
+        return true
+      }
     }
+    return false
   }
-  return false
+
+  return isPointOnSingleLine(point, attrs)
 }
 
 export function getLinearYFromSlopeIntercept(kb: number[] | null, coordinate: Coordinate): number {
@@ -271,8 +295,14 @@ export const smoothNormalize = (smooth: number | boolean) => isNumber(smooth)
   ? (smooth > 0 && smooth < 1 ? smooth : 0)
   : (smooth ? DEFAULT_SMOOTH : 0)
 
-export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs[], styles: Partial<SmoothLineStyle>): void {
-  const { style = LineType.Solid, smooth = false, size = 1, color = 'currentColor', dashedValue = [2, 2] } = styles
+export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineAttrs[], styles: Partial<SmoothLineStyle>): void {
+  const { style = LineType.Solid, smooth = false, size = 1, color = 'currentColor', dashedValue = DEFAULT_LINE_DASH } = styles
+  if (!isLineStyleVisible(styles)) {
+    return
+  }
+
+  const normalizedSmooth = smoothNormalize(smooth)
+  const symbolStyle = resolveLineSymbolStyle(styles)
   const correction = size % 2 === 1 ? 0.5 : 0
 
   ctx.lineWidth = size
@@ -280,15 +310,37 @@ export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs[], styl
   if (style === LineType.Dashed) {
     ctx.setLineDash(dashedValue)
   } else {
-    ctx.setLineDash([])
+    ctx.setLineDash(EMPTY_LINE_DASH)
+  }
+
+  if (!Array.isArray(attrs)) {
+    if (!hasDrawableLineCoordinates(attrs.coordinates)) {
+      return
+    }
+
+    drawSingleLine(ctx, attrs.coordinates, normalizedSmooth, correction)
+    if (canDrawLineSymbols(symbolStyle)) {
+      drawLineSymbols(ctx, attrs, symbolStyle)
+    }
+    return
   }
 
   for (let i = 0; i < attrs.length; i++) {
-    drawSingleLine(ctx, attrs[i].coordinates, smoothNormalize(smooth), correction)
+    if (!hasDrawableLineCoordinates(attrs[i].coordinates)) {
+      continue
+    }
+    drawSingleLine(ctx, attrs[i].coordinates, normalizedSmooth, correction)
+  }
+
+  if (!canDrawLineSymbols(symbolStyle)) {
+    return
   }
 
   for (let i = 0; i < attrs.length; i++) {
-    drawLineSymbols(ctx, attrs[i], styles)
+    if (!hasDrawableLineCoordinates(attrs[i].coordinates)) {
+      continue
+    }
+    drawLineSymbols(ctx, attrs[i], symbolStyle)
   }
 }
 
@@ -303,7 +355,7 @@ const line: FigureTemplate<LineAttrs | LineAttrs[], Partial<SmoothLineStyle>> = 
   checkEventOn: isPointOnLine,
   draw: (ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineAttrs[], styles: Partial<SmoothLineStyle>) => {
     ctx.save()
-    drawLine(ctx, Array.isArray(attrs) ? attrs : [attrs], styles)
+    drawLine(ctx, attrs, styles)
     ctx.restore()
   }
 }
