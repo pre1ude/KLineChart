@@ -38,7 +38,13 @@ export default class CandleAreaView extends View {
     const timeShareTicks = chartStore.getTimeShareTicks()
     const ticksPerDay = timeShareTicks.length
     const breakOnCrossDays = chartStore.getTimeShareBreakOnCrossDays()
-    const lineSymbolStep = getLineSymbolStepBySpacing({ symbol: { show: true } }, barSpace.bar)
+    const lineSymbolStep = getLineSymbolStepBySpacing(
+      {
+        color: styles.lineColor,
+        symbol: styles.symbol
+      },
+      barSpace.bar
+    )
     const startDataIndex = Math.max(0, visibleRange.from)
     const endDataIndex = Math.min(lastDataIndex, visibleRange.to - 1)
     const isLastDataVisible = lastDataIndex >= visibleRange.from && lastDataIndex < visibleRange.to
@@ -62,9 +68,7 @@ export default class CandleAreaView extends View {
             color: styles.lineColor,
             size: styles.lineSize,
             smooth: styles.smooth,
-            symbol: {
-              show: true
-            }
+            symbol: styles.symbol
           }
         })
 

@@ -192,6 +192,7 @@ export interface CandleAreaStyle {
   value: string
   lineOnly: boolean
   smooth: boolean | number
+  symbol?: Partial<LineSymbolStyle>
   backgroundColor: string | GradientColor[]
   point: CandleAreaPointStyle
 }
@@ -480,6 +481,9 @@ function getDefaultCandleStyle(): CandleStyle {
       smooth: false,
       value: 'close',
       lineOnly: false,
+      symbol: {
+        show: false
+      },
       backgroundColor: [{
         offset: 0,
         color: getAlphaBlue(0.01)
