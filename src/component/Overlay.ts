@@ -147,7 +147,7 @@ export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers<
   currentStep: number
   lock: boolean
   visible: boolean
-  zLevel: number
+  zLevel?: number
   needDefaultPointFigure: boolean
   needDefaultXAxisFigure: boolean
   needDefaultYAxisFigure: boolean
@@ -226,7 +226,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   totalStep: number = 999 // 默认无限制步骤数(适用于anywave)
   lock: boolean = false
   visible: boolean = true
-  zLevel: number = 0
+  zLevel?: number
   mode: OverlayMode = 'normal'
   modeSensitivity: number = 8
   extendData: E = undefined as E
@@ -268,7 +268,6 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   onDeselected?: OverlayEventCallback<E>
 
   private _skipDraw: boolean = false
-  private _originalZLevel: number = 0
   private _prevPressedPoint?: IPoint
   private _prevPressedPoints: IPoint[] = []
 
@@ -311,14 +310,6 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   updateInternalPoints(points: IPoint[]): void {
     this.points = points
     this._skipDraw = false
-  }
-
-  setOriginalZLevel(zLevel: number): void {
-    this._originalZLevel = zLevel
-  }
-
-  getOriginalZLevel(): number {
-    return this._originalZLevel
   }
 
   update(overlay: Partial<Overlay<E>>): void {

@@ -131,11 +131,36 @@ export default class OverlayStore {
   }
 
   private _sort(paneId?: string): void {
+    const sortByExplicitZLevel = (paneInstances: Overlay[]): void => {
+      const explicitZLevelIndexes: number[] = []
+      const explicitZLevelOverlays: Array<{ overlay: Overlay, zLevel: number }> = []
+
+      paneInstances.forEach((overlay, index) => {
+        if (isNumber(overlay.zLevel)) {
+          explicitZLevelIndexes.push(index)
+          explicitZLevelOverlays.push({ overlay, zLevel: overlay.zLevel })
+        }
+      })
+
+      if (explicitZLevelOverlays.length <= 1) {
+        return
+      }
+
+      explicitZLevelOverlays.sort((o1, o2) => o1.zLevel - o2.zLevel)
+
+      explicitZLevelIndexes.forEach((targetIndex, index) => {
+        paneInstances[targetIndex] = explicitZLevelOverlays[index].overlay
+      })
+    }
+
     if (isString(paneId)) {
-      this._instances.get(paneId)?.sort((o1, o2) => o1.zLevel - o2.zLevel)
+      const paneInstances = this._instances.get(paneId)
+      if (paneInstances) {
+        sortByExplicitZLevel(paneInstances)
+      }
     } else {
       this._instances.forEach(paneInstances => {
-        paneInstances.sort((o1, o2) => o1.zLevel - o2.zLevel)
+        sortByExplicitZLevel(paneInstances)
       })
     }
   }
@@ -163,7 +188,7 @@ export default class OverlayStore {
 
       const id = overlay.id ?? createId(OVERLAY_ID_PREFIX)
       const groupId = overlay.groupId ?? id
-      const zLevel = overlay.zLevel ?? this.getInstances(targetPaneId).length
+      const zLevel = overlay.zLevel ?? overlayTemplate.zLevel
 
       // 尝试转换外部格式的点为内部格式
       let internalPoints: IPoint[] | undefined
