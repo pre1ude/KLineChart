@@ -1263,7 +1263,28 @@ export default class ChartImp implements Chart {
   }
 
   resize(): void {
-    this.adjustPaneViewport(true, true, true, true, true)
+    this._drawPanes.forEach(pane => {
+      if (pane.getId() !== PaneIdConstants.X_AXIS) {
+        const dualYPane = pane as DualYPane
+        dualYPane.getYLeftAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
+        dualYPane.getYRightAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
+      }
+    })
+    let previousMainWidth = this._chartStore.mainWidth
+    let shouldMeasureHeight = true
+
+    // Width changes can shift visible range, which in turn affects Y-axis range.
+    // Re-run until main width is stable so Y-axis calculations use the latest range.
+    for (let i = 0; i < 3; i++) {
+      this.adjustPaneViewport(shouldMeasureHeight, true, true, true, true)
+      shouldMeasureHeight = false
+
+      const nextMainWidth = this._chartStore.mainWidth
+      if (nextMainWidth === previousMainWidth) {
+        break
+      }
+      previousMainWidth = nextMainWidth
+    }
   }
 
   focus(): void {
