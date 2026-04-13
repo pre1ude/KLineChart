@@ -132,25 +132,28 @@ export default class OverlayStore {
 
   private _sort(paneId?: string): void {
     const sortByExplicitZLevel = (paneInstances: Overlay[]): void => {
-      const explicitZLevelIndexes: number[] = []
-      const explicitZLevelOverlays: Array<{ overlay: Overlay, zLevel: number }> = []
+      const overlaysWithExplicitZLevel: Array<{ overlay: Overlay, zLevel: number }> = []
+      const overlaysWithoutExplicitZLevel: Overlay[] = []
 
-      paneInstances.forEach((overlay, index) => {
+      paneInstances.forEach((overlay) => {
         if (isNumber(overlay.zLevel)) {
-          explicitZLevelIndexes.push(index)
-          explicitZLevelOverlays.push({ overlay, zLevel: overlay.zLevel })
+          overlaysWithExplicitZLevel.push({ overlay, zLevel: overlay.zLevel })
+        } else {
+          overlaysWithoutExplicitZLevel.push(overlay)
         }
       })
 
-      if (explicitZLevelOverlays.length <= 1) {
+      if (overlaysWithExplicitZLevel.length === 0) {
         return
       }
 
-      explicitZLevelOverlays.sort((o1, o2) => o1.zLevel - o2.zLevel)
+      overlaysWithExplicitZLevel.sort((o1, o2) => o1.zLevel - o2.zLevel)
 
-      explicitZLevelIndexes.forEach((targetIndex, index) => {
-        paneInstances[targetIndex] = explicitZLevelOverlays[index].overlay
-      })
+      paneInstances.length = 0
+      paneInstances.push(
+        ...overlaysWithoutExplicitZLevel,
+        ...overlaysWithExplicitZLevel.map(item => item.overlay)
+      )
     }
 
     if (isString(paneId)) {
