@@ -739,6 +739,7 @@ export default class ChartImp implements Chart {
 
   clearData(): void {
     this._chartStore.clear()
+    this.adjustPaneViewport(false, true, true, true)
   }
 
   getDataList(): KLineData[] {
