@@ -163,7 +163,7 @@ export default abstract class XAxisImp extends AxisImp {
         }
       }
     }
-    return optimalTicks
+    return this._filterOverlappedTicks(optimalTicks)
   }
 
   protected optimalMinuteTicks(ticks: AxisTick[]): AxisTick[] {
@@ -230,7 +230,77 @@ export default abstract class XAxisImp extends AxisImp {
       }
     }
 
-    return optimalTicks
+    return this._filterOverlappedTicks(optimalTicks)
+  }
+
+  private _filterOverlappedTicks(ticks: AxisTick[]): AxisTick[] {
+    const tickLength = ticks.length
+    if (tickLength <= 1) {
+      return ticks
+    }
+
+    const tickTextStyles = this.getParent().getPane().getChart().getStyles().xAxis.tickText
+    const font = createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.fontFamily)
+    const minGap = 6
+    const canvasWidth = this.getSelfBounding().width
+    const widths = ticks.map(tick => calcTextWidth(tick.text, font))
+
+    const selectedIndexes = ticks.map((_, index) => index)
+    let i = 1
+    while (i < selectedIndexes.length) {
+      const leftIndex = selectedIndexes[i - 1]
+      const rightIndex = selectedIndexes[i]
+      const leftWidth = widths[leftIndex]
+      const rightWidth = widths[rightIndex]
+      const leftCenter = this._calcRenderTickCenter(ticks[leftIndex], leftWidth, i - 1, selectedIndexes.length, canvasWidth)
+      const rightCenter = this._calcRenderTickCenter(ticks[rightIndex], rightWidth, i, selectedIndexes.length, canvasWidth)
+      if (this._isTickOverlap(leftCenter, leftWidth, rightCenter, rightWidth, minGap)) {
+        selectedIndexes.splice(i, 1)
+        if (i > 1) {
+          i--
+        }
+      } else {
+        i++
+      }
+    }
+
+    if (selectedIndexes.length === tickLength) {
+      return ticks
+    }
+    return selectedIndexes.map(index => ticks[index])
+  }
+
+  private _calcRenderTickCenter(
+    tick: AxisTick,
+    tickWidth: number,
+    index: number,
+    total: number,
+    canvasWidth: number
+  ): number {
+    let x = tick.coord
+    if (index === 0) {
+      const delta = x - tickWidth / 2
+      if (delta < 0) {
+        x -= delta
+      }
+    } else if (index === total - 1) {
+      const delta = x + tickWidth / 2 - canvasWidth
+      if (delta > 0) {
+        x -= delta
+      }
+    }
+    return x
+  }
+
+  private _isTickOverlap(
+    leftCenter: number,
+    leftWidth: number,
+    rightCenter: number,
+    rightWidth: number,
+    minGap: number
+  ): boolean {
+    const distance = Math.abs(rightCenter - leftCenter)
+    return distance < (leftWidth + rightWidth) / 2 + minGap
   }
 
   // should only call once
