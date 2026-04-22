@@ -217,6 +217,24 @@ export default class TimeScaleStore {
     this._refreshTimeScale()
   }
 
+  adjustBarSpaceForMainWidthChange(prevMainWidth: number, nextMainWidth: number): void {
+    if (this._chartStore.getIsTimeShare()) {
+      return
+    }
+    if (prevMainWidth <= 0 || nextMainWidth <= 0 || prevMainWidth === nextMainWidth) {
+      return
+    }
+
+    const prevBarWidth = this._barWidth
+    const widthRatio = nextMainWidth / prevMainWidth
+    const nextBarWidth = clamp(prevBarWidth * widthRatio, this._barSpaceLimit.min, this._barSpaceLimit.max)
+    const realScaleRatio = nextBarWidth / prevBarWidth
+
+    this._barWidth = nextBarWidth
+    this._kWidth = getKWidth(this._barWidth)
+    this._offsetRight *= realScaleRatio
+  }
+
   setOffsetRightDistance(distance: number, update?: boolean): this {
     this._offsetRight = distance
     if (update ?? false) {
