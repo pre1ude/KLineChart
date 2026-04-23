@@ -90,7 +90,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       this._ticks = []
       return true
     }
-    if (this._prevRange.from !== this._range.from || this._prevRange.to !== this._range.to || force) {
+    if (this._prevRange.from !== this._range.from || this._prevRange.to !== this._range.to || force || this._ticks.length === 0) {
       this._prevRange = this._range
       const parent = this.getParent().getPane()
       const chart = parent.getChart()
