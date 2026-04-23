@@ -230,7 +230,7 @@ export {
 // ==================== Type Exports ====================
 
 // Core Types
-export type { Chart } from './Chart'
+export type { Chart, ResizeAnchor } from './Chart'
 export type { default as ChartImp } from './Chart'
 export type { Options } from './Options'
 

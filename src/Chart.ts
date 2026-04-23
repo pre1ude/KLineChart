@@ -45,6 +45,8 @@ export interface ConvertFinder {
   yAxisPosition?: 'left' | 'right'
 }
 
+export type ResizeAnchor = 'domainFrom' | 'domainTo'
+
 export interface Chart {
   id: string
   getDom: (paneId?: string, position?: DomPosition) => HTMLElement | null
@@ -128,7 +130,7 @@ export interface Chart {
   subscribeAction: <T extends ActionType>(type: T, callback: ActionCallback<ActionCallbackParams[T]>) => void
   unsubscribeAction: <T extends ActionType>(type: T, callback?: ActionCallback<ActionCallbackParams[T]>) => void
   getConvertPictureUrl: (includeOverlay?: boolean, type?: string, backgroundColor?: string) => string
-  resize: (resizeBarSpace?: boolean) => void
+  resize: (anchor?: ResizeAnchor) => void
   focus: () => void
 }
 
@@ -343,7 +345,7 @@ export default class ChartImp implements Chart {
 
   // todo read the pane axisOptions
   // todo deprecated partial of yAxis style
-  private _measurePaneWidth(resizeBarSpace?: boolean): void {
+  private _measurePaneWidth(resizeAnchor?: ResizeAnchor): void {
     const totalWidth = Math.floor(this._container.clientWidth)
     const styles = this._chartStore.getStyles()
     const yAxisStyles = styles.yAxis
@@ -392,8 +394,8 @@ export default class ChartImp implements Chart {
     const prevMainWidth = this._chartStore.mainWidth
     this._chartStore.mainWidth = mainWidth
     const timeScaleStore = this._chartStore.getTimeScaleStore()
-    if (resizeBarSpace === true) {
-      timeScaleStore.adjustBarSpaceForMainWidthChange(prevMainWidth, mainWidth)
+    if (resizeAnchor !== undefined) {
+      timeScaleStore.adjustBarSpaceForMainWidthChange(prevMainWidth, mainWidth, resizeAnchor)
     }
     timeScaleStore.adjustVisibleRange()
     this._chartStore.getTooltipStore().recalculateCrosshair(true)
@@ -467,7 +469,7 @@ export default class ChartImp implements Chart {
     shouldUpdate: boolean,
     shouldAdjustYAxis?: boolean,
     shouldForceAdjustYAxis?: boolean,
-    resizeBarSpace?: boolean
+    resizeAnchor?: ResizeAnchor
   ): void {
     if (shouldMeasureHeight) {
       this._measurePaneHeight()
@@ -492,7 +494,7 @@ export default class ChartImp implements Chart {
       })
     }
     if (forceMeasureWidth) {
-      this._measurePaneWidth(resizeBarSpace)
+      this._measurePaneWidth(resizeAnchor)
     }
     if (shouldUpdate ?? false) {
       const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
@@ -1269,7 +1271,11 @@ export default class ChartImp implements Chart {
     return canvas.toDataURL(`image/${type ?? 'png'}`)
   }
 
-  resize(resizeBarSpace: boolean = false): void {
+  resize(anchor?: ResizeAnchor): void {
+    if (anchor !== undefined && anchor !== 'domainFrom' && anchor !== 'domainTo') {
+      logWarn('resize', 'anchor', 'anchor only supports `domainFrom`, `domainTo`!!!')
+      return
+    }
     this._drawPanes.forEach(pane => {
       if (pane.getId() !== PaneIdConstants.X_AXIS) {
         const dualYPane = pane as DualYPane
@@ -1283,7 +1289,7 @@ export default class ChartImp implements Chart {
     // Width changes can shift visible range, which in turn affects Y-axis range.
     // Re-run until main width is stable so Y-axis calculations use the latest range.
     for (let i = 0; i < 3; i++) {
-      this.adjustPaneViewport(shouldMeasureHeight, true, true, true, true, resizeBarSpace)
+      this.adjustPaneViewport(shouldMeasureHeight, true, true, true, true, anchor)
       shouldMeasureHeight = false
 
       const nextMainWidth = this._chartStore.mainWidth

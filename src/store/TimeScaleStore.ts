@@ -1,5 +1,6 @@
 import type BarSpace from '../common/BarSpace'
 import type VisibleRange from '../common/VisibleRange'
+import type { ResizeAnchor } from '../Chart'
 import { createDefaultTimeShareVisibleRange, getDefaultVisibleRange } from '../common/VisibleRange'
 import { ActionType } from '../common/Action'
 import type ChartStore from './ChartStore'
@@ -217,7 +218,7 @@ export default class TimeScaleStore {
     this._refreshTimeScale()
   }
 
-  adjustBarSpaceForMainWidthChange(prevMainWidth: number, nextMainWidth: number): void {
+  adjustBarSpaceForMainWidthChange(prevMainWidth: number, nextMainWidth: number, anchor: ResizeAnchor): void {
     if (this._chartStore.getIsTimeShare()) {
       return
     }
@@ -226,13 +227,20 @@ export default class TimeScaleStore {
     }
 
     const prevBarWidth = this._barWidth
+    const prevOffsetRight = this._offsetRight
     const widthRatio = nextMainWidth / prevMainWidth
     const nextBarWidth = clamp(prevBarWidth * widthRatio, this._barSpaceLimit.min, this._barSpaceLimit.max)
     const realScaleRatio = nextBarWidth / prevBarWidth
 
     this._barWidth = nextBarWidth
     this._kWidth = getKWidth(this._barWidth)
-    this._offsetRight *= realScaleRatio
+    if (anchor === 'domainTo') {
+      this._offsetRight = prevOffsetRight * realScaleRatio
+      return
+    }
+    // Keep domainFrom stable across resize:
+    // offset' = (offset - prevMainWidth) * (bar'/bar) + nextMainWidth
+    this._offsetRight = (prevOffsetRight - prevMainWidth) * realScaleRatio + nextMainWidth
   }
 
   setOffsetRightDistance(distance: number, update?: boolean): this {
