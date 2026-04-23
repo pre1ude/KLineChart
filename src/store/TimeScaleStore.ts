@@ -275,7 +275,7 @@ export default class TimeScaleStore {
     this._calcMode = 'BARCOUNT_MODE'
   }
 
-  fitToWidth(align: 'left' | 'center' | 'right' = 'left'): void {
+  fitToWidth(align: 'left' | 'center' | 'right' | 'auto' = 'auto'): void {
     if (this._chartStore.getIsTimeShare()) {
       return
     }
@@ -293,6 +293,9 @@ export default class TimeScaleStore {
     const totalBarWidth = totalBarCount * this._barWidth
 
     switch (align) {
+      case 'auto':
+        this._offsetRight = totalBarWidth <= mainWidth ? mainWidth - totalBarWidth : 0
+        break
       case 'left':
         this._offsetRight = mainWidth - totalBarWidth
         break

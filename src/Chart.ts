@@ -70,7 +70,7 @@ export interface Chart {
   setBarSpaceLimit: (limit: { min?: number, max?: number }) => void
   setBarSpace: (space: number) => void
   getBarSpace: () => number
-  fitToWidth: (options?: { align?: 'left' | 'center' | 'right' }) => void
+  fitToWidth: (options?: { align?: 'left' | 'center' | 'right' | 'auto' }) => void
   getVisibleRange: () => VisibleRange
   clearData: () => void
   getDataList: () => KLineData[]
@@ -726,10 +726,10 @@ export default class ChartImp implements Chart {
     return this._chartStore.getTimeScaleStore().getBarSpace().bar
   }
 
-  fitToWidth(options?: { align?: 'left' | 'center' | 'right' }): void {
-    const align = options?.align ?? 'left'
-    if (align !== 'left' && align !== 'center' && align !== 'right') {
-      logWarn('fitToWidth', 'align', 'align only supports `left`, `center`, `right`!!!')
+  fitToWidth(options?: { align?: 'left' | 'center' | 'right' | 'auto' }): void {
+    const align = options?.align ?? 'auto'
+    if (align !== 'left' && align !== 'center' && align !== 'right' && align !== 'auto') {
+      logWarn('fitToWidth', 'align', 'align only supports `left`, `center`, `right`, `auto`!!!')
       return
     }
     if (this._chartStore.getIsTimeShare()) {
