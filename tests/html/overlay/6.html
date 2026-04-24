@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="keywords"
+      content="kline time-line candlestick stock chart canvas k线 行情 蜡烛图 分时图 技术指标 图表"
+    />
+    <meta
+      name="description"
+      content="Regression demo for unbound progress overlay remove redraw residue"
+    />
+    <link rel="stylesheet" type="text/css" href="../../css/chart.css" />
+    <title>Overlay Regression (Unbound Progress Remove Residue)</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+
+      .panel {
+        padding: 12px 16px;
+        border-bottom: 1px solid #ddd;
+        background: #fafafa;
+      }
+
+      .panel h2 {
+        margin: 0 0 8px;
+        font-size: 18px;
+      }
+
+      .panel ol {
+        margin: 8px 0 12px;
+        padding-left: 20px;
+      }
+
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: 1px solid #ccc;
+        background: #fff;
+        cursor: pointer;
+        padding: 6px 10px;
+      }
+
+      button:hover {
+        background: #f0f0f0;
+      }
+
+      #status {
+        margin-top: 8px;
+        font-size: 13px;
+      }
+
+      #status.reproduced {
+        color: #b00020;
+      }
+
+      #status.not-reproduced {
+        color: #0a7a0a;
+      }
+
+      #log {
+        margin-top: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        max-height: 180px;
+        overflow: auto;
+        border: 1px solid #e0e0e0;
+        background: #fff;
+        padding: 6px;
+        white-space: pre-wrap;
+      }
+
+      #chart {
+        height: calc(100vh - 310px);
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div class="panel">
+      <h2>Overlay Regression: Unbound Progress Remove Residue</h2>
+      <ol>
+        <li>Create drawing overlay without paneId (progressPaneId stays empty).</li>
+        <li>Move mouse once to create preview point without clicking.</li>
+        <li>Call removeOverlay and trace updatePane calls during remove.</li>
+      </ol>
+      <div class="row">
+        <label for="target-pane">Target pane:</label>
+        <select id="target-pane">
+          <option value="candle">CANDLE pane</option>
+          <option value="indicator">Indicator pane (KDJ)</option>
+        </select>
+        <button id="run-auto">Run Auto Repro</button>
+        <button id="nudge-redraw">Nudge Mousemove (Force Next Redraw)</button>
+        <button id="clear-overlay">Clear Overlay</button>
+      </div>
+      <div id="status"></div>
+      <div id="log"></div>
+    </div>
+    <div id="chart"></div>
+
+    <script type="module">
+      import { init, DomPosition, PaneIdConstants } from '../../../dist/index.js'
+      import { generated } from '../../js/dataSource.js'
+
+      const chart = init('chart')
+      const indicatorPaneId = chart.createIndicator('KDJ')
+      chart.applyNewData(generated())
+      const overlayStore = chart.getChartStore().getOverlayStore()
+
+      const statusEl = document.getElementById('status')
+      const logEl = document.getElementById('log')
+      const targetPaneSelect = document.getElementById('target-pane')
+      const runAutoBtn = document.getElementById('run-auto')
+      const nudgeBtn = document.getElementById('nudge-redraw')
+      const clearBtn = document.getElementById('clear-overlay')
+
+      function log(message) {
+        const time = new Date().toLocaleTimeString()
+        logEl.textContent = `[${time}] ${message}\n${logEl.textContent}`
+      }
+
+      function updateStatus(message, type = '') {
+        statusEl.className = type
+        statusEl.textContent = message
+      }
+
+      function waitFrames(count = 2) {
+        return new Promise((resolve) => {
+          const step = (left) => {
+            if (left <= 0) {
+              resolve()
+              return
+            }
+            requestAnimationFrame(() => step(left - 1))
+          }
+          step(count)
+        })
+      }
+
+      function getPaneContext() {
+        const target = targetPaneSelect.value
+        if (target === 'indicator') {
+          return {
+            paneId: indicatorPaneId,
+            dom: chart.getDom(indicatorPaneId, DomPosition.Main)
+          }
+        }
+        return {
+          paneId: PaneIdConstants.CANDLE,
+          dom: chart.getDom(PaneIdConstants.CANDLE, DomPosition.Main)
+        }
+      }
+
+      function getProbeClientPoint(dom) {
+        const rect = dom.getBoundingClientRect()
+        const clientX = Math.round(rect.left + rect.width * 0.33)
+        const clientY = Math.round(rect.top + rect.height * 0.42)
+        return { clientX, clientY }
+      }
+
+      function dispatchMouseMoveOnChartRoot(point) {
+        const chartRootDom = chart.getDom()
+        if (!chartRootDom) return
+        chartRootDom.dispatchEvent(new MouseEvent('mouseenter', {
+          bubbles: false,
+          cancelable: true,
+          clientX: point.clientX,
+          clientY: point.clientY
+        }))
+        chartRootDom.dispatchEvent(new MouseEvent('mousemove', {
+          bubbles: true,
+          cancelable: true,
+          clientX: point.clientX,
+          clientY: point.clientY
+        }))
+      }
+
+      function removeOverlayWithUpdatePaneTrace() {
+        const originalUpdatePane = chart.updatePane.bind(chart)
+        const calls = []
+        chart.updatePane = (level, paneId) => {
+          calls.push({ level, paneId: paneId ?? '(all)' })
+          return originalUpdatePane(level, paneId)
+        }
+        try {
+          chart.removeOverlay()
+        } finally {
+          chart.updatePane = originalUpdatePane
+        }
+        return calls
+      }
+
+      async function runAutoRepro() {
+        updateStatus('Running...', '')
+        chart.removeOverlay()
+        await waitFrames(3)
+
+        const { paneId, dom } = getPaneContext()
+        if (!dom) {
+          updateStatus('Target pane main dom not found.', 'not-reproduced')
+          log('ABORT: target pane dom missing.')
+          return
+        }
+
+        const probePoint = getProbeClientPoint(dom)
+
+        chart.createOverlay('segment')
+        await waitFrames(2)
+        const initialProgressPaneId = overlayStore.getProgressOverlayPaneId()
+
+        dispatchMouseMoveOnChartRoot(probePoint)
+        await waitFrames(3)
+
+        const progressOverlay = overlayStore.getProgressOverlay()
+        const progressPaneAfterMove = overlayStore.getProgressOverlayPaneId()
+        const previewPointCount = progressOverlay?.points.length ?? 0
+        const previewDrawn = previewPointCount > 0
+        const unboundAfterMove = progressPaneAfterMove.length === 0
+
+        const updatePaneCalls = removeOverlayWithUpdatePaneTrace()
+        await waitFrames(2)
+
+        const afterRemoveOverlay = overlayStore.getProgressOverlay()
+        const storeCleared = afterRemoveOverlay == null
+        const hasNoRedrawOnRemove = updatePaneCalls.length === 0
+        const mechanismReproduced = previewDrawn && unboundAfterMove && storeCleared && hasNoRedrawOnRemove
+
+        const traceSummary = updatePaneCalls.length > 0
+          ? updatePaneCalls.map(call => `[level=${call.level}, paneId=${call.paneId}]`).join(', ')
+          : '(none)'
+        const summary = `pane=${paneId}, initialProgressPaneId=${initialProgressPaneId || '(empty)'}, progressPaneAfterMove=${progressPaneAfterMove || '(empty)'}, previewPointCount=${previewPointCount}, remove.updatePaneCalls=${updatePaneCalls.length}`
+        log(summary)
+        log(`remove.updatePane trace: ${traceSummary}`)
+
+        if (mechanismReproduced) {
+          updateStatus(`REPRODUCED: removeOverlay had no redraw under unbound+preview condition. ${summary}`, 'reproduced')
+          log('REPRODUCED: progress overlay had preview point, was still unbound, got removed, and removeOverlay triggered zero updatePane calls.')
+        } else {
+          updateStatus(`NOT REPRODUCED (or already fixed). ${summary}`, 'not-reproduced')
+          if (!previewDrawn) {
+            log('NOT REPRODUCED reason: preview point was not created (points.length is 0).')
+          } else if (!unboundAfterMove) {
+            log('NOT REPRODUCED reason: progress pane is already bound after move.')
+          } else if (!storeCleared) {
+            log('NOT REPRODUCED reason: progress overlay still exists after remove.')
+          } else if (!hasNoRedrawOnRemove) {
+            log('NOT REPRODUCED reason: removeOverlay already triggered redraw (likely fixed).')
+          }
+        }
+      }
+
+      async function nudgeRedraw() {
+        const { dom } = getPaneContext()
+        if (!dom) return
+        const point = getProbeClientPoint(dom)
+        dispatchMouseMoveOnChartRoot({ clientX: point.clientX + 24, clientY: point.clientY + 24 })
+        await waitFrames(2)
+        log('Nudged mousemove on target pane.')
+      }
+
+      function clearOverlay() {
+        chart.removeOverlay()
+        updateStatus('Overlay cleared.', '')
+        log('Overlay cleared.')
+      }
+
+      runAutoBtn.addEventListener('click', () => {
+        runAutoRepro().catch((err) => {
+          updateStatus(`ERROR: ${String(err)}`, 'not-reproduced')
+          log(`ERROR: ${String(err)}`)
+        })
+      })
+      nudgeBtn.addEventListener('click', () => {
+        nudgeRedraw().catch((err) => {
+          updateStatus(`ERROR: ${String(err)}`, 'not-reproduced')
+          log(`ERROR: ${String(err)}`)
+        })
+      })
+      clearBtn.addEventListener('click', clearOverlay)
+
+      updateStatus('Ready. Click "Run Auto Repro".')
+      log('Init done. This page demonstrates mechanism: unbound progress + preview + remove may skip redraw.')
+    </script>
+  </body>
+</html>

@@ -9,7 +9,7 @@ import { type OverlayStyle } from '../common/Styles'
 import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 import { type DateTimeFormat, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
-import { isNumber } from '../common/utils/typeChecks'
+import { isNumber, isString } from '../common/utils/typeChecks'
 import type { EventOverlayInfo, Overlay, OverlayFigure, OverlayFigureData, OverlayPrecision } from '../component/Overlay'
 import { OVERLAY_FIGURE_KEY_PREFIX } from '../component/Overlay'
 import type XAxis from '../component/XAxis'
@@ -157,6 +157,7 @@ export default class OverlayView extends View {
     const precision = chartStore.getPrecision()
     const defaultStyles = chartStore.getStyles().overlay
     const overlayStore = chartStore.getOverlayStore()
+    const crosshair = chartStore.getTooltipStore().getCrosshair()
     const hoverInfo = this._hoverInstanceInfo
     // 统一使用全局选中状态
     const clickInfo = overlayStore.getSelectedInfo()
@@ -207,12 +208,21 @@ export default class OverlayView extends View {
 
     const progressOverlay = overlayStore.getProgressOverlay()
     if (progressOverlay?.visible === true) {
+      const progressPaneId = overlayStore.getProgressOverlayPaneId()
+      const isUnboundProgressPane = progressPaneId.length === 0
+      const isHoveredPane = isString(crosshair.paneId) && crosshair.paneId === paneId
+      const shouldDrawProgressOnPane = progressPaneId === paneId || (isUnboundProgressPane && isHoveredPane)
       // 只在 xAxis 或当前 pane 上绘制
-      if (this._type === 'xAxis' || progressOverlay.paneId === paneId) {
+      if (this._type === 'xAxis' || shouldDrawProgressOnPane) {
+        const shouldDrawProgressDefaultFigures = (
+          isString(crosshair.paneId) &&
+          (isUnboundProgressPane ? crosshair.paneId === paneId : crosshair.paneId === progressPaneId)
+        )
         this._drawOverlay(
           ctx, progressOverlay, bounding, barSpace,
           overlayPrecision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis,
-          true // bindEvent = true
+          true, // bindEvent = true
+          shouldDrawProgressDefaultFigures
         )
       }
     }
@@ -244,7 +254,8 @@ export default class OverlayView extends View {
     clickInfo?: EventOverlayInfo,
     xAxis?: XAxis,
     yAxis?: YAxis,
-    bindEvent: boolean = true
+    bindEvent: boolean = true,
+    drawDefaultFigures: boolean = true
   ): void {
     if (overlay.getSkipDraw()) return
 
@@ -258,7 +269,9 @@ export default class OverlayView extends View {
       const figures = Array.isArray(_figures) ? _figures : [_figures]
       this.drawFigures(ctx, overlay, figures, defaultStyles, bindEvent)
     }
-    this.drawDefaultFigures(ctx, overlay, coordinates, bounding, precision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis)
+    if (drawDefaultFigures) {
+      this.drawDefaultFigures(ctx, overlay, coordinates, bounding, precision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis)
+    }
   }
 
   protected drawFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, figures: OverlayFigure[], defaultStyles: OverlayStyle, bindEvent: boolean = true): void {

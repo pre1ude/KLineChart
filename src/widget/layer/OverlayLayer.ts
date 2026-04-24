@@ -72,12 +72,9 @@ export class OverlayLayer implements Layer {
 
       // 处理绘制中的 overlay
       if (progressOverlay) {
-        // 如果还在 CREATED 状态，允许切换 pane
-        if (progressOverlay.isCreated()) {
-          overlayStore.updateProgressOverlayPane(paneId)
-        }
-
-        if (!progressOverlay.isCompleted() && progressOverlay.paneId === paneId) {
+        const progressPaneId = overlayStore.getProgressOverlayPaneId()
+        const isProgressPaneMatched = progressPaneId.length === 0 || progressPaneId === paneId
+        if (!progressOverlay.isCompleted() && isProgressPaneMatched) {
           const pointIndex = progressOverlay.points.length - 1
           const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
           progressOverlay.updateDrawPoint(this._overlayView.coordinateToPoint(progressOverlay, event) as IPoint)
@@ -112,7 +109,10 @@ export class OverlayLayer implements Layer {
     this._overlayView.addEventListener('mouseClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay) {
-        if (!progressOverlay.isCompleted() && progressOverlay.paneId === paneId) {
+        overlayStore.updateProgressOverlayPane(paneId)
+        const progressPaneId = overlayStore.getProgressOverlayPaneId()
+        const isProgressPaneMatched = progressPaneId.length === 0 || progressPaneId === paneId
+        if (!progressOverlay.isCompleted() && isProgressPaneMatched) {
           const pointIndex = progressOverlay.points.length - 1
           const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
           progressOverlay.updateDrawPoint(this._overlayView.coordinateToPoint(progressOverlay, event) as IPoint)
@@ -187,7 +187,9 @@ export class OverlayLayer implements Layer {
     this._overlayView.addEventListener('mouseDoubleClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay) {
-        if (!progressOverlay.isCompleted() && progressOverlay.paneId === paneId) {
+        const progressPaneId = overlayStore.getProgressOverlayPaneId()
+        const isProgressPaneMatched = progressPaneId.length === 0 || progressPaneId === paneId
+        if (!progressOverlay.isCompleted() && isProgressPaneMatched) {
           const completed = progressOverlay.smartComplete()
           if (completed) {
             overlayStore.progressOverlayComplete()

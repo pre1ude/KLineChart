@@ -20,6 +20,7 @@ export default class OverlayStore {
    * Overlay in painting
    */
   private _progressOverlay?: ProgressOverlay
+  private _progressPaneId = ''
 
   /**
    * 全局选中的 overlay（用于跨 pane 共享选中状态）
@@ -124,7 +125,11 @@ export default class OverlayStore {
     }
 
     if (this._progressOverlay && match(this._progressOverlay)) {
-      overlays.push(this._progressOverlay)
+      if (!isValid(paneId)) {
+        overlays.push(this._progressOverlay)
+      } else if (this.getProgressOverlayPaneId() === paneId) {
+        overlays.push(this._progressOverlay)
+      }
     }
 
     return overlays
@@ -172,8 +177,10 @@ export default class OverlayStore {
     const updatePaneIds: string[] = []
 
     const ids = overlays.map((overlay) => {
-      // 优先使用 overlay 自己的 paneId，否则使用参数 paneId，最后回退到 CANDLE
-      const targetPaneId = overlay.paneId ?? paneId ?? PaneIdConstants.CANDLE
+      // 显式指定 pane 时直接使用；未显式指定时先不绑定 pane（首次点击再落位）
+      const overlayPaneId = isString(overlay.paneId) && overlay.paneId.length > 0 ? overlay.paneId : undefined
+      const fallbackPaneId = isString(paneId) && paneId.length > 0 ? paneId : undefined
+      const targetPaneId = overlayPaneId ?? fallbackPaneId ?? ''
 
       // Check if ID already exists
       if (isValid(overlay.id)) {
@@ -218,17 +225,25 @@ export default class OverlayStore {
       })
       overlayInstance.setSkipDraw(skipDraw)
 
-      if (!updatePaneIds.includes(targetPaneId)) {
-        updatePaneIds.push(targetPaneId)
+      // 已完成且未指定 pane 的 overlay 仍按历史行为回退到主图
+      if (overlayInstance.isCompleted() && targetPaneId.length === 0) {
+        overlayInstance.paneId = PaneIdConstants.CANDLE
       }
 
       if (!overlayInstance.isCompleted()) {
         this._progressOverlay = overlayInstance
+        this._progressPaneId = targetPaneId
       } else {
-        if (!this._instances.has(targetPaneId)) {
-          this._instances.set(targetPaneId, [])
+        const completedPaneId = overlayInstance.paneId
+        if (!this._instances.has(completedPaneId)) {
+          this._instances.set(completedPaneId, [])
         }
-        this._instances.get(targetPaneId)?.push(overlayInstance)
+        this._instances.get(completedPaneId)?.push(overlayInstance)
+      }
+
+      const redrawPaneId = overlayInstance.paneId
+      if (redrawPaneId.length > 0 && !updatePaneIds.includes(redrawPaneId)) {
+        updatePaneIds.push(redrawPaneId)
       }
 
       return id
@@ -265,20 +280,29 @@ export default class OverlayStore {
     return this._progressOverlay
   }
 
+  getProgressOverlayPaneId(): string {
+    return this._progressOverlay ? this._progressPaneId : ''
+  }
+
   progressOverlayComplete(): void {
     if (this._progressOverlay?.isCompleted()) {
-      const paneId = this._progressOverlay.paneId
+      const paneId = this._progressPaneId.length > 0
+        ? this._progressPaneId
+        : PaneIdConstants.CANDLE
+      this._progressOverlay.paneId = paneId
       if (!this._instances.has(paneId)) {
         this._instances.set(paneId, [])
       }
       this._instances.get(paneId)?.push(this._progressOverlay)
       this._sort(paneId)
       this._progressOverlay = undefined
+      this._progressPaneId = ''
     }
   }
 
   updateProgressOverlayPane(paneId: string): void {
-    if (this._progressOverlay) {
+    if (this._progressOverlay && this._progressPaneId.length === 0 && paneId.length > 0) {
+      this._progressPaneId = paneId
       this._progressOverlay.paneId = paneId
     }
   }
@@ -314,7 +338,7 @@ export default class OverlayStore {
       if (changes.sort) shouldSort = true
       if (changes.draw) {
         instance.update(_props)
-        if (!updatePaneIds.includes(instance.paneId)) {
+        if (instance.paneId.length > 0 && !updatePaneIds.includes(instance.paneId)) {
           updatePaneIds.push(instance.paneId)
         }
       }
@@ -333,22 +357,31 @@ export default class OverlayStore {
   _redraw(updatePaneIds: string[]): void {
     const chart = this._chartStore.getChart()
     updatePaneIds.forEach(paneId => {
-      chart.updatePane(UpdateLevel.Overlay, paneId)
+      if (paneId.length > 0) {
+        chart.updatePane(UpdateLevel.Overlay, paneId)
+      }
     })
     chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
   }
 
   removeInstance(filter?: OverlayFilter): boolean {
     const updatePaneIds: string[] = []
+    let shouldRedrawAllOverlay = false
 
     if (!isValid(filter)) {
       // Remove all overlays
       if (this._progressOverlay) {
-        if (!updatePaneIds.includes(this._progressOverlay.paneId)) {
-          updatePaneIds.push(this._progressOverlay.paneId)
+        const progressPaneId = this.getProgressOverlayPaneId()
+        if (progressPaneId.length > 0 && !updatePaneIds.includes(progressPaneId)) {
+          updatePaneIds.push(progressPaneId)
+        } else if (progressPaneId.length === 0) {
+          // Progress overlay can be drawn on hovered pane before first click binding.
+          // When it is removed while still unbound, we don't know a single target pane to refresh.
+          shouldRedrawAllOverlay = true
         }
         this._progressOverlay.onRemoved?.()
         this._progressOverlay = undefined
+        this._progressPaneId = ''
       }
 
       this._instances.forEach((paneInstances, paneId) => {
@@ -368,13 +401,20 @@ export default class OverlayStore {
 
         instance.onRemoved?.()
 
-        if (!updatePaneIds.includes(targetPaneId)) {
-          updatePaneIds.push(targetPaneId)
-        }
-
         if (!instance.isCompleted()) {
+          const progressPaneId = this.getProgressOverlayPaneId()
+          if (progressPaneId.length > 0 && !updatePaneIds.includes(progressPaneId)) {
+            updatePaneIds.push(progressPaneId)
+          } else if (progressPaneId.length === 0) {
+            // Same reason as above: unbound progress overlay may have been rendered on hovered pane.
+            shouldRedrawAllOverlay = true
+          }
           this._progressOverlay = undefined
+          this._progressPaneId = ''
         } else {
+          if (!updatePaneIds.includes(targetPaneId)) {
+            updatePaneIds.push(targetPaneId)
+          }
           const index = paneInstances.findIndex(o => o.id === instance.id)
           if (index > -1) {
             paneInstances.splice(index, 1)
@@ -386,6 +426,11 @@ export default class OverlayStore {
           this._instances.delete(targetPaneId)
         }
       })
+    }
+
+    if (shouldRedrawAllOverlay) {
+      this._chartStore.getChart().updatePane(UpdateLevel.Overlay)
+      return true
     }
 
     if (updatePaneIds.length > 0) {
