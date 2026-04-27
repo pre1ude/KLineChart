@@ -39,7 +39,15 @@ export enum DomPosition {
   YAxis = 'yAxis'
 }
 
-export type PaneScope = 'content' | 'main' | 'indicators' | 'all'
+/**
+ * getPaneBounds scope mapping:
+ * - candle: 主图 pane 整体
+ * - candle_main: 主图 main 区
+ * - content/content_main: 所有非 xAxis pane 的整体/main 并集
+ * - indicators/indicators_main: 所有副图 pane 的整体/main 并集
+ * - all: 所有 pane 整体并集
+ */
+export type PaneScope = 'content' | 'content_main' | 'candle' | 'candle_main' | 'indicators' | 'indicators_main' | 'all'
 
 export interface ConvertFinder {
   paneId?: string
@@ -602,10 +610,14 @@ export default class ChartImp implements Chart {
   }
 
   getPaneBounds(scope: PaneScope = 'content'): Bounding | null {
-    if (scope === 'main') {
+    if (scope === 'candle') {
       return this._candlePane?.getBounding() ?? null
     }
+    if (scope === 'candle_main') {
+      return this._candlePane?.getMainWidget().getBounding() ?? null
+    }
 
+    const useMainBounding = scope === 'content_main' || scope === 'indicators_main'
     let left = Number.POSITIVE_INFINITY
     let top = Number.POSITIVE_INFINITY
     let right = Number.NEGATIVE_INFINITY
@@ -614,14 +626,21 @@ export default class ChartImp implements Chart {
 
     this._drawPanes.forEach((pane) => {
       const paneId = pane.getId()
-      if (paneId === PaneIdConstants.CANDLE && scope === 'indicators') {
-        return
-      }
-      if (paneId === PaneIdConstants.X_AXIS && scope !== 'all') {
+      if (scope === 'content' || scope === 'content_main') {
+        if (paneId === PaneIdConstants.X_AXIS) {
+          return
+        }
+      } else if (scope === 'indicators' || scope === 'indicators_main') {
+        if (paneId === PaneIdConstants.CANDLE || paneId === PaneIdConstants.X_AXIS) {
+          return
+        }
+      } else if (scope !== 'all') {
         return
       }
 
-      const bounding = pane.getBounding()
+      const bounding = useMainBounding
+        ? pane.getMainWidget().getBounding()
+        : pane.getBounding()
       left = Math.min(left, bounding.left)
       top = Math.min(top, bounding.top)
       right = Math.max(right, bounding.left + bounding.width)
