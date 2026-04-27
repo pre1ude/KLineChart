@@ -39,6 +39,8 @@ export enum DomPosition {
   YAxis = 'yAxis'
 }
 
+export type PaneScope = 'content' | 'main' | 'indicators' | 'all'
+
 export interface ConvertFinder {
   paneId?: string
   absolute?: boolean
@@ -51,6 +53,7 @@ export interface Chart {
   id: string
   getDom: (paneId?: string, position?: DomPosition) => HTMLElement | null
   getSize: (paneId?: string, position?: DomPosition) => Bounding | null
+  getPaneBounds: (scope?: PaneScope) => Bounding | null
   setOptions: (option: Options) => void
   setLocale: (locale: string) => void
   getLocale: () => string
@@ -77,6 +80,7 @@ export interface Chart {
   clearData: () => void
   getDataList: () => KLineData[]
   getChartStore: () => ChartStore
+  getDrawPaneById: (paneId: string) => DrawPane | undefined
   getDataByDataIndex: (dataIndex: number) => KLineData | undefined
   getDataByTimestamp: (timestamp: number, options?: { exact?: boolean }) => KLineData | undefined
   applyNewData: (dataList: KLineData[], more?: boolean, callback?: () => void) => void
@@ -141,6 +145,7 @@ export default class ChartImp implements Chart {
   private _chartContainer: HTMLElement
   private readonly _chartEvent: Event
   private readonly _chartStore: ChartStore
+  // Includes CandlePane (main), IndicatorPane (sub panes), XAxisPane (x-axis pane)
   private _drawPanes: (DrawPane)[] = []
   private _candlePane?: CandlePane
   private _xAxisPane!: XAxisPane
@@ -594,6 +599,46 @@ export default class ChartImp implements Chart {
       }
     }
     return null
+  }
+
+  getPaneBounds(scope: PaneScope = 'content'): Bounding | null {
+    if (scope === 'main') {
+      return this._candlePane?.getBounding() ?? null
+    }
+
+    let left = Number.POSITIVE_INFINITY
+    let top = Number.POSITIVE_INFINITY
+    let right = Number.NEGATIVE_INFINITY
+    let bottom = Number.NEGATIVE_INFINITY
+    let found = false
+
+    this._drawPanes.forEach((pane) => {
+      const paneId = pane.getId()
+      if (paneId === PaneIdConstants.CANDLE && scope === 'indicators') {
+        return
+      }
+      if (paneId === PaneIdConstants.X_AXIS && scope !== 'all') {
+        return
+      }
+
+      const bounding = pane.getBounding()
+      left = Math.min(left, bounding.left)
+      top = Math.min(top, bounding.top)
+      right = Math.max(right, bounding.left + bounding.width)
+      bottom = Math.max(bottom, bounding.top + bounding.height)
+      found = true
+    })
+
+    if (!found) {
+      return null
+    }
+
+    return {
+      left,
+      top,
+      width: Math.max(0, right - left),
+      height: Math.max(0, bottom - top)
+    }
   }
 
   setStyles(styles: string | DeepPartial<Styles>): void {
