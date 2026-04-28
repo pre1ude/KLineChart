@@ -218,8 +218,6 @@ export class OverlayLayer implements Layer {
 
     // 鼠标右键事件 - 处理 onRightClick
     this._overlayView.addEventListener('contextMenuEvent', (event: MouseTouchEvent) => {
-      const progressOverlay = overlayStore.getProgressOverlay()
-
       const rightClickInfo = this._extractEventOverlayInfo(event.target, paneId)
 
       // 直接在事件对象上设置 overlay 信息，这样冒泡到上层时可以直接读取
@@ -234,10 +232,6 @@ export class OverlayLayer implements Layer {
           internalToExternal: (point: IPoint) => chartStore.internalToExternal(point)
         }
 
-        if (progressOverlay) {
-          if (rightClickInfo.interactType === 'control-point') return
-          if (progressOverlay === rightClickInfo.overlay) return
-        }
         const { overlay } = rightClickInfo
         const overlayEvent = createOverlayEventFromInfo(event, rightClickInfo, chartStore)
         // 调用 overlay 的 onRightClick 回调

@@ -10,7 +10,7 @@ import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 import { type DateTimeFormat, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { isNumber, isString } from '../common/utils/typeChecks'
-import type { EventOverlayInfo, Overlay, OverlayFigure, OverlayFigureData, OverlayPrecision } from '../component/Overlay'
+import type { EventOverlayInfo, FigureEventType, Overlay, OverlayFigure, OverlayFigureData, OverlayPrecision } from '../component/Overlay'
 import { OVERLAY_FIGURE_KEY_PREFIX } from '../component/Overlay'
 import type XAxis from '../component/XAxis'
 import type YAxis from '../component/YAxis'
@@ -37,6 +37,8 @@ interface GetFiguresParams {
   xAxis?: XAxis
   yAxis?: YAxis
 }
+
+const PROGRESS_OVERLAY_IGNORE_EVENTS: FigureEventType[] = ['contextMenuEvent']
 
 export default class OverlayView extends View {
   private readonly _type: OverlayViewType
@@ -222,7 +224,8 @@ export default class OverlayView extends View {
           ctx, progressOverlay, bounding, barSpace,
           overlayPrecision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis,
           true, // bindEvent = true
-          shouldDrawProgressDefaultFigures
+          shouldDrawProgressDefaultFigures,
+          PROGRESS_OVERLAY_IGNORE_EVENTS
         )
       }
     }
@@ -255,7 +258,8 @@ export default class OverlayView extends View {
     xAxis?: XAxis,
     yAxis?: YAxis,
     bindEvent: boolean = true,
-    drawDefaultFigures: boolean = true
+    drawDefaultFigures: boolean = true,
+    ignoreEvents?: FigureEventType[]
   ): void {
     if (overlay.getSkipDraw()) return
 
@@ -267,14 +271,23 @@ export default class OverlayView extends View {
     if (coordinates.length > 0) {
       const _figures = this.getFigures({ overlay, coordinates, bounding, barSpace, precision, thousandsSeparator, decimalFoldThreshold, dateTimeFormat, defaultStyles, xAxis, yAxis })
       const figures = Array.isArray(_figures) ? _figures : [_figures]
-      this.drawFigures(ctx, overlay, figures, defaultStyles, bindEvent)
+      this.drawFigures(ctx, overlay, figures, defaultStyles, bindEvent, ignoreEvents)
     }
     if (drawDefaultFigures) {
-      this.drawDefaultFigures(ctx, overlay, coordinates, bounding, precision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis)
+      this.drawDefaultFigures(ctx, overlay, coordinates, bounding, precision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis, ignoreEvents)
     }
   }
 
-  protected drawFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, figures: OverlayFigure[], defaultStyles: OverlayStyle, bindEvent: boolean = true): void {
+  private _mergeIgnoreEvents(ignoreEvent?: OverlayFigure['ignoreEvent'], extraIgnoreEvents?: FigureEventType[]): OverlayFigure['ignoreEvent'] {
+    if (ignoreEvent === true || extraIgnoreEvents == null) return ignoreEvent
+    if (ignoreEvent == null || ignoreEvent === false) return extraIgnoreEvents
+    return [
+      ...ignoreEvent,
+      ...extraIgnoreEvents.filter(eventName => !ignoreEvent.includes(eventName))
+    ]
+  }
+
+  protected drawFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, figures: OverlayFigure[], defaultStyles: OverlayStyle, bindEvent: boolean = true, ignoreEvents?: FigureEventType[]): void {
     for (let i = 0; i < figures.length; i++) {
       const figure = figures[i]
       const { type, styles, attrs, ignoreEvent, key } = figure
@@ -316,7 +329,7 @@ export default class OverlayView extends View {
           .draw(ctx)
 
         // 部分忽略或不忽略的图形添加到事件树
-        fig.setIgnoreEvent(ignoreEvent)
+        fig.setIgnoreEvent(this._mergeIgnoreEvents(ignoreEvent, ignoreEvents))
         this.addChild(fig)
       }
     }
@@ -337,7 +350,7 @@ export default class OverlayView extends View {
     }
   }
 
-  protected drawDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, dateTimeFormat: DateTimeFormat, customApi: CustomApi, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, _xAxis?: XAxis, _yAxis?: YAxis): void {
+  protected drawDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, dateTimeFormat: DateTimeFormat, customApi: CustomApi, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, _xAxis?: XAxis, _yAxis?: YAxis, ignoreEvents?: FigureEventType[]): void {
     switch (this._type) {
       case 'xAxis':
         this._drawXAxisDefaultFigures(ctx, overlay, coordinates, bounding, dateTimeFormat, customApi, defaultStyles, clickInfo)
@@ -346,11 +359,11 @@ export default class OverlayView extends View {
         this._drawYAxisDefaultFigures(ctx, overlay, coordinates, bounding, precision, thousandsSeparator, decimalFoldThreshold, defaultStyles, clickInfo)
         break
       default:
-        this._drawMainDefaultFigures(ctx, overlay, coordinates, defaultStyles, hoverInfo, clickInfo)
+        this._drawMainDefaultFigures(ctx, overlay, coordinates, defaultStyles, hoverInfo, clickInfo, ignoreEvents)
     }
   }
 
-  private _drawMainDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo): void {
+  private _drawMainDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, ignoreEvents?: FigureEventType[]): void {
     if (!overlay.needDefaultPointFigure) return
 
     // 正在绘制的 overlay 始终显示控制点
@@ -396,6 +409,7 @@ export default class OverlayView extends View {
         .draw(ctx)
       // 预览点只绘制不响应事件
       if (!isPreviewPoint) {
+        dot.setIgnoreEvent(ignoreEvents)
         this.addChild(dot)
       }
       drawStaticFigure(ctx, 'circle', {
