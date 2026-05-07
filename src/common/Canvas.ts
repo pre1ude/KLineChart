@@ -1,5 +1,5 @@
 import { getPixelRatio, getScale } from './utils/canvas'
-import { DEFAULT_REQUEST_ID, requestAnimationFrame } from './utils/compatible'
+import { cancelAnimationFrame, DEFAULT_REQUEST_ID, requestAnimationFrame } from './utils/compatible'
 import { createDom } from './utils/dom'
 import { isValid } from './utils/typeChecks'
 
@@ -72,26 +72,28 @@ export default class Canvas {
   }
 
   private _resetPixelRatio(): void {
-    this._executeListener(() => {
-      const width = this._element.clientWidth
-      const height = this._element.clientHeight
-      const horizontalPixelRatio = this._nextPixelWidth / width
-      const verticalPixelRatio = this._nextPixelHeight / height
-      this._width = width
-      this._height = height
-      this._pixelWidth = this._nextPixelWidth
-      this._pixelHeight = this._nextPixelHeight
-      this._element.width = this._nextPixelWidth
-      this._element.height = this._nextPixelHeight
-      this._ctx.scale(horizontalPixelRatio, verticalPixelRatio)
-    })
+    if (this._requestAnimationId !== DEFAULT_REQUEST_ID) {
+      cancelAnimationFrame(this._requestAnimationId)
+      this._requestAnimationId = DEFAULT_REQUEST_ID
+    }
+    const width = this._element.clientWidth
+    const height = this._element.clientHeight
+    const horizontalPixelRatio = this._nextPixelWidth / width
+    const verticalPixelRatio = this._nextPixelHeight / height
+    this._width = width
+    this._height = height
+    this._pixelWidth = this._nextPixelWidth
+    this._pixelHeight = this._nextPixelHeight
+    this._element.width = this._nextPixelWidth
+    this._element.height = this._nextPixelHeight
+    this._ctx.scale(horizontalPixelRatio, verticalPixelRatio)
+    this._listener()
   }
 
-  private _executeListener(fn?: () => void): void {
+  private _executeListener(): void {
     if (this._requestAnimationId === DEFAULT_REQUEST_ID) {
       this._requestAnimationId = requestAnimationFrame(() => {
         this._ctx.clearRect(0, 0, this._width, this._height)
-        fn?.()
         this._listener()
         this._requestAnimationId = DEFAULT_REQUEST_ID
       })
