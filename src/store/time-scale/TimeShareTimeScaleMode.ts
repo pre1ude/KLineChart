@@ -9,7 +9,8 @@ export class TimeShareTimeScaleMode extends TimeScaleMode {
     return { min: 0.1, max: 50 }
   }
 
-  override shouldRefreshAfterBarSpaceLimitChange(): boolean {
+  override applyBarSpaceLimitChange(nextBarWidth: number): boolean {
+    this.context.setBarWidth(nextBarWidth)
     return true
   }
 

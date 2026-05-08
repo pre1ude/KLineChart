@@ -55,6 +55,11 @@ export interface LayoutChild {
   options?: PaneOptions
 }
 
+export interface DataZoomOptions {
+  start?: number
+  end?: number
+}
+
 export interface Options {
   layout?: LayoutChild[]
   locale?: string
@@ -69,4 +74,5 @@ export interface Options {
   // 多日分时图是否跨天断开连接
   timeShareBreakOnCrossDays?: boolean
   preferXTicks?: string[]
+  dataZoom?: boolean | DataZoomOptions
 }

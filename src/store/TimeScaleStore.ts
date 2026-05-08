@@ -1,6 +1,7 @@
 import type BarSpace from '../common/BarSpace'
 import type VisibleRange from '../common/VisibleRange'
 import type { ResizeAnchor } from '../Chart'
+import type { DataZoomOptions } from '../Options'
 import { getDefaultVisibleRange } from '../common/VisibleRange'
 import { ActionType } from '../common/Action'
 import type ChartStore from './ChartStore'
@@ -8,18 +9,16 @@ import { LoadDataType } from '../common/LoadDataCallback'
 import { clamp } from '@/common/utils/number'
 import { createLinear, type LinearScale } from '../component/scale'
 import { logWarn } from '../common/utils/logger'
-import { KLineTimeScaleMode, type TimeScaleMode, type TimeScaleModeContext, TimeScaleModeKind, TimeShareTimeScaleMode } from './time-scale'
+import { DataZoomTimeScaleMode, KLineTimeScaleMode, type TimeScaleMode, type TimeScaleModeContext, TimeScaleModeKind, TimeShareTimeScaleMode } from './time-scale'
 
 const DEFAULT_BAR_WIDTH = 8
 const DEFAULT_OFFSET_RIGHT = 10
-const K_BAR_RATIO = 0.88
 
 export default class TimeScaleStore {
   private readonly _chartStore: ChartStore
   private _zoomEnabled: boolean = true
   private _scrollEnabled: boolean = true
   private _barWidth: number = DEFAULT_BAR_WIDTH
-  private _kWidth: number
   private _offsetRight = DEFAULT_OFFSET_RIGHT
   private _barSpaceLimit = { min: 1, max: 50 }
 
@@ -40,17 +39,16 @@ export default class TimeScaleStore {
   private _xScale: LinearScale
   private _mode: TimeScaleMode
   private readonly _modeContext: TimeScaleModeContext
+  private _dataZoomOptions: DataZoomOptions = {}
 
   constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
     this._xScale = createScale(this._visibleRange, this._chartStore.mainWidth)
-    this._kWidth = getKWidth(this._barWidth)
     this._modeContext = {
       getBarSpace: () => this.getBarSpace(),
       getBarWidth: () => this._barWidth,
       setBarWidth: barWidth => {
         this._barWidth = barWidth
-        this._kWidth = getKWidth(this._barWidth)
       },
       getBarSpaceLimit: () => this._barSpaceLimit,
       getMainWidth: () => this._chartStore.mainWidth,
@@ -81,6 +79,8 @@ export default class TimeScaleStore {
     switch (kind) {
       case TimeScaleModeKind.TimeShare:
         return new TimeShareTimeScaleMode(this._modeContext)
+      case TimeScaleModeKind.DataZoom:
+        return new DataZoomTimeScaleMode(this._modeContext)
       case TimeScaleModeKind.KLine:
         return new KLineTimeScaleMode(this._modeContext)
     }
@@ -89,6 +89,22 @@ export default class TimeScaleStore {
   setMode(kind: TimeScaleModeKind): void {
     this._mode = this.createMode(kind)
     this._barSpaceLimit = this._mode.createBarSpaceLimit()
+    this.applyDataZoomOptions()
+  }
+
+  setDataZoomOptions(options: DataZoomOptions = {}): void {
+    this._dataZoomOptions = options
+    this.applyDataZoomOptions()
+  }
+
+  resetDataZoomRange(): void {
+    this.applyDataZoomOptions()
+  }
+
+  private applyDataZoomOptions(): void {
+    if (this._mode instanceof DataZoomTimeScaleMode) {
+      this._mode.setRange(this._dataZoomOptions.start, this._dataZoomOptions.end)
+    }
   }
 
   private calcMinRemainWidth(): void {
@@ -142,12 +158,7 @@ export default class TimeScaleStore {
   }
 
   getBarSpace(): BarSpace {
-    return {
-      bar: this._barWidth,
-      halfBar: this._barWidth / 2,
-      gapBar: this._kWidth,
-      halfGapBar: Math.floor(this._kWidth / 2)
-    }
+    return this._mode.createBarSpace()
   }
 
   setBarSpaceLimit(limit: { min?: number, max?: number } = {}): void {
@@ -165,10 +176,7 @@ export default class TimeScaleStore {
 
     this._barSpaceLimit = nextLimit
 
-    const nextBarWidth = clamp(this._barWidth, nextLimit.min, nextLimit.max)
-    const shouldRefresh = this._mode.shouldRefreshAfterBarSpaceLimitChange(nextBarWidth)
-
-    this._modeContext.setBarWidth(nextBarWidth)
+    const shouldRefresh = this._mode.applyBarSpaceLimitChange(clamp(this._barWidth, nextLimit.min, nextLimit.max))
 
     if (shouldRefresh) {
       this._refreshTimeScale()
@@ -176,12 +184,9 @@ export default class TimeScaleStore {
   }
 
   setBarSpace(barWidth: number): void {
-    if (this._barWidth === barWidth) {
-      return
+    if (this._mode.setBarSpace(barWidth)) {
+      this._refreshTimeScale()
     }
-    this._barWidth = clamp(barWidth, this._barSpaceLimit.min, this._barSpaceLimit.max)
-    this._kWidth = getKWidth(this._barWidth)
-    this._refreshTimeScale()
   }
 
   adjustBarSpaceForMainWidthChange(prevMainWidth: number, nextMainWidth: number, anchor: ResizeAnchor): void {
@@ -355,23 +360,6 @@ export default class TimeScaleStore {
     return this._autoInitialAlignment
   }
 
-}
-
-function getKWidth(barWidth: number): number {
-  let kWidth: number
-  if (barWidth > 3) {
-    kWidth = Math.floor(barWidth * K_BAR_RATIO)
-  } else {
-    kWidth = Math.floor(barWidth)
-    if (kWidth === barWidth) {
-      kWidth--
-    }
-  }
-  if (kWidth % 2 === 0) {
-    kWidth--
-  }
-  kWidth = Math.max(1, kWidth)
-  return kWidth
 }
 
 function createScale({ domainFrom, domainTo }: VisibleRange, mainWidth: number): LinearScale {

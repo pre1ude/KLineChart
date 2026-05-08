@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DataZoom Slider</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    .toolbar {
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      height: 48px;
+      padding: 8px 12px;
+      border-bottom: 1px solid #d9dce3;
+      background: #f7f8fa;
+      color: #1f2329;
+      font-size: 13px;
+    }
+
+    button {
+      height: 30px;
+      padding: 0 12px;
+      border: 1px solid #c9ced8;
+      border-radius: 4px;
+      background: #ffffff;
+      cursor: pointer;
+    }
+
+    #chart {
+      height: calc(100vh - 48px);
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button id="empty">Empty data</button>
+    <button id="one">1 bar</button>
+    <button id="two">2 bars</button>
+    <button id="three">3 bars</button>
+    <button id="thirty">30 bars</button>
+    <button id="reset">Reset full data</button>
+    <button id="append">Append 120 bars</button>
+    <span id="status"></span>
+  </div>
+  <div id="chart"></div>
+
+  <script type="module">
+    import { init } from '../../../dist/index.js'
+    import { generated } from '../../js/dataSource.js'
+
+    const initialData = generated()
+    const chart = init('chart', {
+      dataZoom: {
+        start: 50,
+        end: 100,
+        slider: {
+          height: 34
+        }
+      }
+    })
+
+    chart.createIndicator('VOL')
+    chart.applyNewData(initialData, true, updateStatus)
+    chart.subscribeAction('onVisibleRangeChange', () => {
+      updateStatus('range change')
+    })
+
+    document.getElementById('empty').addEventListener('click', () => {
+      replaceDemoData([], 'empty')
+    })
+
+    document.getElementById('one').addEventListener('click', () => {
+      replaceDemoData(initialData.slice(0, 1), '1 bar')
+    })
+
+    document.getElementById('two').addEventListener('click', () => {
+      replaceDemoData(initialData.slice(0, 2), '2 bars')
+    })
+
+    document.getElementById('three').addEventListener('click', () => {
+      replaceDemoData(initialData.slice(0, 3), '3 bars')
+    })
+
+    document.getElementById('thirty').addEventListener('click', () => {
+      replaceDemoData(initialData.slice(0, 30), '30 bars')
+    })
+
+    document.getElementById('reset').addEventListener('click', () => {
+      replaceDemoData(initialData, 'full data')
+    })
+
+    document.getElementById('append').addEventListener('click', () => {
+      const dataList = chart.getDataList()
+      if (dataList.length === 0) {
+        replaceDemoData(initialData, 'full data')
+        return
+      }
+      chart.appendData(createNextData(dataList, 120), true, () => {
+        updateStatus('append 120 bars')
+      })
+    })
+
+    function replaceDemoData (dataList, label) {
+      chart.replaceData(dataList, true, () => {
+        updateStatus(label)
+      })
+    }
+
+    function createNextData (dataList, count) {
+      let lastData = dataList[dataList.length - 1]
+      const nextDataList = []
+      for (let i = 0; i < count; i++) {
+        const close = Math.max(1, lastData.close + (Math.random() - 0.48) * 20)
+        const open = lastData.close
+        const high = Math.max(open, close) + Math.random() * 8
+        const low = Math.min(open, close) - Math.random() * 8
+        const nextData = {
+          timestamp: lastData.timestamp + 60 * 1000,
+          open,
+          high,
+          low,
+          close,
+          volume: Math.round((lastData.volume || 1000) * (0.8 + Math.random() * 0.4))
+        }
+        nextDataList.push(nextData)
+        lastData = nextData
+      }
+      return nextDataList
+    }
+
+    function updateStatus (label = 'initial') {
+      const dataCount = chart.getDataList().length
+      const visibleRange = chart.getVisibleRange()
+      const barSpace = dataCount === 0 ? '-' : chart.getBarSpace().toFixed(2)
+      document.getElementById('status').textContent = `${label}, data: ${dataCount}, visible: ${visibleRange.from}-${visibleRange.to}, barSpace: ${barSpace}`
+    }
+  </script>
+</body>
+</html>

@@ -7,7 +7,8 @@ import type KLineData from '../../common/KLineData'
 
 export const enum TimeScaleModeKind {
   KLine = 'kLine',
-  TimeShare = 'timeShare'
+  TimeShare = 'timeShare',
+  DataZoom = 'dataZoom'
 }
 
 export interface TimeScaleModeContext {
@@ -37,8 +38,32 @@ export abstract class TimeScaleMode {
     return { min: 1, max: 50 }
   }
 
-  shouldRefreshAfterBarSpaceLimitChange(nextBarWidth: number): boolean {
-    return nextBarWidth !== this.context.getBarWidth()
+  createBarSpace(): BarSpace {
+    const barWidth = this.context.getBarWidth()
+    const entityWidth = createKLineEntityWidth(barWidth)
+    return {
+      bar: barWidth,
+      halfBar: barWidth / 2,
+      gapBar: entityWidth,
+      halfGapBar: Math.floor(entityWidth / 2)
+    }
+  }
+
+  applyBarSpaceLimitChange(nextBarWidth: number): boolean {
+    if (nextBarWidth === this.context.getBarWidth()) {
+      return false
+    }
+    this.context.setBarWidth(nextBarWidth)
+    return true
+  }
+
+  setBarSpace(barWidth: number): boolean {
+    const nextBarWidth = clamp(barWidth, this.context.getBarSpaceLimit().min, this.context.getBarSpaceLimit().max)
+    if (this.context.getBarWidth() === nextBarWidth) {
+      return false
+    }
+    this.context.setBarWidth(nextBarWidth)
+    return true
   }
 
   prepareVisibleRange(): void {}
@@ -103,4 +128,23 @@ export abstract class TimeScaleMode {
 
     return { from, to, domainFrom, domainTo }
   }
+}
+
+const K_BAR_RATIO = 0.88
+
+export function createKLineEntityWidth(barWidth: number, maxWidth?: number): number {
+  let kWidth: number
+  if (barWidth > 3) {
+    kWidth = Math.floor(barWidth * K_BAR_RATIO)
+  } else {
+    kWidth = Math.floor(barWidth)
+    if (kWidth === barWidth) {
+      kWidth--
+    }
+  }
+  if (kWidth % 2 === 0) {
+    kWidth--
+  }
+  kWidth = Math.max(1, kWidth)
+  return maxWidth == null ? kWidth : Math.max(1, Math.min(kWidth, Math.floor(maxWidth)))
 }

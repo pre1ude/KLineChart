@@ -5,11 +5,11 @@ import type DeepPartial from '../common/DeepPartial'
 import type { IPoint } from '../common/Point'
 import type { Point } from '../common/Point'
 import { getDefaultStyles, type Styles, type TooltipLegend } from '../common/Styles'
-import { isArray, isNumber, isString, isValid, merge } from '../common/utils/typeChecks'
+import { isArray, isBoolean, isNumber, isString, isValid, merge } from '../common/utils/typeChecks'
 import type LoadDataCallback from '../common/LoadDataCallback'
 import { type LoadDataParams, LoadDataType } from '../common/LoadDataCallback'
 import { ActionType } from '../common/Action'
-import { getDefaultCustomApi, type CustomApi, defaultLocale, type Options } from '../Options'
+import { getDefaultCustomApi, type CustomApi, defaultLocale, type DataZoomOptions, type Options } from '../Options'
 import TimeScaleStore from './TimeScaleStore'
 import { TimeScaleModeKind } from './time-scale'
 import IndicatorStore from './IndicatorStore'
@@ -56,6 +56,8 @@ export default class ChartStore {
   private _timeShareBreakOnCrossDays = true
 
   private _preferXTicks: string[] | undefined
+
+  private _dataZoomEnabled = false
 
   private _timeShareBasisPrice: number | undefined
 
@@ -204,7 +206,12 @@ export default class ChartStore {
 
           this._preferXTicks = options.preferXTicks
         }
-        this._timeScaleStore.setMode(this._isTimeShare ? TimeScaleModeKind.TimeShare : TimeScaleModeKind.KLine)
+        this._timeScaleStore.setMode(this.getTimeScaleModeKind())
+      }
+      if (isValid(options.dataZoom)) {
+        this._dataZoomEnabled = options.dataZoom !== false
+        this._timeScaleStore.setDataZoomOptions(getDataZoomOptions(options.dataZoom))
+        this._timeScaleStore.setMode(this.getTimeScaleModeKind())
       }
       if (isValid(options.timeShareDays)) {
         this._timeShareDays = options.timeShareDays
@@ -214,6 +221,13 @@ export default class ChartStore {
       }
     }
     return this
+  }
+
+  private getTimeScaleModeKind(): TimeScaleModeKind {
+    if (this._isTimeShare) {
+      return TimeScaleModeKind.TimeShare
+    }
+    return this._dataZoomEnabled ? TimeScaleModeKind.DataZoom : TimeScaleModeKind.KLine
   }
 
   getStyles(): Styles {
@@ -463,6 +477,7 @@ export default class ChartStore {
           this._dataList = data
           this._forwardMore = more ?? true
           this._timeScaleStore.resetOffsetRightDistance()
+          this._timeScaleStore.resetDataZoomRange()
           adjustFlag = true
           // 数据初始化后触发智能对齐
           setTimeout(() => {
@@ -649,4 +664,8 @@ export default class ChartStore {
   getChart(): Chart {
     return this._chart
   }
+}
+
+function getDataZoomOptions(dataZoom: boolean | DataZoomOptions): DataZoomOptions {
+  return isBoolean(dataZoom) ? {} : dataZoom
 }

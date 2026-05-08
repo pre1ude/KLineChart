@@ -21,7 +21,7 @@
         chart.applyNewData(generated(), true)
         chart.loadMore(function () {
           setTimeout(function () {
-            chart.applyMoreData(generated(), true)
+            chart.prependData(generated(), true)
           }, 2000)
         })
       }
