@@ -60,6 +60,23 @@ describe('DataZoomTimeScaleMode', () => {
 
     expect(range.domainTo - range.domainFrom).toBeCloseTo(3)
   })
+
+  it('exposes the effective range after min visible count is applied', () => {
+    const harness = createHarness(100, 600)
+
+    harness.mode.setRange(99, 100)
+    harness.mode.calcVisibleRange()
+
+    expect(harness.mode.getRange()).toEqual({ start: 97, end: 100 })
+    expect(harness.mode.getMinSpan()).toBe(3)
+  })
+
+  it('reports full span as the minimum when data cannot be zoomed', () => {
+    const harness = createHarness(2, 600)
+
+    expect(harness.mode.getMinSpan()).toBe(100)
+    expect(harness.mode.setRange(0, 100)).toBe(false)
+  })
 })
 
 function createHarness(dataCount: number, mainWidth: number): {

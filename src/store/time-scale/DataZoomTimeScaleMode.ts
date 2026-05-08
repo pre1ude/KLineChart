@@ -11,10 +11,27 @@ export class DataZoomTimeScaleMode extends TimeScaleMode {
   private _start = 0
   private _end = 100
 
-  setRange(start: number = 0, end: number = 100): void {
+  getRange(): { start: number, end: number } {
+    return {
+      start: this._start,
+      end: this._end
+    }
+  }
+
+  getMinSpan(): number {
+    const dataCount = this.context.getDataList().length
+    if (dataCount <= MIN_VISIBLE_DATA_COUNT) {
+      return 100
+    }
+    return getMinPercentSpan(dataCount)
+  }
+
+  setRange(start: number = 0, end: number = 100): boolean {
     const normalized = normalizeRange(start, end)
+    const changed = this._start !== normalized.start || this._end !== normalized.end
     this._start = normalized.start
     this._end = normalized.end
+    return changed
   }
 
   override createBarSpace(): BarSpace {
@@ -48,7 +65,7 @@ export class DataZoomTimeScaleMode extends TimeScaleMode {
       this.setRange(0, 100)
     } else {
       this.setRange(this._start, this._end)
-      this.applyMinSpan(dataCount)
+      this.applyMinSpan()
     }
 
     const domainFrom = dataCount * this._start / 100
@@ -93,7 +110,7 @@ export class DataZoomTimeScaleMode extends TimeScaleMode {
     const anchorRatio = x / mainWidth
     const prevSpan = this._end - this._start
     const anchorPercent = this._start + prevSpan * anchorRatio
-    const minSpan = getMinPercentSpan(dataCount)
+    const minSpan = this.getMinSpan()
     const nextSpan = clamp(prevSpan / scaleRatio, minSpan, 100)
     const nextStart = anchorPercent - nextSpan * anchorRatio
 
@@ -127,9 +144,9 @@ export class DataZoomTimeScaleMode extends TimeScaleMode {
     return false
   }
 
-  private applyMinSpan(dataCount: number): void {
+  private applyMinSpan(): void {
     const span = this._end - this._start
-    const minSpan = getMinPercentSpan(dataCount)
+    const minSpan = this.getMinSpan()
     if (span >= minSpan) {
       return
     }

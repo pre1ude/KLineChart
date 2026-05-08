@@ -232,7 +232,7 @@ export {
 // Core Types
 export type { Chart, ResizeAnchor, PaneScope } from './Chart'
 export type { default as ChartImp } from './Chart'
-export type { DataZoomOptions, Options } from './Options'
+export type { DataZoomOptions, DataZoomSliderOptions, Options } from './Options'
 
 // Data Types
 export type { default as KLineData } from './common/KLineData'

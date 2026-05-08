@@ -101,6 +101,31 @@ export default class TimeScaleStore {
     this.applyDataZoomOptions()
   }
 
+  getDataZoomRange(): { start: number, end: number } | undefined {
+    if (this._mode instanceof DataZoomTimeScaleMode) {
+      return this._mode.getRange()
+    }
+    return undefined
+  }
+
+  getDataZoomMinSpan(): number {
+    if (this._mode instanceof DataZoomTimeScaleMode) {
+      return this._mode.getMinSpan()
+    }
+    return 100
+  }
+
+  setDataZoomRange(start: number, end: number): boolean {
+    if (!(this._mode instanceof DataZoomTimeScaleMode)) {
+      return false
+    }
+    if (!this._mode.setRange(start, end)) {
+      return false
+    }
+    this._refreshTimeScale()
+    return true
+  }
+
   private applyDataZoomOptions(): void {
     if (this._mode instanceof DataZoomTimeScaleMode) {
       this._mode.setRange(this._dataZoomOptions.start, this._dataZoomOptions.end)

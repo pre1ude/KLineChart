@@ -9,7 +9,7 @@ import { isArray, isBoolean, isNumber, isString, isValid, merge } from '../commo
 import type LoadDataCallback from '../common/LoadDataCallback'
 import { type LoadDataParams, LoadDataType } from '../common/LoadDataCallback'
 import { ActionType } from '../common/Action'
-import { getDefaultCustomApi, type CustomApi, defaultLocale, type DataZoomOptions, type Options } from '../Options'
+import { getDefaultCustomApi, type CustomApi, defaultLocale, type DataZoomOptions, type DataZoomSliderOptions, type Options } from '../Options'
 import TimeScaleStore from './TimeScaleStore'
 import { TimeScaleModeKind } from './time-scale'
 import IndicatorStore from './IndicatorStore'
@@ -58,6 +58,8 @@ export default class ChartStore {
   private _preferXTicks: string[] | undefined
 
   private _dataZoomEnabled = false
+
+  private _dataZoomOptions: DataZoomOptions = {}
 
   private _timeShareBasisPrice: number | undefined
 
@@ -210,7 +212,8 @@ export default class ChartStore {
       }
       if (isValid(options.dataZoom)) {
         this._dataZoomEnabled = options.dataZoom !== false
-        this._timeScaleStore.setDataZoomOptions(getDataZoomOptions(options.dataZoom))
+        this._dataZoomOptions = getDataZoomOptions(options.dataZoom)
+        this._timeScaleStore.setDataZoomOptions(this._dataZoomOptions)
         this._timeScaleStore.setMode(this.getTimeScaleModeKind())
       }
       if (isValid(options.timeShareDays)) {
@@ -240,6 +243,14 @@ export default class ChartStore {
 
   getIsTimeShare(): boolean {
     return this._isTimeShare
+  }
+
+  getDataZoomEnabled(): boolean {
+    return this._dataZoomEnabled
+  }
+
+  getDataZoomSliderOptions(): DataZoomSliderOptions {
+    return getDataZoomSliderOptions(this._dataZoomOptions.slider)
   }
 
   getTimeShareDays(): number {
@@ -668,4 +679,17 @@ export default class ChartStore {
 
 function getDataZoomOptions(dataZoom: boolean | DataZoomOptions): DataZoomOptions {
   return isBoolean(dataZoom) ? {} : dataZoom
+}
+
+function getDataZoomSliderOptions(slider?: boolean | DataZoomSliderOptions): DataZoomSliderOptions {
+  if (isBoolean(slider)) {
+    return { show: slider }
+  }
+  if (slider == null) {
+    return { show: false }
+  }
+  return {
+    ...slider,
+    show: slider.show ?? true
+  }
 }

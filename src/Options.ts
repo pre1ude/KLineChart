@@ -55,9 +55,15 @@ export interface LayoutChild {
   options?: PaneOptions
 }
 
+export interface DataZoomSliderOptions {
+  show?: boolean
+  height?: number
+}
+
 export interface DataZoomOptions {
   start?: number
   end?: number
+  slider?: boolean | DataZoomSliderOptions
 }
 
 export interface Options {

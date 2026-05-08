@@ -29,6 +29,7 @@ import { type Overlay, type OverlayCreate, type OverlayFilter } from './componen
 import { getIndicatorTemplate } from './extension/indicator/index'
 // import { getStyles as getExtensionStyles } from './extension/styles/index'
 import Event from './Event'
+import { DataZoomSlider } from './component/DataZoomSlider'
 import type XAxisWidget from './widget/XAxisWidget'
 import type DualYPane from './pane/DualYPane'
 import { getTimezone } from './common/utils/dateTimeFormat'
@@ -155,6 +156,7 @@ export default class ChartImp implements Chart {
   private _chartContainer: HTMLElement
   private readonly _chartEvent: Event
   private readonly _chartStore: ChartStore
+  private readonly _dataZoomSlider: DataZoomSlider
   // Includes CandlePane (main), IndicatorPane (sub panes), XAxisPane (x-axis pane)
   private _drawPanes: (DrawPane)[] = []
   private _candlePane?: CandlePane
@@ -184,6 +186,7 @@ export default class ChartImp implements Chart {
     this._chartEvent = new Event(this._chartContainer, this)
     this._chartStore = new ChartStore(this, options)
     this._initPanes(options)
+    this._dataZoomSlider = new DataZoomSlider(this._chartContainer, this)
     this.adjustPaneViewport(true, true, true)
   }
 
@@ -320,7 +323,8 @@ export default class ChartImp implements Chart {
     const separatorSize = this._chartStore.getStyles().separator.size
     const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
     const xAxisHeight = xAxisWidget.getAxisComponent().getAutoSize()
-    let paneExcludeXAxisHeight = totalHeight - xAxisHeight - this._separatorPanes.size * separatorSize
+    const dataZoomSliderHeight = this._dataZoomSlider.getHeight()
+    let paneExcludeXAxisHeight = totalHeight - xAxisHeight - dataZoomSliderHeight - this._separatorPanes.size * separatorSize
     if (paneExcludeXAxisHeight < 0) {
       paneExcludeXAxisHeight = 0
     }
@@ -355,6 +359,10 @@ export default class ChartImp implements Chart {
       }
       pane.setBounding({ top })
       top += pane.getBounding().height
+    })
+    this._dataZoomSlider.setLayout({
+      top,
+      height: dataZoomSliderHeight
     })
   }
 
@@ -430,6 +438,7 @@ export default class ChartImp implements Chart {
       this._separatorPanes.get(pane)?.setBounding(separatorBounding)
       pane.setBounding(paneBounding, mainBounding, yLeftAxisBounding, yRightAxisBounding)
     })
+    this._dataZoomSlider.setLayout(mainBounding)
   }
 
   private _setPaneOptions(options: PaneOptions, forceShouldAdjust: boolean): void {
@@ -530,6 +539,7 @@ export default class ChartImp implements Chart {
       this._drawPanes.forEach(pane => {
         pane.update(level)
       })
+      this._dataZoomSlider.update()
     }
   }
 
@@ -1389,6 +1399,7 @@ export default class ChartImp implements Chart {
       pane.destroy()
     })
     this._separatorPanes.clear()
+    this._dataZoomSlider.destroy()
     this._container.removeChild(this._chartContainer)
   }
 }
