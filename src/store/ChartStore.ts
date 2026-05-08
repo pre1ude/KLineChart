@@ -11,6 +11,7 @@ import { type LoadDataParams, LoadDataType } from '../common/LoadDataCallback'
 import { ActionType } from '../common/Action'
 import { getDefaultCustomApi, type CustomApi, defaultLocale, type Options } from '../Options'
 import TimeScaleStore from './TimeScaleStore'
+import { TimeScaleModeKind } from './time-scale'
 import IndicatorStore from './IndicatorStore'
 import TooltipStore from './TooltipStore'
 import OverlayStore from './OverlayStore'
@@ -203,7 +204,7 @@ export default class ChartStore {
 
           this._preferXTicks = options.preferXTicks
         }
-        this._timeScaleStore.initBarSpaceLimit(this._isTimeShare)
+        this._timeScaleStore.setMode(this._isTimeShare ? TimeScaleModeKind.TimeShare : TimeScaleModeKind.KLine)
       }
       if (isValid(options.timeShareDays)) {
         this._timeShareDays = options.timeShareDays
@@ -500,8 +501,7 @@ export default class ChartStore {
       if (timestamp > lastDataTimestamp) {
         // 追加新数据
         this._dataList.push(data)
-        const nextOffsetRight = this._timeScaleStore.getOffsetRightDistance() - this._timeScaleStore.getBarSpace().bar
-        this._timeScaleStore.setOffsetRightDistance(nextOffsetRight)
+        this._timeScaleStore.onAppendData()
         adjustFlag = true
       } else if (timestamp === lastDataTimestamp) {
         // 更新最后一条

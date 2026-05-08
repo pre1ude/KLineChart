@@ -1,14 +1,14 @@
 import type BarSpace from '../common/BarSpace'
 import type VisibleRange from '../common/VisibleRange'
 import type { ResizeAnchor } from '../Chart'
-import { createDefaultTimeShareVisibleRange, getDefaultVisibleRange } from '../common/VisibleRange'
+import { getDefaultVisibleRange } from '../common/VisibleRange'
 import { ActionType } from '../common/Action'
 import type ChartStore from './ChartStore'
 import { LoadDataType } from '../common/LoadDataCallback'
 import { clamp } from '@/common/utils/number'
 import { createLinear, type LinearScale } from '../component/scale'
-import { formatToHHmm } from '../common/utils/format'
 import { logWarn } from '../common/utils/logger'
+import { KLineTimeScaleMode, type TimeScaleMode, type TimeScaleModeContext, TimeScaleModeKind, TimeShareTimeScaleMode } from './time-scale'
 
 const DEFAULT_BAR_WIDTH = 8
 const DEFAULT_OFFSET_RIGHT = 10
@@ -38,11 +38,37 @@ export default class TimeScaleStore {
   private _visibleRange: VisibleRange = getDefaultVisibleRange()
 
   private _xScale: LinearScale
+  private _mode: TimeScaleMode
+  private readonly _modeContext: TimeScaleModeContext
 
   constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
     this._xScale = createScale(this._visibleRange, this._chartStore.mainWidth)
     this._kWidth = getKWidth(this._barWidth)
+    this._modeContext = {
+      getBarSpace: () => this.getBarSpace(),
+      getBarWidth: () => this._barWidth,
+      setBarWidth: barWidth => {
+        this._barWidth = barWidth
+        this._kWidth = getKWidth(this._barWidth)
+      },
+      getBarSpaceLimit: () => this._barSpaceLimit,
+      getMainWidth: () => this._chartStore.mainWidth,
+      getDataList: () => this._chartStore.getDataList(),
+      getMinRemainWidth: () => this._minRemainWidth,
+      getTimeShareTicks: () => this._chartStore.getTimeShareTicks(),
+      getTimeShareDays: () => this._chartStore.getTimeShareDays(),
+      getZoomCoordinate: xCoord => {
+        const crosshair = this._chartStore.getTooltipStore().getCrosshair()
+        return xCoord ?? crosshair?.x ?? this._chartStore.mainWidth / 2
+      },
+      getInitialOffsetRightDistance: () => DEFAULT_OFFSET_RIGHT,
+      getOffsetRightDistance: () => this._offsetRight,
+      setOffsetRightDistance: distance => {
+        this._offsetRight = distance
+      }
+    }
+    this._mode = this.createMode(TimeScaleModeKind.KLine)
   }
 
   private _refreshTimeScale(): void {
@@ -51,12 +77,18 @@ export default class TimeScaleStore {
     this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
   }
 
-  public initBarSpaceLimit(isTimeShare: boolean): void {
-    if (isTimeShare) {
-      this._barSpaceLimit = { min: 0.1, max: 50 }
-    } else {
-      this._barSpaceLimit = { min: 1, max: 50 }
+  private createMode(kind: TimeScaleModeKind): TimeScaleMode {
+    switch (kind) {
+      case TimeScaleModeKind.TimeShare:
+        return new TimeShareTimeScaleMode(this._modeContext)
+      case TimeScaleModeKind.KLine:
+        return new KLineTimeScaleMode(this._modeContext)
     }
+  }
+
+  setMode(kind: TimeScaleModeKind): void {
+    this._mode = this.createMode(kind)
+    this._barSpaceLimit = this._mode.createBarSpaceLimit()
   }
 
   private calcMinRemainWidth(): void {
@@ -78,77 +110,12 @@ export default class TimeScaleStore {
   }
 
   private calcVisibleRange(): VisibleRange {
-    const isTimeShare = this._chartStore.getIsTimeShare()
-    const timeShareTicks = this._chartStore.getTimeShareTicks()
-    const timeShareDays = this._chartStore.getTimeShareDays()
-    const dataList = this._chartStore.getDataList()
-    const totalBarCount = dataList.length
-    if (!totalBarCount) {
-      const visibleRange = isTimeShare ? createDefaultTimeShareVisibleRange(timeShareTicks.length * timeShareDays) : getDefaultVisibleRange()
-
-      return visibleRange
-    }
-    const totalBarWidth = totalBarCount * this._barWidth
-    const mainWidth = this._chartStore.mainWidth
-
     this.calcMinRemainWidth()
-    const [lmin, rmin] = [this._minRemainWidth.left, this._minRemainWidth.right].map(v => Math.min(v, totalBarWidth))
-
-    this._offsetRight = clamp(this._offsetRight, -totalBarWidth + rmin, mainWidth - lmin)
-
-    const to = this._offsetRight > 0 ? totalBarCount : Math.ceil(totalBarCount + this._offsetRight / this._barWidth)
-
-    const diff = this._offsetRight + totalBarCount * this._barWidth - mainWidth
-    const from = diff < 0 ? 0 : Math.floor(diff / this._barWidth)
-
-    const domainTo = totalBarCount + this._offsetRight / this._barWidth
-
-    // (domainTo - domainFrom) * barWidth = mainWidth
-    const domainFrom = domainTo - mainWidth / this._barWidth
-
-    const visibleRange = { from, to, domainFrom, domainTo }
-    return visibleRange
-  }
-
-  adjustForTimeShare(): void {
-    // console.log('adjustForTimeShare')
-    const mainWidth = this._chartStore.mainWidth
-    const dataList = this._chartStore.getDataList()
-    const totalBarCount = dataList.length
-    const timeShareTicks = this._chartStore.getTimeShareTicks()
-    const timeShareDays = this._chartStore.getTimeShareDays()
-    const tickCount = timeShareTicks.length * timeShareDays
-    if (tickCount === 0) {
-      console.error('Time share ticks is empty, cannot adjust for time share.')
-      return
-    }
-    const barWidth = mainWidth / tickCount
-    let offsetRight = this._offsetRight
-    if (totalBarCount === 0) {
-      offsetRight = mainWidth
-    } else {
-      const lastData = dataList[totalBarCount - 1]
-      const hhmm = formatToHHmm(lastData.timestamp)
-      const tickIndex = timeShareTicks.indexOf(hhmm)
-      if (tickIndex === -1) {
-        console.error('Last data timestamp not found in time share ticks:', hhmm, lastData)
-        return
-      }
-      const dayIndex = Math.floor((totalBarCount - 1) / timeShareTicks.length)
-      const idx = dayIndex * timeShareTicks.length + tickIndex
-      offsetRight = (tickCount - idx - 1) * barWidth
-
-    }
-    this._barWidth = clamp(barWidth, this._barSpaceLimit.min, this._barSpaceLimit.max)
-    this._kWidth = getKWidth(this._barWidth)
-    this._offsetRight = offsetRight
+    return this._mode.calcVisibleRange()
   }
 
   adjustVisibleRange(): void {
-    const isTimeShare = this._chartStore.getIsTimeShare()
-    if (isTimeShare) {
-      this.adjustForTimeShare()
-    }
+    this._mode.prepareVisibleRange()
     const visibleRange = this.calcVisibleRange()
 
     this._visibleRange = visibleRange
@@ -199,10 +166,9 @@ export default class TimeScaleStore {
     this._barSpaceLimit = nextLimit
 
     const nextBarWidth = clamp(this._barWidth, nextLimit.min, nextLimit.max)
-    const shouldRefresh = this._chartStore.getIsTimeShare() || nextBarWidth !== this._barWidth
+    const shouldRefresh = this._mode.shouldRefreshAfterBarSpaceLimitChange(nextBarWidth)
 
-    this._barWidth = nextBarWidth
-    this._kWidth = getKWidth(this._barWidth)
+    this._modeContext.setBarWidth(nextBarWidth)
 
     if (shouldRefresh) {
       this._refreshTimeScale()
@@ -219,28 +185,7 @@ export default class TimeScaleStore {
   }
 
   adjustBarSpaceForMainWidthChange(prevMainWidth: number, nextMainWidth: number, anchor: ResizeAnchor): void {
-    if (this._chartStore.getIsTimeShare()) {
-      return
-    }
-    if (prevMainWidth <= 0 || nextMainWidth <= 0 || prevMainWidth === nextMainWidth) {
-      return
-    }
-
-    const prevBarWidth = this._barWidth
-    const prevOffsetRight = this._offsetRight
-    const widthRatio = nextMainWidth / prevMainWidth
-    const nextBarWidth = clamp(prevBarWidth * widthRatio, this._barSpaceLimit.min, this._barSpaceLimit.max)
-    const realScaleRatio = nextBarWidth / prevBarWidth
-
-    this._barWidth = nextBarWidth
-    this._kWidth = getKWidth(this._barWidth)
-    if (anchor === 'domainTo') {
-      this._offsetRight = prevOffsetRight * realScaleRatio
-      return
-    }
-    // Keep domainFrom stable across resize:
-    // offset' = (offset - prevMainWidth) * (bar'/bar) + nextMainWidth
-    this._offsetRight = (prevOffsetRight - prevMainWidth) * realScaleRatio + nextMainWidth
+    this._mode.adjustBarSpaceForMainWidthChange(prevMainWidth, nextMainWidth, anchor)
   }
 
   setOffsetRightDistance(distance: number, update?: boolean): this {
@@ -253,6 +198,10 @@ export default class TimeScaleStore {
 
   resetOffsetRightDistance(): void {
     this.setOffsetRightDistance(DEFAULT_OFFSET_RIGHT)
+  }
+
+  onAppendData(): void {
+    this._mode.onAppendData()
   }
 
   getInitialOffsetRightDistance(): number {
@@ -284,38 +233,9 @@ export default class TimeScaleStore {
   }
 
   fitToWidth(align: 'left' | 'center' | 'right' | 'auto' = 'auto'): void {
-    if (this._chartStore.getIsTimeShare()) {
-      return
+    if (this._mode.fitToWidth(align)) {
+      this._refreshTimeScale()
     }
-
-    const totalBarCount = this._chartStore.getDataList().length
-    const mainWidth = this._chartStore.mainWidth
-
-    if (totalBarCount === 0 || mainWidth <= 0) {
-      return
-    }
-
-    this._barWidth = clamp(mainWidth / totalBarCount, this._barSpaceLimit.min, this._barSpaceLimit.max)
-    this._kWidth = getKWidth(this._barWidth)
-
-    const totalBarWidth = totalBarCount * this._barWidth
-
-    switch (align) {
-      case 'auto':
-        this._offsetRight = totalBarWidth <= mainWidth ? mainWidth - totalBarWidth : 0
-        break
-      case 'left':
-        this._offsetRight = mainWidth - totalBarWidth
-        break
-      case 'center':
-        this._offsetRight = (mainWidth - totalBarWidth) / 2
-        break
-      case 'right':
-        this._offsetRight = 0
-        break
-    }
-
-    this._refreshTimeScale()
   }
 
   getVisibleRange(): VisibleRange {
@@ -331,7 +251,9 @@ export default class TimeScaleStore {
       return
     }
     const prevOffsetRight = this._offsetRight
-    this._offsetRight -= distance
+    if (!this._mode.scroll(distance)) {
+      return
+    }
     this._refreshTimeScale()
     const realDistance = Math.round(prevOffsetRight - this._offsetRight)
     if (realDistance !== 0) {
@@ -355,27 +277,10 @@ export default class TimeScaleStore {
     if (!this._zoomEnabled) {
       return
     }
-    const getDefaultXCoord = (): number => {
-      const crosshair = this._chartStore.getTooltipStore().getCrosshair()
-      return crosshair?.x ?? this._chartStore.mainWidth / 2
+    const realScaleRatio = this._mode.zoom(scaleDelta, xCoord)
+    if (realScaleRatio === undefined) {
+      return
     }
-    const x = xCoord ?? getDefaultXCoord()
-
-    const scaleRatio = 1 + scaleDelta
-
-    const nextBarWidth = clamp(this._barWidth * scaleRatio, this._barSpaceLimit.min, this._barSpaceLimit.max)
-
-    const realScaleRatio = nextBarWidth / this._barWidth
-
-    // let right edge as the origin, left direction is positive
-    // Math explain: (nextOffsetRight - offsetX) / (offsetRight - offsetX) = scaleRatio
-    const mainWidth = this._chartStore.mainWidth
-    const offsetX = mainWidth - x
-    const nextOffsetRight = (this._offsetRight - offsetX) * realScaleRatio + offsetX
-    this._offsetRight = nextOffsetRight
-    this._barWidth = nextBarWidth
-
-    this._kWidth = getKWidth(this._barWidth)
     this._refreshTimeScale()
 
     if (realScaleRatio !== 1) {
@@ -400,61 +305,27 @@ export default class TimeScaleStore {
    * 适用于数据量较少，希望充分利用屏幕空间的场景
    */
   alignLeft(): void {
-    const dataList = this._chartStore.getDataList()
-    const totalBarCount = dataList.length
-
-    if (totalBarCount === 0) {
-      return
+    if (this._mode.alignLeft()) {
+      this._refreshTimeScale()
     }
-
-    const totalBarWidth = totalBarCount * this._barWidth
-    const mainWidth = this._chartStore.mainWidth
-
-    // 如果数据宽度超过屏幕宽度，左对齐就是显示最早的数据
-    if (totalBarWidth >= mainWidth) {
-      this._offsetRight = mainWidth - totalBarWidth
-    } else {
-      // 数据宽度小于屏幕宽度，左对齐并保持所有数据可见
-      this._offsetRight = mainWidth - totalBarWidth
-    }
-
-    this._refreshTimeScale()
   }
 
   /**
    * 将K线右对齐到屏幕右边（恢复默认行为）
    */
   alignRight(): void {
-    this._offsetRight = DEFAULT_OFFSET_RIGHT
-    this._refreshTimeScale()
+    if (this._mode.alignRight()) {
+      this._refreshTimeScale()
+    }
   }
 
   /**
    * 将K线居中对齐
    */
   alignCenter(): void {
-    const dataList = this._chartStore.getDataList()
-    const totalBarCount = dataList.length
-
-    if (totalBarCount === 0) {
-      return
+    if (this._mode.alignCenter()) {
+      this._refreshTimeScale()
     }
-
-    const totalBarWidth = totalBarCount * this._barWidth
-    const mainWidth = this._chartStore.mainWidth
-
-    if (totalBarWidth >= mainWidth) {
-      // 数据宽度超过屏幕，居中显示中间部分
-      const centerDataIndex = Math.floor(totalBarCount / 2)
-      const visibleBarCount = Math.floor(mainWidth / this._barWidth)
-      const startIndex = Math.max(0, centerDataIndex - Math.floor(visibleBarCount / 2))
-      this._offsetRight = mainWidth - (totalBarCount - startIndex) * this._barWidth
-    } else {
-      // 数据宽度小于屏幕，居中显示
-      this._offsetRight = (mainWidth - totalBarWidth) / 2 + DEFAULT_OFFSET_RIGHT
-    }
-
-    this._refreshTimeScale()
   }
 
   /**
@@ -465,22 +336,8 @@ export default class TimeScaleStore {
     if (!this._autoInitialAlignment) {
       return
     }
-
-    const dataList = this._chartStore.getDataList()
-    const totalBarCount = dataList.length
-
-    if (totalBarCount === 0) {
-      return
-    }
-
-    const totalBarWidth = totalBarCount * this._barWidth
-    const mainWidth = this._chartStore.mainWidth
-
-    // 如果数据宽度小于窗口宽度，左对齐；否则右对齐
-    if (totalBarWidth < mainWidth) {
-      this.alignLeft()
-    } else {
-      this.alignRight()
+    if (this._mode.autoInitialAlignment()) {
+      this._refreshTimeScale()
     }
   }
 
