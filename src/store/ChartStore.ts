@@ -683,13 +683,23 @@ function getDataZoomOptions(dataZoom: boolean | DataZoomOptions): DataZoomOption
 
 function getDataZoomSliderOptions(slider?: boolean | DataZoomSliderOptions): DataZoomSliderOptions {
   if (isBoolean(slider)) {
-    return { show: slider }
+    return {
+      show: slider,
+      brushSelect: false,
+      showDataShadow: true
+    }
   }
   if (slider == null) {
-    return { show: false }
+    return {
+      show: false,
+      brushSelect: false,
+      showDataShadow: true
+    }
   }
   return {
     ...slider,
-    show: slider.show ?? true
+    show: slider.show ?? true,
+    brushSelect: slider.brushSelect ?? false,
+    showDataShadow: slider.showDataShadow ?? true
   }
 }

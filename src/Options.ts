@@ -58,6 +58,8 @@ export interface LayoutChild {
 export interface DataZoomSliderOptions {
   show?: boolean
   height?: number
+  brushSelect?: boolean
+  showDataShadow?: boolean
 }
 
 export interface DataZoomOptions {
