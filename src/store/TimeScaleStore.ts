@@ -9,7 +9,7 @@ import { LoadDataType } from '../common/LoadDataCallback'
 import { clamp } from '@/common/utils/number'
 import { createLinear, type LinearScale } from '../component/scale'
 import { logWarn } from '../common/utils/logger'
-import { DataZoomTimeScaleMode, KLineTimeScaleMode, type TimeScaleMode, type TimeScaleModeContext, TimeScaleModeKind, TimeShareTimeScaleMode } from './time-scale'
+import { DataZoomTimeScaleMode, type DataZoomRangeMoveHandle, type DataZoomRangeMoveResult, KLineTimeScaleMode, type TimeScaleMode, type TimeScaleModeContext, TimeScaleModeKind, TimeShareTimeScaleMode } from './time-scale'
 
 const DEFAULT_BAR_WIDTH = 8
 const DEFAULT_OFFSET_RIGHT = 10
@@ -126,8 +126,21 @@ export default class TimeScaleStore {
     return true
   }
 
+  setDataZoomRangeByMove(start: number, end: number, delta: number, handleIndex: DataZoomRangeMoveHandle): DataZoomRangeMoveResult | undefined {
+    if (!(this._mode instanceof DataZoomTimeScaleMode)) {
+      return undefined
+    }
+    const result = this._mode.setRangeByMove(start, end, delta, handleIndex)
+    if (!result.changed) {
+      return result
+    }
+    this._refreshTimeScale()
+    return result
+  }
+
   private applyDataZoomOptions(): void {
     if (this._mode instanceof DataZoomTimeScaleMode) {
+      this._mode.setSpanLimit(this._dataZoomOptions.minSpan, this._dataZoomOptions.maxSpan)
       this._mode.setRange(this._dataZoomOptions.start, this._dataZoomOptions.end)
     }
   }

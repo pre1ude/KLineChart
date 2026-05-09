@@ -7,6 +7,10 @@
   <style>
     body {
       margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
       font-family: Arial, sans-serif;
     }
 
@@ -14,8 +18,8 @@
       box-sizing: border-box;
       display: flex;
       align-items: center;
+      flex-wrap: wrap;
       gap: 12px;
-      height: 48px;
       padding: 8px 12px;
       border-bottom: 1px solid #d9dce3;
       background: #f7f8fa;
@@ -23,7 +27,14 @@
       font-size: 13px;
     }
 
-    button {
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+
+    select {
       height: 30px;
       padding: 0 12px;
       border: 1px solid #c9ced8;
@@ -32,20 +43,54 @@
       cursor: pointer;
     }
 
+    #status {
+      min-width: 0;
+      color: #4e5969;
+    }
+
     #chart {
-      height: calc(100vh - 48px);
+      flex: 1;
+      min-height: 0;
+      background: inherit;
     }
   </style>
 </head>
 <body>
   <div class="toolbar">
-    <button id="empty">Empty data</button>
-    <button id="one">1 bar</button>
-    <button id="two">2 bars</button>
-    <button id="three">3 bars</button>
-    <button id="thirty">30 bars</button>
-    <button id="reset">Reset full data</button>
-    <button id="append">Append 120 bars</button>
+    <label>
+      Chart
+      <select id="chartTheme">
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </label>
+    <label>
+      Slider
+      <select id="sliderTheme">
+        <option value="auto">Auto</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </label>
+    <label>
+      Data
+      <select id="dataPreset">
+        <option value="full">Full data</option>
+        <option value="empty">Empty data</option>
+        <option value="one">1 bar</option>
+        <option value="two">2 bars</option>
+        <option value="three">3 bars</option>
+        <option value="thirty">30 bars</option>
+        <option value="custom" disabled>Custom data</option>
+      </select>
+    </label>
+    <label>
+      Action
+      <select id="dataAction">
+        <option value="">Select action</option>
+        <option value="append">Append 120 bars</option>
+      </select>
+    </label>
     <span id="status"></span>
   </div>
   <div id="chart"></div>
@@ -55,63 +100,117 @@
     import { generated } from '../../js/dataSource.js'
 
     const initialData = generated()
+    const sliderOptions = {
+      height: 34,
+      brushSelect: true,
+      showDataShadow: true,
+      theme: 'auto'
+    }
     const chart = init('chart', {
       dataZoom: {
         start: 50,
         end: 100,
-        slider: {
-          height: 34,
-          brushSelect: true,
-          showDataShadow: true
-        }
+        // minSpan: 20,
+        slider: sliderOptions
       }
     })
+    let chartTheme = 'light'
+    let sliderTheme = 'auto'
 
+    syncPageBackground()
     chart.createIndicator('VOL')
     chart.applyNewData(initialData, true, updateStatus)
     chart.subscribeAction('onVisibleRangeChange', () => {
       updateStatus('range change')
     })
 
-    document.getElementById('empty').addEventListener('click', () => {
-      replaceDemoData([], 'empty')
+    document.getElementById('chartTheme').addEventListener('change', event => {
+      chartTheme = event.target.value
+      syncPageBackground()
+      chart.setStyles(chartTheme)
+      updateStatus(`chart ${chartTheme}`)
     })
 
-    document.getElementById('one').addEventListener('click', () => {
-      replaceDemoData(initialData.slice(0, 1), '1 bar')
+    document.getElementById('sliderTheme').addEventListener('change', event => {
+      sliderTheme = event.target.value
+      setSliderTheme(sliderTheme)
     })
 
-    document.getElementById('two').addEventListener('click', () => {
-      replaceDemoData(initialData.slice(0, 2), '2 bars')
+    document.getElementById('dataPreset').addEventListener('change', event => {
+      applyDataPreset(event.target.value)
     })
 
-    document.getElementById('three').addEventListener('click', () => {
-      replaceDemoData(initialData.slice(0, 3), '3 bars')
-    })
-
-    document.getElementById('thirty').addEventListener('click', () => {
-      replaceDemoData(initialData.slice(0, 30), '30 bars')
-    })
-
-    document.getElementById('reset').addEventListener('click', () => {
-      replaceDemoData(initialData, 'full data')
-    })
-
-    document.getElementById('append').addEventListener('click', () => {
+    document.getElementById('dataAction').addEventListener('change', event => {
+      if (event.target.value !== 'append') {
+        return
+      }
       const dataList = chart.getDataList()
       if (dataList.length === 0) {
         replaceDemoData(initialData, 'full data')
+        document.getElementById('dataPreset').value = 'full'
+        event.target.value = ''
         return
       }
       chart.appendData(createNextData(dataList, 120), true, () => {
         updateStatus('append 120 bars')
       })
+      document.getElementById('dataPreset').value = 'custom'
+      event.target.value = ''
     })
+
+    function applyDataPreset (preset) {
+      switch (preset) {
+        case 'empty': {
+          replaceDemoData([], 'empty')
+          break
+        }
+        case 'one': {
+          replaceDemoData(initialData.slice(0, 1), '1 bar')
+          break
+        }
+        case 'two': {
+          replaceDemoData(initialData.slice(0, 2), '2 bars')
+          break
+        }
+        case 'three': {
+          replaceDemoData(initialData.slice(0, 3), '3 bars')
+          break
+        }
+        case 'thirty': {
+          replaceDemoData(initialData.slice(0, 30), '30 bars')
+          break
+        }
+        default: {
+          replaceDemoData(initialData, 'full data')
+          break
+        }
+      }
+    }
 
     function replaceDemoData (dataList, label) {
       chart.replaceData(dataList, true, () => {
         updateStatus(label)
       })
+    }
+
+    function setSliderTheme (theme) {
+      const range = chart.getChartStore().getTimeScaleStore().getDataZoomRange() ?? { start: 0, end: 100 }
+      chart.setOptions({
+        dataZoom: {
+          start: range.start,
+          end: range.end,
+          // minSpan: 0,
+          slider: {
+            ...sliderOptions,
+            theme
+          }
+        }
+      })
+      updateStatus(`slider ${theme}`)
+    }
+
+    function syncPageBackground () {
+      document.body.style.backgroundColor = chartTheme === 'dark' ? '#0f1e33' : '#fff'
     }
 
     function createNextData (dataList, count) {
@@ -140,7 +239,7 @@
       const dataCount = chart.getDataList().length
       const visibleRange = chart.getVisibleRange()
       const barSpace = dataCount === 0 ? '-' : chart.getBarSpace().toFixed(2)
-      document.getElementById('status').textContent = `${label}, data: ${dataCount}, visible: ${visibleRange.from}-${visibleRange.to}, barSpace: ${barSpace}`
+      document.getElementById('status').textContent = `${label}, data: ${dataCount}, visible: ${visibleRange.from}-${visibleRange.to}, barSpace: ${barSpace}, chartTheme: ${chartTheme}, sliderTheme: ${sliderTheme}`
     }
   </script>
 </body>

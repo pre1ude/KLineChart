@@ -55,16 +55,21 @@ export interface LayoutChild {
   options?: PaneOptions
 }
 
+export type DataZoomSliderTheme = 'auto' | 'dark' | 'light'
+
 export interface DataZoomSliderOptions {
   show?: boolean
   height?: number
   brushSelect?: boolean
   showDataShadow?: boolean
+  theme?: DataZoomSliderTheme
 }
 
 export interface DataZoomOptions {
   start?: number
   end?: number
+  minSpan?: number
+  maxSpan?: number
   slider?: boolean | DataZoomSliderOptions
 }
 

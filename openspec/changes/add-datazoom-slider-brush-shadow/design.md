@@ -26,11 +26,13 @@ dataZoom?: boolean | {
     height?: number
     brushSelect?: boolean
     showDataShadow?: boolean
+    theme?: 'auto' | 'dark' | 'light'
   }
 }
 ```
 
 `showDataShadow` defaults to `true`. `brushSelect` defaults to `false` so the existing slider behavior remains compatible unless explicitly enabled.
+`theme` defaults to `auto`, which follows the chart theme. `dark` and `light` override the chart theme.
 
 ## Data Shadow
 
@@ -53,4 +55,4 @@ The selected range has three interactive controls:
 
 When `brushSelect` is enabled, dragging the slider background displays a temporary rectangle. On release, the rectangle becomes the new percent range. A short click still moves the current span so its center matches the click position.
 
-When `brushSelect` is disabled, the selected filler preserves the current v1 drag behavior.
+When `brushSelect` is disabled, the selected range preserves the current v1 drag behavior.

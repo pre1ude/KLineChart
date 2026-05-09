@@ -61,14 +61,26 @@ describe('DataZoomTimeScaleMode', () => {
     expect(range.domainTo - range.domainFrom).toBeCloseTo(3)
   })
 
-  it('exposes the effective range after min visible count is applied', () => {
+  it('keeps the raw range after min visible count is applied to the visible range', () => {
     const harness = createHarness(100, 600)
 
     harness.mode.setRange(99, 100)
-    harness.mode.calcVisibleRange()
+    const range = harness.mode.calcVisibleRange()
 
-    expect(harness.mode.getRange()).toEqual({ start: 97, end: 100 })
+    expect(range.domainFrom).toBe(97)
+    expect(range.domainTo).toBe(100)
+    expect(harness.mode.getRange()).toEqual({ start: 99, end: 100 })
     expect(harness.mode.getMinSpan()).toBe(3)
+  })
+
+  it('allows a zero span dataZoom range and derives a minimum visible range', () => {
+    const harness = createHarness(100, 600)
+
+    harness.mode.setRange(50, 50)
+    const range = harness.mode.calcVisibleRange()
+
+    expect(harness.mode.getRange()).toEqual({ start: 50, end: 50 })
+    expect(range.domainTo - range.domainFrom).toBe(3)
   })
 
   it('reports full span as the minimum when data cannot be zoomed', () => {
@@ -76,6 +88,77 @@ describe('DataZoomTimeScaleMode', () => {
 
     expect(harness.mode.getMinSpan()).toBe(100)
     expect(harness.mode.setRange(0, 100)).toBe(false)
+  })
+
+  it('allows handles to cross when minSpan is not configured', () => {
+    const harness = createHarness(100, 600)
+    harness.mode.setRange(40, 60)
+
+    expect(harness.mode.setRangeByMove(40, 60, 30, 0)).toEqual({ start: 70, end: 60, changed: true })
+    expect(harness.mode.getRange()).toEqual({ start: 60, end: 70 })
+  })
+
+  it('prevents handles from crossing when minSpan is zero and pushes the opposite handle', () => {
+    const harness = createHarness(100, 600)
+    harness.mode.setSpanLimit(0)
+    harness.mode.setRange(40, 60)
+
+    expect(harness.mode.setRangeByMove(40, 60, 30, 0)).toEqual({ start: 70, end: 70, changed: true })
+    expect(harness.mode.getRange()).toEqual({ start: 70, end: 70 })
+  })
+
+  it('pushes the opposite handle when minSpan is reached', () => {
+    const harness = createHarness(100, 600)
+    harness.mode.setSpanLimit(2)
+    harness.mode.setRange(40, 60)
+
+    expect(harness.mode.setRangeByMove(40, 60, 30, 0)).toEqual({ start: 70, end: 72, changed: true })
+    expect(harness.mode.getRange()).toEqual({ start: 70, end: 72 })
+  })
+
+  it('keeps the pushed opposite handle still when dragging back from minSpan', () => {
+    const harness = createHarness(100, 600)
+    harness.mode.setSpanLimit(2)
+    harness.mode.setRange(50, 100)
+
+    const pushedRange = harness.mode.setRangeByMove(50, 100, -49, 1)
+    expect(pushedRange).toEqual({ start: 49, end: 51, changed: true })
+
+    expect(harness.mode.setRangeByMove(pushedRange.start, pushedRange.end, 4, 1)).toEqual({ start: 49, end: 55, changed: true })
+    expect(harness.mode.getRange()).toEqual({ start: 49, end: 55 })
+  })
+
+  it('pushes the opposite handle when maxSpan is reached', () => {
+    const harness = createHarness(100, 600)
+    harness.mode.setSpanLimit(undefined, 20)
+    harness.mode.setRange(40, 60)
+
+    expect(harness.mode.setRangeByMove(40, 60, -30, 0)).toEqual({ start: 10, end: 30, changed: true })
+    expect(harness.mode.getRange()).toEqual({ start: 10, end: 30 })
+  })
+
+  it('constrains wheel zoom with ECharts sliderMove semantics', () => {
+    const harness = createHarness(100, 600)
+    harness.mode.setSpanLimit(10, 30)
+    harness.mode.setRange(40, 60)
+
+    harness.mode.zoom(100, 300)
+    expect(harness.mode.getRange().start).toBeCloseTo(49.9009900990099)
+    expect(harness.mode.getRange().end).toBeCloseTo(59.9009900990099)
+
+    harness.mode.zoom(-0.9, 300)
+    expect(harness.mode.getRange().start).toBeCloseTo(4.9009900990099)
+    expect(harness.mode.getRange().end).toBeCloseTo(34.9009900990099)
+  })
+
+  it('moves the range right when zooming in below minSpan like ECharts', () => {
+    const harness = createHarness(100, 600)
+    harness.mode.setSpanLimit(20)
+    harness.mode.setRange(50, 70)
+
+    harness.mode.zoom(1, 300)
+
+    expect(harness.mode.getRange()).toEqual({ start: 55, end: 75 })
   })
 })
 

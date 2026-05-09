@@ -2,7 +2,7 @@
 
 ## Summary
 
-Extend the DataZoom slider with brush selection, a top move handle, and a close-line data shadow.
+Extend the DataZoom slider with brush selection, a top move handle, a close-line data shadow, and theme switching.
 
 ## Motivation
 
@@ -12,9 +12,11 @@ The current slider is a minimal range controller. Customers expect behavior clos
 
 - Add `brushSelect` to the slider options.
 - Add `showDataShadow` to the slider options, defaulting to `true`.
+- Add `theme` to the slider options, defaulting to `auto`.
 - Render data shadow as one SVG close-price line only.
 - Add a top move handle for dragging the selected range.
 - Add a temporary brush rectangle while brushing a new range.
+- Let `theme: auto` follow the chart theme and allow manual `dark` / `light` overrides.
 - Keep the existing DataZoom percent range as the only time-window state.
 
 ## Out Of Scope

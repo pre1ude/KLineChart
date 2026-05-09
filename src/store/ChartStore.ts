@@ -61,6 +61,8 @@ export default class ChartStore {
 
   private _dataZoomOptions: DataZoomOptions = {}
 
+  private _styleTheme: 'dark' | 'light' = 'light'
+
   private _timeShareBasisPrice: number | undefined
 
   /**
@@ -80,6 +82,8 @@ export default class ChartStore {
    * Data source
    */
   private _dataList: KLineData[] = []
+
+  private _dataVersion = 0
 
   /**
    * Load data callback
@@ -177,6 +181,7 @@ export default class ChartStore {
       if (isValid(styles)) {
         let ss: DeepPartial<Styles> | undefined
         if (isString(styles)) {
+          this._styleTheme = resolveStyleTheme(styles)
           ss = getStyles(styles)
         } else {
           ss = styles
@@ -235,6 +240,10 @@ export default class ChartStore {
 
   getStyles(): Styles {
     return this._styles
+  }
+
+  getStyleTheme(): 'dark' | 'light' {
+    return this._styleTheme
   }
 
   getLocale(): string {
@@ -298,6 +307,10 @@ export default class ChartStore {
 
   getDataList(): KLineData[] {
     return this._dataList
+  }
+
+  getDataVersion(): number {
+    return this._dataVersion
   }
 
   getTaskScheduler(): TaskScheduler {
@@ -543,6 +556,7 @@ export default class ChartStore {
       }
     }
     if (adjustFlag) {
+      this._dataVersion++
       try {
         this._timeScaleStore.adjustVisibleRange()
         this._tooltipStore.recalculateCrosshair(true)
@@ -571,6 +585,7 @@ export default class ChartStore {
     // 数据替换：需要全量重新转换
     this._overlayStore.syncPointsToRaw()
     this._dataList = dataList
+    this._dataVersion++
     this._overlayStore.reconvertAllFromRaw()
     this._backwardMore = more ?? false
 
@@ -637,6 +652,7 @@ export default class ChartStore {
     this._loadingForward = false
     this._loadingBackward = false
     this._dataList = []
+    this._dataVersion++
     this._visibleDataList = []
     this._timeScaleStore.clear()
     this._tooltipStore.clear()
@@ -681,25 +697,32 @@ function getDataZoomOptions(dataZoom: boolean | DataZoomOptions): DataZoomOption
   return isBoolean(dataZoom) ? {} : dataZoom
 }
 
+function resolveStyleTheme(styles: string): 'dark' | 'light' {
+  return styles === 'dark' || styles === 'black' ? 'dark' : 'light'
+}
+
 function getDataZoomSliderOptions(slider?: boolean | DataZoomSliderOptions): DataZoomSliderOptions {
   if (isBoolean(slider)) {
     return {
       show: slider,
       brushSelect: false,
-      showDataShadow: true
+      showDataShadow: true,
+      theme: 'auto'
     }
   }
   if (slider == null) {
     return {
       show: false,
       brushSelect: false,
-      showDataShadow: true
+      showDataShadow: true,
+      theme: 'auto'
     }
   }
   return {
     ...slider,
     show: slider.show ?? true,
     brushSelect: slider.brushSelect ?? false,
-    showDataShadow: slider.showDataShadow ?? true
+    showDataShadow: slider.showDataShadow ?? true,
+    theme: slider.theme ?? 'auto'
   }
 }

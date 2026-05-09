@@ -60,7 +60,7 @@ The store/mode applies the existing minimum visible data count rule, so the slid
 The first version renders:
 
 - background track
-- selected filler
+- selected range
 - two handles
 
 Rendering updates on layout changes, data changes, and range changes.
