@@ -577,7 +577,7 @@ export default class ChartStore {
           callback?.()
         }
         this._actionStore.execute(ActionType.OnDataReady, undefined)
-      } catch {}
+      } catch { }
     }
   }
 
@@ -705,7 +705,7 @@ function getDataZoomSliderOptions(slider?: boolean | DataZoomSliderOptions): Dat
   if (isBoolean(slider)) {
     return {
       show: slider,
-      brushSelect: false,
+      brushSelect: true,
       showDataShadow: true,
       theme: 'auto'
     }
@@ -713,7 +713,7 @@ function getDataZoomSliderOptions(slider?: boolean | DataZoomSliderOptions): Dat
   if (slider == null) {
     return {
       show: false,
-      brushSelect: false,
+      brushSelect: true,
       showDataShadow: true,
       theme: 'auto'
     }
@@ -721,7 +721,7 @@ function getDataZoomSliderOptions(slider?: boolean | DataZoomSliderOptions): Dat
   return {
     ...slider,
     show: slider.show ?? true,
-    brushSelect: slider.brushSelect ?? false,
+    brushSelect: slider.brushSelect ?? true,
     showDataShadow: slider.showDataShadow ?? true,
     theme: slider.theme ?? 'auto'
   }
