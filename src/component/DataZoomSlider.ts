@@ -82,7 +82,7 @@ const SLIDER_PALETTES: Record<SliderResolvedTheme, SliderPalette> = {
     trackBackground: '#37465C',
     trackBorder: '#37465C',
     selectedBackground: 'rgba(104, 132, 173, 0.4)',
-    shadowArea: 'rgba(181, 202, 226, 0.36)',
+    shadowArea: 'rgba(86, 100, 121, 1)',
     shadowLine: 'rgba(221, 231, 243, 0.78)',
     handleFill: 'rgba(225, 235, 248, 0.96)',
     handleStroke: 'rgba(242, 247, 255, 0.92)',
