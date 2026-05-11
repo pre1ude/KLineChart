@@ -488,7 +488,6 @@ export class DataZoomSlider {
     this._drag.target = target === 'move' ? 'range' : target
     this._drag.startX = x
     this._drag.startRange = this.getHandleRange()
-    this._selectedRange.style.cursor = 'grabbing'
     this.applyHoverState()
     this.addDocumentListeners()
   }
@@ -620,7 +619,9 @@ export class DataZoomSlider {
 
   private updateCursor(): void {
     const brushSelect = this._chart.getChartStore().getDataZoomSliderOptions().brushSelect === true
-    this._selectedRange.style.cursor = brushSelect ? 'crosshair' : 'grab'
+    const cursor = brushSelect ? 'crosshair' : 'default'
+    this._track.style.cursor = cursor
+    this._selectedRange.style.cursor = cursor
   }
 
   private moveRangeCenterTo(x: number): void {
@@ -766,6 +767,7 @@ function createSliderElements(): SliderElements {
   const track = createDom('div', {
     position: 'absolute',
     boxSizing: 'border-box',
+    cursor: 'default',
     overflow: 'hidden'
   })
   const shadowSvg = document.createElementNS(SVG_NS, 'svg')
@@ -783,7 +785,7 @@ function createSliderElements(): SliderElements {
   const selectedRange = createDom('div', {
     position: 'absolute',
     boxSizing: 'border-box',
-    cursor: 'grab',
+    cursor: 'default',
     overflow: 'visible'
   })
   const brushRect = createDom('div', {
