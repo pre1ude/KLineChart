@@ -68,7 +68,9 @@ export default class CandleAreaView extends View {
             color: styles.lineColor,
             size: styles.lineSize,
             smooth: styles.smooth,
-            symbol: styles.symbol
+            symbol: styles.symbol,
+            lineJoin: styles.lineJoin,
+            miterLimit: styles.lineMiterLimit
           }
         })
 

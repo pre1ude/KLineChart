@@ -296,7 +296,15 @@ export const smoothNormalize = (smooth: number | boolean) => isNumber(smooth)
   : (smooth ? DEFAULT_SMOOTH : 0)
 
 export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineAttrs[], styles: Partial<SmoothLineStyle>): void {
-  const { style = LineType.Solid, smooth = false, size = 1, color = 'currentColor', dashedValue = DEFAULT_LINE_DASH } = styles
+  const {
+    style = LineType.Solid,
+    smooth = false,
+    size = 1,
+    color = 'currentColor',
+    dashedValue = DEFAULT_LINE_DASH,
+    lineJoin,
+    miterLimit
+  } = styles
   if (!isLineStyleVisible(styles)) {
     return
   }
@@ -307,6 +315,12 @@ export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineA
 
   ctx.lineWidth = size
   ctx.strokeStyle = color
+  if (lineJoin !== undefined) {
+    ctx.lineJoin = lineJoin
+  }
+  if (miterLimit !== undefined) {
+    ctx.miterLimit = miterLimit
+  }
   if (style === LineType.Dashed) {
     ctx.setLineDash(dashedValue)
   } else {

@@ -35,6 +35,8 @@ export interface LineStyle {
   size: number
   color: string
   dashedValue: number[]
+  lineJoin?: CanvasLineJoin
+  miterLimit?: number
 }
 
 export interface LineSymbolStyle {
@@ -188,6 +190,8 @@ export interface CandleAreaPointStyle {
 export interface CandleAreaStyle {
   lineSize: number
   lineColor: string
+  lineJoin?: CanvasLineJoin
+  lineMiterLimit?: number
   // value: 从klineData取的字段 一般为close
   value: string
   lineOnly: boolean
@@ -478,6 +482,7 @@ function getDefaultCandleStyle(): CandleStyle {
     area: {
       lineSize: 2,
       lineColor: '#4D97FF',
+      lineJoin: 'bevel',
       smooth: false,
       value: 'close',
       lineOnly: false,
