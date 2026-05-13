@@ -12,6 +12,7 @@ import { ActionType } from '../common/Action'
 import { getDefaultCustomApi, type CustomApi, defaultLocale, type DataZoomOptions, type DataZoomSliderOptions, type Options } from '../Options'
 import TimeScaleStore from './TimeScaleStore'
 import { TimeScaleModeKind } from './time-scale'
+import { resolveMinutePercentageBasis, resolveTimeShareBasisPrice, timestampToTimeShareDataIndex } from './time-share'
 import IndicatorStore from './IndicatorStore'
 import TooltipStore from './TooltipStore'
 import OverlayStore from './OverlayStore'
@@ -19,8 +20,7 @@ import ActionStore from './ActionStore'
 import { getStyles } from '../extension/styles/index'
 import type Chart from '../Chart'
 import { setTimezone } from '../common/utils/dateTimeFormat'
-import { lowerBound, binarySearchNearest } from '../common/utils/number'
-import { formatToHHmm } from '../common/utils/format'
+import { binarySearchNearest, lowerBound } from '../common/utils/number'
 import TaskScheduler from '@/common/TaskScheduler'
 
 export default class ChartStore {
@@ -329,25 +329,16 @@ export default class ChartStore {
   timestampToDataIndex(timestamp: number): number | undefined {
     if (this._dataList.length === 0) return undefined
 
+    // 分时模式：需确保单日分时的复盘日志均可见
+    if (this._isTimeShare) {
+      return timestampToTimeShareDataIndex(this._dataList, timestamp, this._timeShareTicks)
+    }
+
     const lb = lowerBound(this._dataList, d => d.timestamp - timestamp)
 
     // 精确匹配
     if (lb < this._dataList.length && this._dataList[lb].timestamp === timestamp) {
       return lb
-    }
-
-    // 分时模式：需确保单日分时的复盘日志均可见
-    if (this._isTimeShare) {
-      const ticksPerDay = this._timeShareTicks.length
-      const tickStr = formatToHHmm(timestamp)
-      const tickIndex = this._timeShareTicks.indexOf(tickStr)
-      if (tickIndex === -1) return undefined
-
-      if (lb > 0) {
-        const dayIndex = Math.floor(Math.min(lb, this._dataList.length) / ticksPerDay)
-        return dayIndex * ticksPerDay + tickIndex
-      }
-      return tickIndex - ticksPerDay
     }
 
     // K线模式：超出数据范围返回 undefined
@@ -397,15 +388,7 @@ export default class ChartStore {
 
   getTimeShareBasisPrice(): number {
     const firstData = this.getFirstLoadedData()
-    let basisPirce = this._timeShareBasisPrice
-    if (basisPirce == null) {
-      if (this._backwardMore === false) {
-        basisPirce = firstData?.open
-      } else {
-        basisPirce = firstData?.prevClose
-      }
-    }
-    return basisPirce ?? 0
+    return resolveTimeShareBasisPrice(firstData, this._backwardMore, this._timeShareBasisPrice)
   }
 
   setTimeShareBasisPrice(v: number): void {
@@ -417,11 +400,7 @@ export default class ChartStore {
    * 分时图模式使用 timeShareBasisPrice，否则使用 prevClose
    */
   getMinutePercentageBasis(): number {
-    if (this.getIsTimeShare()) {
-      return this.getTimeShareBasisPrice()
-    }
-    const firstData = this.getVisibleFirstData()
-    return firstData?.close ?? 0
+    return resolveMinutePercentageBasis(this.getIsTimeShare(), this.getTimeShareBasisPrice(), this.getVisibleFirstData()?.close)
   }
 
   /**

@@ -26,6 +26,9 @@ export default class CandleBarView extends View {
     }
     const pane = this.getWidget().getPane()
     const chartStore = pane.getChart().getChartStore()
+    if (pane.getId() === PaneIdConstants.CANDLE && chartStore.getIsTimeShare()) {
+      return false
+    }
     const candleBarOptions = this.getCandleBarOptions(chartStore)
     if (candleBarOptions == null) {
       return false
