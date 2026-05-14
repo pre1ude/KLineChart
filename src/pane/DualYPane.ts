@@ -21,7 +21,7 @@ export default abstract class DualYPane extends Pane {
   private readonly _options: PickPartial<DeepRequired<Omit<PaneOptions, 'id' | 'height'>>, 'position'> = {
     minHeight: PANE_MIN_HEIGHT,
     dragEnabled: true,
-    gap: { top: 0.2, bottom: 0.1 },
+    gap: { top: 0, bottom: 0 },
     reservedSpace: { top: 0, bottom: 0 },
     axisOptions: {
       name: 'default',
@@ -124,10 +124,10 @@ export default abstract class DualYPane extends Pane {
 
   }
 
-  getAxisWidget(position: string): YAxisWidget {
-    if (position === 'left') {
+  getAxisWidget(position: 'left' | 'right'): YAxisWidget {
+    if (position === YAxisPosition.Left) {
       return this._yLeftAxisWidget
-    } else if (position === 'right') {
+    } else if (position === YAxisPosition.Right) {
       return this._yRightAxisWidget
     }
     throw new Error(`Invalid axis position: ${position}. Use 'left' or 'right'.`)

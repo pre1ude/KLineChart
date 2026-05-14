@@ -877,20 +877,6 @@ export default class ChartImp implements Chart {
     let realPaneId = paneId
     if (currentPane) {
       realPaneId = currentPane.getId()
-      if (realPaneId !== PaneIdConstants.CANDLE) {
-        // is indicator pane
-        const yAxisPosition = indicator.yAxisPosition ?? 'left'
-        // get current pane yAxisWidget so the yAxisWidget now know what data to collect
-        const yAxisWidget = currentPane.getAxisWidget(yAxisPosition)
-        if (isValid(yAxisWidget)) {
-          const axisComponent = yAxisWidget.getAxisComponent()
-          axisComponent.addToCollect(indicator.name)
-        } else {
-          console.error('current pane does not have yAxisWidget for position:', yAxisPosition)
-        }
-      } else {
-        // in candle pane just as usual
-      }
       indicator.paneId = realPaneId
       this._chartStore.getIndicatorStore().addInstance(indicator, realPaneId, isStack ?? false).then(_ => {
         const forceShouldAdjustLeft = currentPane.getYLeftAxisWidget()?.getAxisComponent().buildTicks(true)
@@ -902,16 +888,6 @@ export default class ChartImp implements Chart {
     } else {
       realPaneId ??= createId(PaneIdConstants.INDICATOR)
       const pane = this._createPane(IndicatorPane, realPaneId, paneOptions ?? {})
-      // let the yAxisWidget know what data to collect
-      const yAxisPosition = indicator.yAxisPosition ?? 'left'
-      // get current pane yAxisWidget so the yAxisWidget now know what data to collect
-      const yAxisWidget = pane.getAxisWidget(yAxisPosition)
-      if (isValid(yAxisWidget)) {
-        const axisComponent = yAxisWidget.getAxisComponent()
-        axisComponent.addToCollect(indicator.name)
-      } else {
-        console.error('current pane does not have yAxisWidget for position:', yAxisPosition)
-      }
       const height = paneOptions?.height ?? PANE_DEFAULT_HEIGHT
       pane.setBounding({ height })
       indicator.paneId = realPaneId
@@ -951,19 +927,7 @@ export default class ChartImp implements Chart {
     if (removed) {
       let shouldMeasureHeight = false
       if (paneId !== PaneIdConstants.CANDLE) {
-        // in indicator pane
         const pane = this.getDrawPaneById(paneId)
-        if (pane) {
-          const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
-          const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
-          if (name !== undefined) {
-            yLeftAxis.removeFromCollect(name)
-            yRightAxis.removeFromCollect(name)
-          } else {
-            yLeftAxis.clearCollect()
-            yRightAxis.clearCollect()
-          }
-        }
         if (!indicatorStore.hasInstances(paneId)) {
           const index = this._drawPanes.findIndex(p => p.getId() === paneId)
           if (pane) {
@@ -1252,7 +1216,7 @@ export default class ChartImp implements Chart {
   }
 
   private _getYAxis(pane: DualYPane, position: 'left' | 'right') {
-    const yAxisWidget = position === 'left'
+    const yAxisWidget = position === YAxisPosition.Left
       ? pane.getYLeftAxisWidget()
       : pane.getYRightAxisWidget()
     return yAxisWidget?.getAxisComponent()

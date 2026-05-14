@@ -120,6 +120,11 @@ export interface IndicatorApi<D = unknown> {
   paneId: string
 
   /**
+   * Bound y-axis position in indicator panes.
+   */
+  yAxisPosition?: 'left' | 'right'
+
+  /**
    * Indicator name
    */
   name: string
@@ -211,13 +216,9 @@ export interface IndicatorApi<D = unknown> {
 
 export type IndicatorTemplate<D = unknown> = PartialExcept<Omit<IndicatorApi<D>, 'result' | 'id' | 'paneId'>, 'name' | 'calc'>
 
-export type IndicatorCreate<D = unknown> = PartialExcept<Omit<IndicatorApi<D>, 'result'>, 'name'> & {
-  yAxisPosition?: 'left' | 'right'
-}
+export type IndicatorCreate<D = unknown> = PartialExcept<Omit<IndicatorApi<D>, 'result'>, 'name'>
 
-export type IndicatorOverride<D = unknown> = Partial<Omit<IndicatorApi<D>, 'result' | 'id' | 'name'>> & {
-  yAxisPosition?: 'left' | 'right'
-} & ({ id: string, name?: string } | { name: string })
+export type IndicatorOverride<D = unknown> = Partial<Omit<IndicatorApi<D>, 'result' | 'id' | 'name'>> & ({ id: string, name?: string } | { name: string })
 
 export interface IndicatorFilter {
   id?: string
@@ -228,6 +229,7 @@ export interface IndicatorFilter {
 export class Indicator<D = unknown> implements IndicatorApi<D> {
   id: string
   paneId: string
+  yAxisPosition?: 'left' | 'right'
   name: string
   shortName: string
   precision: number
@@ -257,6 +259,7 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
   constructor(template: IndicatorTemplate<D>, initOptions?: Partial<Pick<IndicatorApi<D>, 'id' | 'paneId'>>) {
     this.id = initOptions?.id ?? ''
     this.paneId = initOptions?.paneId ?? ''
+    this.yAxisPosition = template.yAxisPosition
 
     this.name = template.name
     this.shortName = template.shortName ?? template.name

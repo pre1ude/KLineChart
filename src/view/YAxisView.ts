@@ -1,10 +1,31 @@
 import type Bounding from '../common/Bounding'
 import { type AxisStyle, type Styles } from '../common/Styles'
+import { clamp } from '../common/utils/number'
 import { type AxisTick } from '../component/Axis'
 import { type LineAttrs } from '../extension/figure/line'
 import { type TextAttrs } from '../extension/figure/text'
 import type YAxisWidget from '../widget/YAxisWidget'
 import AxisView from './AxisView'
+
+export function clampYAxisTickTextY(y: number, height: number, textHeight: number): number {
+  if (height <= 0 || textHeight <= 0) {
+    return y
+  }
+  if (height <= textHeight) {
+    return height / 2
+  }
+  const halfTextHeight = textHeight / 2
+  return clamp(y, halfTextHeight, height - halfTextHeight)
+}
+
+export function clampYAxisTickLineY(y: number, height: number, lineSize: number): number {
+  if (height <= 0 || lineSize <= 0) {
+    return y
+  }
+  const correction = lineSize % 2 === 1 ? 0.5 : 0
+  const halfLineSize = lineSize / 2
+  return clamp(y, halfLineSize - correction, height - halfLineSize - correction)
+}
 
 export default class YAxisView extends AxisView {
   override getAxisStyles(styles: Styles): AxisStyle {
@@ -79,12 +100,12 @@ export default class YAxisView extends AxisView {
     const isTimeShare = chartStore.getIsTimeShare()
     const isInCandle = widget.isInCandle()
     const height = widget?.getBounding().height ?? 0
-    const textHeight = chartStore.getStyles().xAxis.tickText.size
     const axisTitle = widget.getOptions().axisTitle
     const isAlignLeft = widget.isAlignLeft()
     const axisLineStyles = styles.axisLine
     const tickLineStyles = styles.tickLine
     const tickTextStyles = styles.tickText
+    const textHeight = tickTextStyles.size
 
     let x = 0
     if (isAlignLeft) {
@@ -119,7 +140,7 @@ export default class YAxisView extends AxisView {
     const align = isAlignLeft ? 'left' : 'right'
     return newTicks.map(tick => ({
       x,
-      y: tick.coord,
+      y: clampYAxisTickTextY(tick.coord, bounding.height, textHeight),
       text: tick.text,
       align,
       baseline: 'middle'

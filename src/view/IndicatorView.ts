@@ -1,9 +1,10 @@
 import { type IndicatorFigureData } from '@/widget/layer/IndicatorLayer'
 import type Coordinate from '../common/Coordinate'
-import { type IndicatorStyle } from '../common/Styles'
+import { type IndicatorStyle, YAxisPosition } from '../common/Styles'
 import type { EventName, MouseTouchEvent } from '../common/SyntheticEvent'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorFigureVisible, type Indicator, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
+import { getIndicatorYAxisPosition } from '../component/YAxis'
 import type YAxisImp from '../component/YAxis'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import { getLineSymbolStepBySpacing, resolveLineSymbolStyle } from '../extension/figure/line'
@@ -35,6 +36,7 @@ export default class IndicatorView extends View {
     const pane = widget.getPane()
     const isMain = pane.getId() === PaneIdConstants.CANDLE
     const chart = pane.getChart()
+    const globalYAxisPosition = chart.getStyles().yAxis.position
     const bounding = widget.getBounding()
     const xAxis = (chart.getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
     const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
@@ -51,17 +53,15 @@ export default class IndicatorView extends View {
     const ticksPerDay = timeShareTicks.length
     const breakOnCrossDays = chartStore.getTimeShareBreakOnCrossDays()
 
-    // 定义辅助函数
-    function filterIndicatorsByAxis(paneIndicators: Indicator[], yAxis: YAxisImp): Indicator[] {
-      const indicatorNames = yAxis.getIndicatorNames()
-      if (indicatorNames.length > 0) {
-        // 如果有收集的指标，则只计算收集的指标
-        const filteredIndicators = paneIndicators.filter(indicator => indicatorNames.includes(indicator.name))
-        if (filteredIndicators.length > 0) {
-          return filteredIndicators
-        }
-      }
-      return []
+    function filterIndicatorsByAxisPosition(
+      indicators: Indicator[],
+      position: 'left' | 'right',
+      yAxisPosition: YAxisPosition
+    ): Indicator[] {
+      const defaultPosition = yAxisPosition === YAxisPosition.Right
+        ? YAxisPosition.Right
+        : YAxisPosition.Left
+      return indicators.filter(indicator => getIndicatorYAxisPosition(indicator, defaultPosition) === position)
     }
 
     function setCompositeOperation(zLevel: number): void {
@@ -306,8 +306,8 @@ export default class IndicatorView extends View {
       drawForAxis(paneIndicators, yLeftAxis)
     } else {
       // 在副图
-      drawForAxis(filterIndicatorsByAxis(paneIndicators, yLeftAxis), yLeftAxis)
-      drawForAxis(filterIndicatorsByAxis(paneIndicators, yRightAxis), yRightAxis)
+      drawForAxis(filterIndicatorsByAxisPosition(paneIndicators, YAxisPosition.Left, globalYAxisPosition), yLeftAxis)
+      drawForAxis(filterIndicatorsByAxisPosition(paneIndicators, YAxisPosition.Right, globalYAxisPosition), yRightAxis)
     }
     ctx.restore()
   }

@@ -361,6 +361,8 @@ export interface YAxisStyle extends AxisStyle {
   position: YAxisPosition
   inside: boolean
   reverse: boolean
+  showMinLabel: boolean
+  showMaxLabel: boolean
 }
 
 export interface CrosshairDirectionStyle {
@@ -703,6 +705,8 @@ function getDefaultYAxisStyle(): YAxisStyle {
   style.position = YAxisPosition.Left
   style.inside = false
   style.reverse = false
+  style.showMinLabel = true
+  style.showMaxLabel = true
   return style
 }
 

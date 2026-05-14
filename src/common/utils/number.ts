@@ -50,6 +50,7 @@ export function upperBound<T>(arr: T[], cmp: (v: T) => number): number {
 
 /**
  * 优化数字
+ * @deprecated Use scale-specific tick interval helpers instead. This legacy helper uses the old 1/2/3/4/5/6/8 step set.
  * @param value
  * @return {number|number}
  */
