@@ -44,6 +44,12 @@ function hasDrawableLineCoordinates(coordinates: Coordinate[]): boolean {
   return coordinates.length > 1
 }
 
+function hasDrawableSymbolCoordinates(attrs: LineAttrs): boolean {
+  const { coordinates, startDataIndex = 0, forceDrawSymbolDataIndex } = attrs
+  return hasDrawableLineCoordinates(coordinates) ||
+    (coordinates.length === 1 && startDataIndex === forceDrawSymbolDataIndex)
+}
+
 function canDrawLineSymbols(symbolStyle: LineSymbolStyle): boolean {
   return symbolStyle.show &&
     symbolStyle.radius > 0 &&
@@ -54,11 +60,11 @@ function canDrawLineSymbols(symbolStyle: LineSymbolStyle): boolean {
 }
 
 function drawLineSymbols(ctx: CanvasRenderingContext2D, attrs: LineAttrs, symbolStyle: LineSymbolStyle): void {
-  if (!hasDrawableLineCoordinates(attrs.coordinates) || !canDrawLineSymbols(symbolStyle)) {
+  if (!hasDrawableSymbolCoordinates(attrs) || !canDrawLineSymbols(symbolStyle)) {
     return
   }
 
-  const { coordinates, startDataIndex = 0 } = attrs
+  const { coordinates, startDataIndex = 0, forceDrawSymbolDataIndex } = attrs
   const symbolStep = Math.max(1, attrs.symbolStep ?? 1)
   const shouldFill = !isTransparent(symbolStyle.fillColor)
   const shouldStroke = symbolStyle.borderSize > 0 && !isTransparent(symbolStyle.borderColor)
@@ -70,7 +76,8 @@ function drawLineSymbols(ctx: CanvasRenderingContext2D, attrs: LineAttrs, symbol
   let hasPath = false
 
   for (let i = 0; i < coordinates.length; i++) {
-    if ((startDataIndex + i) % symbolStep !== 0) {
+    const dataIndex = startDataIndex + i
+    if (dataIndex !== forceDrawSymbolDataIndex && dataIndex % symbolStep !== 0) {
       continue
     }
 
@@ -329,6 +336,7 @@ export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineA
 
   if (!Array.isArray(attrs)) {
     if (!hasDrawableLineCoordinates(attrs.coordinates)) {
+      drawLineSymbols(ctx, attrs, symbolStyle)
       return
     }
 
@@ -351,7 +359,7 @@ export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineA
   }
 
   for (let i = 0; i < attrs.length; i++) {
-    if (!hasDrawableLineCoordinates(attrs[i].coordinates)) {
+    if (!hasDrawableSymbolCoordinates(attrs[i])) {
       continue
     }
     drawLineSymbols(ctx, attrs[i], symbolStyle)
@@ -362,6 +370,7 @@ export interface LineAttrs {
   coordinates: Coordinate[]
   startDataIndex?: number
   symbolStep?: number
+  forceDrawSymbolDataIndex?: number
 }
 
 const line: FigureTemplate<LineAttrs | LineAttrs[], Partial<SmoothLineStyle>> = {

@@ -1,5 +1,6 @@
 import Animation from '../common/Animation'
 import type Coordinate from '../common/Coordinate'
+import type KLineData from '../common/KLineData'
 import { type GradientColor } from '../common/Styles'
 import { UpdateLevel } from '../common/Updater'
 import { isArray, isNumber, isValid } from '../common/utils/typeChecks'
@@ -48,6 +49,7 @@ export default class CandleAreaView extends View {
     const startDataIndex = Math.max(0, visibleRange.from)
     const endDataIndex = Math.min(lastDataIndex, visibleRange.to - 1)
     const isLastDataVisible = lastDataIndex >= visibleRange.from && lastDataIndex < visibleRange.to
+    const lastVisibleDataIndex = getLastVisibleAreaDataIndex(dataList, startDataIndex, endDataIndex, styles.value)
 
     // 流式绘制：收集连续的坐标点
     const currentPath: Coordinate[] = []
@@ -56,13 +58,17 @@ export default class CandleAreaView extends View {
 
     // 绘制当前路径并重置
     const drawCurrentPath = (): void => {
-      if (currentPath.length >= 2) {
+      if (
+        currentPath.length >= 2 ||
+        (currentPath.length === 1 && currentPathStartDataIndex === lastVisibleDataIndex)
+      ) {
         // 绘制线条
         drawStaticFigure(ctx, 'line', {
           attrs: {
             coordinates: currentPath,
             startDataIndex: currentPathStartDataIndex,
-            symbolStep: lineSymbolStep
+            symbolStep: lineSymbolStep,
+            forceDrawSymbolDataIndex: lastVisibleDataIndex
           },
           styles: {
             color: styles.lineColor,
@@ -75,7 +81,7 @@ export default class CandleAreaView extends View {
         })
 
         // 绘制区域填充
-        if (!styles.lineOnly) {
+        if (currentPath.length >= 2 && !styles.lineOnly) {
           const backgroundColor = styles.backgroundColor
           let color: string | CanvasGradient
           let segmentMinY = currentPath[0].y
@@ -185,4 +191,13 @@ export default class CandleAreaView extends View {
   stopAnimation(): void {
     this._animation.stop()
   }
+}
+
+export function getLastVisibleAreaDataIndex(dataList: KLineData[], startDataIndex: number, endDataIndex: number, valueKey: string): number {
+  for (let dataIndex = endDataIndex; dataIndex >= startDataIndex; dataIndex--) {
+    if (isNumber(dataList[dataIndex]?.[valueKey])) {
+      return dataIndex
+    }
+  }
+  return -1
 }
