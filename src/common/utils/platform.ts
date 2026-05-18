@@ -11,3 +11,13 @@ export function isIOS(): boolean {
   }
   return /iPhone|iPad|iPod/.test(window.navigator.platform)
 }
+
+export function getPlatform(): string {
+  if (typeof navigator !== 'undefined') {
+    return navigator.platform
+  }
+  if (typeof window !== 'undefined') {
+    return window.navigator.platform
+  }
+  return ''
+}

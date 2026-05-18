@@ -1,8 +1,14 @@
+import { getPlatform } from './platform'
+
 interface FontConfig {
   fontFamily: string
   size: number
   bold?: boolean
   italic?: boolean
+}
+
+export function getDefaultFontFamily(): string {
+  return getPlatform().match(/^Win/) ? 'Microsoft YaHei' : 'sans-serif'
 }
 
 // Font parsing regex - matches "italic bold 12px Arial" or similar

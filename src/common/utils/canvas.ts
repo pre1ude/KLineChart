@@ -1,4 +1,5 @@
 import { createDom } from './dom'
+import { getDefaultFontFamily } from './font'
 
 let measureCtx: CanvasRenderingContext2D
 
@@ -25,7 +26,7 @@ export function getPixelRatio(canvas: HTMLCanvasElement): number {
 }
 
 export function createFont(size?: number, weight?: string | number, fontFamily?: string): string {
-  return `${weight ?? 'normal'} ${size ?? 12}px ${fontFamily ?? 'Trebuchet MS, sans-serif'}`
+  return `${weight ?? 'normal'} ${size ?? 12}px ${fontFamily ?? getDefaultFontFamily()}`
 }
 
 export function getMeasureContext(): CanvasRenderingContext2D {

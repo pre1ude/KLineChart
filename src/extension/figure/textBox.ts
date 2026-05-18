@@ -5,6 +5,7 @@ import {
   calcTextWidth,
   createFont
 } from '../../common/utils/canvas'
+import { getDefaultFontFamily } from '../../common/utils/font'
 import { type FigureTemplate } from '../../component/Figure'
 import { type RectAttrs, drawRect } from './rect'
 
@@ -115,7 +116,7 @@ function layoutText(attrs: TextBoxAttrs, styles: Partial<TextBoxStyle>): TextLay
   // 提取样式参数
   const fontSize = styles.size ?? 12
   const fontWeight = styles.weight ?? 'normal'
-  const fontFamily = styles.fontFamily ?? 'Trebuchet MS, sans-serif'
+  const fontFamily = styles.fontFamily ?? getDefaultFontFamily()
   const paddingLeft = styles.paddingLeft ?? 0
   const paddingTop = styles.paddingTop ?? 0
   const paddingRight = styles.paddingRight ?? 0

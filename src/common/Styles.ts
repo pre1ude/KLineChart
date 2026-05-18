@@ -1,5 +1,6 @@
 import type DeepPartial from './DeepPartial'
 import type KLineData from './KLineData'
+import { getDefaultFontFamily } from './utils/font'
 
 export interface Margin {
   marginLeft: number
@@ -448,7 +449,7 @@ const noChangeColor = '#9CA3AD'
 const indicatorUpColor = 'rgba(255, 102, 0, 0.6)'
 const indicatorDownColor = 'rgba(52, 199, 52, 0.6)'
 
-const fontFamily = 'Trebuchet MS, sans-serif' // 统一使用 Trebuchet MS 字体
+const fontFamily = getDefaultFontFamily()
 
 function getAlphaBlue(alpha: number): string {
   return `rgba(22, 119, 255, ${alpha})`
