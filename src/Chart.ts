@@ -1,10 +1,9 @@
-import type DeepPartial from './common/DeepPartial'
 import type Bounding from './common/Bounding'
 import type KLineData from './common/KLineData'
 import type Coordinate from './common/Coordinate'
 import type { IPoint, Point } from './common/Point'
 import { UpdateLevel } from './common/Updater'
-import { type Styles, YAxisPosition } from './common/Styles'
+import { type DeepPartialStyles, type Styles, YAxisPosition } from './common/Styles'
 import type Crosshair from './common/Crosshair'
 import { ActionType, type ActionCallback, type ActionCallbackParams } from './common/Action'
 import type LoadDataCallback from './common/LoadDataCallback'
@@ -66,7 +65,7 @@ export interface Chart {
   setOptions: (option: Options) => void
   setLocale: (locale: string) => void
   getLocale: () => string
-  setStyles: (styles: string | DeepPartial<Styles>) => void
+  setStyles: (styles: string | DeepPartialStyles) => void
   getStyles: () => Styles
   setCustomApi: (customApi: Partial<CustomApi>) => void
   setPriceVolumePrecision: (pricePrecision: number, volumePrecision: number) => void
@@ -672,9 +671,9 @@ export default class ChartImp implements Chart {
     }
   }
 
-  setStyles(styles: string | DeepPartial<Styles>): void {
+  setStyles(styles: string | DeepPartialStyles): void {
     this._chartStore.setOptions({ styles })
-    /* let realStyles: Nullable<DeepPartial<Styles>>
+    /* let realStyles: Nullable<DeepPartialStyles>
     if (isString(styles)) {
       realStyles = getExtensionStyles(styles)
     } else {

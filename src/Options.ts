@@ -1,6 +1,5 @@
 
-import type DeepPartial from './common/DeepPartial'
-import { type Styles } from './common/Styles'
+import type { DeepPartialStyles } from './common/Styles'
 import type { DateTimeFormat } from './common/utils/dateTimeFormat'
 import { formatDate, formatBigNumber } from './common/utils/format'
 
@@ -77,7 +76,7 @@ export interface Options {
   layout?: LayoutChild[]
   locale?: string
   timezone?: string
-  styles?: string | DeepPartial<Styles>
+  styles?: string | DeepPartialStyles
   customApi?: Partial<CustomApi>
   thousandsSeparator?: string
   decimalFoldThreshold?: number

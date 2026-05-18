@@ -1,3 +1,4 @@
+import type DeepPartial from './DeepPartial'
 import type KLineData from './KLineData'
 
 export interface Margin {
@@ -434,6 +435,8 @@ export interface Styles {
   crosshair: CrosshairStyle
   overlay: OverlayStyle
 }
+
+export type DeepPartialStyles = DeepPartial<Styles>
 
 const white = '#FFFFFF'
 const textColor = '#76808F'

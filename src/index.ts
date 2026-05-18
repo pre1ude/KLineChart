@@ -244,6 +244,7 @@ export type { default as Crosshair } from './common/Crosshair'
 
 // Style Types
 export type {
+  DeepPartialStyles,
   Styles,
   TooltipIconStyle,
   GradientColor,

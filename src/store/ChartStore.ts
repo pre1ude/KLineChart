@@ -1,10 +1,9 @@
 import type KLineData from '../common/KLineData'
 import type Precision from '../common/Precision'
 import type VisibleData from '../common/VisibleData'
-import type DeepPartial from '../common/DeepPartial'
 import type { IPoint } from '../common/Point'
 import type { Point } from '../common/Point'
-import { getDefaultStyles, type Styles, type TooltipLegend } from '../common/Styles'
+import { type DeepPartialStyles, getDefaultStyles, type Styles, type TooltipLegend } from '../common/Styles'
 import { isArray, isBoolean, isNumber, isString, isValid, merge } from '../common/utils/typeChecks'
 import type LoadDataCallback from '../common/LoadDataCallback'
 import { type LoadDataParams, LoadDataType } from '../common/LoadDataCallback'
@@ -179,7 +178,7 @@ export default class ChartStore {
         setTimezone(timezone)
       }
       if (isValid(styles)) {
-        let ss: DeepPartial<Styles> | undefined
+        let ss: DeepPartialStyles | undefined
         if (isString(styles)) {
           this._styleTheme = resolveStyleTheme(styles)
           ss = getStyles(styles)
