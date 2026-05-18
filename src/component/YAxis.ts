@@ -479,7 +479,7 @@ export function createTimeShareYAxisTickValues(from: number, to: number, height:
   const maxTickCount = height > 0 && textHeight > 0
     ? Math.max(2, Math.floor(height / (textHeight * MIN_Y_AXIS_TICK_TEXT_SPACING)))
     : 2
-  let splitCount = Math.min(6, Math.max(1, maxTickCount - 1))
+  let splitCount = Math.min(8, Math.max(1, maxTickCount - 1))
   if (splitCount > 1 && splitCount % 2 !== 0) {
     splitCount--
   }
