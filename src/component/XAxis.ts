@@ -114,7 +114,7 @@ export default abstract class XAxisImp extends AxisImp {
       layoutOptions,
       value => this.convertToPixel(value)
     )
-    return this._filterOverlappedTicks(optimalTicks)
+    return this._filterOverlappedTicks(optimalTicks, layoutOptions)
   }
 
   protected optimalMinuteTicks(): AxisTick[] {

@@ -1,11 +1,21 @@
 import type Bounding from '../common/Bounding'
 import { type AxisStyle, type Styles } from '../common/Styles'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
+import { clamp } from '../common/utils/number'
 import { type AxisTick } from '../component/Axis'
 import { calcXAxisTickTextX } from '../component/x-axis/tickLayout'
 import { type LineAttrs } from '../extension/figure/line'
 import { type TextAttrs } from '../extension/figure/text'
 import AxisView from './AxisView'
+
+export function clampXAxisTickLineX(x: number, width: number, lineSize: number): number {
+  if (width <= 0 || lineSize <= 0) {
+    return x
+  }
+  const correction = lineSize % 2 === 1 ? 0.5 : 0
+  const halfLineSize = lineSize / 2
+  return clamp(x, halfLineSize - correction, width - halfLineSize - correction)
+}
 
 export default class XAxisView extends AxisView {
   override getAxisStyles(styles: Styles): AxisStyle {
@@ -21,15 +31,18 @@ export default class XAxisView extends AxisView {
     }
   }
 
-  override createTickLines(ticks: AxisTick[], _bounding: Bounding, styles: AxisStyle): LineAttrs[] {
+  override createTickLines(ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): LineAttrs[] {
     const tickLineStyles = styles.tickLine
     const axisLineSize = styles.axisLine.size
-    return ticks.map(tick => ({
-      coordinates: [
-        { x: tick.coord, y: 0 },
-        { x: tick.coord, y: axisLineSize + tickLineStyles.length }
-      ]
-    }))
+    return ticks.map(tick => {
+      const x = clampXAxisTickLineX(tick.coord, bounding.width, tickLineStyles.size)
+      return {
+        coordinates: [
+          { x, y: 0 },
+          { x, y: axisLineSize + tickLineStyles.length }
+        ]
+      }
+    })
   }
 
   override createTickTexts(ticks: AxisTick[], _bounding: Bounding, styles: AxisStyle): TextAttrs[] {

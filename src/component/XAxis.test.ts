@@ -271,6 +271,33 @@ describe('XAxisImp optimalTicks', () => {
 
     expect(ticks.map(tick => tick.value)).toEqual([1000])
   })
+
+  it('keeps the dataZoom max label when it overlaps the previous tick', () => {
+    const dataList: KLineData[] = [
+      { timestamp: 1000, open: 1, high: 1, low: 1, close: 1 },
+      { timestamp: 2000, open: 2, high: 2, low: 2, close: 2 },
+      { timestamp: 3000, open: 3, high: 3, low: 3, close: 3 },
+      { timestamp: 4000, open: 4, high: 4, low: 4, close: 4 }
+    ]
+    const xAxis = createTestXAxis(dataList, {
+      dataZoomEnabled: true,
+      showMinLabel: false,
+      showMaxLabel: false,
+      coordinateStep: 8
+    })
+    xAxis.setRange({
+      from: 0,
+      to: 4,
+      domainFrom: 0,
+      domainTo: 4
+    })
+
+    const ticks = xAxis.runOptimalTicks([
+      { text: '2', coord: 0, value: 2 }
+    ])
+
+    expect(ticks.map(tick => tick.value)).toEqual([1000, 4000])
+  })
 })
 
 describe('XAxisImp optimalMinuteTicks', () => {
@@ -388,6 +415,7 @@ function createTestXAxis(
     timeShareTicks?: string[]
     timeShareDays?: number
     preferXTicks?: string[]
+    coordinateStep?: number
   } = {}
 ): TestXAxis {
   const styles = getDefaultStyles()
@@ -402,7 +430,7 @@ function createTestXAxis(
     getTimeShareDays: () => options.timeShareDays ?? 1,
     getPreferXTicks: () => options.preferXTicks,
     getTimeScaleStore: () => ({
-      dataIndexToCoordinate: (dataIndex: number) => dataIndex * 100
+      dataIndexToCoordinate: (dataIndex: number) => dataIndex * (options.coordinateStep ?? 100)
     })
   }
   const chart = {
