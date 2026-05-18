@@ -467,6 +467,34 @@ export function layoutYAxisTicks(
   })
 }
 
+export function createTimeShareYAxisTickValues(from: number, to: number, height: number, textHeight: number): number[] {
+  if (to - from < 0) {
+    return []
+  }
+  if (from === to) {
+    return [from]
+  }
+
+  const range = to - from
+  const maxTickCount = height > 0 && textHeight > 0
+    ? Math.max(2, Math.floor(height / (textHeight * MIN_Y_AXIS_TICK_TEXT_SPACING)))
+    : 2
+  let splitCount = Math.min(6, Math.max(1, maxTickCount - 1))
+  if (splitCount > 1 && splitCount % 2 !== 0) {
+    splitCount--
+  }
+
+  return Array.from({ length: splitCount + 1 }, (_, index) => {
+    if (index === 0) {
+      return from
+    }
+    if (index === splitCount) {
+      return to
+    }
+    return from + range * index / splitCount
+  })
+}
+
 export function mapYAxisTicksToPixels(
   ticks: AxisTick[],
   type: YAxisType,
@@ -958,8 +986,6 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const { from, to } = this._range
     const mid = (from + to) / 2
 
-    const arrV: number[] = []
-
     if (to - from >= 0) {
       const widget = this.getParent()
       const pane = widget.getPane()
@@ -967,32 +993,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
       const height = widget?.getBounding().height ?? 0
       const textHeight = chartStore.getStyles().yAxis.tickText.size
-      const maxTickCount = Math.floor(height / (textHeight * 2))
-
-      const interval = (to - from) / Math.min(7, Math.max(3, maxTickCount - 1))
-
-      const first = mid
-      let n = 0
-      let f = first
-
-      const halfLabelToRange = (to - from) * textHeight / height / 2
-      if (interval !== 0) {
-        while (f <= to - halfLabelToRange) {
-          if (n > 0) {
-            const v1 = first + n * interval
-            const v2 = first - n * interval
-            arrV.unshift(v2)
-            arrV.push(v1)
-          } else {
-            const v = first
-            arrV.push(v)
-          }
-          ++n
-          f += interval
-        }
-      }
+      const arrV = createTimeShareYAxisTickValues(from, to, height, textHeight)
+      return arrV.map(e => ({ text: `${e  }`, coord: 0, value: e, colorHint: e > mid ? 1 : e < mid ? -1 : 0 }))
     }
-    return arrV.map(e => ({ text: `${e  }`, coord: 0, value: e, colorHint: e > mid ? 1 : e < mid ? -1 : 0 }))
+    return []
   }
 
   private _calcTicks(): AxisTick[] {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   calcYAxisTickBounds,
   calcYAxisTickInterval,
+  createTimeShareYAxisTickValues,
   createSyncedYAxisTick,
   formatYAxisTickText,
   getIndicatorYAxisPosition,
@@ -200,6 +201,35 @@ describe('layoutYAxisTicks', () => {
 
     expect(layoutYAxisTicks(ticks, false, true).map(tick => tick.text)).toEqual(['mid', 'max'])
     expect(layoutYAxisTicks(ticks, true, false).map(tick => tick.text)).toEqual(['min', 'mid'])
+  })
+})
+
+describe('createTimeShareYAxisTickValues', () => {
+  it('keeps time-share min and max values visible as y-axis ticks', () => {
+    const ticks = createTimeShareYAxisTickValues(2.2696, 2.2784, 153, 12)
+
+    expect(ticks[0]).toBe(2.2696)
+    expect(ticks[ticks.length - 1]).toBe(2.2784)
+  })
+
+  it('keeps time-share y-axis ticks evenly distributed', () => {
+    const ticks = createTimeShareYAxisTickValues(-0.49, 0.49, 153, 12)
+    const step = ticks[1] - ticks[0]
+
+    ticks.slice(1).forEach((tick, index) => {
+      expect(tick - ticks[index]).toBeCloseTo(step)
+    })
+  })
+
+  it('keeps up to seven evenly distributed time-share y-axis ticks', () => {
+    expect(createTimeShareYAxisTickValues(-0.49, 0.49, 300, 12)).toHaveLength(7)
+  })
+
+  it('keeps boundary values even when the axis is too short for middle ticks', () => {
+    expect(createTimeShareYAxisTickValues(2.2696, 2.2784, 10, 12)).toEqual([
+      2.2696,
+      2.2784
+    ])
   })
 })
 
