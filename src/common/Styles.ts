@@ -134,10 +134,19 @@ export interface GradientColor {
   color: string
 }
 
+export enum GridLineLevel {
+  Minor = 'minor',
+  Primary = 'primary'
+}
+
+export interface GridLineStyle extends StateLineStyle {
+  primary?: Partial<StateLineStyle>
+}
+
 export interface GridStyle {
   show: boolean
-  horizontal: StateLineStyle
-  vertical: StateLineStyle
+  horizontal: GridLineStyle
+  vertical: GridLineStyle
 }
 
 export type TooltipTextStyle = Pick<TextStyle, 'color' | 'size' | 'fontFamily' | 'weight'> & Margin
@@ -443,13 +452,16 @@ function getAlphaBlue(alpha: number): string {
 }
 
 function getDefaultGridStyle(): GridStyle {
-  function item(): StateLineStyle {
+  function item(): GridLineStyle {
     return {
       show: true,
       size: 1,
       color: '#EDEDED',
       style: LineType.Solid,
-      dashedValue: [2, 2]
+      dashedValue: [2, 2],
+      primary: {
+        color: axisLineColor
+      }
     }
   }
   return {

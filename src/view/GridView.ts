@@ -1,4 +1,5 @@
 import { drawStaticFigure } from '../extension/figure'
+import { GridLineLevel, type GridLineStyle } from '../common/Styles'
 import { type LineAttrs } from '../extension/figure/line'
 import type DualYPane from '../pane/DualYPane'
 import type XAxisWidget from '../widget/XAxisWidget'
@@ -36,25 +37,43 @@ export default class GridView extends View {
       const verticalShow = verticalStyles.show
       if (verticalShow) {
         const xAxis = (chart.getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
-        const chartStore = chart.getChartStore()
-        const isTimeShare = chartStore.getIsTimeShare()
-        const timeShareDays = chartStore.getTimeShareDays()
-        const attrs: LineAttrs[] = xAxis.getTicks().map(tick => ({
-          coordinates: [
-            { x: tick.coord, y: 0 },
-            { x: tick.coord, y: bounding.height }
-          ]
-        }))
-        if (isTimeShare && timeShareDays > 1) {
-          // N日分时跳过第一根线绘制
-          attrs.shift()
-        }
-        drawStaticFigure(ctx, 'line', {
-          attrs,
-          styles: verticalStyles
+        const attrs: LineAttrs[] = []
+        const primaryAttrs: LineAttrs[] = []
+        xAxis.getTicks().forEach(tick => {
+          const attr = {
+            coordinates: [
+              { x: tick.coord, y: 0 },
+              { x: tick.coord, y: bounding.height }
+            ]
+          }
+          if (tick.gridLineLevel === GridLineLevel.Primary) {
+            primaryAttrs.push(attr)
+          } else {
+            attrs.push(attr)
+          }
         })
+        if (attrs.length > 0) {
+          drawStaticFigure(ctx, 'line', {
+            attrs,
+            styles: verticalStyles
+          })
+        }
+        const primaryStyles = getPrimaryGridLineStyle(verticalStyles)
+        if (primaryAttrs.length > 0 && primaryStyles.show) {
+          drawStaticFigure(ctx, 'line', {
+            attrs: primaryAttrs,
+            styles: primaryStyles
+          })
+        }
       }
       ctx.restore()
     }
+  }
+}
+
+function getPrimaryGridLineStyle(styles: GridLineStyle): GridLineStyle {
+  return {
+    ...styles,
+    ...styles.primary
   }
 }

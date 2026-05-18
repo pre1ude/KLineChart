@@ -13,7 +13,8 @@ import {
   CandleType,
   YAxisPosition,
   YAxisType,
-  CandleTooltipRectPosition
+  CandleTooltipRectPosition,
+  GridLineLevel
 } from './common/Styles'
 import { IndicatorSeries } from './component/Indicator'
 import { OverlayState } from './component/Overlay'
@@ -210,6 +211,7 @@ export {
   TooltipIconPosition,
   CandleTooltipRectPosition,
   CandleType,
+  GridLineLevel,
   YAxisPosition,
   YAxisType,
   // Format

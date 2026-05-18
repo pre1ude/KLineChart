@@ -1,5 +1,6 @@
-import type VisibleRange from '../common/VisibleRange'
 import type Bounding from '../common/Bounding'
+import type { GridLineLevel } from '../common/Styles'
+import type VisibleRange from '../common/VisibleRange'
 import type XAxisWidget from '../widget/XAxisWidget'
 import type YAxisWidget from '../widget/YAxisWidget'
 
@@ -8,6 +9,7 @@ export interface AxisTick {
   value: number | string
   text: string
   colorHint?: -1 | 0 | 1
+  gridLineLevel?: GridLineLevel
 }
 
 export interface Axis {

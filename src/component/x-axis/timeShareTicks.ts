@@ -1,5 +1,6 @@
 import { genTimeStamp, getDateTimeFormat } from '../../common/utils/dateTimeFormat'
 import { formatDate } from '../../common/utils/format'
+import { GridLineLevel } from '../../common/Styles'
 import {
   X_AXIS_DAY_START_TICK_PRIORITY,
   type XAxisTick,
@@ -43,6 +44,7 @@ export function createTimeShareXAxisTicks(
     const timeStamp = genTimeStamp(timeShareTicks[index], hintTs)
     let text = timeShareTicks[index]
     let priority: number | undefined
+    let gridLineLevel: GridLineLevel | undefined
     if (timeShareDays > 1 && index === 0) {
       const currentYear = formatDate(dateTimeFormat, timeStamp, 'YYYY')
       if (prevYear === null || prevYear !== currentYear) {
@@ -52,8 +54,11 @@ export function createTimeShareXAxisTicks(
         text = formatDate(dateTimeFormat, timeStamp, 'MM-DD')
       }
       priority = X_AXIS_DAY_START_TICK_PRIORITY
+      if (tickIndex !== 0) {
+        gridLineLevel = GridLineLevel.Primary
+      }
     }
-    return { text, coord: convertToPixel(tickIndex), value: timeStamp, priority }
+    return { text, coord: convertToPixel(tickIndex), value: timeStamp, priority, gridLineLevel }
   })
 }
 

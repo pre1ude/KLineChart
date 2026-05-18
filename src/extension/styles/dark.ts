@@ -8,7 +8,10 @@ const dark: DeepPartial<Styles> = {
       color: '#1F2733'
     },
     vertical: {
-      color: '#1F2733'
+      color: '#1F2733',
+      primary: {
+        color: '#40516B'
+      }
     }
   },
   xAxis: {

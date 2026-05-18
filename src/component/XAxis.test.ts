@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { getDefaultStyles } from '../common/Styles'
+import { getDefaultStyles, GridLineLevel } from '../common/Styles'
 import type KLineData from '../common/KLineData'
 import { getDefaultCustomApi } from '../Options'
 import type { AxisCreateTicksParams, AxisTick } from './Axis'
@@ -313,6 +313,29 @@ describe('XAxisImp optimalMinuteTicks', () => {
       '10:30',
       '01-04',
       '10:30'
+    ])
+  })
+
+  it('marks multi-day time-share day start ticks as primary grid lines', () => {
+    const timeShareTicks = ['09:30', '10:30', '11:30']
+    const xAxis = createTestXAxis(createTimeShareDataList(timeShareTicks, 3), {
+      dataZoomEnabled: false,
+      preferXTicks: ['10:30'],
+      showMinLabel: false,
+      showMaxLabel: false,
+      timeShareTicks,
+      timeShareDays: 3
+    })
+
+    const ticks = xAxis.runOptimalMinuteTicks()
+
+    expect(ticks.map(tick => tick.gridLineLevel)).toEqual([
+      undefined,
+      undefined,
+      GridLineLevel.Primary,
+      undefined,
+      GridLineLevel.Primary,
+      undefined
     ])
   })
 
