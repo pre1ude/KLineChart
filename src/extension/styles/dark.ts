@@ -19,7 +19,7 @@ const dark: DeepPartial<Styles> = {
       color: '#40516B'
     },
     tickText: {
-      color: '#C3CCD9'
+      color: '#B8CAE6'
     },
     tickLine: {
       color: '#37465C'
@@ -30,7 +30,7 @@ const dark: DeepPartial<Styles> = {
       color: '#40516B'
     },
     tickText: {
-      color: '#C3CCD9'
+      color: '#B8CAE6'
     },
     tickLine: {
       color: '#37465C'
