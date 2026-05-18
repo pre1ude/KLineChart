@@ -31,15 +31,15 @@ describe('resolveTimeShareBasisPrice', () => {
   const firstData = createData(5, 9, 30, { open: 10, prevClose: 9 })
 
   it('uses explicit basis price first', () => {
-    expect(resolveTimeShareBasisPrice(firstData, true, 8)).toBe(8)
+    expect(resolveTimeShareBasisPrice(firstData, 8)).toBe(8)
   })
 
-  it('uses prevClose while backward data may still load', () => {
-    expect(resolveTimeShareBasisPrice(firstData, true)).toBe(9)
+  it('uses first data prevClose when basis price is not configured', () => {
+    expect(resolveTimeShareBasisPrice(firstData)).toBe(9)
   })
 
-  it('uses open after backward data is exhausted', () => {
-    expect(resolveTimeShareBasisPrice(firstData, false)).toBe(10)
+  it('falls back to first data open when prevClose is missing', () => {
+    expect(resolveTimeShareBasisPrice(createData(5, 9, 30, { open: 10 }))).toBe(10)
   })
 })
 

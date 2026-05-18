@@ -387,7 +387,7 @@ export default class ChartStore {
 
   getTimeShareBasisPrice(): number {
     const firstData = this.getFirstLoadedData()
-    return resolveTimeShareBasisPrice(firstData, this._backwardMore, this._timeShareBasisPrice)
+    return resolveTimeShareBasisPrice(firstData, this._timeShareBasisPrice)
   }
 
   setTimeShareBasisPrice(v: number): void {

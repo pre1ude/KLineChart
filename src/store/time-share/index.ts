@@ -31,14 +31,11 @@ export function timestampToTimeShareDataIndex(dataList: KLineData[], timestamp: 
   return tickIndex - timeShareTicks.length
 }
 
-export function resolveTimeShareBasisPrice(firstData: KLineData | undefined, backwardMore: boolean, basisPrice?: number): number {
+export function resolveTimeShareBasisPrice(firstData: KLineData | undefined, basisPrice?: number): number {
   if (basisPrice != null) {
     return basisPrice
   }
-  if (backwardMore) {
-    return firstData?.prevClose ?? 0
-  }
-  return firstData?.open ?? 0
+  return firstData?.prevClose ?? firstData?.open ?? 0
 }
 
 export function resolveMinutePercentageBasis(isTimeShare: boolean, timeShareBasisPrice: number, visibleFirstClose: number | undefined): number {
