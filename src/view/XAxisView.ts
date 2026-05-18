@@ -2,6 +2,7 @@ import type Bounding from '../common/Bounding'
 import { type AxisStyle, type Styles } from '../common/Styles'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { type AxisTick } from '../component/Axis'
+import { calcXAxisTickTextX } from '../component/x-axis/tickLayout'
 import { type LineAttrs } from '../extension/figure/line'
 import { type TextAttrs } from '../extension/figure/text'
 import AxisView from './AxisView'
@@ -37,22 +38,9 @@ export default class XAxisView extends AxisView {
     const tickLineLength = styles.tickLine.length
 
     return ticks.map((tick, i) => {
-      let x = tick.coord
       const labelWidth = calcTextWidth(tick.text, createFont(tickTickStyles.size, tickTickStyles.weight, tickTickStyles.fontFamily))
-      if (i === 0) {
-        const delta = x - labelWidth / 2
-        if (delta < 0) {
-          x -= delta
-        }
-      } else if (i === ticks.length - 1) {
-        const delta = x + labelWidth / 2 - _bounding.width
-        if (delta > 0) {
-          x -= delta
-        }
-      }
-
       return {
-        x,
+        x: calcXAxisTickTextX(tick, labelWidth, i, ticks.length, _bounding.width),
         y: axisLineSize + tickLineLength + tickTickStyles.marginStart,
         text: tick.text,
         align: 'center',

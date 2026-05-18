@@ -1,17 +1,33 @@
 import type Bounding from '../common/Bounding'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
-import { type DateTimeFormat, genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
-import { formatDate } from '../common/utils/format'
-import { isValid } from '../common/utils/typeChecks'
+import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import type VisibleRange from '../common/VisibleRange'
-import { type FormatDate, FormatDateType } from '../Options'
 import type XAxisWidget from '../widget/XAxisWidget'
 import AxisImp, { type Axis, type AxisCreateTicksParams, type AxisTemplate, type AxisTick } from './Axis'
 import { type LinearScale } from './scale'
+import { createRegularXAxisTicks } from './x-axis/regularTicks'
+import { createTimeShareXAxisTicks, selectTimeShareTickIndexes } from './x-axis/timeShareTicks'
+import {
+  filterOverlappedXAxisTicks,
+  measureXAxisTickWidths,
+  mergeBoundaryXAxisTicks,
+  resolveXAxisTickLayoutOptions,
+  X_AXIS_TICK_MIN_GAP,
+  type XAxisTick,
+  type XAxisTickLayoutOptions
+} from './x-axis/tickLayout'
 
 export type XAxis = Axis
 
 export type XAxisConstructor = new (parent: XAxisWidget) => XAxisImp
+
+export {
+  filterOverlappedXAxisTicks,
+  mergeBoundaryXAxisTicks,
+  resolveXAxisTickLayoutOptions,
+  selectTimeShareTickIndexes
+}
+export type { XAxisTickLayoutOptions }
 
 export default abstract class XAxisImp extends AxisImp {
   private _autoCalcTickFlag = true
@@ -28,7 +44,7 @@ export default abstract class XAxisImp extends AxisImp {
       const chart = this.getParent().getPane().getChart()
       const chartStore = chart.getChartStore()
       const isTimeShare = chartStore.getIsTimeShare()
-      const defaultTicks = isTimeShare ? this.optimalMinuteTicks(this._calcMinuteTicks()) : this.optimalTicks(this._calcTicks())
+      const defaultTicks = isTimeShare ? this.optimalMinuteTicks() : this.optimalTicks(this._calcTicks())
 
       // todo if is minute period, should use fixed ticks
       this._ticks = this.createTicks({
@@ -43,31 +59,6 @@ export default abstract class XAxisImp extends AxisImp {
 
   getTicks(): AxisTick[] {
     return this._ticks
-  }
-
-  protected _calcMinuteTicks(): AxisTick[] {
-    const chart = this.getParent().getPane().getChart()
-    const chartStore = chart.getChartStore()
-    const timeShareTicks = chartStore.getTimeShareTicks()
-    const timeShareDays = chartStore.getTimeShareDays()
-    // const dataList = chartStore.getDataList()
-
-    const tmpTicks: number[] = []
-    if (timeShareDays > 1) {
-      for (let i = 0; i < timeShareDays; i++) {
-        // const data = dataList[i * timeShareTicks.length]
-        // if (isValid(data)) {
-        // }
-        tmpTicks.push(i * timeShareTicks.length)
-      }
-    } else {
-      for (let i = 0; i < timeShareTicks.length; i += 30) {
-        tmpTicks.push(i)
-      }
-      // tmpTicks.push(timeShareTicks.length - 1)
-    }
-
-    return tmpTicks.map(v => ({ text: `${v  }`, coord: 0, value: v }))
   }
 
   protected _calcTicks(): AxisTick[] {
@@ -106,216 +97,59 @@ export default abstract class XAxisImp extends AxisImp {
     const chart = this.getParent().getPane().getChart()
     const chartStore = chart.getChartStore()
     const formatDate = chartStore.getCustomApi().formatDate
-    const optimalTicks: AxisTick[] = []
-    const tickLength = ticks.length
     const dataList = chartStore.getDataList()
-    if (tickLength > 0) {
-      const dateTimeFormat = getDateTimeFormat()
-      const tickTextStyles = chart.getStyles().xAxis.tickText
-      // todo should consider period, for month period: 2025-06
-      const defaultLabelWidth = calcTextWidth('00-00 00:00', createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.fontFamily))
-      const pos = parseInt(ticks[0].value as string, 10)
-      const x = this.convertToPixel(pos)
-      let tickCountDif = 1
-      if (tickLength > 1) {
-        const nextPos = parseInt(ticks[1].value as string, 10)
-        const nextX = this.convertToPixel(nextPos)
-        const xDif = Math.abs(nextX - x)
-        if (xDif < defaultLabelWidth * 1.5) {
-          tickCountDif = Math.ceil(defaultLabelWidth * 1.5 / xDif)
-        }
-      }
-      for (let i = 0; i < tickLength; i += tickCountDif) {
-        const pos = parseInt(ticks[i].value as string, 10)
-        const kLineData = dataList[pos]
-        if (!isValid(kLineData)) continue
-        const timestamp = kLineData.timestamp
-        let text = formatDate(dateTimeFormat, timestamp, 'HH:mm', FormatDateType.XAxis)
-        if (i !== 0) {
-          const prevPos = parseInt(ticks[i - tickCountDif].value as string, 10)
-          const prevKLineData = dataList[prevPos]
-          if (isValid(prevKLineData)) {
-            const prevTimestamp = prevKLineData.timestamp
-            text = this._optimalTickLabel(formatDate, dateTimeFormat, timestamp, prevTimestamp) ?? text
-          }
-        }
-        const x = this.convertToPixel(pos)
-        optimalTicks.push({ text, coord: x, value: timestamp })
-      }
-      const optimalTickLength = optimalTicks.length
-      if (optimalTickLength < 1) return optimalTicks
-      if (optimalTickLength === 1) {
-        optimalTicks[0].text = formatDate(dateTimeFormat, optimalTicks[0].value as number, 'YYYY-MM-DD HH:mm', FormatDateType.XAxis)
-      } else {
-        const firstTimestamp = optimalTicks[0].value as number
-        const secondTimestamp = optimalTicks[1].value as number
-        if (isValid(optimalTicks[2])) {
-          const thirdText = optimalTicks[2].text
-          if (/^[0-9]{2}-[0-9]{2}$/.test(thirdText)) {
-            optimalTicks[0].text = formatDate(dateTimeFormat, firstTimestamp, 'MM-DD', FormatDateType.XAxis)
-          } else if (/^[0-9]{4}-[0-9]{2}$/.test(thirdText)) {
-            optimalTicks[0].text = formatDate(dateTimeFormat, firstTimestamp, 'YYYY-MM', FormatDateType.XAxis)
-          } else if (/^[0-9]{4}$/.test(thirdText)) {
-            optimalTicks[0].text = formatDate(dateTimeFormat, firstTimestamp, 'YYYY', FormatDateType.XAxis)
-          }
-        } else {
-          optimalTicks[0].text = this._optimalTickLabel(formatDate, dateTimeFormat, firstTimestamp, secondTimestamp) ?? optimalTicks[0].text
-        }
-      }
-    }
+    const dateTimeFormat = getDateTimeFormat()
+    const tickTextStyles = chart.getStyles().xAxis.tickText
+    const font = createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.fontFamily)
+    // todo should consider period, for month period: 2025-06
+    const defaultLabelWidth = calcTextWidth('00-00 00:00', font)
+    const layoutOptions = resolveXAxisTickLayoutOptions(chart.getStyles().xAxis, chartStore.getDataZoomEnabled())
+    const optimalTicks = createRegularXAxisTicks(
+      ticks,
+      dataList,
+      this._range,
+      defaultLabelWidth,
+      formatDate,
+      dateTimeFormat,
+      layoutOptions,
+      value => this.convertToPixel(value)
+    )
     return this._filterOverlappedTicks(optimalTicks)
   }
 
-  protected optimalMinuteTicks(ticks: AxisTick[]): AxisTick[] {
+  protected optimalMinuteTicks(): AxisTick[] {
     const chart = this.getParent().getPane().getChart()
     const chartStore = chart.getChartStore()
     const timeShareTicks = chartStore.getTimeShareTicks()
     const timeShareDays = chartStore.getTimeShareDays()
     const dataList = chartStore.getDataList()
-
-    const getHintTs = (i: number): number => {
-      const ts = dataList[i * timeShareTicks.length]?.timestamp
-      return ts ?? Date.now()
+    if (timeShareTicks.length === 0) {
+      return []
     }
-    const optimalTicks: AxisTick[] = []
 
     const tickTextStyles = chart.getStyles().xAxis.tickText
     const defaultLabelWidth = calcTextWidth('00:00', createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.fontFamily))
-
-    const preferXTicks = chartStore.getPreferXTicks()
-    if (preferXTicks) {
-      // todo check the fix for timeShareDays
-      const indexArr = getIndexArr(timeShareTicks, preferXTicks)
-      for (let j = 0; j < timeShareDays; j++) {
-        const hintTs = getHintTs(j)
-        for (let i = 0; i < indexArr.length; i++) {
-          const x = this.convertToPixel(indexArr[i] + j * timeShareTicks.length)
-          const text = timeShareTicks[indexArr[i]]
-          const timeStamp = genTimeStamp(text, hintTs)
-          optimalTicks.push({ text, coord: x, value: timeStamp })
-        }
-      }
-    } else {
-      let tickCountDif = 1
-      if (ticks.length > 1) {
-        const nextX = this.convertToPixel(parseInt(ticks[1].value as string, 10))
-        const xDif = Math.abs(this.convertToPixel(parseInt(ticks[0].value as string, 10)) - nextX)
-        if (xDif < defaultLabelWidth * 1.5) {
-          tickCountDif = Math.ceil(defaultLabelWidth * 1.5 / xDif)
-        }
-      }
-      let prevYear: string | null = null
-      for (let i = 0; i < ticks.length; i += tickCountDif) {
-        const index = (ticks[i].value as number) % timeShareTicks.length
-        const x = this.convertToPixel(ticks[i].value as number)
-        if (timeShareDays === 1) {
-          const text = timeShareTicks[index]
-          const hintTs = getHintTs(0)
-          const timeStamp = genTimeStamp(text, hintTs)
-          optimalTicks.push({ text, coord: x, value: timeStamp })
-        } else {
-          // timeShareDays > 1
-          const hintTs = getHintTs(i)
-          let text = timeShareTicks[index]
-          const timeStamp = genTimeStamp(text, hintTs)
-          const currentYear = formatDate(getDateTimeFormat(), timeStamp, 'YYYY')
-          if (prevYear === null || prevYear !== currentYear) {
-            text = formatDate(getDateTimeFormat(), timeStamp, 'YYYY-MM-DD')
-            prevYear = currentYear
-          } else {
-            text = formatDate(getDateTimeFormat(), timeStamp, 'MM-DD')
-          }
-          optimalTicks.push({ text, coord: x, value: timeStamp })
-        }
-      }
-    }
-
-    return this._filterOverlappedTicks(optimalTicks)
+    const minLabelGap = Math.max(defaultLabelWidth * 1.5 + X_AXIS_TICK_MIN_GAP, defaultLabelWidth + X_AXIS_TICK_MIN_GAP, 1)
+    const maxTickCount = Math.max(1, Math.floor(this.getSelfBounding().width / minLabelGap))
+    const layoutOptions = resolveXAxisTickLayoutOptions(chart.getStyles().xAxis, false)
+    const optimalTicks = createTimeShareXAxisTicks(
+      timeShareTicks,
+      timeShareDays,
+      dataList,
+      maxTickCount,
+      layoutOptions,
+      chartStore.getPreferXTicks(),
+      value => this.convertToPixel(value)
+    )
+    return this._filterOverlappedTicks(optimalTicks, layoutOptions)
   }
 
-  private _filterOverlappedTicks(ticks: AxisTick[]): AxisTick[] {
-    const tickLength = ticks.length
-    if (tickLength <= 1) {
-      return ticks
-    }
-
+  private _filterOverlappedTicks(ticks: XAxisTick[], options?: XAxisTickLayoutOptions): AxisTick[] {
     const tickTextStyles = this.getParent().getPane().getChart().getStyles().xAxis.tickText
     const font = createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.fontFamily)
-    const minGap = 6
     const canvasWidth = this.getSelfBounding().width
-    const widths = ticks.map(tick => calcTextWidth(tick.text, font))
-
-    const selectedIndexes = ticks.map((_, index) => index)
-    let i = 1
-    while (i < selectedIndexes.length) {
-      const leftIndex = selectedIndexes[i - 1]
-      const rightIndex = selectedIndexes[i]
-      const leftWidth = widths[leftIndex]
-      const rightWidth = widths[rightIndex]
-      const leftCenter = this._calcRenderTickCenter(ticks[leftIndex], leftWidth, i - 1, selectedIndexes.length, canvasWidth)
-      const rightCenter = this._calcRenderTickCenter(ticks[rightIndex], rightWidth, i, selectedIndexes.length, canvasWidth)
-      if (this._isTickOverlap(leftCenter, leftWidth, rightCenter, rightWidth, minGap)) {
-        selectedIndexes.splice(i, 1)
-        if (i > 1) {
-          i--
-        }
-      } else {
-        i++
-      }
-    }
-
-    if (selectedIndexes.length === tickLength) {
-      return ticks
-    }
-    return selectedIndexes.map(index => ticks[index])
-  }
-
-  private _calcRenderTickCenter(
-    tick: AxisTick,
-    tickWidth: number,
-    index: number,
-    total: number,
-    canvasWidth: number
-  ): number {
-    let x = tick.coord
-    if (index === 0) {
-      const delta = x - tickWidth / 2
-      if (delta < 0) {
-        x -= delta
-      }
-    } else if (index === total - 1) {
-      const delta = x + tickWidth / 2 - canvasWidth
-      if (delta > 0) {
-        x -= delta
-      }
-    }
-    return x
-  }
-
-  private _isTickOverlap(
-    leftCenter: number,
-    leftWidth: number,
-    rightCenter: number,
-    rightWidth: number,
-    minGap: number
-  ): boolean {
-    const distance = Math.abs(rightCenter - leftCenter)
-    return distance < (leftWidth + rightWidth) / 2 + minGap
-  }
-
-  // should only call once
-  private _optimalTickLabel(formatDate: FormatDate, dateTimeFormat: DateTimeFormat, timestamp: number, comparedTimestamp: number): string | null {
-    const year = formatDate(dateTimeFormat, timestamp, 'YYYY', FormatDateType.XAxis)
-    const month = formatDate(dateTimeFormat, timestamp, 'YYYY-MM', FormatDateType.XAxis)
-    const day = formatDate(dateTimeFormat, timestamp, 'MM-DD', FormatDateType.XAxis)
-    if (year !== formatDate(dateTimeFormat, comparedTimestamp, 'YYYY', FormatDateType.XAxis)) {
-      return year
-    } else if (month !== formatDate(dateTimeFormat, comparedTimestamp, 'YYYY-MM', FormatDateType.XAxis)) {
-      return month
-    } else if (day !== formatDate(dateTimeFormat, comparedTimestamp, 'MM-DD', FormatDateType.XAxis)) {
-      return day
-    }
-    return null
+    const widths = measureXAxisTickWidths(ticks, text => calcTextWidth(text, font))
+    return filterOverlappedXAxisTicks(ticks, widths, canvasWidth, options)
   }
 
   override getAutoSize(): number {
@@ -403,14 +237,4 @@ export default abstract class XAxisImp extends AxisImp {
     }
     return Custom
   }
-}
-
-function getIndexArr(timeShareTicks: string[], preferXTicks: string[]): number[] {
-  const indexArr: number[] = []
-  for (let i = 0; i < timeShareTicks.length; i++) {
-    if (preferXTicks.includes(timeShareTicks[i])) {
-      indexArr.push(i)
-    }
-  }
-  return indexArr
 }

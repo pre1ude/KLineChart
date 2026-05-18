@@ -341,7 +341,10 @@ export interface AxisStyle {
   tickText: AxisTickTextStyle
 }
 
-export type XAxisStyle = AxisStyle
+export interface XAxisStyle extends AxisStyle {
+  showMinLabel: boolean
+  showMaxLabel: boolean
+}
 
 export enum YAxisPosition {
   Left = 'left',
@@ -696,7 +699,9 @@ function getDefaultXAxisStyle(): XAxisStyle {
       size: 1,
       length: 3,
       color: axisLineColor
-    }
+    },
+    showMinLabel: true,
+    showMaxLabel: true
   }
 }
 

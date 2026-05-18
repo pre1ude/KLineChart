@@ -14,4 +14,11 @@ describe('getDefaultStyles', () => {
 
     expect(styles.indicator.lines.every(line => line.symbol?.show !== true)).toBe(true)
   })
+
+  it('X 轴端点 label 默认显示', () => {
+    const styles = getDefaultStyles()
+
+    expect(styles.xAxis.showMinLabel).toBe(true)
+    expect(styles.xAxis.showMaxLabel).toBe(true)
+  })
 })
