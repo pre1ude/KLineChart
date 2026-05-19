@@ -12,9 +12,10 @@ export function clampXAxisTickLineX(x: number, width: number, lineSize: number):
   if (width <= 0 || lineSize <= 0) {
     return x
   }
+  const alignedX = Math.round(x)
   const correction = lineSize % 2 === 1 ? 0.5 : 0
   const halfLineSize = lineSize / 2
-  return clamp(x, halfLineSize - correction, width - halfLineSize - correction)
+  return clamp(alignedX, halfLineSize - correction, width - halfLineSize - correction)
 }
 
 export default class XAxisView extends AxisView {

@@ -12,4 +12,10 @@ describe('clampXAxisTickLineX', () => {
     expect(clampXAxisTickLineX(0, 100, 2)).toBe(1)
     expect(clampXAxisTickLineX(100, 100, 2)).toBe(99)
   })
+
+  it('aligns fractional x-axis tick line coordinates to the pixel grid', () => {
+    expect(clampXAxisTickLineX(10.3, 100, 1)).toBe(10)
+    expect(clampXAxisTickLineX(10.7, 100, 1)).toBe(11)
+    expect(clampXAxisTickLineX(99.6, 100, 1)).toBe(99)
+  })
 })
