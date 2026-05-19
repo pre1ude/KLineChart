@@ -90,7 +90,8 @@ export function filterOverlappedXAxisTicks(
   if (selectedIndexes.length === tickLength) {
     return ticks
   }
-  return selectedIndexes.map(index => ticks[index])
+  const selectedIndexSet = new Set(selectedIndexes)
+  return ticks.map((tick, index) => selectedIndexSet.has(index) ? tick : { ...tick, text: '' })
 }
 
 export function calcXAxisTickTextX(
@@ -106,7 +107,8 @@ export function calcXAxisTickTextX(
     if (delta < 0) {
       x -= delta
     }
-  } else if (index === total - 1) {
+  }
+  if (index === total - 1) {
     const delta = x + tickWidth / 2 - canvasWidth
     if (delta > 0) {
       x -= delta

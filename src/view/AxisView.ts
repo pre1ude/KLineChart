@@ -9,6 +9,11 @@ import type XAxisWidget from '../widget/XAxisWidget'
 import type YAxisWidget from '../widget/YAxisWidget'
 import View from './View'
 
+export type AxisTickText = {
+  attrs: TextAttrs
+  tick?: AxisTick
+}
+
 export default abstract class AxisView extends View {
   override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget() as XAxisWidget | YAxisWidget
@@ -44,10 +49,10 @@ export default abstract class AxisView extends View {
         if (isTimeShareMain) {
           const barStyles = chartStore.getStyles().candle.bar
           const tickTexts = this.createTickTexts(ticks, bounding, styles)
-          tickTexts.forEach((text, index) => {
-            const colorHint = ticks[index].colorHint
+          tickTexts.forEach(tickText => {
+            const colorHint = tickText.tick?.colorHint
             drawStaticFigure(ctx, 'text', {
-              attrs: text,
+              attrs: tickText.attrs,
               styles: {
                 ...styles.tickText,
                 color: colorHint === 1 ? barStyles.upColor : colorHint === -1 ? barStyles.downColor : styles.tickText.color
@@ -57,7 +62,7 @@ export default abstract class AxisView extends View {
         } else {
           const tickTexts = this.createTickTexts(ticks, bounding, styles)
           drawStaticFigure(ctx, 'text', {
-            attrs: tickTexts,
+            attrs: tickTexts.map(tickText => tickText.attrs),
             styles: styles.tickText
           })
         }
@@ -69,5 +74,5 @@ export default abstract class AxisView extends View {
 
   protected abstract createAxisLine(bounding: Bounding, styles: AxisStyle): LineAttrs
   protected abstract createTickLines(ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): LineAttrs[]
-  protected abstract createTickTexts(tick: AxisTick[], bounding: Bounding, styles: AxisStyle): TextAttrs[]
+  protected abstract createTickTexts(tick: AxisTick[], bounding: Bounding, styles: AxisStyle): AxisTickText[]
 }

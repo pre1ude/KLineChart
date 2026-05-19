@@ -5,7 +5,7 @@ import { type AxisTick } from '../component/Axis'
 import { type LineAttrs } from '../extension/figure/line'
 import { type TextAttrs } from '../extension/figure/text'
 import type YAxisWidget from '../widget/YAxisWidget'
-import AxisView from './AxisView'
+import AxisView, { type AxisTickText } from './AxisView'
 
 export function clampYAxisTickTextY(y: number, height: number, textHeight: number): number {
   if (height <= 0 || textHeight <= 0) {
@@ -94,7 +94,7 @@ export default class YAxisView extends AxisView {
     }))
   }
 
-  override createTickTexts(ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): TextAttrs[] {
+  override createTickTexts(ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): AxisTickText[] {
     const widget = this.getWidget() as unknown as YAxisWidget
     const chartStore = widget.getPane().getChart().getChartStore()
     const isTimeShare = chartStore.getIsTimeShare()
@@ -126,24 +126,35 @@ export default class YAxisView extends AxisView {
       }
     }
 
-    let newTicks: AxisTick[] = ticks
+    let newTicks: AxisTickText[] = ticks.map(tick => ({ tick, attrs: createYAxisTextAttrs(tick, x, bounding.height, textHeight, isAlignLeft) }))
     if (isTimeShare && !isInCandle) {
       if (axisTitle?.length) {
         newTicks = [{
-          coord: height - textHeight / 2,
-          value: '--',
-          text: axisTitle
-        }, ...ticks]
+          attrs: createYAxisTextAttrs({
+            coord: height - textHeight / 2,
+            value: '--',
+            text: axisTitle
+          }, x, bounding.height, textHeight, isAlignLeft)
+        }, ...newTicks]
       }
     }
 
-    const align = isAlignLeft ? 'left' : 'right'
-    return newTicks.map(tick => ({
-      x,
-      y: clampYAxisTickTextY(tick.coord, bounding.height, textHeight),
-      text: tick.text,
-      align,
-      baseline: 'middle'
-    }))
+    return newTicks
+  }
+}
+
+function createYAxisTextAttrs(
+  tick: AxisTick,
+  x: number,
+  height: number,
+  textHeight: number,
+  isAlignLeft: boolean
+): TextAttrs {
+  return {
+    x,
+    y: clampYAxisTickTextY(tick.coord, height, textHeight),
+    text: tick.text,
+    align: isAlignLeft ? 'left' : 'right',
+    baseline: 'middle'
   }
 }

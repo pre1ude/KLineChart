@@ -4,7 +4,6 @@ import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import type VisibleRange from '../common/VisibleRange'
 import type XAxisWidget from '../widget/XAxisWidget'
 import AxisImp, { type Axis, type AxisCreateTicksParams, type AxisTemplate, type AxisTick } from './Axis'
-import { type LinearScale } from './scale'
 import { createRegularXAxisTicks } from './x-axis/regularTicks'
 import { createTimeShareXAxisTicks, selectTimeShareTickIndexes } from './x-axis/timeShareTicks'
 import {
@@ -44,14 +43,20 @@ export default abstract class XAxisImp extends AxisImp {
       const chart = this.getParent().getPane().getChart()
       const chartStore = chart.getChartStore()
       const isTimeShare = chartStore.getIsTimeShare()
-      const defaultTicks = isTimeShare ? this.optimalMinuteTicks() : this.optimalTicks(this._calcTicks())
+      const layoutOptions = isTimeShare
+        ? resolveXAxisTickLayoutOptions(chart.getStyles().xAxis, false)
+        : resolveXAxisTickLayoutOptions(chart.getStyles().xAxis, chartStore.getDataZoomEnabled())
+      const defaultTicks = isTimeShare
+        ? this.optimalMinuteTicks()
+        : this.optimalTicks([])
 
       // todo if is minute period, should use fixed ticks
-      this._ticks = this.createTicks({
+      const ticks = this.createTicks({
         range: this._range,
         bounding: this.getSelfBounding(),
         defaultTicks
       })
+      this._ticks = this._filterOverlappedTicks(ticks, layoutOptions)
       return true
     }
     return false
@@ -61,60 +66,31 @@ export default abstract class XAxisImp extends AxisImp {
     return this._ticks
   }
 
-  protected _calcTicks(): AxisTick[] {
-    const xScale = this.getXScale()
-    const _ticks = xScale.ticks()
-    let ticks = _ticks
-    if (ticks.length > 0) {
-      const tmpTicks: number[] = []
-      const { from, to } = this._range
-      const firstTick = ticks[0]
-      if (firstTick < from) {
-        const step = ticks[1] - ticks[0]
-        let it = from
-        do {
-          tmpTicks.push(it)
-          it += step
-        }
-        while (it <= ticks[ticks.length - 1] && it <= to)
-        ticks = tmpTicks
-      }
-    }
-    return ticks.map(v => ({ text: `${v  }`, coord: 0, value: v }))
-  }
-
-  protected getXScale(): LinearScale {
-    const timeScaleStore = this.getParent().getPane().getChart().getChartStore().getTimeScaleStore()
-    return timeScaleStore.getXScale()
-  }
-
   protected calcRange(): VisibleRange {
     const chartStore = this.getParent().getPane().getChart().getChartStore()
     return chartStore.getTimeScaleStore().getVisibleRange()
   }
 
-  protected optimalTicks(ticks: AxisTick[]): AxisTick[] {
+  protected optimalTicks(_ticks: AxisTick[]): AxisTick[] {
     const chart = this.getParent().getPane().getChart()
     const chartStore = chart.getChartStore()
+    const timeScaleStore = chartStore.getTimeScaleStore()
     const formatDate = chartStore.getCustomApi().formatDate
-    const dataList = chartStore.getDataList()
     const dateTimeFormat = getDateTimeFormat()
     const tickTextStyles = chart.getStyles().xAxis.tickText
     const font = createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.fontFamily)
-    // todo should consider period, for month period: 2025-06
-    const defaultLabelWidth = calcTextWidth('00-00 00:00', font)
     const layoutOptions = resolveXAxisTickLayoutOptions(chart.getStyles().xAxis, chartStore.getDataZoomEnabled())
     const optimalTicks = createRegularXAxisTicks(
-      ticks,
-      dataList,
+      chartStore.getDataList(),
       this._range,
-      defaultLabelWidth,
       formatDate,
       dateTimeFormat,
       layoutOptions,
+      timeScaleStore.getBarSpace().bar,
+      text => calcTextWidth(text, font),
       value => this.convertToPixel(value)
     )
-    return this._filterOverlappedTicks(optimalTicks, layoutOptions)
+    return optimalTicks
   }
 
   protected optimalMinuteTicks(): AxisTick[] {
@@ -141,7 +117,7 @@ export default abstract class XAxisImp extends AxisImp {
       chartStore.getPreferXTicks(),
       value => this.convertToPixel(value)
     )
-    return this._filterOverlappedTicks(optimalTicks, layoutOptions)
+    return optimalTicks
   }
 
   private _filterOverlappedTicks(ticks: XAxisTick[], options?: XAxisTickLayoutOptions): AxisTick[] {

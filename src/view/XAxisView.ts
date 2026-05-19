@@ -5,8 +5,7 @@ import { clamp } from '../common/utils/number'
 import { type AxisTick } from '../component/Axis'
 import { calcXAxisTickTextX } from '../component/x-axis/tickLayout'
 import { type LineAttrs } from '../extension/figure/line'
-import { type TextAttrs } from '../extension/figure/text'
-import AxisView from './AxisView'
+import AxisView, { type AxisTickText } from './AxisView'
 
 export function clampXAxisTickLineX(x: number, width: number, lineSize: number): number {
   if (width <= 0 || lineSize <= 0) {
@@ -46,19 +45,23 @@ export default class XAxisView extends AxisView {
     })
   }
 
-  override createTickTexts(ticks: AxisTick[], _bounding: Bounding, styles: AxisStyle): TextAttrs[] {
+  override createTickTexts(ticks: AxisTick[], _bounding: Bounding, styles: AxisStyle): AxisTickText[] {
     const tickTickStyles = styles.tickText
     const axisLineSize = styles.axisLine.size
     const tickLineLength = styles.tickLine.length
+    const textTicks = ticks.filter(tick => tick.text !== '')
 
-    return ticks.map((tick, i) => {
+    return textTicks.map((tick, i) => {
       const labelWidth = calcTextWidth(tick.text, createFont(tickTickStyles.size, tickTickStyles.weight, tickTickStyles.fontFamily))
       return {
-        x: calcXAxisTickTextX(tick, labelWidth, i, ticks.length, _bounding.width),
-        y: axisLineSize + tickLineLength + tickTickStyles.marginStart,
-        text: tick.text,
-        align: 'center',
-        baseline: 'top'
+        attrs: {
+          x: calcXAxisTickTextX(tick, labelWidth, i, textTicks.length, _bounding.width),
+          y: axisLineSize + tickLineLength + tickTickStyles.marginStart,
+          text: tick.text,
+          align: 'center',
+          baseline: 'top'
+        },
+        tick
       }
     })
   }

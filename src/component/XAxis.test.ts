@@ -3,12 +3,14 @@ import { describe, expect, it, vi } from 'vitest'
 import { getDefaultStyles, GridLineLevel } from '../common/Styles'
 import type KLineData from '../common/KLineData'
 import { getDefaultCustomApi } from '../Options'
+import type { FormatDate } from '../Options'
 import type { AxisCreateTicksParams, AxisTick } from './Axis'
 import XAxisImp from './XAxis'
 import {
   filterOverlappedXAxisTicks,
   mergeBoundaryXAxisTicks,
   resolveXAxisTickLayoutOptions,
+  calcXAxisTickTextX,
   type XAxisTick
 } from './x-axis/tickLayout'
 import {
@@ -42,7 +44,7 @@ describe('mergeBoundaryXAxisTicks', () => {
 })
 
 describe('filterOverlappedXAxisTicks', () => {
-  it('keeps min and max labels when removing overlapped middle ticks', () => {
+  it('keeps min and max labels when hiding overlapped middle labels', () => {
     const ticks: AxisTick[] = [
       { text: 'left', coord: 0, value: 'left' },
       { text: 'near-left', coord: 4, value: 'near-left' },
@@ -55,11 +57,7 @@ describe('filterOverlappedXAxisTicks', () => {
     expect(filterOverlappedXAxisTicks(ticks, widths, 100, {
       showMinLabel: true,
       showMaxLabel: true
-    }).map(tick => tick.value)).toEqual([
-      'left',
-      'middle',
-      'right'
-    ])
+    }).map(tick => tick.text)).toEqual(['left', '', 'middle', '', 'right'])
   })
 
   it('prefers max label when min and max labels overlap', () => {
@@ -72,7 +70,7 @@ describe('filterOverlappedXAxisTicks', () => {
     expect(filterOverlappedXAxisTicks(ticks, widths, 20, {
       showMinLabel: true,
       showMaxLabel: true
-    }).map(tick => tick.value)).toEqual(['right'])
+    }).map(tick => tick.text)).toEqual(['', 'right'])
   })
 
   it('keeps higher priority ticks when regular ticks overlap them', () => {
@@ -82,7 +80,15 @@ describe('filterOverlappedXAxisTicks', () => {
     ]
     const widths = [20, 20]
 
-    expect(filterOverlappedXAxisTicks(ticks, widths, 120).map(tick => tick.value)).toEqual(['05-12'])
+    expect(filterOverlappedXAxisTicks(ticks, widths, 120).map(tick => tick.text)).toEqual(['', '05-12'])
+  })
+
+  it('clamps a single visible label on both sides', () => {
+    expect(calcXAxisTickTextX({
+      text: 'right',
+      coord: 118,
+      value: 'right'
+    }, 20, 0, 1, 120)).toBe(110)
   })
 })
 
@@ -228,7 +234,7 @@ describe('selectTimeShareTickIndexes', () => {
 })
 
 describe('XAxisImp optimalTicks', () => {
-  it('keeps dataZoom boundary ticks when regular ticks cannot map to data', () => {
+  it('keeps dataZoom boundary ticks in regular charts', () => {
     const dataList: KLineData[] = [
       { timestamp: 1000, open: 1, high: 1, low: 1, close: 1 },
       { timestamp: 2000, open: 2, high: 2, low: 2, close: 2 }
@@ -240,15 +246,12 @@ describe('XAxisImp optimalTicks', () => {
       domainFrom: 0,
       domainTo: 2
     })
+    xAxis.runBuildTicks(true)
 
-    const ticks = xAxis.runOptimalTicks([
-      { text: '10', coord: 0, value: 10 }
-    ])
-
-    expect(ticks.map(tick => tick.value)).toEqual([1000, 2000])
+    expect(xAxis.getTicks().map(tick => tick.value)).toEqual([1000, 2000])
   })
 
-  it('uses xAxis showMinLabel and showMaxLabel options outside dataZoom', () => {
+  it('does not force the max label outside dataZoom when showMaxLabel is false', () => {
     const dataList: KLineData[] = [
       { timestamp: 1000, open: 1, high: 1, low: 1, close: 1 },
       { timestamp: 2000, open: 2, high: 2, low: 2, close: 2 }
@@ -256,7 +259,8 @@ describe('XAxisImp optimalTicks', () => {
     const xAxis = createTestXAxis(dataList, {
       dataZoomEnabled: false,
       showMinLabel: true,
-      showMaxLabel: false
+      showMaxLabel: false,
+      coordinateStep: 1
     })
     xAxis.setRange({
       from: 0,
@@ -264,12 +268,9 @@ describe('XAxisImp optimalTicks', () => {
       domainFrom: 0,
       domainTo: 2
     })
+    xAxis.runBuildTicks(true)
 
-    const ticks = xAxis.runOptimalTicks([
-      { text: '10', coord: 0, value: 10 }
-    ])
-
-    expect(ticks.map(tick => tick.value)).toEqual([1000])
+    expect(xAxis.getTicks().map(tick => tick.value)).toEqual([1000])
   })
 
   it('keeps the dataZoom max label when it overlaps the previous tick', () => {
@@ -291,12 +292,58 @@ describe('XAxisImp optimalTicks', () => {
       domainFrom: 0,
       domainTo: 4
     })
+    xAxis.runBuildTicks(true)
 
-    const ticks = xAxis.runOptimalTicks([
-      { text: '2', coord: 0, value: 2 }
-    ])
+    expect(xAxis.getTicks().map(tick => tick.value)).toEqual([1000, 3000, 4000])
+  })
 
-    expect(ticks.map(tick => tick.value)).toEqual([1000, 4000])
+  it('keeps more regular ticks when labels are short', () => {
+    const dataList = createSequentialDataList(40)
+    const shortFormatDate = () => '1'
+    const longFormatDate = () => '1234567890'
+
+    const shortXAxis = createTestXAxis(dataList, { formatDate: shortFormatDate, coordinateStep: 5 })
+    shortXAxis.setRange({
+      from: 0,
+      to: 40,
+      domainFrom: 0,
+      domainTo: 40
+    })
+    shortXAxis.runBuildTicks(true)
+
+    const longXAxis = createTestXAxis(dataList, { formatDate: longFormatDate, coordinateStep: 5 })
+    longXAxis.setRange({
+      from: 0,
+      to: 40,
+      domainFrom: 0,
+      domainTo: 40
+    })
+    longXAxis.runBuildTicks(true)
+
+    expect(shortXAxis.getTicks().length).toBeGreaterThan(longXAxis.getTicks().length)
+  })
+
+  it('filters custom ticks returned from createTicks', () => {
+    const dataList = createSequentialDataList(2)
+    const xAxis = createTestXAxis(dataList, {
+      dataZoomEnabled: false,
+      showMinLabel: false,
+      showMaxLabel: false,
+      coordinateStep: 10,
+      createTicks: () => [
+        { text: 'custom-left', coord: 0, value: 'custom-left' },
+        { text: 'custom-right', coord: 1, value: 'custom-right' }
+      ]
+    })
+    xAxis.setRange({
+      from: 0,
+      to: 2,
+      domainFrom: 0,
+      domainTo: 2
+    })
+    xAxis.runBuildTicks(true)
+
+    expect(xAxis.getTicks().map(tick => tick.text)).toEqual(['custom-left', ''])
   })
 })
 
@@ -393,16 +440,23 @@ describe('XAxisImp optimalMinuteTicks', () => {
 })
 
 class TestXAxis extends XAxisImp {
-  createTicks(params: AxisCreateTicksParams): AxisTick[] {
-    return params.defaultTicks
+  private readonly _createTicks?: (params: AxisCreateTicksParams) => AxisTick[]
+
+  constructor(parent: ConstructorParameters<typeof XAxisImp>[0], createTicks?: (params: AxisCreateTicksParams) => AxisTick[]) {
+    super(parent)
+    this._createTicks = createTicks
   }
 
-  runOptimalTicks(ticks: AxisTick[]): AxisTick[] {
-    return this.optimalTicks(ticks)
+  createTicks(params: AxisCreateTicksParams): AxisTick[] {
+    return this._createTicks?.(params) ?? params.defaultTicks
   }
 
   runOptimalMinuteTicks(): AxisTick[] {
     return this.optimalMinuteTicks()
+  }
+
+  runBuildTicks(force: boolean): boolean {
+    return this.buildTicks(force)
   }
 }
 
@@ -416,21 +470,34 @@ function createTestXAxis(
     timeShareDays?: number
     preferXTicks?: string[]
     coordinateStep?: number
+    formatDate?: FormatDate
+    createTicks?: (params: AxisCreateTicksParams) => AxisTick[]
   } = {}
 ): TestXAxis {
   const styles = getDefaultStyles()
   styles.xAxis.showMinLabel = options.showMinLabel ?? styles.xAxis.showMinLabel
   styles.xAxis.showMaxLabel = options.showMaxLabel ?? styles.xAxis.showMaxLabel
   const customApi = getDefaultCustomApi()
+  if (options.formatDate != null) {
+    customApi.formatDate = options.formatDate
+  }
+  const coordinateStep = options.coordinateStep ?? 100
   const chartStore = {
     getCustomApi: () => customApi,
     getDataList: () => dataList,
     getDataZoomEnabled: () => options.dataZoomEnabled ?? true,
+    getIsTimeShare: () => false,
     getTimeShareTicks: () => options.timeShareTicks ?? [],
     getTimeShareDays: () => options.timeShareDays ?? 1,
     getPreferXTicks: () => options.preferXTicks,
     getTimeScaleStore: () => ({
-      dataIndexToCoordinate: (dataIndex: number) => dataIndex * (options.coordinateStep ?? 100)
+      dataIndexToCoordinate: (dataIndex: number) => dataIndex * coordinateStep,
+      getBarSpace: () => ({
+        bar: coordinateStep,
+        halfBar: coordinateStep / 2,
+        gapBar: coordinateStep,
+        halfGapBar: coordinateStep / 2
+      })
     })
   }
   const chart = {
@@ -452,7 +519,17 @@ function createTestXAxis(
     })
   } as never
 
-  return new TestXAxis(parent)
+  return new TestXAxis(parent, options.createTicks)
+}
+
+function createSequentialDataList(length: number): KLineData[] {
+  return Array.from({ length }, (_, index) => ({
+    timestamp: new Date(2024, 0, 1, 9, 30).getTime() + index * 60_000,
+    open: index,
+    high: index,
+    low: index,
+    close: index
+  }))
 }
 
 function createMinuteTimeRange(start: string, end: string): string[] {

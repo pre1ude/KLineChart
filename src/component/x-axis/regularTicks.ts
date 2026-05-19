@@ -1,25 +1,27 @@
 import type VisibleRange from '../../common/VisibleRange'
 import type { DateTimeFormat } from '../../common/utils/dateTimeFormat'
 import { type FormatDate, FormatDateType } from '../../Options'
-import type { AxisTick } from '../Axis'
-import { mergeBoundaryXAxisTicks, type XAxisTick, type XAxisTickLayoutOptions } from './tickLayout'
+import { mergeBoundaryXAxisTicks, X_AXIS_TICK_MIN_GAP, type XAxisTick, type XAxisTickLayoutOptions } from './tickLayout'
+
+const REGULAR_LABEL_SAMPLE_COUNT = 8
 
 export function createRegularXAxisTicks(
-  ticks: AxisTick[],
   dataList: Array<{ timestamp: number }>,
   range: VisibleRange,
-  defaultLabelWidth: number,
   formatDate: FormatDate,
   dateTimeFormat: DateTimeFormat,
   layoutOptions: Required<XAxisTickLayoutOptions>,
+  barSpace: number,
+  measureText: (text: string) => number,
   convertToPixel: (dataIndex: number) => number
 ): XAxisTick[] {
   const optimalTicks = createRegularCoreTicks(
-    ticks,
     dataList,
-    defaultLabelWidth,
+    range,
     formatDate,
     dateTimeFormat,
+    barSpace,
+    measureText,
     convertToPixel
   )
   if (layoutOptions.showMinLabel || layoutOptions.showMaxLabel) {
@@ -27,6 +29,17 @@ export function createRegularXAxisTicks(
     return mergeBoundaryXAxisTicks(optimalTicks, boundaryTicks)
   }
   return optimalTicks
+}
+
+function estimateRegularXAxisLabelWidth(
+  indexes: number[],
+  dataList: Array<{ timestamp: number }>,
+  formatDate: FormatDate,
+  dateTimeFormat: DateTimeFormat,
+  measureText: (text: string) => number
+): number {
+  return createRegularTickLabelItems(indexes, dataList, formatDate, dateTimeFormat)
+    .reduce((width, item) => Math.max(width, measureText(item.text)), 0)
 }
 
 export function formatComparedXAxisTickLabel(
@@ -51,38 +64,37 @@ export function formatComparedXAxisTickLabel(
 }
 
 function createRegularCoreTicks(
-  ticks: AxisTick[],
   dataList: Array<{ timestamp: number }>,
-  defaultLabelWidth: number,
+  range: VisibleRange,
   formatDate: FormatDate,
   dateTimeFormat: DateTimeFormat,
+  barSpace: number,
+  measureText: (text: string) => number,
   convertToPixel: (dataIndex: number) => number
 ): XAxisTick[] {
-  const optimalTicks: XAxisTick[] = []
-  const tickLength = ticks.length
+  const indexes = createRegularTickIndexes(dataList, range, formatDate, dateTimeFormat, barSpace, measureText)
+  return createRegularTickLabelItems(indexes, dataList, formatDate, dateTimeFormat)
+    .map(item => ({
+      text: item.text,
+      coord: convertToPixel(item.dataIndex),
+      value: item.timestamp
+    }))
+}
+
+function createRegularTickLabelItems(
+  indexes: number[],
+  dataList: Array<{ timestamp: number }>,
+  formatDate: FormatDate,
+  dateTimeFormat: DateTimeFormat
+): Array<{ dataIndex: number, timestamp: number, text: string }> {
+  const labelItems: Array<{ dataIndex: number, timestamp: number, text: string }> = []
+  const tickLength = indexes.length
   if (tickLength === 0) {
-    return optimalTicks
+    return labelItems
   }
 
-  const firstPos = getTickDataIndex(ticks[0])
-  const firstX = firstPos == null ? 0 : convertToPixel(firstPos)
-  let tickCountDif = 1
-  if (tickLength > 1) {
-    const nextPos = getTickDataIndex(ticks[1])
-    const nextX = nextPos == null ? firstX : convertToPixel(nextPos)
-    const xDif = Math.abs(nextX - firstX)
-    if (xDif > 0 && xDif < defaultLabelWidth * 1.5) {
-      tickCountDif = Math.ceil(defaultLabelWidth * 1.5 / xDif)
-    } else if (xDif === 0 && defaultLabelWidth > 0) {
-      tickCountDif = tickLength
-    }
-  }
-
-  for (let i = 0; i < tickLength; i += tickCountDif) {
-    const pos = getTickDataIndex(ticks[i])
-    if (pos == null) {
-      continue
-    }
+  for (let i = 0; i < tickLength; i++) {
+    const pos = indexes[i]
     const kLineData = dataList[pos]
     if (kLineData == null) {
       continue
@@ -90,41 +102,100 @@ function createRegularCoreTicks(
     const timestamp = kLineData.timestamp
     let text = formatDate(dateTimeFormat, timestamp, 'HH:mm', FormatDateType.XAxis)
     if (i !== 0) {
-      const prevPos = getTickDataIndex(ticks[i - tickCountDif])
-      const prevKLineData = prevPos == null ? undefined : dataList[prevPos]
+      const prevKLineData = dataList[indexes[i - 1]]
       if (prevKLineData != null) {
         text = formatComparedXAxisTickLabel(formatDate, dateTimeFormat, timestamp, prevKLineData.timestamp) ?? text
       }
     }
-    optimalTicks.push({ text, coord: convertToPixel(pos), value: timestamp })
+    labelItems.push({ dataIndex: pos, timestamp, text })
   }
 
-  relabelFirstRegularTick(optimalTicks, formatDate, dateTimeFormat)
-  return optimalTicks
+  relabelFirstRegularTickLabelItem(labelItems, formatDate, dateTimeFormat)
+  return labelItems
 }
 
-function relabelFirstRegularTick(
-  ticks: XAxisTick[],
+function createRegularTickIndexes(
+  dataList: Array<{ timestamp: number }>,
+  range: VisibleRange,
+  formatDate: FormatDate,
+  dateTimeFormat: DateTimeFormat,
+  barSpace: number,
+  measureText: (text: string) => number
+): number[] {
+  const visibleIndexRange = calcVisibleDataIndexRange(dataList, range)
+  if (visibleIndexRange == null) {
+    return []
+  }
+
+  const { fromIndex, toIndex } = visibleIndexRange
+  const sampleIndexes = createRegularLabelSampleIndexes(fromIndex, toIndex)
+  const estimatedLabelWidth = estimateRegularXAxisLabelWidth(sampleIndexes, dataList, formatDate, dateTimeFormat, measureText)
+  const minPixelGap = Math.max(estimatedLabelWidth + X_AXIS_TICK_MIN_GAP, 1)
+  const minIndexStep = Number.isFinite(barSpace) && barSpace > 0
+    ? Math.ceil(minPixelGap / barSpace)
+    : toIndex - fromIndex + 1
+  const indexStep = Math.max(minIndexStep, 1)
+  const firstTickIndex = Math.ceil(fromIndex / indexStep) * indexStep
+  const indexes: number[] = []
+  for (let index = firstTickIndex; index <= toIndex; index += indexStep) {
+    indexes.push(index)
+  }
+  if (indexes.length === 0) {
+    indexes.push(fromIndex)
+  }
+  return indexes
+}
+
+function createRegularLabelSampleIndexes(fromIndex: number, toIndex: number): number[] {
+  const length = toIndex - fromIndex + 1
+  if (length <= REGULAR_LABEL_SAMPLE_COUNT) {
+    return Array.from({ length }, (_, index) => fromIndex + index)
+  }
+
+  const sampleIndexes: number[] = []
+  for (let i = 0; i < REGULAR_LABEL_SAMPLE_COUNT; i++) {
+    const index = Math.round(fromIndex + (length - 1) * i / (REGULAR_LABEL_SAMPLE_COUNT - 1))
+    if (sampleIndexes[sampleIndexes.length - 1] !== index) {
+      sampleIndexes.push(index)
+    }
+  }
+  return sampleIndexes
+}
+
+function calcVisibleDataIndexRange(
+  dataList: Array<{ timestamp: number }>,
+  range: VisibleRange
+): { fromIndex: number, toIndex: number } | null {
+  const fromIndex = Math.max(Math.floor(range.from), 0)
+  const toIndex = Math.min(Math.ceil(range.to) - 1, dataList.length - 1)
+  if (fromIndex > toIndex) {
+    return null
+  }
+  return { fromIndex, toIndex }
+}
+
+function relabelFirstRegularTickLabelItem(
+  items: Array<{ timestamp: number, text: string }>,
   formatDate: FormatDate,
   dateTimeFormat: DateTimeFormat
 ): void {
-  const tickLength = ticks.length
+  const tickLength = items.length
   if (tickLength === 1) {
-    ticks[0].text = formatDate(dateTimeFormat, ticks[0].value as number, 'YYYY-MM-DD HH:mm', FormatDateType.XAxis)
+    items[0].text = formatDate(dateTimeFormat, items[0].timestamp, 'YYYY-MM-DD HH:mm', FormatDateType.XAxis)
   } else if (tickLength > 1) {
-    const firstTimestamp = ticks[0].value as number
-    const secondTimestamp = ticks[1].value as number
-    const thirdText = ticks[2]?.text
+    const firstTimestamp = items[0].timestamp
+    const secondTimestamp = items[1].timestamp
+    const thirdText = items[2]?.text
     if (thirdText != null) {
       if (/^[0-9]{2}-[0-9]{2}$/.test(thirdText)) {
-        ticks[0].text = formatDate(dateTimeFormat, firstTimestamp, 'MM-DD', FormatDateType.XAxis)
+        items[0].text = formatDate(dateTimeFormat, firstTimestamp, 'MM-DD', FormatDateType.XAxis)
       } else if (/^[0-9]{4}-[0-9]{2}$/.test(thirdText)) {
-        ticks[0].text = formatDate(dateTimeFormat, firstTimestamp, 'YYYY-MM', FormatDateType.XAxis)
+        items[0].text = formatDate(dateTimeFormat, firstTimestamp, 'YYYY-MM', FormatDateType.XAxis)
       } else if (/^[0-9]{4}$/.test(thirdText)) {
-        ticks[0].text = formatDate(dateTimeFormat, firstTimestamp, 'YYYY', FormatDateType.XAxis)
+        items[0].text = formatDate(dateTimeFormat, firstTimestamp, 'YYYY', FormatDateType.XAxis)
       }
     } else {
-      ticks[0].text = formatComparedXAxisTickLabel(formatDate, dateTimeFormat, firstTimestamp, secondTimestamp) ?? ticks[0].text
+      items[0].text = formatComparedXAxisTickLabel(formatDate, dateTimeFormat, firstTimestamp, secondTimestamp) ?? items[0].text
     }
   }
 }
@@ -162,9 +233,4 @@ function createBoundaryXAxisTicks(
       value: timestamp
     }
   })
-}
-
-function getTickDataIndex(tick: AxisTick): number | undefined {
-  const value = Number.parseInt(String(tick.value), 10)
-  return Number.isFinite(value) ? value : undefined
 }
