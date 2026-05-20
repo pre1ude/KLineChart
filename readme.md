@@ -2,196 +2,273 @@ dm-refactor
 
 this is the branch used for dm Super Boss.
 
-## K 线模式下 X 轴 tick 生成逻辑
+## X 轴 tick 生成与绘制流程
 
-这里的“K 线模式”特指 `XAxisImp.buildTicks()` 里 `chartStore.getIsTimeShare() === false` 的分支。它包括普通 `KLineTimeScaleMode`，也包括开启 `dataZoom` 后的 `DataZoomTimeScaleMode`；因为 X 轴 tick 的分支选择只看 `isTimeShare`，不看当前 time scale mode kind。
+这里梳理的是当前 `XAxisImp` 的实现。X 轴 tick 的主分支只看 `chartStore.getIsTimeShare()`：
 
-### 一句话结论
+- `false`: 走 K 线模式，包含普通 K 线和开启 `dataZoom` 后的 K 线。
+- `true`: 走分时模式。
 
-X 轴 tick 不是直接按数据列表逐根生成的。它先从当前可见区间的线性 `xScale` 生成一组“数据索引候选值”，再按屏幕宽度做抽稀，把索引映射到 K 线数据的 `timestamp`，根据相邻时间判断显示 `HH:mm` / `MM-DD` / `YYYY-MM` / `YYYY`，按需要补左右边界 tick，最后统一做自定义 hook、碰撞裁剪和文字位置修正。
+一句话概括：`buildTicks()` 先生成默认 tick，再交给 `createTicks` hook，随后统一做文字碰撞过滤，最后 `XAxisView` 按 `coord` 画 tick line、按实时计算出的文字中心画 tick text。
 
-### 主流程
+### 总流程图
 
 ```mermaid
 flowchart TD
   A["XAxisImp.buildTicks(force)"] --> B{"_autoCalcTickFlag?"}
-  B -->|yes| C["calcRange: TimeScaleStore.getVisibleRange"]
+  B -->|yes| C["calcRange(): TimeScaleStore.getVisibleRange()"]
   B -->|no| D["use manually set _range"]
-  C --> E{"from/to changed or force?"}
+  C --> E{"range.from/to changed or force?"}
   D --> E
-  E -->|no| Z["return false, reuse _ticks"]
-  E -->|yes| F{"chartStore.getIsTimeShare?"}
-  F -->|false| G["_calcTicks: xScale.ticks"]
-  G --> H["optimalTicks: index candidates -> timestamp labels"]
-  H --> I["createTicks hook"]
-  I --> J["_finalizeTicks"]
-  J --> K["collision priority"]
-  K --> L["measure text width"]
-  L --> M["remove overlapped ticks"]
-  M --> N["layout textX"]
-  N --> O["store XAxisLayoutTick[] in _ticks"]
-  O --> P["XAxisView draw"]
+  E -->|no| Z["return false; reuse _ticks"]
+  E -->|yes| F["resolveXAxisTickLayoutOptions"]
+  F --> G{"chartStore.getIsTimeShare()?"}
+
+  G -->|false| R["optimalTicks(): createRegularXAxisTicks"]
+  G -->|true| T["optimalMinuteTicks(): createTimeShareXAxisTicks"]
+
+  R --> H["createTicks({ range, bounding, defaultTicks })"]
+  T --> H
+  H --> I["_filterOverlappedTicks"]
+  I --> J["store AxisTick[] in _ticks"]
+  J --> K["XAxisView / GridView consume axis.getTicks()"]
+  K --> L["draw axis line"]
+  K --> M["draw tick lines and vertical grid by coord"]
+  K --> N["draw non-empty tick text by clamped text center"]
 ```
 
-`buildTicks()` 只有在 `range.from` / `range.to` 变化或 `force === true` 时才会重建 tick。`domainFrom` / `domainTo` 的小数变化本身不会触发重建，所以只发生亚像素级滚动或缩放、但可见整数索引边界不变时，需要外部用 `force` 驱动刷新。
-
-### 可见区间和坐标来源
-
-K 线 tick 的坐标来自 `TimeScaleStore.getXScale()`。`TimeScaleStore.adjustVisibleRange()` 每次刷新可见区间后都会重建 `_xScale`：
+`buildTicks()` 的重建条件只有三个：
 
 ```ts
-createLinear({
-  domain: [domainFrom - 0.5, domainTo - 0.5],
-  range: [0, mainWidth]
-})
+this._prevRange.from !== this._range.from ||
+this._prevRange.to !== this._range.to ||
+force
 ```
 
-这里减 `0.5` 的作用是让整数 data index 对齐到蜡烛柱中心。可以把 X 轴想成一排格子：第 0 根 K 线的中心在 index `0`，但它占据的格子从 `-0.5` 到 `0.5`；所以线性域用 `domainFrom - 0.5` 到 `domainTo - 0.5`，`convertToPixel(index)` 得到的是该根 K 线的中心点。
+也就是说，`domainFrom/domainTo` 的小数变化不会单独触发 X 轴 tick 重建。可以把 `from/to` 理解成“当前看见哪些整数 K 线”，把 `domainFrom/domainTo` 理解成“这些 K 线映射到屏幕哪里”。
 
-普通 K 线模式下，`KLineTimeScaleMode` 用 `barWidth + offsetRight` 推导可见区间：
+### 坐标来源
 
-- `from`: 当前可见的第一个整数 data index。
-- `to`: 当前可见区间右侧的整数边界，语义上接近 exclusive end。
-- `domainFrom` / `domainTo`: 图表左右边缘对应的小数 data index，用于线性缩放。
-- `offsetRight`: 右侧留白，滚动和追加数据会直接改变它。
-- `barWidth`: 单根 K 线占用的横向宽度，缩放会直接改变它。
-
-DataZoom 模式下仍走 K 线 tick 分支，但 `DataZoomTimeScaleMode` 用 `start/end` 百分比推导 `domainFrom/domainTo`，再反推 `barWidth/offsetRight`。这会影响候选 tick 的坐标和可见边界。
-
-### `_calcTicks()`: 先生成“索引候选值”
-
-`_calcTicks()` 只做候选值，不做最终文案：
-
-1. 从 `xScale.ticks()` 取一组线性刻度。默认 tick 数是 `10`。
-2. `xScale.ticks()` 使用 `1/2/5 * 10^n` 风格的 nice step，所以候选值可能是 `0, 10, 20`，也可能在极端缩放时出现小数。
-3. 如果第一个候选值小于 `range.from`，代码会丢掉原始 nice 起点，改从 `range.from` 开始按同样 step 往右补候选值，直到不超过原始最后一个 tick 且不超过 `range.to`。
-4. 返回形如 `{ text: String(value), coord: 0, value }` 的临时 `AxisTick[]`。
-
-这一步的 `coord` 固定为 `0`，因为候选 tick 还没有确认是否能映射到真实 K 线数据。真正的坐标在 `optimalTicks()` 里通过 `convertToPixel(pos)` 计算。
-
-需要注意：后续会用 `parseInt(tick.value as string, 10)` 把候选值当成 data index。运行时即使 `value` 是 number，也会被 `parseInt` 转成整数。因此小数候选值会向整数部分截断；如果相邻候选截断到同一个 index，后续抽稀会把它们当成距离很近甚至同一点的 tick。
-
-### `optimalTicks()`: 抽稀、取数据、格式化文本
-
-`optimalTicks()` 是 K 线 tick 的核心逻辑。它接收 `_calcTicks()` 的索引候选值，然后输出带真实坐标和真实 timestamp 的 tick。
-
-#### 1. 用默认标签宽度估算抽稀间隔
-
-代码先测量字符串 `00-00 00:00` 在当前 X 轴字体下的宽度，作为 K 线标签的保守宽度估计：
+X 轴坐标最终来自 `TimeScaleStore.dataIndexToCoordinate(dataIndex)`。它调用 `_xScale(dataIndex)`，而 `_xScale` 的 domain 是：
 
 ```ts
-const defaultLabelWidth = calcTextWidth(
-  '00-00 00:00',
-  createFont(size, weight, fontFamily)
-)
+domain: [domainFrom - 0.5, domainTo - 0.5]
 ```
 
-然后只看前两个候选 tick 的屏幕距离：
+减 `0.5` 的作用是让整数 data index 落在蜡烛柱中心。可以把 K 线想成一排格子：第 `0` 根的中心是 `0`，格子范围是 `-0.5` 到 `0.5`；因此 `convertToPixel(index)` 得到的是这一根 K 线的中心点。
+
+普通 K 线模式下，`domainFrom/domainTo` 由 `barWidth`、`offsetRight` 和主图宽度推导。DataZoom 模式下，`DataZoomTimeScaleMode` 用百分比 `start/end` 推导 `domainFrom/domainTo`，再反推 `barWidth` 和 `offsetRight`。两者都走 K 线 tick 分支。
+
+### 布局选项
+
+`resolveXAxisTickLayoutOptions(options, isDataZoom)` 只处理两个开关：
+
+- `showMinLabel`: `isDataZoom || options.showMinLabel === true`
+- `showMaxLabel`: `isDataZoom || options.showMaxLabel === true`
+
+K 线模式会把 `chartStore.getDataZoomEnabled()` 传进去，所以 DataZoom 开启时强制补左右边界。分时模式传入的是 `false`，只使用样式里的 `showMinLabel/showMaxLabel`。
+
+## K 线模式
+
+K 线模式入口是 `XAxisImp.optimalTicks()`，它不再使用线性 `xScale.ticks()` 生成候选，而是直接在整数 data index 空间里生成常规 tick。
+
+### K 线 tick 流程图
+
+```mermaid
+flowchart TD
+  A["createRegularXAxisTicks"] --> B["calcVisibleDataIndexRange"]
+  B --> C{"visible range valid?"}
+  C -->|no| Z["return []"]
+  C -->|yes| D["sample up to 8 indexes"]
+  D --> E["format sample labels"]
+  E --> F["estimate max label width"]
+  F --> G["minPixelGap = labelWidth * 1.5 + 6"]
+  G --> H["minIndexStep = ceil(minPixelGap / barSpace)"]
+  H --> I["create integer index candidates"]
+  I --> J["format candidate labels"]
+  J --> K["map index -> coord, timestamp"]
+  K --> L{"showMinLabel or showMaxLabel?"}
+  L -->|no| M["return regular ticks"]
+  L -->|yes| N["create boundary ticks"]
+  N --> O["merge by timestamp and sort by coord"]
+  O --> P["return merged ticks"]
+```
+
+### 1. 计算可见整数区间
+
+`calcVisibleDataIndexRange()` 把 `VisibleRange` 转成真实数据下标：
 
 ```ts
-const xDif = Math.abs(nextX - x)
-if (xDif < defaultLabelWidth * 1.5) {
-  tickCountDif = Math.ceil(defaultLabelWidth * 1.5 / xDif)
-}
+fromIndex = Math.max(Math.floor(range.from), 0)
+toIndex = Math.min(Math.ceil(range.to) - 1, dataList.length - 1)
 ```
 
-`tickCountDif` 就是抽稀步长。线性 X 轴上候选间距是均匀的，所以只看第一段距离足够代表整段候选序列。阈值用 `1.5 * defaultLabelWidth`，意思是两个候选标签中心之间至少要留出大约一个半标签宽，否则就跳过一些候选。
+如果 `fromIndex > toIndex`，没有可见数据，直接返回空 tick。
 
-#### 2. 候选 index 必须映射到真实数据
+### 2. 抽样估算标签宽度
 
-抽稀后的循环是：
+常规 tick 先从可见区间里取最多 `8` 个样本 index：
+
+- 可见数量不超过 `8` 时，全部取样。
+- 超过 `8` 时，在 `[fromIndex, toIndex]` 上均匀取样并去掉重复样本。
+
+这些样本会走一遍和正式 tick 相同的标签格式化逻辑，然后用 `measureText` 取最大宽度。这里估出来的是“当前可见区间里可能出现的较宽标签”，不是固定字符串。
+
+### 3. 根据宽度换算 index 步长
+
+常规 tick 的最小像素间距是：
 
 ```ts
-for (let i = 0; i < tickLength; i += tickCountDif) {
-  const pos = parseInt(ticks[i].value as string, 10)
-  const kLineData = dataList[pos]
-  if (!isValid(kLineData)) continue
-  ...
-}
+minPixelGap = Math.max(estimatedLabelWidth * 1.5 + X_AXIS_TICK_MIN_GAP, 1)
 ```
 
-所以 tick 能留下来的第一条件是 `dataList[pos]` 存在。超出数据范围、落在空数据上的候选都会被跳过。这也是为什么 `_calcTicks()` 只负责数学候选，`optimalTicks()` 才负责数据有效性。
-
-#### 3. 默认显示 `HH:mm`
-
-每个有效候选先用该根 K 线的 `timestamp` 格式化成 `HH:mm`：
+其中 `X_AXIS_TICK_MIN_GAP = 6`。如果 `barSpace` 是有效正数，则：
 
 ```ts
-let text = formatDate(dateTimeFormat, timestamp, 'HH:mm', FormatDateType.XAxis)
+minIndexStep = Math.ceil(minPixelGap / barSpace)
+indexStep = Math.max(minIndexStep, 1)
 ```
 
-输出 tick 的 `value` 会从候选 index 变成真实 `timestamp`：
+第一个常规 tick 不是固定取 `fromIndex`，而是取第一个能被 `indexStep` 对齐、且不小于 `fromIndex` 的 index：
 
 ```ts
-optimalTicks.push({ text, coord: x, value: timestamp })
+firstTickIndex = Math.ceil(fromIndex / indexStep) * indexStep
 ```
 
-这个转换很关键：后续补边界 tick、合并去重、边界优先级判断，都是按 timestamp 作为 tick 的值。
+随后按 `indexStep` 递增，直到 `toIndex`。如果因为对齐后没有任何 index，会回退补一个 `fromIndex`。
 
-#### 4. 跨日、跨月、跨年时升级标签粒度
+### 4. 格式化 K 线标签
 
-除了第一枚 tick，其他 tick 会拿当前 timestamp 和前一个“被抽稀步长命中的候选”的 timestamp 比较：
+每个候选 index 必须能取到 `dataList[index]`，否则跳过。默认标签格式是：
 
 ```ts
-this._optimalTickLabel(formatDate, dateTimeFormat, timestamp, prevTimestamp)
+HH:mm
 ```
 
-`_optimalTickLabel()` 的规则是从大到小判断：
+除第一枚候选外，当前 tick 会和“上一枚候选 tick 对应的数据”比较时间：
 
-- 如果年份不同，返回 `YYYY`。
-- 否则如果月份不同，返回 `YYYY-MM`。
-- 否则如果日期不同，返回 `MM-DD`。
-- 否则返回 `null`，保持默认 `HH:mm`。
+- 跨年: 显示 `YYYY`
+- 跨月: 显示 `YYYY-MM`
+- 跨日: 显示 `MM-DD`
+- 同一天: 保持 `HH:mm`
 
-这就是 K 线 X 轴上日期分隔标签的来源。它不是单独扫描全量数据找自然日边界，而是在已经抽稀的候选 tick 上，根据当前 tick 与上一个抽稀候选 tick 的时间差来判断是否需要显示更高层级的日期。
+这不是扫描全量数据找自然日边界，而是在已经抽稀后的候选序列上比较相邻候选的 timestamp。
 
-#### 5. 第一枚 tick 会被二次修正
+第一枚 tick 会二次修正：
 
-第一枚 tick 一开始没有前序 tick 可比较，所以先默认是 `HH:mm`。循环结束后，代码会单独修正第一枚 tick：
+- 只有 1 个 tick 时，显示 `YYYY-MM-DD HH:mm`。
+- 有 2 个 tick 时，用第一枚和第二枚 timestamp 比较，必要时升级第一枚粒度。
+- 有 3 个及以上 tick 时，根据第三枚 tick 的文本形态决定第一枚是否改成 `MM-DD`、`YYYY-MM` 或 `YYYY`。
 
-- 如果最终只有 1 个 tick，第一枚显示 `YYYY-MM-DD HH:mm`，避免单独一个 `09:30` 信息太少。
-- 如果至少 3 个 tick，会检查第 3 个 tick 的文本格式：
-  - 第 3 个是 `MM-DD`，第一枚也改成 `MM-DD`。
-  - 第 3 个是 `YYYY-MM`，第一枚也改成 `YYYY-MM`。
-  - 第 3 个是 `YYYY`，第一枚也改成 `YYYY`。
-- 如果只有 2 个 tick，会拿第一枚和第二枚做 `_optimalTickLabel()`，能判断出跨日/月/年时才改第一枚，否则保持 `HH:mm`。
+这段第一枚修正依赖第三枚 tick 的最终文本是否匹配内置正则，所以如果用户自定义 `formatDate` 输出不是默认形态，第一枚 tick 可能不会被同步升级。
 
-这段逻辑的意图是让左侧第一枚标签的粒度和后面的日期边界标签保持一致。比如后面已经开始显示 `05-12` 这种日级标签，第一枚继续显示 `09:30` 会让用户难以知道左边起点属于哪一天。
+### 5. 映射成 AxisTick
 
-### 左右边界 tick
+常规 K 线 tick 输出时：
 
-`optimalTicks()` 生成常规 tick 后，会根据布局选项决定是否额外补可见区间左右边界。
+- `text`: 格式化后的 X 轴文字。
+- `coord`: `convertToPixel(dataIndex)`。
+- `value`: 当前 K 线数据的 `timestamp`。
 
-布局选项来自：
+注意：常规 tick 的 `value` 最终是 timestamp，不是 data index。后续边界合并和碰撞优先级都按这个 `value` 判断。
+
+### 6. 补左右边界 tick
+
+如果 `showMinLabel` 或 `showMaxLabel` 生效，会额外创建边界 tick：
 
 ```ts
-resolveXAxisTickLayoutOptions(chart.getStyles().xAxis, chartStore.getDataZoomEnabled())
+leftIndex = Math.max(Math.floor(range.from), 0)
+rightIndex = Math.min(Math.ceil(range.to) - 1, dataList.length - 1)
 ```
 
-规则是：
+边界 tick 的默认文本也是 `HH:mm`。如果前一根真实数据存在，则和前一根数据比较，跨年显示 `YYYY`，跨月显示 `YYYY-MM`，跨日显示 `MM-DD`。
 
-- 普通 K 线模式下，使用样式里的 `xAxis.showMinLabel` 和 `xAxis.showMaxLabel`。默认样式两者都是 `true`。
-- DataZoom 开启时，`showMinLabel` 和 `showMaxLabel` 都被强制视为 `true`，即使样式里关掉了也会补边界标签。
+`mergeBoundaryXAxisTicks()` 合并规则：
 
-补边界由 `_createBoundaryTicks()` 完成：
-
-1. 左边界 index 是 `Math.max(Math.floor(range.from), 0)`。
-2. 右边界 index 是 `Math.min(Math.ceil(range.to) - 1, dataList.length - 1)`。
-3. 如果需要最小标签，加入左边界 index。
-4. 如果需要最大标签且左右不是同一根，加入右边界 index。
-5. 每个边界 tick 的 `coord` 用 `convertToPixel(index)`，`value` 用该根数据的 `timestamp`。
-
-边界 tick 的文本默认也是 `HH:mm`。如果它前一根真实数据存在，则和前一根真实数据比较，跨年显示 `YYYY`，跨月显示 `YYYY-MM`，跨日显示 `MM-DD`，否则保持 `HH:mm`。
-
-最后 `mergeBoundaryXAxisTicks()` 把常规 tick 和边界 tick 合并：
-
-- 用 `tick.value` 去重，也就是用 timestamp 去重。
-- 如果常规 tick 已经有同 timestamp，边界 tick 不会覆盖它。
+- 先把常规 tick 按 `tick.value` 放进 `Map`。
+- 边界 tick 只有在同 timestamp 不存在时才补进去。
 - 合并后按 `coord` 从左到右排序。
 
-这意味着边界 tick 的主要职责是“补缺”。如果常规 tick 已经命中了边界 timestamp，最终保留的是常规 tick 原来的文本。
+所以边界 tick 的职责是“补缺”，不会覆盖同 timestamp 的常规 tick 文本。
 
-### `createTicks` hook 的位置
+## 分时模式
+
+分时模式入口是 `XAxisImp.optimalMinuteTicks()`。它先根据 X 轴宽度估算最多能放多少个 `00:00` 标签，再在 `timeShareTicks` 里选择 index。
+
+### 分时 tick 流程图
+
+```mermaid
+flowchart TD
+  A["optimalMinuteTicks"] --> B{"timeShareTicks empty?"}
+  B -->|yes| Z["return []"]
+  B -->|no| C["measure '00:00'"]
+  C --> D["maxTickCount = floor(width / minLabelGap)"]
+  D --> E["createTimeShareXAxisTicks"]
+  E --> F{"preferXTicks provided?"}
+  F -->|yes| G["select preferred times for each day"]
+  F -->|no| H["selectTimeShareTickIndexes"]
+  H --> I["required min/max and day starts"]
+  I --> J{"dayCount > 4?"}
+  J -->|yes| K["return required indexes"]
+  J -->|no| L["parse HH:mm and calc base interval"]
+  L --> M{"all times invalid?"}
+  M -->|yes| N["regular index spacing"]
+  M -->|no| O["collect by nice steps and sessions"]
+  O --> P["thin while preserving required indexes"]
+  G --> Q["merge day starts"]
+  K --> Q
+  N --> Q
+  P --> Q
+  Q --> R["merge requested boundaries"]
+  R --> S["map index -> label, coord, timestamp"]
+```
+
+### 1. 估算最大 tick 数
+
+分时模式用 `00:00` 的文字宽度估算：
+
+```ts
+minLabelGap = Math.max(
+  defaultLabelWidth * 1.5 + X_AXIS_TICK_MIN_GAP,
+  defaultLabelWidth + X_AXIS_TICK_MIN_GAP,
+  1
+)
+maxTickCount = Math.max(1, Math.floor(axisWidth / minLabelGap))
+```
+
+这个估算只看普通时间标签。多日分时里的 `YYYY-MM-DD` 和 `MM-DD` 会更宽，后面仍会经过统一碰撞过滤。
+
+### 2. 选择分时 index
+
+如果配置了 `preferXTicks`，优先选择每个交易日里匹配的时间点。随后仍会合并多日 day start 和按样式要求的边界 tick。
+
+如果没有 `preferXTicks`，走自动选择：
+
+1. 把 `showMinLabel/showMaxLabel` 和多日 day start 放入 required index。
+2. 多于 4 天时，只保留 required index。
+3. 解析 `timeShareTicks` 的 `HH:mm`，计算基础时间间隔。
+4. 全部时间都无法解析时，按 index 均匀抽样。
+5. 能解析时，按 `15, 30, 60, 120, 240` 分钟这类 nice step 收集候选。
+6. session 由时间间隔断点识别，间隔大于 `baseInterval * 1.5` 会切成新 session。
+7. 如果候选数量超出限制，会删除普通候选，但保留 required index。
+
+删除候选时会优先删掉距离邻居更近、保留优先级更低的点。session 开始、session 结束、整点、半点的保留优先级依次更高。
+
+### 3. 映射成 AxisTick
+
+分时 tick 的 `coord` 使用 `convertToPixel(tickIndex)`，这里的 `tickIndex` 是跨天展开后的分时序号。
+
+默认文本是 `timeShareTicks[index]`。多日分时时，每天第一枚 tick 会改成日期：
+
+- 第一次出现某年，或年份变化时，显示 `YYYY-MM-DD`。
+- 同一年后续日期，显示 `MM-DD`。
+
+多日 day start tick 会带上：
+
+- `priority = X_AXIS_DAY_START_TICK_PRIORITY`，值为 `1`。
+- 除第一天第一个 tick 外，`gridLineLevel = GridLineLevel.Primary`。
+
+## createTicks hook
 
 默认 X 轴模板是：
 
@@ -199,301 +276,83 @@ resolveXAxisTickLayoutOptions(chart.getStyles().xAxis, chartStore.getDataZoomEna
 createTicks: ({ defaultTicks }) => defaultTicks
 ```
 
-也就是说，普通情况下 `optimalTicks()` 的输出会原样进入最终布局。但如果注册了自定义 X 轴，`createTicks({ range, bounding, defaultTicks })` 可以替换、增加或删除 tick。
+自定义 X 轴可以在 `createTicks({ range, bounding, defaultTicks })` 里替换、增加或删除 tick。这个 hook 的位置在“默认 tick 生成之后、碰撞过滤之前”，所以 hook 返回的 tick 仍会被统一测量文字宽度并过滤重叠。
 
-重要边界是：`createTicks` 发生在 K 线默认 tick 生成之后、最终碰撞裁剪之前。所以自定义 hook 返回的 tick 仍然会经过：
+hook 需要自己保证返回顺序合理。默认 K 线路径会按 `coord` 排序，分时路径的 index 也是升序；但自定义 hook 如果返回乱序数组，后面的首尾判断和相邻碰撞检测都会按数组顺序执行，而不是重新按坐标排序。
 
-- 边界优先级标记。
-- 文本宽度测量。
-- 重叠删除。
-- `textX` 边缘修正。
+## 碰撞过滤
 
-因此 hook 不需要自己计算 `textX`，但它必须提供合理的 `text`、`coord`、`value`。如果 hook 返回顺序不是从左到右，后面的“首尾标签优先级”和“相邻碰撞检测”都会按 hook 的数组顺序理解，而不是重新按坐标排序。
-
-### 最终碰撞处理
-
-`_finalizeTicks()` 对 K 线分支做最后一道统一处理：
+`_filterOverlappedTicks()` 是 X 轴最后一道统一过滤。
 
 ```mermaid
 flowchart LR
-  A["created ticks"] --> B["applyXAxisTickCollisionPriorities"]
-  B --> C["measure text widths"]
-  C --> D["filterOverlappedXAxisTickIndexes"]
-  D --> E["layoutXAxisTickTexts"]
-  E --> F["XAxisLayoutTick[]"]
+  A["ticks from createTicks"] --> B["measureXAxisTickWidths"]
+  B --> C["selectedIndexes = all indexes"]
+  C --> D["compare adjacent selected ticks"]
+  D --> E{"overlap?"}
+  E -->|no| F["move right"]
+  E -->|yes| G["remove lower priority index"]
+  G --> D
+  F --> H{"finished?"}
+  H -->|no| D
+  H -->|yes| I["hidden ticks keep coord but text becomes empty"]
 ```
 
-#### 1. 首尾优先级
-
-如果 `showMinLabel` 或 `showMaxLabel` 生效，`applyXAxisTickCollisionPriorities()` 会给数组里的第一枚和最后一枚 tick 加碰撞优先级：
-
-- 最后一枚 tick: priority `3`。
-- 第一枚 tick: priority `2`。
-- 普通 tick: 默认 priority `0`。
-
-如果首尾互相重叠，右侧最大标签优先级更高，所以会保留右侧。
-
-这里的“第一枚/最后一枚”是传入数组的首尾。默认路径下，`mergeBoundaryXAxisTicks()` 已经按坐标排序，所以首尾就是最左/最右；自定义 hook 需要自己维护这个顺序。
-
-#### 2. 宽度只测一次
-
-`_filterOverlappedTicks()` 会用当前 X 轴字体把每个 tick 的 `text` 宽度算出来：
-
-```ts
-const widths = ticks.map(tick => calcTextWidth(tick.text, font))
-```
-
-之后碰撞检测和最终布局复用这组宽度。绘制阶段不再重新决定 tick 数量。
-
-#### 3. 贪心删除重叠 tick
-
-`filterOverlappedXAxisTickIndexes()` 维护一个 `selectedIndexes`，初始包含所有 tick，然后从左到右比较相邻的已选 tick。
-
-判断两个标签是否重叠的公式是：
+重叠判断公式：
 
 ```ts
 distance < (leftWidth + rightWidth) / 2 + X_AXIS_TICK_MIN_GAP
 ```
 
-其中 `X_AXIS_TICK_MIN_GAP = 6`。也就是说，两个文字盒子之间至少要留 6px 空隙。
+两个标签之间至少要留 `6px`。发生重叠时：
 
-发生重叠时：
+- `showMaxLabel` 生效且 tick 是数组最后一个 value，优先级 `3`。
+- `showMinLabel` 生效且 tick 是数组第一个 value，优先级 `2`。
+- tick 自身有 `priority` 时使用它，例如分时 day start 是 `1`。
+- 其他 tick 默认优先级 `0`。
+- 优先级相同，删除右侧 tick。
 
-- 左侧优先级低于右侧，删左侧。
-- 左侧优先级高于右侧，删右侧。
-- 优先级相同，删右侧。
+这里的“删除”不是从数组移除，而是把对应 tick 的 `text` 改成空字符串。这样 tick 的 `coord`、tick line、竖向 grid line 仍然可以保留，只是不绘制文字。
 
-删除后指针会回退一格，重新检查新的相邻关系。这是一个局部贪心算法：它不做全局最优排列，而是保证最终相邻标签不重叠，并尽量保住高优先级的边界标签。
+## 绘制阶段
 
-#### 4. 首尾文字会被压回画布内
-
-碰撞检测和最终布局都会调用 `createXAxisTickTextLayout()`。它只修正当前已选 tick 中的第一枚和最后一枚：
-
-- 第一枚如果文字左边越过 `x = 0`，把文字中心右移到刚好不越界。
-- 最后一枚如果文字右边越过 `canvasWidth`，把文字中心左移到刚好不越界。
-- 中间 tick 不做位置修正。
-
-最终保存的是 `XAxisLayoutTick`，比普通 `AxisTick` 多一个 `textX`。`coord` 仍然代表 tick 线和数据点中心，`textX` 只代表文字绘制中心。
-
-### 绘制阶段
-
-`XAxisView` 不再参与 tick 选择，只消费 `axis.getTicks()`：
-
-- tick line 使用 `tick.coord`，从轴线向下画。
-- tick text 使用 `tick.textX`，水平居中，垂直位置是 `axisLine.size + tickLine.length + tickText.marginStart`。
-
-所以一枚 tick 最终有两个不同的 X 坐标语义：
-
-- `coord`: 数据位置，线的位置，不能为了防止文字越界而移动。
-- `textX`: 文字中心，允许首尾为了留在画布内做轻微移动。
-
-### 关键行为示例
-
-1. 可见区间很宽、候选距离足够大时，`tickCountDif = 1`，所有 `xScale.ticks()` 候选只要能映射到数据都会进入格式化。
-2. 缩放到标签太密时，`tickCountDif` 会变大，比如每 3 个候选取 1 个。
-3. 候选落在同一天内，标签通常是 `HH:mm`。
-4. 候选跨天时，新一天的 tick 会显示 `MM-DD`。
-5. 候选跨月时，新月份的 tick 会显示 `YYYY-MM`。
-6. 候选跨年时，新年份的 tick 会显示 `YYYY`。
-7. `showMinLabel/showMaxLabel` 打开时，会额外补当前可见数据的首尾 timestamp。
-8. DataZoom 打开时，即使样式关闭首尾标签，也会强制补首尾。
-9. 首尾和普通 tick 重叠时，碰撞优先级会优先保留首尾；首尾互相重叠时优先保留右侧最大标签。
-
-### 代码层面的注意点
-
-- `buildTicks()` 的刷新判断只看 `from/to`，不看 `domainFrom/domainTo`。如果仅小数域变化，默认不会重建 tick。
-- `_calcTicks()` 生成的是数学候选，`optimalTicks()` 才检查 `dataList[pos]` 是否存在。
-- 候选值通过 `parseInt` 转成 data index；小数候选会截断。
-- 常规 tick 的 `value` 最终是 timestamp，不是 data index。
-- 边界 tick 用 timestamp 去重，所以同一根数据不会出现两枚 tick。
-- 边界 tick 只补缺，不覆盖已有常规 tick 的文本。
-- 最终碰撞处理发生在 `createTicks` hook 之后，自定义 tick 也会被过滤和布局。
-- 默认路径下 tick 会按 `coord` 排序；自定义 hook 如果返回乱序数组，碰撞优先级和相邻检测都会受影响。
-- `XAxisView` 只负责绘制，不负责生成或过滤 tick。
-
-## XAxis tick flow
+绘制阶段不再决定 tick 数量，只消费 `axis.getTicks()`。
 
 ```mermaid
 flowchart TD
-  A["buildTicks"] --> B["calcRange when autoCalcTickFlag is true"]
-  B --> C{"range changed or force?"}
-  C -->|no| Z["return false"]
-  C -->|yes| D{"chartStore.getIsTimeShare"}
-
-  D -->|false: K-line| K1["_calcTicks from xScale"]
-  K1 --> K2["optimalTicks"]
-  K2 --> K3["thin by pixel distance"]
-  K3 --> K4["format timestamp labels"]
-  K4 --> K5{"showMinLabel / showMaxLabel / dataZoom?"}
-  K5 -->|yes| K6["create boundary ticks"]
-  K6 --> K7["mergeBoundaryXAxisTicks"]
-  K5 -->|no| K8["use formatted ticks"]
-  K7 --> H["createTicks hook"]
-  K8 --> H
-
-  D -->|true: time-share| T1["optimalMinuteTicks"]
-  T1 --> T2["estimate maxTickCount by label width"]
-  T2 --> T3["resolveTimeShareTickIndexes"]
-  T3 --> T4{"preferXTicks?"}
-  T4 -->|yes| T5["forced prefer ticks + required ticks"]
-  T4 -->|no| T6["auto nice-step ticks + required ticks"]
-  T5 --> T7["createTimeShareAxisTicks"]
-  T6 --> T7
-  T7 --> H
-
-  H --> F["_finalizeTicks"]
-  F --> F1["applyXAxisTickCollisionPriorities"]
-  F1 --> F2["measure text widths once"]
-  F2 --> F3["filterOverlappedXAxisTickIndexes"]
-  F3 --> F4["layoutXAxisTickTexts"]
-  F4 --> F5["store XAxisLayoutTick in _ticks"]
-  F5 --> V["XAxisView"]
-  V --> V1["draw tick lines by coord"]
-  V --> V2["draw tick text by textX"]
+  A["axis.getTicks()"] --> B["GridView"]
+  A --> C["XAxisView"]
+  B --> B1["draw vertical grid lines by tick.coord"]
+  C --> C1["createAxisLine"]
+  C --> C2["createTickLines for every tick"]
+  C --> C3["filter tick.text !== ''"]
+  C3 --> C4["measure label width again"]
+  C4 --> C5["calcXAxisTickTextX"]
+  C5 --> C6["draw tick text"]
 ```
 
-## Boundary notes
+`XAxisView.createTickLines()` 会为所有 tick 画 tick line。tick line 的 x 坐标来自 `tick.coord`，并通过 `clampXAxisTickLineX()` 对齐到画布边界内。
 
-```mermaid
-flowchart LR
-  A["default candidate ticks"] --> B["createTicks hook"]
-  B --> C["final collision priority"]
-  C --> D["overlap filtering"]
-  D --> E["textX layout"]
-  E --> F["XAxisView render"]
-```
+`XAxisView.createTickTexts()` 只处理 `text !== ''` 的 tick。文字 x 坐标不是保存在 tick 上的字段，而是在绘制时调用 `calcXAxisTickTextX()` 现算：
 
-The important boundary is that final overlap filtering and `textX` layout happen after `createTicks`.
-This keeps custom hook output from bypassing collision handling or producing ticks without `textX`.
+- 当前可见文字里的第一枚，如果左侧越界，会向右压回画布内。
+- 当前可见文字里的最后一枚，如果右侧越界，会向左压回画布内。
+- 单个可见文字同时会检查左边界和右边界。
+- 中间文字不做边界修正。
 
-Remaining rough edges:
+因此当前 `AxisTick` 里只有一个持久坐标：
 
-- K-line `optimalTicks` still mixes candidate selection and label formatting.
-- Time-share `maxTickCount` is estimated with `00:00`, while multi-day labels can be wider.
-- `XAxis.ts` still contains selector, formatter, and layout helpers in one file.
+- `coord`: 数据位置，也是 tick line 和 grid line 的位置。
 
+文字中心是绘制时的临时布局结果，不会写回 `_ticks`。
 
+## 关键行为边界
 
-
-有，K 线模式下 tick 生成能工作，但有几处抽象和边界行为不太合理。按优先级看：
-
-**高优先级问题**
-
-1. `buildTicks()` 只用 `from/to` 判断是否重建，忽略 `domainFrom/domainTo`
-
-   位置：[XAxis.ts](/Users/wxli/workspace/dm/KLineChart/src/component/XAxis.ts:433)
-
-   ```ts
-   if (this._prevRange.from !== this._range.from || this._prevRange.to !== this._range.to || force)
-   ```
-
-   但 X 坐标真正来自 `domainFrom/domainTo` 构造的 `xScale`：[TimeScaleStore.ts](/Users/wxli/workspace/dm/KLineChart/src/store/TimeScaleStore.ts:403)
-
-   结果是：小幅滚动、拖动 DataZoom、缩放时，只要整数可见边界 `from/to` 没变，旧 tick 的 `coord/textX` 可能继续被复用。蜡烛图已经按新 `xScale` 画了，但 X 轴 tick 还在旧位置。
-
-   费曼式说法：`from/to` 是“看见了哪几根 K 线”，`domainFrom/domainTo` 是“这些 K 线现在在屏幕哪里”。现在只检查“看见哪几根”，没检查“位置有没有移动”。
-
-   建议：至少把 `domainFrom/domainTo` 纳入变更判断；更好的做法是把“选哪些 tick”和“tick 坐标布局”拆开，语义 tick 可缓存，坐标每次随 `xScale` 更新。
-
-2. `_calcTicks()` 把 nice tick 强行改成 `from`，可能绕过 `showMinLabel`
-
-   位置：[XAxis.ts](/Users/wxli/workspace/dm/KLineChart/src/component/XAxis.ts:468)
-
-   当 `xScale.ticks()` 第一个 tick 小于 `range.from` 时，代码从 `from` 开始补 tick：
-
-   ```ts
-   let it = from
-   ```
-
-   这会让左边界成为普通 tick。即使用户设置 `showMinLabel: false`，也可能出现左边界标签。语义上 `showMinLabel` 应该控制“是否显示最小边界标签”，但这里的普通候选 tick 可能提前把边界显示出来。
-
-   建议：候选 tick 应该从第一个 `>= from` 的 nice tick 开始，而不是直接从 `from` 开始；只有 `showMinLabel` 生效时才补 `from`。
-
-3. `parseInt()` 处理连续刻度不稳
-
-   位置：[XAxis.ts](/Users/wxli/workspace/dm/KLineChart/src/component/XAxis.ts:504)
-
-   `xScale.ticks()` 生成的是连续数值，后面用：
-
-   ```ts
-   parseInt(ticks[i].value as string, 10)
-   ```
-
-   小数 tick 会被截断。高倍缩放时，前两个 tick 可能都截断到同一个 data index，导致：
-
-   ```ts
-   xDif = 0
-   tickCountDif = Infinity
-   ```
-
-   这不会死循环，但会让后续 tick 基本被跳过，行为很脆。
-
-   建议：K 线 X 轴本质是离散 data index，不应该先生成连续 tick 再 `parseInt`。可以直接在整数 data index 空间生成候选，并做去重。
-
-**中优先级问题**
-
-4. tick 数量先固定约 10 个，再抽稀，不能根据宽度“增密”
-
-   位置：[XAxis.ts](/Users/wxli/workspace/dm/KLineChart/src/component/XAxis.ts:462)
-
-   `xScale.ticks()` 默认 tick count 是 10。后面只会因为文字太密而减少，不会因为屏幕很宽而增加。所以宽屏下 X 轴可能偏稀疏。
-
-   Time-share 分支反而会按宽度估算 `maxTickCount`：[XAxis.ts](/Users/wxli/workspace/dm/KLineChart/src/component/XAxis.ts:575)
-
-   建议：K 线也按 `axisWidth / labelMinGap` 推导目标 tick count，再传给 `xScale.ticks(count)` 或离散 index tick 生成器。
-
-5. 第一枚 tick 的格式通过“第三枚 tick 的文本 regex”推断，抽象不稳
-
-   位置：[XAxis.ts](/Users/wxli/workspace/dm/KLineChart/src/component/XAxis.ts:538)
-
-   代码用第三枚 tick 的 `text` 判断第一枚要不要改成 `MM-DD` / `YYYY-MM` / `YYYY`。这依赖最终文本格式：
-
-   ```ts
-   /^[0-9]{2}-[0-9]{2}$/
-   ```
-
-   如果用户自定义 `formatDate` 输出不是这个格式，逻辑就失效。更根本的问题是：用“显示文本”反推“时间粒度”不可靠。
-
-   建议：用 timestamp 的年月日变化计算语义粒度，再用 formatter 生成文本。
-
-6. 边界 tick 只“补缺”，不覆盖常规 tick，可能保留较差文案
-
-   位置：[XAxis.ts](/Users/wxli/workspace/dm/KLineChart/src/component/XAxis.ts:44)
-
-   `mergeBoundaryXAxisTicks()` 如果同 timestamp 已存在，就保留常规 tick：
-
-   ```ts
-   if (!ticksByValue.has(tick.value)) {
-   ```
-
-   但边界 tick 的格式可能更适合边界场景，比如左边界刚好是新一天第一根，边界 tick 会参考前一根数据生成日期标签，常规 tick 未必会。
-
-   建议：边界 tick 可以覆盖常规 tick 的 `text`，或者至少边界 tick 保留更高优先级/格式策略。
-
-**低优先级但值得注意**
-
-7. 单个超长标签可能仍然越界
-
-   位置：[XAxis.ts](/Users/wxli/workspace/dm/KLineChart/src/component/XAxis.ts:163)
-
-   `createXAxisTickTextLayout()` 用 `if / else if`，单 tick 时只走“第一枚”逻辑，不会再检查右边界。窄画布 + `YYYY-MM-DD HH:mm` 时可能右侧溢出。
-
-8. 碰撞过滤是局部贪心
-
-   位置：[XAxis.ts](/Users/wxli/workspace/dm/KLineChart/src/component/XAxis.ts:113)
-
-   默认 tick 少时没问题。但如果自定义 `createTicks` 返回很多 tick，`splice` + 回退的方式最坏会偏 O(n²)，且结果不是全局最优。
-
-**总体判断**
-
-最大的不合理不是“格式化细节”，而是抽象层级混在一起了：连续 `xScale.ticks()`、离散 K 线 data index、timestamp 语义、边界标签、碰撞布局都揉在 `optimalTicks()` 里。
-
-更合理的结构应该是：
-
-1. 在离散 data index 空间生成候选。
-2. 根据宽度决定候选密度。
-3. 用 timestamp 计算语义粒度。
-4. 明确合并边界 tick。
-5. 最后只做碰撞和 `textX` 布局。
-
-优先修的话，我会先处理 `domainFrom/domainTo` 缓存判断和 `parseInt` 连续刻度转离散索引这两个点。
+- `buildTicks()` 只看 `range.from`、`range.to` 和 `force` 判断是否重建。
+- K 线候选直接在整数 data index 空间生成，不再经过连续 `xScale.ticks()` 和 `parseInt()`。
+- K 线常规 tick 的 `value` 是 timestamp，边界合并也用 timestamp 去重。
+- K 线边界 tick 只补缺，不覆盖同 timestamp 的常规 tick。
+- DataZoom 只在 K 线分支里强制开启左右边界标签。
+- 分时 `preferXTicks` 只替换自动选择逻辑，不会阻止 day start 和边界 tick 合并。
+- 碰撞过滤隐藏文字但保留 tick 对象，因此 tick line 和竖向 grid line 仍可能存在。
+- 自定义 `createTicks` hook 返回乱序 tick 时，碰撞优先级和相邻判断也会按乱序结果执行。
