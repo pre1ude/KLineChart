@@ -7,6 +7,7 @@ import type { DataZoomSliderTheme } from '../Options'
 const DEFAULT_HEIGHT = 32
 const MIN_HEIGHT = 18
 const HANDLE_WIDTH = 10
+const TRACK_HORIZONTAL_PADDING = HANDLE_WIDTH / 2
 const MOVE_HANDLE_HEIGHT = 7
 const MOVE_HANDLE_ICON_SIZE = MOVE_HANDLE_HEIGHT * 0.8
 const BRUSH_DRAG_THRESHOLD = 2
@@ -32,6 +33,8 @@ type SliderPalette = {
 
 type SliderLayout = {
   width: number
+  trackLeft: number
+  trackWidth: number
   trackTop: number
   trackHeight: number
   startX: number
@@ -260,19 +263,19 @@ export class DataZoomSlider {
   private renderLayout(layout: SliderLayout): void {
     this._trackTop = layout.trackTop
     this._trackHeight = layout.trackHeight
-    this._track.style.left = '0px'
+    this._track.style.left = `${layout.trackLeft}px`
     this._track.style.top = `${layout.trackTop}px`
-    this._track.style.width = `${layout.width}px`
+    this._track.style.width = `${layout.trackWidth}px`
     this._track.style.height = `${layout.trackHeight}px`
 
-    this._shadowSvg.style.left = '0px'
+    this._shadowSvg.style.left = `${layout.trackLeft}px`
     this._shadowSvg.style.top = `${layout.trackTop}px`
-    this._shadowSvg.style.width = `${layout.width}px`
+    this._shadowSvg.style.width = `${layout.trackWidth}px`
     this._shadowSvg.style.height = `${layout.trackHeight}px`
-    this._shadowSvg.setAttribute('width', `${layout.width}`)
+    this._shadowSvg.setAttribute('width', `${layout.trackWidth}`)
     this._shadowSvg.setAttribute('height', `${layout.trackHeight}`)
-    this._shadowSvg.setAttribute('viewBox', `0 0 ${layout.width} ${layout.trackHeight}`)
-    this.updateDataShadow(layout.width, layout.trackHeight)
+    this._shadowSvg.setAttribute('viewBox', `0 0 ${layout.trackWidth} ${layout.trackHeight}`)
+    this.updateDataShadow(layout.trackWidth, layout.trackHeight)
 
     this._selectedRange.style.left = `${layout.selectedRangeLeft}px`
     this._selectedRange.style.top = `${layout.trackTop}px`
@@ -610,8 +613,9 @@ export class DataZoomSlider {
       return 'move'
     }
     const range = this.getHandleRange()
-    const startX = range.start / 100 * this._layout.width
-    const endX = range.end / 100 * this._layout.width
+    const coordinate = createSliderCoordinate(this._layout.width)
+    const startX = coordinate.percentToX(range.start)
+    const endX = coordinate.percentToX(range.end)
     const left = Math.min(startX, endX)
     const right = Math.max(startX, endX)
     return x > left && x < right ? 'range' : 'background'
@@ -662,21 +666,15 @@ export class DataZoomSlider {
 
   private clientXToLocal(clientX: number): number {
     const rect = this._container.getBoundingClientRect()
-    return clamp(clientX - rect.left, 0, this._layout.width)
+    return createSliderCoordinate(this._layout.width).clampX(clientX - rect.left)
   }
 
   private localXToPercent(x: number): number {
-    if (this._layout.width <= 0) {
-      return 0
-    }
-    return clamp(x / this._layout.width * 100, 0, 100)
+    return createSliderCoordinate(this._layout.width).xToPercent(x)
   }
 
   private localDistanceToPercent(distance: number): number {
-    if (this._layout.width <= 0) {
-      return 0
-    }
-    return distance / this._layout.width * 100
+    return createSliderCoordinate(this._layout.width).distanceToPercent(distance)
   }
 
 }
@@ -825,19 +823,48 @@ function createSliderElements(): SliderElements {
   }
 }
 
-function computeSliderLayout(width: number, height: number, range: PercentRange): SliderLayout {
+export function computeSliderLayout(width: number, height: number, range: PercentRange): SliderLayout {
+  const coordinate = createSliderCoordinate(width)
   const trackTop = MOVE_HANDLE_HEIGHT
   const trackHeight = Math.max(8, height - trackTop)
-  const startX = range.start / 100 * width
-  const endX = range.end / 100 * width
+  const startX = coordinate.percentToX(range.start)
+  const endX = coordinate.percentToX(range.end)
   return {
     width,
+    trackLeft: coordinate.left,
+    trackWidth: coordinate.width,
     trackTop,
     trackHeight,
     startX,
     endX,
     selectedRangeLeft: Math.min(startX, endX),
     selectedRangeWidth: Math.max(0, Math.abs(endX - startX))
+  }
+}
+
+export function createSliderCoordinate(width: number) {
+  const padding = Math.min(TRACK_HORIZONTAL_PADDING, Math.max(0, width / 2))
+  const trackWidth = Math.max(0, width - padding * 2)
+  const left = padding
+  const right = left + trackWidth
+  return {
+    left,
+    right,
+    width: trackWidth,
+    percentToX: (percent: number): number => left + clamp(percent, 0, 100) / 100 * trackWidth,
+    xToPercent: (x: number): number => {
+      if (trackWidth <= 0) {
+        return 0
+      }
+      return clamp((x - left) / trackWidth * 100, 0, 100)
+    },
+    distanceToPercent: (distance: number): number => {
+      if (trackWidth <= 0) {
+        return 0
+      }
+      return distance / trackWidth * 100
+    },
+    clampX: (x: number): number => clamp(x, left, right)
   }
 }
 

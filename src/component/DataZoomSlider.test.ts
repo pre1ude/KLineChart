@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCloseAreaPath, buildCloseLinePath, resolveDataZoomSliderTheme, updateDragRange } from './DataZoomSlider'
+import { buildCloseAreaPath, buildCloseLinePath, computeSliderLayout, createSliderCoordinate, resolveDataZoomSliderTheme, updateDragRange } from './DataZoomSlider'
 import type KLineData from '../common/KLineData'
 
 describe('buildCloseLinePath', () => {
@@ -39,6 +39,40 @@ describe('resolveDataZoomSliderTheme', () => {
   it('uses explicit slider theme before chart theme', () => {
     expect(resolveDataZoomSliderTheme('dark', 'light')).toBe('dark')
     expect(resolveDataZoomSliderTheme('light', 'dark')).toBe('light')
+  })
+})
+
+describe('computeSliderLayout', () => {
+  it('keeps full range side handles inside half handle width padding', () => {
+    const layout = computeSliderLayout(100, 32, { start: 0, end: 100 })
+
+    expect(layout.trackLeft).toBe(5)
+    expect(layout.trackWidth).toBe(90)
+    expect(layout.startX).toBe(5)
+    expect(layout.endX).toBe(95)
+    expect(layout.selectedRangeLeft).toBe(5)
+    expect(layout.selectedRangeWidth).toBe(90)
+  })
+})
+
+describe('createSliderCoordinate', () => {
+  it('maps between local x and percent inside the padded track range', () => {
+    const coordinate = createSliderCoordinate(100)
+
+    expect(coordinate.left).toBe(5)
+    expect(coordinate.right).toBe(95)
+    expect(coordinate.width).toBe(90)
+    expect(coordinate.percentToX(0)).toBe(5)
+    expect(coordinate.percentToX(50)).toBe(50)
+    expect(coordinate.percentToX(100)).toBe(95)
+    expect(coordinate.xToPercent(5)).toBe(0)
+    expect(coordinate.xToPercent(50)).toBe(50)
+    expect(coordinate.xToPercent(95)).toBe(100)
+    expect(coordinate.xToPercent(0)).toBe(0)
+    expect(coordinate.xToPercent(100)).toBe(100)
+    expect(coordinate.distanceToPercent(9)).toBe(10)
+    expect(coordinate.clampX(0)).toBe(5)
+    expect(coordinate.clampX(100)).toBe(95)
   })
 })
 
