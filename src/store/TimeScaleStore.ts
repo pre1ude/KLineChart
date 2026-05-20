@@ -10,6 +10,9 @@ import { clamp } from '@/common/utils/number'
 import { createLinear, type LinearScale } from '../component/scale'
 import { logWarn } from '../common/utils/logger'
 import { DataZoomTimeScaleMode, type DataZoomRangeMoveHandle, type DataZoomRangeMoveResult, KLineTimeScaleMode, type TimeScaleMode, type TimeScaleModeContext, TimeScaleModeKind, TimeShareTimeScaleMode } from './time-scale'
+import { CandleType, type Styles } from '../common/Styles'
+import { isTransparent } from '../common/utils/color'
+import { resolveLineSymbolStyle } from '../extension/figure/line'
 
 const DEFAULT_BAR_WIDTH = 8
 const DEFAULT_OFFSET_RIGHT = 10
@@ -43,7 +46,7 @@ export default class TimeScaleStore {
 
   constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
-    this._xScale = createScale(this._visibleRange, this._chartStore.mainWidth)
+    this._xScale = createScale(this._visibleRange, this._chartStore.mainWidth, this.getHorizontalInset())
     this._modeContext = {
       getBarSpace: () => this.getBarSpace(),
       getBarWidth: () => this._barWidth,
@@ -173,7 +176,7 @@ export default class TimeScaleStore {
     const visibleRange = this.calcVisibleRange()
 
     this._visibleRange = visibleRange
-    this._xScale = createScale(visibleRange, this._chartStore.mainWidth)
+    this._xScale = createScale(visibleRange, this._chartStore.mainWidth, this.getHorizontalInset())
 
     this._chartStore.getActionStore().execute(ActionType.OnVisibleRangeChange, visibleRange)
     this._chartStore.adjustVisibleDataList()
@@ -289,6 +292,10 @@ export default class TimeScaleStore {
     return this._xScale
   }
 
+  private getHorizontalInset(): number {
+    return calcTimeScaleHorizontalInset(this._chartStore.getStyles())
+  }
+
   scroll(distance: number): void {
     if (!this._scrollEnabled) {
       return
@@ -304,16 +311,13 @@ export default class TimeScaleStore {
     }
   }
 
-  // map from [domainFrom, domainTo] -> [0, mainWidth]
+  // map from [domainFrom, domainTo] to the drawable x range
   dataIndexToCoordinate(dataIndex: number): number {
     return this._xScale(dataIndex)
   }
 
   coordinateToDataIndex(x: number): number {
-    const dataCount = this._chartStore.getDataList().length
-    // * math explain: (dataCount - index) * bar = (mainWidth - offsetRight - x)
-    const index = dataCount - (this._chartStore.mainWidth - this._offsetRight - x) / this._barWidth
-    return Math.floor(index)
+    return Math.floor(this._xScale.invert(x) + 0.5)
   }
 
   zoom(scaleDelta: number, xCoord?: number): void {
@@ -400,9 +404,37 @@ export default class TimeScaleStore {
 
 }
 
-function createScale({ domainFrom, domainTo }: VisibleRange, mainWidth: number): LinearScale {
+export function calcTimeScaleHorizontalInset(styles: Styles): number {
+  const candleStyles = styles.candle
+  if (candleStyles.type !== CandleType.Area) {
+    return 0
+  }
+
+  const areaStyles = candleStyles.area
+  const symbolStyle = resolveLineSymbolStyle({
+    color: areaStyles.lineColor,
+    symbol: areaStyles.symbol
+  })
+  const symbolFillVisible = !isTransparent(symbolStyle.fillColor)
+  const symbolBorderVisible = symbolStyle.borderSize > 0 && !isTransparent(symbolStyle.borderColor)
+  const shouldStrokeSymbol = symbolBorderVisible && (!symbolFillVisible || symbolStyle.radius > symbolStyle.borderSize)
+  const symbolInset = symbolStyle.show && symbolStyle.radius > 0 && (symbolFillVisible || symbolBorderVisible)
+    ? symbolStyle.radius + (shouldStrokeSymbol ? symbolStyle.borderSize / 2 : 0)
+    : 0
+  const pointInset = areaStyles.point.show
+    ? Math.max(areaStyles.point.radius, areaStyles.point.rippleRadius)
+    : 0
+
+  if (symbolInset === 0 && pointInset === 0) {
+    return 0
+  }
+  return Math.ceil(Math.max(symbolInset, pointInset, areaStyles.lineSize / 2))
+}
+
+function createScale({ domainFrom, domainTo }: VisibleRange, mainWidth: number, horizontalInset: number = 0): LinearScale {
+  const inset = Math.max(0, Math.min(horizontalInset, mainWidth / 2))
   return createLinear({
     domain: [domainFrom - 0.5, domainTo - 0.5],
-    range: [0, mainWidth]
+    range: [inset, mainWidth - inset]
   })
 }
