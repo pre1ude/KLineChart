@@ -130,7 +130,7 @@ function createRegularTickIndexes(
   const { fromIndex, toIndex } = visibleIndexRange
   const sampleIndexes = createRegularLabelSampleIndexes(fromIndex, toIndex)
   const estimatedLabelWidth = estimateRegularXAxisLabelWidth(sampleIndexes, dataList, formatDate, dateTimeFormat, measureText)
-  const minPixelGap = Math.max(estimatedLabelWidth + X_AXIS_TICK_MIN_GAP, 1)
+  const minPixelGap = Math.max(estimatedLabelWidth * 1.5 + X_AXIS_TICK_MIN_GAP, 1)
   const minIndexStep = Number.isFinite(barSpace) && barSpace > 0
     ? Math.ceil(minPixelGap / barSpace)
     : toIndex - fromIndex + 1
