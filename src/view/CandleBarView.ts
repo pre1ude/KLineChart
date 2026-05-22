@@ -1,9 +1,11 @@
 import { isPointInBounding } from '@/common/Bounding'
 import { type EventName, type MouseTouchEvent } from '@/common/SyntheticEvent'
 import type BarSpace from '../common/BarSpace'
-import { CandleType, PolygonType, type CandleBarColor, type RectStyle } from '../common/Styles'
+import { CandleType, PolygonType, type CandleBarColor, type RectStyle, YAxisPosition } from '../common/Styles'
 import { isValid } from '../common/utils/typeChecks'
 import { type FigureCreate } from '../component/Figure'
+import { type Indicator } from '../component/Indicator'
+import { getIndicatorYAxisPosition } from '../component/YAxis'
 import { createFigure } from '../extension/figure'
 import { type RectAttrs } from '../extension/figure/rect'
 import type DualYPane from '../pane/DualYPane'
@@ -14,9 +16,20 @@ import View from './View'
 export interface CandleBarOptions {
   type: Exclude<CandleType, CandleType.Area>
   styles: CandleBarColor
+  yAxisPosition?: 'left' | 'right'
 }
 
 export type CandleHitTestMode = 'body' | 'full'
+
+export function resolveIndicatorOhlcYAxisPosition(
+  indicator: Pick<Indicator, 'yAxisPosition'>,
+  globalYAxisPosition: YAxisPosition
+): 'left' | 'right' {
+  const defaultPosition = globalYAxisPosition === YAxisPosition.Right
+    ? YAxisPosition.Right
+    : YAxisPosition.Left
+  return getIndicatorYAxisPosition(indicator, defaultPosition)
+}
 
 export default class CandleBarView extends View {
   // 响应点击和右键事件，仅蜡烛图类型走命中测试
@@ -111,8 +124,9 @@ export default class CandleBarView extends View {
         }
         halfOhlcSize = Math.floor(ohlcSize / 2)
       }
-      // todo use left
-      const widget = (pane as DualYPane).getYLeftAxisWidget()
+      const widget = candleBarOptions.yAxisPosition === YAxisPosition.Right
+        ? (pane as DualYPane).getYRightAxisWidget()
+        : (pane as DualYPane).getYLeftAxisWidget()
       const yAxis = widget.getAxisComponent()
       const visibleDataList = chartStore.getVisibleDataList()
       const barSpace = chartStore.getTimeScaleStore().getBarSpace()
@@ -231,7 +245,9 @@ export default class CandleBarView extends View {
     const indicators = chartStore.getIndicatorStore().getInstances(paneId)
     for (const indicator of indicators) {
       if (indicator.shouldOhlc && indicator.visible) {
-        const defaultOhlcStyles = chartStore.getStyles().indicator.ohlc
+        const styles = chartStore.getStyles()
+        const defaultOhlcStyles = styles.indicator.ohlc
+        const yAxisPosition = resolveIndicatorOhlcYAxisPosition(indicator, styles.yAxis.position)
         const ohlcStyles = {
           ...defaultOhlcStyles,
           ...indicator.styles?.ohlc
@@ -241,6 +257,7 @@ export default class CandleBarView extends View {
         const noChangeColor = ohlcStyles.noChangeColor
         return {
           type: CandleType.Ohlc,
+          yAxisPosition,
           styles: {
             upColor,
             downColor,
