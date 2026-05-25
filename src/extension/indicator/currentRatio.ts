@@ -10,18 +10,22 @@ interface Cr {
 }
 
 /**
- * MID:=REF(HIGH+LOW,1)/2;
- * CR:SUM(MAX(0,HIGH-MID),N)/SUM(MAX(0,MID-LOW),N)*100;
+ * CR 带状能量线
+ *
+ * MID:=REF((HIGH+LOW)/2,1);
+ * UP:=MAX(0,HIGH-MID);
+ * DN:=MAX(0,MID-LOW);
+ * CR:SUM(UP,N)/SUM(DN,N)*100;
  * MA1:REF(MA(CR,M1),M1/2.5+1);
  * MA2:REF(MA(CR,M2),M2/2.5+1);
  * MA3:REF(MA(CR,M3),M3/2.5+1);
  * MA4:REF(MA(CR,M4),M4/2.5+1);
- * MID赋值:(昨日最高价+昨日最低价)/2
- * 输出带状能量线:0和最高价-MID的较大值的N日累和/0和MID-最低价的较大值的N日累和*100
- * 输出MA1:M1(5)/2.5+1日前的CR的M1(5)日简单移动平均
- * 输出MA2:M2(10)/2.5+1日前的CR的M2(10)日简单移动平均
- * 输出MA3:M3(20)/2.5+1日前的CR的M3(20)日简单移动平均
- * 输出MA4:M4/2.5+1日前的CR的M4日简单移动平均
+ *
+ * MID: 昨日最高价与昨日最低价的中间价。
+ * UP: 最高价高于 MID 的强势差额。
+ * DN: MID 高于最低价的弱势差额。
+ * CR: N 日 UP 累和与 N 日 DN 累和的比值。
+ * MA1-MA4: CR 的简单移动平均线，并按 M/2.5+1 向前引用。
  *
  */
 const currentRatio: IndicatorTemplate<Cr> = {
@@ -36,71 +40,52 @@ const currentRatio: IndicatorTemplate<Cr> = {
     { key: 'ma4', title: 'MA4: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Cr>) => {
-    const params = indicator.calcParams
+    const [period, ...maPeriods] = indicator.calcParams
+    const dataCount = dataList.length
+    const result = new Array<Cr>(dataCount)
+    const maKeys: Array<keyof Cr> = ['ma1', 'ma2', 'ma3', 'ma4']
+    const maSums = new Array<number>(maKeys.length).fill(0)
+    const refOffsets = new Array<number>(maKeys.length)
+    for (let i = 0; i < maKeys.length; i++) {
+      refOffsets[i] = Math.ceil(maPeriods[i] / 2.5 + 1)
+    }
 
-    const ma1ForwardPeriod = Math.ceil(params[1] / 2.5 + 1)
-    const ma2ForwardPeriod = Math.ceil(params[2] / 2.5 + 1)
-    const ma3ForwardPeriod = Math.ceil(params[3] / 2.5 + 1)
-    const ma4ForwardPeriod = Math.ceil(params[4] / 2.5 + 1)
-    let ma1Sum = 0
-    const ma1List: number[] = []
-    let ma2Sum = 0
-    const ma2List: number[] = []
-    let ma3Sum = 0
-    const ma3List: number[] = []
-    let ma4Sum = 0
-    const ma4List: number[] = []
-    const result: Cr[] = []
-    dataList.forEach((kLineData: KLineData, i: number) => {
-      const cr: Cr = {}
+    let upSum = 0
+    let dnSum = 0
+    for (let i = 0; i < dataCount; i++) {
+      result[i] = {}
+    }
+    for (let i = 0; i < dataCount; i++) {
+      const kLineData = dataList[i]
       const prevData = dataList[i - 1] ?? kLineData
-      const prevMid = (prevData.high + prevData.close + prevData.low + prevData.open) / 4
+      const prevMid = (prevData.high + prevData.low) / 2
+      const up = Math.max(0, kLineData.high - prevMid)
+      const dn = Math.max(0, prevMid - kLineData.low)
+      upSum += up
+      dnSum += dn
 
-      const highSubPreMid = Math.max(0, kLineData.high - prevMid)
-
-      const preMidSubLow = Math.max(0, prevMid - kLineData.low)
-
-      if (i >= params[0] - 1) {
-        if (preMidSubLow !== 0) {
-          cr.cr = highSubPreMid / preMidSubLow * 100
-        } else {
-          cr.cr = 0
-        }
-        ma1Sum += cr.cr
-        ma2Sum += cr.cr
-        ma3Sum += cr.cr
-        ma4Sum += cr.cr
-        if (i >= params[0] + params[1] - 2) {
-          ma1List.push(ma1Sum / params[1])
-          if (i >= params[0] + params[1] + ma1ForwardPeriod - 3) {
-            cr.ma1 = ma1List[ma1List.length - 1 - ma1ForwardPeriod]
+      if (i >= period - 1) {
+        const crValue = dnSum !== 0 ? upSum / dnSum * 100 : 0
+        result[i].cr = crValue
+        for (let j = 0; j < maKeys.length; j++) {
+          const maPeriod = maPeriods[j]
+          maSums[j] += crValue
+          if (i >= period + maPeriod - 2) {
+            const targetIndex = i + refOffsets[j]
+            if (targetIndex < dataCount) {
+              result[targetIndex][maKeys[j]] = maSums[j] / maPeriod
+            }
+            maSums[j] -= (result[i - maPeriod + 1].cr ?? 0)
           }
-          ma1Sum -= (result[i - (params[1] - 1)].cr ?? 0)
         }
-        if (i >= params[0] + params[2] - 2) {
-          ma2List.push(ma2Sum / params[2])
-          if (i >= params[0] + params[2] + ma2ForwardPeriod - 3) {
-            cr.ma2 = ma2List[ma2List.length - 1 - ma2ForwardPeriod]
-          }
-          ma2Sum -= (result[i - (params[2] - 1)].cr ?? 0)
-        }
-        if (i >= params[0] + params[3] - 2) {
-          ma3List.push(ma3Sum / params[3])
-          if (i >= params[0] + params[3] + ma3ForwardPeriod - 3) {
-            cr.ma3 = ma3List[ma3List.length - 1 - ma3ForwardPeriod]
-          }
-          ma3Sum -= (result[i - (params[3] - 1)].cr ?? 0)
-        }
-        if (i >= params[0] + params[4] - 2) {
-          ma4List.push(ma4Sum / params[4])
-          if (i >= params[0] + params[4] + ma4ForwardPeriod - 3) {
-            cr.ma4 = ma4List[ma4List.length - 1 - ma4ForwardPeriod]
-          }
-          ma4Sum -= (result[i - (params[4] - 1)].cr ?? 0)
-        }
+        const leavingIndex = i - period + 1
+        const leavingData = dataList[leavingIndex]
+        const leavingPrevData = dataList[leavingIndex - 1] ?? leavingData
+        const leavingPrevMid = (leavingPrevData.high + leavingPrevData.low) / 2
+        upSum -= Math.max(0, leavingData.high - leavingPrevMid)
+        dnSum -= Math.max(0, leavingPrevMid - leavingData.low)
       }
-      result.push(cr)
-    })
+    }
     return result
   }
 }
