@@ -22,28 +22,34 @@ const bullAndBearIndex: IndicatorTemplate<Bbi> = {
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Bbi>) => {
     const params = indicator.calcParams
+    const paramCount = params.length
     const maxPeriod = Math.max(...params)
-    const closeSums: number[] = []
-    const mas: number[] = []
-    return dataList.map((kLineData: KLineData, i: number) => {
+    const closeSums = new Array<number>(paramCount)
+    const mas = new Array<number>(paramCount)
+    const dataCount = dataList.length
+    const result = new Array<Bbi>(dataCount)
+    for (let i = 0; i < dataCount; i++) {
       const bbi: Bbi = {}
+      const kLineData = dataList[i]
       const close = kLineData.close
-      params.forEach((p: number, index: number) => {
+      for (let index = 0; index < paramCount; index++) {
+        const p = params[index]
         closeSums[index] = (closeSums[index] ?? 0) + close
         if (i >= p - 1) {
           mas[index] = closeSums[index] / p
           closeSums[index] -= dataList[i - (p - 1)].close
         }
-      })
+      }
       if (i >= maxPeriod - 1) {
         let maSum = 0
-        mas.forEach(ma => {
-          maSum += ma
-        })
+        for (let j = 0; j < paramCount; j++) {
+          maSum += mas[j]
+        }
         bbi.bbi = maSum / 4
       }
-      return bbi
-    })
+      result[i] = bbi
+    }
+    return result
   }
 }
 
