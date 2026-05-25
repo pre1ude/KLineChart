@@ -30,16 +30,21 @@ const exponentialMovingAverage: IndicatorTemplate<Ema> = {
   calc: (dataList: KLineData[], indicator: Indicator<Ema>) => {
     const { calcParams: params, figures } = indicator
     let closeSum = 0
-    const emaValues: number[] = []
-    return dataList.map((kLineData, i) => {
+    const paramCount = params.length
+    const emaValues = new Array<number>(paramCount)
+    const dataCount = dataList.length
+    const result = new Array<Ema>(dataCount)
+    for (let i = 0; i < dataCount; i++) {
       const ema: Ema = {}
+      const kLineData = dataList[i]
       const close = kLineData.close
       closeSum += close
-      params.forEach((p, index) => {
+      for (let index = 0; index < paramCount; index++) {
+        const p = params[index]
         // 对于无效的周期参数（<= 0），设置为 NaN
         if (p <= 0) {
           ema[figures[index].key as keyof Ema] = NaN
-          return
+          continue
         }
 
         if (i >= p - 1) {
@@ -50,9 +55,10 @@ const exponentialMovingAverage: IndicatorTemplate<Ema> = {
           }
           ema[figures[index].key as keyof Ema] = emaValues[index]
         }
-      })
-      return ema
-    })
+      }
+      result[i] = ema
+    }
+    return result
   }
 }
 
