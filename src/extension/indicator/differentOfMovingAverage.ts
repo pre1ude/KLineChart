@@ -3,8 +3,8 @@ import type KLineData from '../../common/KLineData'
 import { type Indicator, type IndicatorTemplate } from '../../component/Indicator'
 
 interface Dma {
-  dma?: number
-  ama?: number
+  dif?: number
+  difma?: number
 }
 
 /**
@@ -16,43 +16,41 @@ const differentOfMovingAverage: IndicatorTemplate<Dma> = {
   shortName: 'DMA',
   calcParams: [10, 50, 10],
   figures: [
-    { key: 'dma', title: 'DMA: ', type: 'line' },
-    { key: 'ama', title: 'AMA: ', type: 'line' }
+    { key: 'dif', title: 'DIF: ', type: 'line' },
+    { key: 'difma', title: 'DIFMA: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Dma>) => {
-    const params = indicator.calcParams
-    const maxPeriod = Math.max(params[0], params[1])
+    const [n1, n2, m] = indicator.calcParams
+    const maxPeriod = Math.max(n1, n2)
     let closeSum1 = 0
     let closeSum2 = 0
-    let dmaSum = 0
-    const result: Dma[] = []
-    dataList.forEach((kLineData: KLineData, i: number) => {
+    let difSum = 0
+    const dataCount = dataList.length
+    const result = new Array<Dma>(dataCount)
+    for (let i = 0; i < dataCount; i++) {
+      const j = i + 1
       const dma: Dma = {}
-      const close = kLineData.close
+      const close = dataList[i].close
       closeSum1 += close
       closeSum2 += close
-      let ma1 = 0
-      let ma2 = 0
-      if (i >= params[0] - 1) {
-        ma1 = closeSum1 / params[0]
-        closeSum1 -= dataList[i - (params[0] - 1)].close
-      }
-      if (i >= params[1] - 1) {
-        ma2 = closeSum2 / params[1]
-        closeSum2 -= dataList[i - (params[1] - 1)].close
-      }
 
-      if (i >= maxPeriod - 1) {
-        const dif = ma1 - ma2
-        dma.dma = dif
-        dmaSum += dif
-        if (i >= maxPeriod + params[2] - 2) {
-          dma.ama = dmaSum / params[2]
-          dmaSum -= (result[i - (params[2] - 1)].dma ?? 0)
+      if (j >= maxPeriod) {
+        const dif = closeSum1 / n1 - closeSum2 / n2
+        dma.dif = dif
+        difSum += dif
+        if (j >= maxPeriod + m - 1) {
+          dma.difma = difSum / m
+          difSum -= (result[j - m].dif ?? 0)
         }
       }
-      result.push(dma)
-    })
+      if (j >= n1) {
+        closeSum1 -= dataList[j - n1].close
+      }
+      if (j >= n2) {
+        closeSum2 -= dataList[j - n2].close
+      }
+      result[i] = dma
+    }
     return result
   }
 }
