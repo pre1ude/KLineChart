@@ -16,7 +16,7 @@ interface Kdj {
  * 若无前一日K 值与D值，则可分别用50来代替。
  * J值=3*当日K值-2*当日D值
  */
-const stoch: IndicatorTemplate<Kdj> = {
+const kdj: IndicatorTemplate<Kdj> = {
   name: 'KDJ',
   shortName: 'KDJ',
   calcParams: [9, 3, 3],
@@ -51,4 +51,4 @@ const stoch: IndicatorTemplate<Kdj> = {
   }
 }
 
-export default stoch
+export default kdj
