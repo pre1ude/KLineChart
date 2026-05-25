@@ -8,23 +8,6 @@ interface Boll {
 }
 
 /**
- * 计算布林指标中的标准差
- * @param dataList
- * @param ma
- * @return {number}
- */
-function getBollMd(dataList: KLineData[], ma: number): number {
-  const dataSize = dataList.length
-  let sum = 0
-  dataList.forEach(data => {
-    const closeMa = data.close - ma
-    sum += closeMa * closeMa
-  })
-  sum = Math.abs(sum)
-  return Math.sqrt(sum / dataSize)
-}
-
-/**
  * BOLL
  */
 const bollingerBands: IndicatorTemplate<Boll> = {
@@ -40,22 +23,30 @@ const bollingerBands: IndicatorTemplate<Boll> = {
     { key: 'dn', title: 'DN: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Boll>) => {
-    const params = indicator.calcParams
-    const p = params[0] - 1
+    const [period, multiplier = 2] = indicator.calcParams
     let closeSum = 0
-    return dataList.map((kLineData: KLineData, i: number) => {
+    let closeSquareSum = 0
+    const dataCount = dataList.length
+    const result = new Array<Boll>(dataCount)
+    for (let i = 0; i < dataCount; i++) {
+      const kLineData = dataList[i]
       const close = kLineData.close
       const boll: Boll = {}
       closeSum += close
-      if (i >= p) {
-        boll.mid = closeSum / params[0]
-        const md = getBollMd(dataList.slice(i - p, i + 1), boll.mid)
-        boll.up = boll.mid + params[1] * md
-        boll.dn = boll.mid - params[1] * md
-        closeSum -= dataList[i - p].close
+      closeSquareSum += close * close
+      if (i >= period - 1) {
+        boll.mid = closeSum / period
+        const variance = closeSquareSum / period - boll.mid * boll.mid
+        const md = Math.sqrt(Math.max(variance, 0))
+        boll.up = boll.mid + multiplier * md
+        boll.dn = boll.mid - multiplier * md
+        const leavingClose = dataList[i - period + 1].close
+        closeSum -= leavingClose
+        closeSquareSum -= leavingClose * leavingClose
       }
-      return boll
-    })
+      result[i] = boll
+    }
+    return result
   }
 }
 
