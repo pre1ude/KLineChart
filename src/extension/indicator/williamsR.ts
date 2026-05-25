@@ -1,6 +1,6 @@
 import type KLineData from '../../common/KLineData'
 import { type Indicator, type IndicatorTemplate } from '../../component/Indicator'
-import { getMaxMin } from '../../common/utils/number'
+import { calcHhvLlv } from './utils'
 
 interface Wr {
   wr1?: number
@@ -28,27 +28,36 @@ const williamsR: IndicatorTemplate<Wr> = {
   },
   calc: (dataList: KLineData[], indicator: Indicator<Wr>) => {
     const { calcParams: params, figures } = indicator
-    return dataList.map((kLineData, i) => {
-      const wr: Wr = {}
-      const close = kLineData.close
-      params.forEach((param, index) => {
-        // 对于无效的周期参数（<= 0），设置为 NaN
-        if (param <= 0) {
-          wr[figures[index].key as keyof Wr] = NaN
-          return
+    const paramCount = params.length
+    const dataCount = dataList.length
+    const result = new Array<Wr>(dataCount)
+    for (let i = 0; i < dataCount; i++) {
+      result[i] = {}
+    }
+    const hhvList = new Array<number>(dataCount)
+    const llvList = new Array<number>(dataCount)
+    for (let index = 0; index < paramCount; index++) {
+      const period = params[index]
+      const figureKey = figures[index].key as keyof Wr
+      if (period <= 0) {
+        for (let i = 0; i < dataCount; i++) {
+          result[i][figureKey] = NaN
         }
+        continue
+      }
 
-        const p = param - 1
-        if (i >= p) {
-          const hln = getMaxMin<KLineData>(dataList.slice(i - p, i + 1), 'high', 'low')
-          const hn = hln[0]
-          const ln = hln[1]
-          const hnSubLn = hn - ln
-          wr[figures[index].key as keyof Wr] = hnSubLn === 0 ? 0 : (close - hn) / hnSubLn * 100
+      calcHhvLlv(dataList, period, hhvList, llvList)
+      for (let i = 0; i < dataCount; i++) {
+        if (i >= period - 1) {
+          const close = dataList[i].close
+          const hhv = hhvList[i]
+          const llv = llvList[i]
+          const hl = hhv - llv
+          result[i][figureKey] = hl === 0 ? 0 : (close - hhv) / hl * 100
         }
-      })
-      return wr
-    })
+      }
+    }
+    return result
   }
 }
 

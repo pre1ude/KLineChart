@@ -1,7 +1,6 @@
-
 import type KLineData from '../../common/KLineData'
 import { type Indicator, type IndicatorTemplate } from '../../component/Indicator'
-import { getMaxMin } from '../../common/utils/number'
+import { calcHhvLlv } from './utils'
 
 interface Kdj {
   k?: number
@@ -27,23 +26,27 @@ const stoch: IndicatorTemplate<Kdj> = {
     { key: 'j', title: 'J: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Kdj>) => {
-    const params = indicator.calcParams
-    const result: Kdj[] = []
-    dataList.forEach((kLineData: KLineData, i: number) => {
+    const [period, kPeriod, dPeriod] = indicator.calcParams
+    const dataCount = dataList.length
+    const result = new Array<Kdj>(dataCount)
+    const hhvList = new Array<number>(dataCount)
+    const llvList = new Array<number>(dataCount)
+    calcHhvLlv(dataList, period, hhvList, llvList)
+    for (let i = 0; i < dataCount; i++) {
       const kdj: Kdj = {}
-      const close = kLineData.close
-      if (i >= params[0] - 1) {
-        const lhn = getMaxMin<KLineData>(dataList.slice(i - (params[0] - 1), i + 1), 'high', 'low')
-        const hn = lhn[0]
-        const ln = lhn[1]
-        const hnSubLn = hn - ln
-        const rsv = (close - ln) / (hnSubLn === 0 ? 1 : hnSubLn) * 100
-        kdj.k = ((params[1] - 1) * (result[i - 1]?.k ?? 50) + rsv) / params[1]
-        kdj.d = ((params[2] - 1) * (result[i - 1]?.d ?? 50) + kdj.k) / params[2]
+      const close = dataList[i].close
+
+      if (i >= period - 1) {
+        const hhv = hhvList[i]
+        const llv = llvList[i]
+        const hl = hhv - llv
+        const rsv = (close - llv) / (hl === 0 ? 1 : hl) * 100
+        kdj.k = ((kPeriod - 1) * (result[i - 1]?.k ?? 50) + rsv) / kPeriod
+        kdj.d = ((dPeriod - 1) * (result[i - 1]?.d ?? 50) + kdj.k) / dPeriod
         kdj.j = 3.0 * kdj.k - 2.0 * kdj.d
       }
-      result.push(kdj)
-    })
+      result[i] = kdj
+    }
     return result
   }
 }

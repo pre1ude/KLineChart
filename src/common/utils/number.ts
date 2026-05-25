@@ -110,6 +110,10 @@ export function getPrecision(value: number): number {
 
 }
 
+/**
+ * @deprecated Prefer direct index scanning or rolling high/low queues to avoid
+ * extra window array allocation.
+ */
 export function getMaxMin<D>(dataList: D[], maxKey: keyof D, minKey: keyof D): number[] {
   const maxMin = [Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]
   dataList.forEach(data => {
