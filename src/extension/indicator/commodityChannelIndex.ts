@@ -16,34 +16,35 @@ interface Cci {
 const commodityChannelIndex: IndicatorTemplate<Cci> = {
   name: 'CCI',
   shortName: 'CCI',
-  calcParams: [20],
+  calcParams: [14],
   figures: [
     { key: 'cci', title: 'CCI: ', type: 'line' }
   ],
   calc: (dataList: KLineData[], indicator: Indicator<Cci>) => {
-    const params = indicator.calcParams
-    const p = params[0] - 1
+    const period = indicator.calcParams[0]
     let tpSum = 0
-    const tpList: number[] = []
-    return dataList.map((kLineData: KLineData, i: number) => {
+    const dataCount = dataList.length
+    const tpList = new Array<number>(dataCount)
+    const result = new Array<Cci>(dataCount)
+    for (let i = 0; i < dataCount; i++) {
       const cci: Cci = {}
+      const kLineData = dataList[i]
       const tp = (kLineData.high + kLineData.low + kLineData.close) / 3
+      tpList[i] = tp
       tpSum += tp
-      tpList.push(tp)
-      if (i >= p) {
-        const maTp = tpSum / params[0]
-        const sliceTpList = tpList.slice(i - p, i + 1)
+      if (i >= period - 1) {
+        const maTp = tpSum / period
         let sum = 0
-        sliceTpList.forEach(tp => {
-          sum += Math.abs(tp - maTp)
-        })
-        const md = sum / params[0]
+        for (let j = i - period + 1; j <= i; j++) {
+          sum += Math.abs(tpList[j] - maTp)
+        }
+        const md = sum / period
         cci.cci = md !== 0 ? (tp - maTp) / md / 0.015 : 0
-        const agoTp = (dataList[i - p].high + dataList[i - p].low + dataList[i - p].close) / 3
-        tpSum -= agoTp
+        tpSum -= tpList[i - period + 1]
       }
-      return cci
-    })
+      result[i] = cci
+    }
+    return result
   }
 }
 
