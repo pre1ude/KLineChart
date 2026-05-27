@@ -6,7 +6,7 @@ import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { isNumber, isObject, isString, isValid } from '../common/utils/typeChecks'
-import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorCalcParamVisible, isIndicatorFigureVisible, type Indicator, type IndicatorTooltipData } from '../component/Indicator'
+import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorCalcParamVisible, isIndicatorFigureLegendVisible, type Indicator, type IndicatorTooltipData } from '../component/Indicator'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import { type CustomApi } from '../Options'
 import type DualYPane from '../pane/DualYPane'
@@ -281,7 +281,7 @@ export default class IndicatorTooltipView extends View {
       const indicatorData = result[dataIndex] ?? {}
 
       indicator.figures.forEach((figure, figureIndex) => {
-        if (isString(figure.title) && isIndicatorFigureVisible(indicator, figure)) {
+        if (isString(figure.title) && isIndicatorFigureLegendVisible(indicator, figure)) {
           const figureStaticStyles = indicator.styles?.figures?.[figure.key] ?? {}
 
           const figureBaseStyles = getFigureBaseStyles(figure.type ?? 'line', figureIndex, mergedDefaultStyles)
@@ -299,9 +299,7 @@ export default class IndicatorTooltipView extends View {
             }
             value = formatFoldDecimal(formatThousands(value as string, thousandsSeparator), decimalFoldThreshold)
           }
-          if (!figure.title.includes('null')) {
-            legends.push({ title: { text: figure.title, color }, value: { text: value as string, color } })
-          }
+          legends.push({ title: { text: figure.title, color }, value: { text: value as string, color } })
         }
       })
       tooltipData.values = legends

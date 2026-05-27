@@ -429,6 +429,13 @@ export function isIndicatorFigureVisible(
   return indicator.styles?.figures?.[figure.key]?.visible !== false
 }
 
+export function isIndicatorCalcParamValid(
+  indicator: Indicator,
+  calcParamIndex: number
+): boolean {
+  return indicator.calcParams[calcParamIndex] != null
+}
+
 export function isIndicatorCalcParamVisible(
   indicator: Indicator,
   calcParamIndex: number
@@ -444,6 +451,21 @@ export function isIndicatorCalcParamVisible(
     }
   }
   return !hasParameterFigure
+}
+
+export function isIndicatorFigureLegendVisible(
+  indicator: Indicator,
+  figure: IndicatorFigure
+): boolean {
+  if (!isIndicatorFigureVisible(indicator, figure)) {
+    return false
+  }
+
+  if (figure.calcParamIndex === undefined) {
+    return true
+  }
+
+  return isIndicatorCalcParamValid(indicator, figure.calcParamIndex)
 }
 
 export function getFigureBaseStyles(type: string, index: number, styles: IndicatorStyle): IndicatorFigureStyle {
