@@ -17,14 +17,14 @@ const relativeStrengthIndex: IndicatorTemplate<Rsi> = {
   shortName: 'RSI',
   calcParams: [6, 12, 24],
   figures: [
-    { key: 'rsi1', title: 'RSI6: ', type: 'line' },
-    { key: 'rsi2', title: 'RSI12: ', type: 'line' },
-    { key: 'rsi3', title: 'RSI24: ', type: 'line' }
+    { key: 'rsi1', title: 'RSI6: ', type: 'line', calcParamIndex: 0 },
+    { key: 'rsi2', title: 'RSI12: ', type: 'line', calcParamIndex: 1 },
+    { key: 'rsi3', title: 'RSI24: ', type: 'line', calcParamIndex: 2 }
   ],
   regenerateFigures: (params) => {
     return params.map((p, index) => {
       const num = index + 1
-      return { key: `rsi${num}`, title: `RSI${p}: `, type: 'line' }
+      return { key: `rsi${num}`, title: `RSI${p}: `, type: 'line', calcParamIndex: index }
     })
   },
   calc: (dataList: KLineData[], indicator: Indicator<Rsi>) => {

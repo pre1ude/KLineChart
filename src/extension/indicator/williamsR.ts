@@ -17,13 +17,13 @@ const williamsR: IndicatorTemplate<Wr> = {
   shortName: 'WR',
   calcParams: [6, 10, 14],
   figures: [
-    { key: 'wr1', title: 'WR6: ', type: 'line' },
-    { key: 'wr2', title: 'WR10: ', type: 'line' },
-    { key: 'wr3', title: 'WR14: ', type: 'line' }
+    { key: 'wr1', title: 'WR6: ', type: 'line', calcParamIndex: 0 },
+    { key: 'wr2', title: 'WR10: ', type: 'line', calcParamIndex: 1 },
+    { key: 'wr3', title: 'WR14: ', type: 'line', calcParamIndex: 2 }
   ],
   regenerateFigures: (params) => {
     return params.map((p, i) => {
-      return { key: `wr${i + 1}`, title: `WR${p}: `, type: 'line' }
+      return { key: `wr${i + 1}`, title: `WR${p}: `, type: 'line', calcParamIndex: i }
     })
   },
   calc: (dataList: KLineData[], indicator: Indicator<Wr>) => {

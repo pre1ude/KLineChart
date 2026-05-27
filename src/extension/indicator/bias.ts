@@ -16,13 +16,13 @@ const bias: IndicatorTemplate<Bias> = {
   shortName: 'BIAS',
   calcParams: [6, 12, 24],
   figures: [
-    { key: 'bias1', title: 'BIAS6: ', type: 'line' },
-    { key: 'bias2', title: 'BIAS12: ', type: 'line' },
-    { key: 'bias3', title: 'BIAS24: ', type: 'line' }
+    { key: 'bias1', title: 'BIAS6: ', type: 'line', calcParamIndex: 0 },
+    { key: 'bias2', title: 'BIAS12: ', type: 'line', calcParamIndex: 1 },
+    { key: 'bias3', title: 'BIAS24: ', type: 'line', calcParamIndex: 2 }
   ],
   regenerateFigures: (params) => {
     return params.map((p, i) => {
-      return { key: `bias${i + 1}`, title: `BIAS${p}: `, type: 'line' }
+      return { key: `bias${i + 1}`, title: `BIAS${p}: `, type: 'line', calcParamIndex: i }
     })
   },
   calc: (dataList: KLineData[], indicator: Indicator<Bias>) => {

@@ -6,7 +6,7 @@ import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { isNumber, isObject, isString, isValid } from '../common/utils/typeChecks'
-import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorFigureVisible, type Indicator, type IndicatorTooltipData } from '../component/Indicator'
+import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorCalcParamVisible, isIndicatorFigureVisible, type Indicator, type IndicatorTooltipData } from '../component/Indicator'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import { type CustomApi } from '../Options'
 import type DualYPane from '../pane/DualYPane'
@@ -264,10 +264,9 @@ export default class IndicatorTooltipView extends View {
     let calcParamsText = ''
     const calcParams = indicator.calcParams
     if (calcParams.length > 0 && tooltipStyles.showParams) {
-      const visibleParams = calcParams.filter((_, index) => {
-        const figureStaticStyles = indicator.styles?.figures?.[`${indicator.name.toLowerCase()}${index + 1}`]
-        return figureStaticStyles?.visible !== false
-      }).filter(v => v != null)
+      const visibleParams = calcParams.filter((param, index) => (
+        isValid(param) && isIndicatorCalcParamVisible(indicator, index)
+      ))
       if (visibleParams.length > 0) {
         calcParamsText = `(${visibleParams.join(',')})`
       }

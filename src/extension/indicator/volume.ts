@@ -38,14 +38,14 @@ const volume: IndicatorTemplate<Vol> = {
   shouldFormatBigNumber: true,
   precision: 0,
   figures: [
-    { key: 'ma1', title: 'MA5: ', type: 'line' },
-    { key: 'ma2', title: 'MA10: ', type: 'line' },
-    { key: 'ma3', title: 'MA20: ', type: 'line' },
+    { key: 'ma1', title: 'MA5: ', type: 'line', calcParamIndex: 0 },
+    { key: 'ma2', title: 'MA10: ', type: 'line', calcParamIndex: 1 },
+    { key: 'ma3', title: 'MA20: ', type: 'line', calcParamIndex: 2 },
     getVolumeFigure()
   ],
   regenerateFigures: (params) => {
     const figures: Array<IndicatorFigure<Vol>> = params.map((p, i) => {
-      return { key: `ma${i + 1}`, title: `MA${p}: `, type: 'line' }
+      return { key: `ma${i + 1}`, title: `MA${p}: `, type: 'line', calcParamIndex: i }
     })
     figures.push(getVolumeFigure())
     return figures

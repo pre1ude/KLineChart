@@ -18,13 +18,13 @@ const exponentialMovingAverage: IndicatorTemplate<Ema> = {
   precision: 2,
   shouldOhlc: true,
   figures: [
-    { key: 'ema1', title: 'EMA6: ', type: 'line' },
-    { key: 'ema2', title: 'EMA12: ', type: 'line' },
-    { key: 'ema3', title: 'EMA20: ', type: 'line' }
+    { key: 'ema1', title: 'EMA6: ', type: 'line', calcParamIndex: 0 },
+    { key: 'ema2', title: 'EMA12: ', type: 'line', calcParamIndex: 1 },
+    { key: 'ema3', title: 'EMA20: ', type: 'line', calcParamIndex: 2 }
   ],
   regenerateFigures: (params) => {
     return params.map((p, i) => {
-      return { key: `ema${i + 1}`, title: `EMA${p}: `, type: 'line' }
+      return { key: `ema${i + 1}`, title: `EMA${p}: `, type: 'line', calcParamIndex: i }
     })
   },
   calc: (dataList: KLineData[], indicator: Indicator<Ema>) => {

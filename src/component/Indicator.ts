@@ -53,6 +53,8 @@ export interface IndicatorFigure<D = any> {
   key: string
   title?: string
   type?: string
+  /** Index of the calc param that generates this parameter line. */
+  calcParamIndex?: number
   baseValue?: number
   drawOrder?: number
 
@@ -425,6 +427,23 @@ export function isIndicatorFigureVisible(
     return false
   }
   return indicator.styles?.figures?.[figure.key]?.visible !== false
+}
+
+export function isIndicatorCalcParamVisible(
+  indicator: Indicator,
+  calcParamIndex: number
+): boolean {
+  let hasParameterFigure = false
+  for (const figure of indicator.figures) {
+    if (figure.calcParamIndex !== calcParamIndex) {
+      continue
+    }
+    hasParameterFigure = true
+    if (isIndicatorFigureVisible(indicator, figure)) {
+      return true
+    }
+  }
+  return !hasParameterFigure
 }
 
 export function getFigureBaseStyles(type: string, index: number, styles: IndicatorStyle): IndicatorFigureStyle {
