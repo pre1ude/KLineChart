@@ -47,7 +47,7 @@ const dark: DeepPartial<Styles> = {
       },
       text: {
         borderColor: '#76808F',
-        backgroundColor: '#76808F'
+        backgroundColor: '#3F516B'
       }
     },
     vertical: {
@@ -56,7 +56,7 @@ const dark: DeepPartial<Styles> = {
       },
       text: {
         borderColor: '#76808F',
-        backgroundColor: '#76808F'
+        backgroundColor: '#3F516B'
       }
     }
   }
