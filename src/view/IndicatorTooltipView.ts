@@ -134,7 +134,6 @@ export default class IndicatorTooltipView extends View {
     return top
   }
 
-  // todo need optimize
   protected drawStandardTooltipIcons(
     ctx: CanvasRenderingContext2D,
     activeIcon: TooltipIcon | null,
@@ -148,18 +147,22 @@ export default class IndicatorTooltipView extends View {
     maxWidth: number
   ): number {
     if (icons.length > 0) {
-      let width = 0
-      let height = 0
-      icons.forEach(icon => {
+      const layouts = icons.map(icon => {
         const {
           marginLeft = 0, marginTop = 0, marginRight = 0, marginBottom = 0,
           paddingLeft = 0, paddingTop = 0, paddingRight = 0, paddingBottom = 0,
           size, fontFamily, icon: text
         } = icon
         const font = createFont(size, 'normal', fontFamily)
-        width += (marginLeft + paddingLeft + calcTextWidth(text, font) + paddingRight + marginRight)
-        height = Math.max(height, marginTop + paddingTop + size + paddingBottom + marginBottom)
+        const textWidth = calcTextWidth(text, font)
+        return {
+          icon,
+          width: marginLeft + paddingLeft + textWidth + paddingRight + marginRight,
+          height: marginTop + paddingTop + size + paddingBottom + marginBottom
+        }
       })
+      const width = layouts.reduce((total, layout) => total + layout.width, 0)
+      const height = layouts.reduce((max, layout) => Math.max(max, layout.height), 0)
       if (coordinate.x + width > maxWidth) {
         coordinate.x = left
         coordinate.y += prevRowHeight
@@ -167,9 +170,9 @@ export default class IndicatorTooltipView extends View {
       } else {
         prevRowHeight = Math.max(prevRowHeight, height)
       }
-      icons.forEach(icon => {
+      layouts.forEach(({ icon, width }) => {
         const {
-          marginLeft = 0, marginTop = 0, marginRight = 0,
+          marginLeft = 0, marginTop = 0,
           paddingLeft = 0, paddingTop = 0, paddingRight = 0, paddingBottom = 0,
           color, activeColor, size, fontFamily, icon: text,
           backgroundColor, activeBackgroundColor
@@ -193,8 +196,7 @@ export default class IndicatorTooltipView extends View {
 
         this.addChild(iconFigure)
 
-        const font = createFont(size, 'normal', fontFamily)
-        coordinate.x += (marginLeft + paddingLeft + calcTextWidth(text, font) + paddingRight + marginRight)
+        coordinate.x += width
       })
     }
     return prevRowHeight
