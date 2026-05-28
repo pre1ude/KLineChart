@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { clampYAxisTickLineY, clampYAxisTickTextY } from './YAxisView'
+
+import { getDefaultStyles } from '../common/Styles'
+import YAxisView, { clampYAxisTickLineY, clampYAxisTickTextY } from './YAxisView'
 
 describe('clampYAxisTickTextY', () => {
   it('keeps y-axis tick text fully visible inside axis height', () => {
@@ -23,5 +25,41 @@ describe('clampYAxisTickLineY', () => {
   it('keeps even-width y-axis tick lines visible inside axis height', () => {
     expect(clampYAxisTickLineY(0, 100, 2)).toBe(1)
     expect(clampYAxisTickLineY(100, 100, 2)).toBe(99)
+  })
+})
+
+describe('YAxisView axisLine visibility', () => {
+  it('keeps left tick lines visible when the axis line is hidden', () => {
+    const styles = getDefaultStyles().yAxis
+    styles.axisLine.show = false
+    styles.axisLine.size = 6
+    styles.tickLine.length = 3
+
+    const view = new YAxisView({ isAlignLeft: () => true } as never)
+    const ticks = [{ coord: 10, value: 10, text: '10' }]
+    const bounding = { width: 100, height: 100, left: 0, top: 0 }
+    const [tickLine] = view.createTickLines(ticks, bounding, styles)
+
+    expect(tickLine.coordinates).toEqual([
+      { x: 0, y: 10 },
+      { x: 3, y: 10 }
+    ])
+  })
+
+  it('keeps right tick lines visible when the axis line is hidden', () => {
+    const styles = getDefaultStyles().yAxis
+    styles.axisLine.show = false
+    styles.axisLine.size = 6
+    styles.tickLine.length = 3
+
+    const view = new YAxisView({ isAlignLeft: () => false } as never)
+    const ticks = [{ coord: 10, value: 10, text: '10' }]
+    const bounding = { width: 100, height: 100, left: 0, top: 0 }
+    const [tickLine] = view.createTickLines(ticks, bounding, styles)
+
+    expect(tickLine.coordinates).toEqual([
+      { x: 100, y: 10 },
+      { x: 97, y: 10 }
+    ])
   })
 })

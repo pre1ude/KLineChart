@@ -33,7 +33,7 @@ export default class XAxisView extends AxisView {
 
   override createTickLines(ticks: AxisTick[], bounding: Bounding, styles: AxisStyle): LineAttrs[] {
     const tickLineStyles = styles.tickLine
-    const axisLineSize = styles.axisLine.size
+    const axisLineSize = styles.axisLine.show ? styles.axisLine.size : 0
     return ticks.map(tick => {
       const x = clampXAxisTickLineX(tick.coord, bounding.width, tickLineStyles.size)
       return {
@@ -47,7 +47,7 @@ export default class XAxisView extends AxisView {
 
   override createTickTexts(ticks: AxisTick[], _bounding: Bounding, styles: AxisStyle): AxisTickText[] {
     const tickTickStyles = styles.tickText
-    const axisLineSize = styles.axisLine.size
+    const axisLineSize = styles.axisLine.show ? styles.axisLine.size : 0
     const tickLineLength = styles.tickLine.length
     const textTicks = ticks.filter(tick => tick.text !== '')
 
