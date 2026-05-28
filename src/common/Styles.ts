@@ -773,14 +773,14 @@ function getDefaultCrosshairStyle(): CrosshairStyle {
 function getDefaultOverlayStyle(): OverlayStyle {
   return {
     point: {
-      color: '#FFC62B',
+      color: 'transparent',
       borderColor: '#FFC62B',
       borderSize: 1,
-      radius: 3,
-      activeColor: '#FFC62B',
+      radius: 5.5,
+      activeColor: 'transparent',
       activeBorderColor: '#FFC62B',
-      activeBorderSize: 1,
-      activeRadius: 4
+      activeBorderSize: 2,
+      activeRadius: 4.5
     },
     line: {
       style: LineType.Solid,

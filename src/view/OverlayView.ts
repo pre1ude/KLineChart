@@ -5,8 +5,9 @@ import type BarSpace from '../common/BarSpace'
 import type Bounding from '../common/Bounding'
 import type Coordinate from '../common/Coordinate'
 import type { IPoint } from '../common/Point'
-import { type OverlayStyle } from '../common/Styles'
+import { PolygonType, type OverlayStyle } from '../common/Styles'
 import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
+import { isTransparent } from '../common/utils/color'
 import { type DateTimeFormat, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { isNumber, isString } from '../common/utils/typeChecks'
@@ -39,6 +40,12 @@ interface GetFiguresParams {
 }
 
 const PROGRESS_OVERLAY_IGNORE_EVENTS: FigureEventType[] = ['contextMenuEvent']
+const ACTIVE_POINT_OUTER_RING_SIZE = 3
+const ACTIVE_POINT_OUTER_RING_COLOR = 'rgba(255, 198, 43, 0.2)'
+const themeBgMap = {
+  light: '#FFFFFF',
+  dark: '#0F1E33'
+}
 
 export default class OverlayView extends View {
   private readonly _type: OverlayViewType
@@ -363,6 +370,11 @@ export default class OverlayView extends View {
     }
   }
 
+  private _getControlPointFillColor(): string {
+    const chartStore = this.getWidget().getPane().getChart().getChartStore()
+    return themeBgMap[chartStore.getStyleTheme()]
+  }
+
   private _drawMainDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, ignoreEvents?: FigureEventType[]): void {
     if (!overlay.needDefaultPointFigure) return
 
@@ -371,19 +383,20 @@ export default class OverlayView extends View {
 
     // 已完成的 overlay 只有在 hover 或 click 时才显示控制点
     const isHovered = hoverInfo?.overlay?.id === overlay.id
-    const isClicked = clickInfo?.overlay?.id === overlay.id
+    const isSelected = clickInfo?.overlay?.id === overlay.id
 
-    if (!isDrawing && !isHovered && !isClicked) return
+    if (!isDrawing && !isHovered && !isSelected) return
 
-    const isControlPointHovered = isHovered && hoverInfo.interactType === 'control-point'
+    const isHoveredControlPoint = isHovered && hoverInfo.interactType === 'control-point'
 
     const pointStyles = { ...defaultStyles.point, ...overlay.styles?.point }
+    const pointFillColor = this._getControlPointFillColor()
 
     coordinates.forEach(({ x, y }, index) => {
       // 绘制中的最后一个点是预览点，不响应事件
       const isPreviewPoint = isDrawing && index === coordinates.length - 1
-      const isActive = isControlPointHovered && hoverInfo.figureIndex === index
-      const style = isActive ? {
+      const isHoveredPoint = isHoveredControlPoint && hoverInfo.figureIndex === index
+      const style = isSelected ? {
         radius: pointStyles.activeRadius,
         color: pointStyles.activeColor,
         borderColor: pointStyles.activeBorderColor,
@@ -395,10 +408,31 @@ export default class OverlayView extends View {
         borderSize: pointStyles.borderSize,
       }
 
-      // render control point
+      if (isHoveredPoint) {
+        drawStaticFigure(ctx, 'circle', {
+          attrs: { x, y, r: style.radius + style.borderSize + ACTIVE_POINT_OUTER_RING_SIZE / 2 },
+          styles: {
+            style: PolygonType.Stroke,
+            borderColor: ACTIVE_POINT_OUTER_RING_COLOR,
+            borderSize: ACTIVE_POINT_OUTER_RING_SIZE
+          }
+        })
+      }
+
+      drawStaticFigure(ctx, 'circle', {
+        attrs: { x, y, r: style.radius + style.borderSize },
+        styles: { color: style.borderColor }
+      })
+
+      drawStaticFigure(ctx, 'circle', {
+        attrs: { x, y, r: style.radius },
+        styles: { color: isTransparent(style.color) ? pointFillColor : style.color }
+      })
+
+      const hitRadius = style.radius + style.borderSize + (isHoveredPoint ? ACTIVE_POINT_OUTER_RING_SIZE : 0)
       const dot = createFigure('circle')
-      dot.setAttrs({ x, y, r: style.radius + style.borderSize })
-        .setStyles({ color: style.borderColor })
+      dot.setAttrs({ x, y, r: hitRadius })
+        .setStyles({ color: 'transparent' })
         .setData({
           overlayId: overlay.id,
           interactType: 'control-point',
@@ -412,10 +446,6 @@ export default class OverlayView extends View {
         dot.setIgnoreEvent(ignoreEvents)
         this.addChild(dot)
       }
-      drawStaticFigure(ctx, 'circle', {
-        attrs: { x, y, r: style.radius },
-        styles: { color: style.color }
-      })
     })
   }
 
