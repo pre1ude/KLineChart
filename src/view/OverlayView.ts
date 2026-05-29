@@ -110,16 +110,14 @@ export default class OverlayView extends View {
           if (value > kLineData.high) {
             if (overlay.mode === 'weak_magnet') {
               const highY = yAxis.convertToPixel(kLineData.high)
-              const buffValue = yAxis.convertFromPixel(highY - modeSensitivity)
-              if (value < buffValue) value = kLineData.high
+              if (Math.abs(coordinate.y - highY) <= modeSensitivity) value = kLineData.high
             } else {
               value = kLineData.high
             }
           } else if (value < kLineData.low) {
             if (overlay.mode === 'weak_magnet') {
               const lowY = yAxis.convertToPixel(kLineData.low)
-              const buffValue = yAxis.convertFromPixel(lowY - modeSensitivity)
-              if (value > buffValue) value = kLineData.low
+              if (Math.abs(coordinate.y - lowY) <= modeSensitivity) value = kLineData.low
             } else {
               value = kLineData.low
             }
