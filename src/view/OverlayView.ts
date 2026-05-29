@@ -458,6 +458,11 @@ export default class OverlayView extends View {
     let leftX = coordinates[0].x
     let rightX = coordinates[0].x
 
+    coordinates.forEach(coordinate => {
+      leftX = Math.min(leftX, coordinate.x)
+      rightX = Math.max(rightX, coordinate.x)
+    })
+
     if (coordinates.length > 1) {
       figures.push({
         type: 'rect',
@@ -465,12 +470,10 @@ export default class OverlayView extends View {
         ignoreEvent: true
       })
     }
-    // 遍历坐标，收集文本和计算边界
+
+    // 遍历坐标，收集文本
     const chartStore = this.getWidget().getPane().getChart().getChartStore()
     coordinates.forEach((coordinate, index) => {
-      leftX = Math.min(leftX, coordinate.x)
-      rightX = Math.max(rightX, coordinate.x)
-
       const point = overlay.points[index]
       if (point && isNumber(point.dataIndex)) {
         // 从 dataIndex 获取 timestamp
@@ -514,6 +517,11 @@ export default class OverlayView extends View {
     let topY = coordinates[0].y
     let bottomY = coordinates[0].y
 
+    coordinates.forEach(coordinate => {
+      topY = Math.min(topY, coordinate.y)
+      bottomY = Math.max(bottomY, coordinate.y)
+    })
+
     // 计算对齐方式
     const isAlignLeft = yAxisWidget.isAlignLeft() ?? false
     const align = isAlignLeft ? 'left' : 'right'
@@ -530,9 +538,6 @@ export default class OverlayView extends View {
     coordinates.forEach((coordinate, index) => {
       const point = overlay.points[index]
       if (point && isNumber(point.value)) {
-        topY = Math.min(topY, coordinate.y)
-        bottomY = Math.max(bottomY, coordinate.y)
-
         // 格式化价格文本
         let text = formatPrecision(point.value, precision.price)
         text = formatThousands(text, thousandsSeparator)
