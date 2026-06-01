@@ -50,7 +50,6 @@ const themeBgMap = {
 export default class OverlayView extends View {
   private readonly _type: OverlayViewType
   private _hoverInstanceInfo?: EventOverlayInfo
-  private _pressedInstanceInfo?: EventOverlayInfo
 
   constructor(widget: DrawWidget<Pane>, type: OverlayViewType = 'main') {
     super(widget)
@@ -61,23 +60,15 @@ export default class OverlayView extends View {
     this._hoverInstanceInfo = info
   }
 
-  setPressedInstanceInfo(info?: EventOverlayInfo): void {
-    this._pressedInstanceInfo = info
-  }
-
   getHoverInstanceInfo(): EventOverlayInfo | undefined {
     return this._hoverInstanceInfo
-  }
-
-  getPressedInstanceInfo(): EventOverlayInfo | undefined {
-    return this._pressedInstanceInfo
   }
 
   // 返回 true 表示整体 overlayview 总是响应事件, 用来触发点击空白区域的
   override checkEventOn(event: MouseTouchEvent, name: EventName, other?: unknown): boolean {
     const overlayStore = this.getWidget().getPane().getChart().getChartStore().getOverlayStore()
     if (overlayStore.getProgressOverlay()) return true // 还在画
-    if (this._pressedInstanceInfo?.overlay != null) return true
+    if (overlayStore.isDragging() && (name === 'pressedMouseMoveEvent' || name === 'mouseUpEvent')) return true
     if (name === 'mouseMoveEvent' && this._hoverInstanceInfo) return true // 支持取消hover
     return super.checkEventOn(event, name, other)
   }

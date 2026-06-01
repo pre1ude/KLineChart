@@ -26,6 +26,7 @@ export default class OverlayStore {
    * 全局选中的 overlay（用于跨 pane 共享选中状态）
    */
   private _selectedInfo?: EventOverlayInfo
+  private _isDragging = false
 
   constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
@@ -41,6 +42,14 @@ export default class OverlayStore {
 
   clearSelectedInfo(): void {
     this._selectedInfo = undefined
+  }
+
+  setDragging(dragging: boolean): void {
+    this._isDragging = dragging
+  }
+
+  isDragging(): boolean {
+    return this._isDragging
   }
 
   getInstanceById(id: string): Overlay | undefined {

@@ -65,6 +65,25 @@ export class OverlayLayer implements Layer {
     const chart = pane.getChart()
     const chartStore = chart.getChartStore()
     const overlayStore = chartStore.getOverlayStore()
+    const selectOverlay = (nextSelectedInfo: EventOverlayInfo, event: MouseTouchEvent): void => {
+      const lastSelectedInfo = overlayStore.getSelectedInfo()
+
+      if (this._isSameOverlay(lastSelectedInfo, nextSelectedInfo)) return
+
+      if (lastSelectedInfo?.overlay != null) {
+        lastSelectedInfo.overlay.onDeselected?.(createOverlayEventFromInfo(event, lastSelectedInfo, chartStore))
+      }
+
+      nextSelectedInfo.overlay.onSelected?.(createOverlayEventFromInfo(event, nextSelectedInfo, chartStore))
+
+      overlayStore.setSelectedInfo(nextSelectedInfo)
+
+      chart.updatePane(UpdateLevel.Overlay, nextSelectedInfo.paneId)
+      if (lastSelectedInfo != null && lastSelectedInfo.paneId !== nextSelectedInfo.paneId) {
+        chart.updatePane(UpdateLevel.Overlay, lastSelectedInfo.paneId)
+      }
+      chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
+    }
 
     // 鼠标移动事件 - 处理 onMouseEnter 和 onMouseLeave
     this._overlayView.addEventListener('mouseMoveEvent', (event: MouseTouchEvent) => {
@@ -105,7 +124,7 @@ export class OverlayLayer implements Layer {
       }
     })
 
-    // 鼠标点击事件 - 处理 onClick、onSelected 和 onDeselected
+    // 鼠标点击事件 - 处理 onClick
     this._overlayView.addEventListener('mouseClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay) {
@@ -146,39 +165,24 @@ export class OverlayLayer implements Layer {
       if (clickInfo?.overlay?.isCompleted()) {
         clickInfo.overlay.onClick?.(createOverlayEventFromInfo(event, clickInfo, chartStore))
       }
-
-      const lastClickInfo = overlayStore.getSelectedInfo()
-
-      if (!this._isSameOverlay(lastClickInfo, clickInfo)) {
-        if (lastClickInfo?.overlay != null) {
-          lastClickInfo.overlay.onDeselected?.(createOverlayEventFromInfo(event, lastClickInfo, chartStore))
-        }
-
-        if (clickInfo?.overlay != null) {
-          clickInfo.overlay.onSelected?.(createOverlayEventFromInfo(event, clickInfo, chartStore))
-        }
-
-        overlayStore.setSelectedInfo(clickInfo)
-
-        chart.updatePane(UpdateLevel.Overlay, paneId)
-        if (lastClickInfo != null && lastClickInfo.paneId !== paneId) {
-          chart.updatePane(UpdateLevel.Overlay, lastClickInfo.paneId)
-        }
-        chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
-      }
     })
 
     // 鼠标按下事件
     let hasMoved = false
+    let pressedInfo: EventOverlayInfo | undefined
     this._overlayView.addEventListener('mouseDownEvent', (event: MouseTouchEvent) => {
       // 绘制中不允许拖动已绘制的 overlay
       if (overlayStore.getProgressOverlay()) return
 
-      const pressedInfo = this._extractEventOverlayInfo(event.target, paneId)
-      if (pressedInfo?.overlay != null) {
-        const { overlay } = pressedInfo
+      const nextPressedInfo = this._extractEventOverlayInfo(event.target, paneId)
+      if (nextPressedInfo?.overlay != null) {
+        const { overlay } = nextPressedInfo
+        if (overlay.isCompleted()) {
+          selectOverlay(nextPressedInfo, event)
+        }
         overlay.startPressedMove(this._overlayView.coordinateToPoint(overlay, event) as IPoint)
-        this._overlayView.setPressedInstanceInfo(pressedInfo)
+        pressedInfo = nextPressedInfo
+        overlayStore.setDragging(true)
         hasMoved = false
       }
     })
@@ -241,17 +245,16 @@ export class OverlayLayer implements Layer {
 
     // 鼠标抬起事件
     this._overlayView.addEventListener('mouseUpEvent', (event: MouseTouchEvent) => {
-      const pressedInfo = this._overlayView.getPressedInstanceInfo()
       if (pressedInfo?.overlay != null && hasMoved) {
         pressedInfo.overlay.onPressedMoveEnd?.(createOverlayEventFromInfo(event, pressedInfo, chartStore))
       }
-      this._overlayView.setPressedInstanceInfo()
+      pressedInfo = undefined
+      overlayStore.setDragging(false)
       hasMoved = false
     })
 
     // 按住拖动事件 - 处理 onPressedMoving
     this._overlayView.addEventListener('pressedMouseMoveEvent', (event: MouseTouchEvent) => {
-      const pressedInfo = this._overlayView.getPressedInstanceInfo()
       if (pressedInfo?.overlay != null) {
         const overlay = pressedInfo.overlay
         const overlayEvent = createOverlayEventFromInfo(event, pressedInfo, chartStore)
