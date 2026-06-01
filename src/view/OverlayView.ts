@@ -49,19 +49,10 @@ const themeBgMap = {
 
 export default class OverlayView extends View {
   private readonly _type: OverlayViewType
-  private _hoverInstanceInfo?: EventOverlayInfo
 
   constructor(widget: DrawWidget<Pane>, type: OverlayViewType = 'main') {
     super(widget)
     this._type = type
-  }
-
-  setHoverInstanceInfo(info?: EventOverlayInfo): void {
-    this._hoverInstanceInfo = info
-  }
-
-  getHoverInstanceInfo(): EventOverlayInfo | undefined {
-    return this._hoverInstanceInfo
   }
 
   // 返回 true 表示整体 overlayview 总是响应事件, 用来触发点击空白区域的
@@ -69,7 +60,8 @@ export default class OverlayView extends View {
     const overlayStore = this.getWidget().getPane().getChart().getChartStore().getOverlayStore()
     if (overlayStore.getProgressOverlay()) return true // 还在画
     if (overlayStore.isDragging() && (name === 'pressedMouseMoveEvent' || name === 'mouseUpEvent')) return true
-    if (name === 'mouseMoveEvent' && this._hoverInstanceInfo) return true // 支持取消hover
+    if (name === 'mouseMoveEvent' && overlayStore.getHoverInfo()) return true // 支持取消hover
+    if (name === 'mouseLeaveEvent' && overlayStore.getHoverInfo()?.paneId === this.getWidget().getPane().getId()) return true
     return super.checkEventOn(event, name, other)
   }
 
@@ -156,7 +148,7 @@ export default class OverlayView extends View {
     const defaultStyles = chartStore.getStyles().overlay
     const overlayStore = chartStore.getOverlayStore()
     const crosshair = chartStore.getTooltipStore().getCrosshair()
-    const hoverInfo = this._hoverInstanceInfo
+    const hoverInfo = overlayStore.getHoverInfo()
     // 统一使用全局选中状态
     const clickInfo = overlayStore.getSelectedInfo()
     const overlays = this._type === 'xAxis' ? overlayStore.getInstances() : overlayStore.getInstances(paneId)

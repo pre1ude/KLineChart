@@ -462,7 +462,13 @@ export default class Event implements EventHandler {
     return false
   }
 
-  mouseLeaveEvent(): boolean {
+  mouseLeaveEvent(e: MouseTouchEvent): boolean {
+    const widget = this._mouseMoveTriggerWidgetInfo.widget
+    if (widget) {
+      const event = this._makeWidgetEvent(e, widget)
+      widget.dispatchEvent('mouseLeaveEvent', event)
+      this._mouseMoveTriggerWidgetInfo = {}
+    }
     this._chart.getChartStore().getTooltipStore().setCrosshair()
     return true
   }

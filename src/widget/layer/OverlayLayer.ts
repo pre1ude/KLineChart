@@ -85,6 +85,23 @@ export class OverlayLayer implements Layer {
       chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
     }
 
+    const updateHoverPanes = (lastHoverInfo?: EventOverlayInfo, hoverInfo?: EventOverlayInfo): void => {
+      if (lastHoverInfo?.paneId != null) {
+        chart.updatePane(UpdateLevel.Overlay, lastHoverInfo.paneId)
+      }
+      if (hoverInfo?.paneId != null && hoverInfo.paneId !== lastHoverInfo?.paneId) {
+        chart.updatePane(UpdateLevel.Overlay, hoverInfo.paneId)
+      }
+    }
+
+    const clearHover = (event: MouseTouchEvent): void => {
+      const lastHoverInfo = overlayStore.clearHoverInfo()
+      if (lastHoverInfo?.overlay != null) {
+        lastHoverInfo.overlay.onMouseLeave?.(createOverlayEventFromInfo(event, lastHoverInfo, chartStore))
+        chart.updatePane(UpdateLevel.Overlay, lastHoverInfo.paneId)
+      }
+    }
+
     // 鼠标移动事件 - 处理 onMouseEnter 和 onMouseLeave
     this._overlayView.addEventListener('mouseMoveEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
@@ -103,9 +120,11 @@ export class OverlayLayer implements Layer {
       }
 
       const hoverInfo = this._extractEventOverlayInfo(event.target, paneId)
-      const lastHoverInfo = this._overlayView.getHoverInstanceInfo()
+      const lastHoverInfo = overlayStore.getHoverInfo()
+      const isSameOverlay = this._isSameOverlay(lastHoverInfo, hoverInfo)
+      const isSameFigure = this._isSameFigure(lastHoverInfo, hoverInfo)
 
-      if (!this._isSameOverlay(lastHoverInfo, hoverInfo)) {
+      if (!isSameOverlay) {
         if (lastHoverInfo?.overlay != null) {
           lastHoverInfo.overlay.onMouseLeave?.(createOverlayEventFromInfo(event, lastHoverInfo, chartStore))
         }
@@ -114,13 +133,21 @@ export class OverlayLayer implements Layer {
           hoverInfo.overlay.onMouseEnter?.(createOverlayEventFromInfo(event, hoverInfo, chartStore))
         }
 
-        // 触发更新
-        chart.updatePane(UpdateLevel.Overlay, paneId)
+        updateHoverPanes(lastHoverInfo, hoverInfo)
       }
 
       // 始终更新 hoverInfo（用于其他用途，如高亮当前 figure）
-      if (!this._isSameFigure(lastHoverInfo, hoverInfo)) {
-        this._overlayView.setHoverInstanceInfo(hoverInfo)
+      if (!isSameFigure) {
+        overlayStore.setHoverInfo(hoverInfo)
+        if (isSameOverlay) {
+          updateHoverPanes(lastHoverInfo, hoverInfo)
+        }
+      }
+    })
+
+    this._overlayView.addEventListener('mouseLeaveEvent', (event: MouseTouchEvent) => {
+      if (overlayStore.getHoverInfo()?.paneId === paneId) {
+        clearHover(event)
       }
     })
 

@@ -26,6 +26,7 @@ export default class OverlayStore {
    * 全局选中的 overlay（用于跨 pane 共享选中状态）
    */
   private _selectedInfo?: EventOverlayInfo
+  private _hoverInfo?: EventOverlayInfo
   private _isDragging = false
 
   constructor(chartStore: ChartStore) {
@@ -42,6 +43,20 @@ export default class OverlayStore {
 
   clearSelectedInfo(): void {
     this._selectedInfo = undefined
+  }
+
+  setHoverInfo(info?: EventOverlayInfo): void {
+    this._hoverInfo = info
+  }
+
+  getHoverInfo(): EventOverlayInfo | undefined {
+    return this._hoverInfo
+  }
+
+  clearHoverInfo(): EventOverlayInfo | undefined {
+    const info = this._hoverInfo
+    this._hoverInfo = undefined
+    return info
   }
 
   setDragging(dragging: boolean): void {
@@ -240,6 +255,11 @@ export default class OverlayStore {
       }
 
       if (!overlayInstance.isCompleted()) {
+        const hoverInfo = this.clearHoverInfo()
+        const hoverPaneId = hoverInfo?.paneId
+        if (hoverPaneId != null && hoverPaneId.length > 0 && !updatePaneIds.includes(hoverPaneId)) {
+          updatePaneIds.push(hoverPaneId)
+        }
         this._progressOverlay = overlayInstance
         this._progressPaneId = targetPaneId
       } else {
