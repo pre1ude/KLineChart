@@ -59,10 +59,15 @@ export default class OverlayView extends View {
   override checkEventOn(event: MouseTouchEvent, name: EventName, other?: unknown): boolean {
     const overlayStore = this.getWidget().getPane().getChart().getChartStore().getOverlayStore()
     if (overlayStore.getProgressOverlay()) return true // 还在画
-    if (overlayStore.isDragging() && (name === 'pressedMouseMoveEvent' || name === 'mouseUpEvent')) return true
+    if (overlayStore.isPressed() && (name === 'pressedMouseMoveEvent' || name === 'mouseUpEvent')) return true
     if (name === 'mouseMoveEvent' && overlayStore.getHoverInfo()) return true // 支持取消hover
     if (name === 'mouseLeaveEvent' && overlayStore.getHoverInfo()?.paneId === this.getWidget().getPane().getId()) return true
     return super.checkEventOn(event, name, other)
+  }
+
+  // pressed move/up 使用 mouseDown 时记录的 pressedInfo，避免拖动中重新 hit-test 导致 target 漂移。
+  override shouldCheckChildren(name: EventName): boolean {
+    return name !== 'pressedMouseMoveEvent' && name !== 'mouseUpEvent'
   }
 
   coordinateToPoint(overlay: Overlay, coordinate: Coordinate): Partial<IPoint> {

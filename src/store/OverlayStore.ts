@@ -27,6 +27,7 @@ export default class OverlayStore {
    */
   private _selectedInfo?: EventOverlayInfo
   private _hoverInfo?: EventOverlayInfo
+  private _isPressed = false
   private _isDragging = false
 
   constructor(chartStore: ChartStore) {
@@ -57,6 +58,14 @@ export default class OverlayStore {
     const info = this._hoverInfo
     this._hoverInfo = undefined
     return info
+  }
+
+  setPressed(pressed: boolean): void {
+    this._isPressed = pressed
+  }
+
+  isPressed(): boolean {
+    return this._isPressed
   }
 
   setDragging(dragging: boolean): void {

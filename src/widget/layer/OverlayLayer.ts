@@ -207,9 +207,11 @@ export class OverlayLayer implements Layer {
         if (overlay.isCompleted()) {
           selectOverlay(nextPressedInfo, event)
         }
+        if (overlay.lock) return
         overlay.startPressedMove(this._overlayView.coordinateToPoint(overlay, event) as IPoint)
         pressedInfo = nextPressedInfo
-        overlayStore.setDragging(true)
+        overlayStore.setPressed(true)
+        overlayStore.setDragging(false)
         hasMoved = false
       }
     })
@@ -276,6 +278,7 @@ export class OverlayLayer implements Layer {
         pressedInfo.overlay.onPressedMoveEnd?.(createOverlayEventFromInfo(event, pressedInfo, chartStore))
       }
       pressedInfo = undefined
+      overlayStore.setPressed(false)
       overlayStore.setDragging(false)
       hasMoved = false
     })
@@ -285,20 +288,20 @@ export class OverlayLayer implements Layer {
       if (pressedInfo?.overlay != null) {
         const overlay = pressedInfo.overlay
         const overlayEvent = createOverlayEventFromInfo(event, pressedInfo, chartStore)
-        if (!overlay.lock) {
-          if (!hasMoved) {
-            hasMoved = true
-            overlay.onPressedMoveStart?.(overlayEvent)
-          }
-          overlay.onPressedMoving?.(overlayEvent)
 
-          if (!overlayEvent.defaultPrevented) {
-            const point = this._overlayView.coordinateToPoint(overlay, event) as IPoint
-            if (pressedInfo.interactType === 'control-point') {
-              overlay.onDragMoveControlPoint(point, pressedInfo.figureIndex)
-            } else {
-              overlay.onDragMoveBody(point)
-            }
+        if (!hasMoved) {
+          hasMoved = true
+          overlayStore.setDragging(true)
+          overlay.onPressedMoveStart?.(overlayEvent)
+        }
+        overlay.onPressedMoving?.(overlayEvent)
+
+        if (!overlayEvent.defaultPrevented) {
+          const point = this._overlayView.coordinateToPoint(overlay, event) as IPoint
+          if (pressedInfo.interactType === 'control-point') {
+            overlay.onDragMoveControlPoint(point, pressedInfo.figureIndex)
+          } else {
+            overlay.onDragMoveBody(point)
           }
         }
       }

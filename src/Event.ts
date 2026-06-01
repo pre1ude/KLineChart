@@ -12,11 +12,8 @@ import type YAxisWidget from './widget/YAxisWidget'
 import type XAxisWidget from './widget/XAxisWidget'
 import { isPointInBounding } from './common/Bounding'
 import type VisibleRange from './common/VisibleRange'
-import { setCursor } from './common/utils/cursor'
 import { createOverlayEventFromInfo } from './common/utils/overlayEvent'
 import { ActionType } from './common/Action'
-
-let resetCursor: (() => void) | undefined = undefined
 
 interface EventTriggerWidgetInfo {
   pane?: Pane
@@ -55,6 +52,8 @@ export default class Event implements EventHandler {
   private _yAxisStartScaleDistance = 0
 
   private _mouseMoveTriggerWidgetInfo: EventTriggerWidgetInfo = {}
+  private _cursorWidget?: Widget
+  private _cursor = ''
 
   constructor(container: HTMLElement, chart: Chart) {
     this._container = container
@@ -63,6 +62,10 @@ export default class Event implements EventHandler {
       treatVertDragAsPageScroll: () => false,
       treatHorzDragAsPageScroll: () => false
     })
+  }
+
+  syncCursor(): void {
+    this._syncCursor(this._mouseMoveTriggerWidgetInfo.widget)
   }
 
   pinchStartEvent(): boolean {
@@ -109,12 +112,16 @@ export default class Event implements EventHandler {
       const name = widget.getName()
       switch (name) {
         case WidgetNameConstants.SEPARATOR: {
-          return widget.dispatchEvent('mouseDownEvent', event)
+          const consumed = widget.dispatchEvent('mouseDownEvent', event)
+          this._syncCursor(widget)
+          return consumed
         }
         case WidgetNameConstants.MAIN: {
           // 不再需要保存特定的Y轴范围，因为我们会在拖拽时实时获取每个轴的当前范围
           this._startScrollCoordinate = { x: event.x, y: event.y }
-          return widget.dispatchEvent('mouseDownEvent', event)
+          const consumed = widget.dispatchEvent('mouseDownEvent', event)
+          this._syncCursor(widget)
+          return consumed
         }
         case WidgetNameConstants.X_AXIS: {
           const consumed = widget.dispatchEvent('mouseDownEvent', event)
@@ -123,6 +130,7 @@ export default class Event implements EventHandler {
           }
           this._xAxisStartScaleCoordinate = { x: event.x, y: event.y }
           this._xAxisStartScaleDistance = event.pageX
+          this._syncCursor(widget)
           return consumed
         }
         case WidgetNameConstants.Y_AXIS: {
@@ -142,10 +150,12 @@ export default class Event implements EventHandler {
           this._prevOtherYAxisRange = otherRange ? { ...otherRange } : undefined
 
           this._yAxisStartScaleDistance = event.pageY
+          this._syncCursor(widget)
           return consumed
         }
       }
     }
+    this._syncCursor()
     return false
   }
 
@@ -169,16 +179,7 @@ export default class Event implements EventHandler {
           const tooltipStore = chartStore.getTooltipStore()
           // 始终更新十字星位置，保持位置参考
           tooltipStore.setCrosshair({ x: event.x, y: event.y, paneId: pane?.getId() })
-          // 当 hover 在 overlay icon 上时，显示 pointer 光标
-          if (consumed && tooltipStore.getActiveIcon()) {
-            if (!resetCursor) {
-              resetCursor = setCursor(widget.getContainer(), 'pointer')
-            }
-          } else {
-            // 重置光标
-            resetCursor?.()
-            resetCursor = undefined
-          }
+          this._syncCursor(widget)
           return consumed
         }
         case WidgetNameConstants.SEPARATOR:
@@ -186,10 +187,12 @@ export default class Event implements EventHandler {
         case WidgetNameConstants.Y_AXIS: {
           const consumed = widget.dispatchEvent('mouseMoveEvent', event)
           this._chart.getChartStore().getTooltipStore().setCrosshair()
+          this._syncCursor(widget)
           return consumed
         }
       }
     }
+    this._syncCursor()
     return false
   }
 
@@ -233,6 +236,7 @@ export default class Event implements EventHandler {
             this._chart.getChartStore().getTimeScaleStore().scroll(distance)
           }
           this._chart.getChartStore().getTooltipStore().setCrosshair({ x: event.x, y: event.y, paneId: pane?.getId() })
+          this._syncCursor(widget)
           return consumed
         }
         case WidgetNameConstants.X_AXIS: {
@@ -250,6 +254,7 @@ export default class Event implements EventHandler {
           } else {
             this._chart.updatePane(UpdateLevel.Overlay)
           }
+          this._syncCursor(widget)
           return consumed
         }
         case WidgetNameConstants.Y_AXIS: {
@@ -302,6 +307,7 @@ export default class Event implements EventHandler {
           } else {
             this._chart.updatePane(UpdateLevel.Overlay)
           }
+          this._syncCursor(widget)
           return consumed
         }
       }
@@ -337,6 +343,7 @@ export default class Event implements EventHandler {
     this._xAxisStartScaleDistance = 0
     this._xAxisScale = 1
     this._yAxisStartScaleDistance = 0
+    this._syncCursor(eventWidget)
     return consumed
   }
 
@@ -351,9 +358,11 @@ export default class Event implements EventHandler {
         this._handleOverlayDeselection(e)
       }
 
+      this._syncCursor(widget)
       return consumed
     }
     this._handleOverlayDeselection(e)
+    this._syncCursor()
 
     return false
   }
@@ -407,6 +416,7 @@ export default class Event implements EventHandler {
         this._chart.updatePane(UpdateLevel.Overlay)
       }
     }
+    this._syncCursor(widget)
     return false
   }
 
@@ -428,6 +438,7 @@ export default class Event implements EventHandler {
         this._chart.updatePane(UpdateLevel.Overlay)
       }
     }
+    this._syncCursor(widget)
     return false
   }
 
@@ -459,6 +470,7 @@ export default class Event implements EventHandler {
       //Todo
       chartStore.getActionStore().execute(ActionType.OnDblClick, {} as any)
     }
+    this._syncCursor(widget)
     return false
   }
 
@@ -470,11 +482,13 @@ export default class Event implements EventHandler {
       this._mouseMoveTriggerWidgetInfo = {}
     }
     this._chart.getChartStore().getTooltipStore().setCrosshair()
+    this._syncCursor()
     return true
   }
 
   touchStartEvent(e: MouseTouchEvent): boolean {
     const { pane, widget } = this._findWidgetByEvent(e)
+    this._mouseDownWidget = widget
     if (widget) {
       const event = this._makeWidgetEvent(e, widget)
       const name = widget.getName()
@@ -483,19 +497,17 @@ export default class Event implements EventHandler {
           const chartStore = this._chart.getChartStore()
           const tooltipStore = chartStore.getTooltipStore()
           if (widget.dispatchEvent('mouseDownEvent', event)) {
+            this._startTouchScroll(event)
+            if (chartStore.getOverlayStore().isPressed()) {
+              this._startScrollCoordinate = undefined
+            }
             this._touchCancelCrosshair = true
             this._touchCoordinate = undefined
             tooltipStore.setCrosshair(undefined, { notInvalidate: true })
             this._chart.updatePane(UpdateLevel.Overlay)
             return true
           }
-          if (this._flingScrollRequestId) {
-            cancelAnimationFrame(this._flingScrollRequestId)
-            this._flingScrollRequestId = undefined
-          }
-          this._flingStartTime = new Date().getTime()
-          this._startScrollCoordinate = { x: event.x, y: event.y }
-          this._touchZoomed = false
+          this._startTouchScroll(event)
           if (this._touchCoordinate) {
             const xDif = event.x - this._touchCoordinate.x
             const yDif = event.y - this._touchCoordinate.y
@@ -566,7 +578,9 @@ export default class Event implements EventHandler {
   }
 
   touchEndEvent(e: MouseTouchEvent): boolean {
-    const { widget } = this._findWidgetByEvent(e)
+    const { widget: eventWidget } = this._findWidgetByEvent(e)
+    const widget = this._mouseDownWidget ?? eventWidget
+    this._mouseDownWidget = undefined
     if (widget) {
       const event = this._makeWidgetEvent(e, widget)
       const name = widget.getName()
@@ -608,6 +622,16 @@ export default class Event implements EventHandler {
       }
     }
     return false
+  }
+
+  private _startTouchScroll(event: MouseTouchEvent): void {
+    if (this._flingScrollRequestId) {
+      cancelAnimationFrame(this._flingScrollRequestId)
+      this._flingScrollRequestId = undefined
+    }
+    this._flingStartTime = new Date().getTime()
+    this._startScrollCoordinate = { x: event.x, y: event.y }
+    this._touchZoomed = false
   }
 
   tapEvent(e: MouseTouchEvent): boolean {
@@ -654,6 +678,58 @@ export default class Event implements EventHandler {
       return true
     }
     return false
+  }
+
+  private _syncCursor(widget?: Widget): void {
+    if (widget?.getName() !== WidgetNameConstants.MAIN) {
+      this._resetCursorWidget()
+      return
+    }
+
+    const cursor = this._resolveMainCursor(widget)
+    if (this._cursorWidget && this._cursorWidget !== widget) {
+      this._cursorWidget.getContainer().style.cursor = 'crosshair'
+    }
+
+    if (this._cursorWidget === widget && this._cursor === cursor) {
+      return
+    }
+
+    widget.getContainer().style.cursor = cursor
+    this._cursorWidget = widget
+    this._cursor = cursor
+  }
+
+  private _resetCursorWidget(): void {
+    if (this._cursorWidget) {
+      this._cursorWidget.getContainer().style.cursor = 'crosshair'
+      this._cursorWidget = undefined
+      this._cursor = ''
+    }
+  }
+
+  private _resolveMainCursor(widget: Widget): string {
+    const chartStore = this._chart.getChartStore()
+    const overlayStore = chartStore.getOverlayStore()
+
+    if (overlayStore.isDragging()) {
+      return 'grabbing'
+    }
+
+    if (overlayStore.getProgressOverlay()) {
+      return 'crosshair'
+    }
+
+    const hoverInfo = overlayStore.getHoverInfo()
+    if (hoverInfo?.paneId === widget.getPane().getId()) {
+      return 'pointer'
+    }
+
+    if (chartStore.getTooltipStore().getActiveIcon()) {
+      return 'pointer'
+    }
+
+    return 'crosshair'
   }
 
   private _findWidgetByEvent(e: MouseTouchEvent): EventTriggerWidgetInfo {

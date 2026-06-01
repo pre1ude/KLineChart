@@ -980,6 +980,7 @@ export default class ChartImp implements Chart {
     }
 
     const ids = this._chartStore.getOverlayStore().addInstances(overlays, paneId)
+    this._chartEvent.syncCursor()
     if (isArray(value)) {
       return ids
     }
