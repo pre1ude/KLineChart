@@ -1,7 +1,17 @@
 import type Coordinate from '../common/Coordinate'
 import type Crosshair from '../common/Crosshair'
 import type KLineData from '../common/KLineData'
-import { TooltipIconPosition, TooltipShowRule, type IndicatorStyle, type TooltipIconStyle, type TooltipLegend, type TooltipLegendChild, type TooltipStyle, type TooltipTextStyle } from '../common/Styles'
+import {
+  PolygonType,
+  TooltipIconPosition,
+  TooltipShowRule,
+  type IndicatorStyle,
+  type TooltipIconStyle,
+  type TooltipLegend,
+  type TooltipLegendChild,
+  type TooltipStyle,
+  type TooltipTextStyle
+} from '../common/Styles'
 import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
@@ -13,6 +23,48 @@ import type DualYPane from '../pane/DualYPane'
 import { type TooltipIcon } from '../store/TooltipStore'
 import type XAxisWidget from '../widget/XAxisWidget'
 import View from './View'
+
+type StandardTooltipIconLayout = {
+  type: 'icon'
+  icon: TooltipIconStyle
+  x: number
+  y: number
+}
+
+type StandardTooltipLegendLayout = {
+  type: 'legend'
+  title: TooltipLegendChild
+  value: TooltipLegendChild
+  x: number
+  y: number
+  titleTextWidth: number
+  styles: TooltipTextStyle
+}
+
+type StandardTooltipLayoutItem = StandardTooltipIconLayout | StandardTooltipLegendLayout
+
+type StandardTooltipLineLayout = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+type StandardTooltipLayout = {
+  coordinate: Coordinate
+  prevRowHeight: number
+  lines: StandardTooltipLineLayout[]
+  items: StandardTooltipLayoutItem[]
+}
+
+export type StandardTooltipContent = {
+  type: 'icons'
+  icons: TooltipIconStyle[]
+} | {
+  type: 'legends'
+  legends: TooltipLegend[]
+  styles: TooltipTextStyle
+}
 
 export default class IndicatorTooltipView extends View {
   private _hasHoverIcon = false
@@ -78,76 +130,98 @@ export default class IndicatorTooltipView extends View {
     if (this.isDrawTooltip(crosshair, tooltipStyles)) {
       const tooltipTextStyles = tooltipStyles.text
       indicators.forEach(indicator => {
-        let prevRowHeight = 0
-        const coordinate = { x: left, y: top }
         const { name, calcParamsText, values: legends, icons } = this.getIndicatorTooltipData(dataList, crosshair, indicator, customApi, thousandsSeparator, decimalFoldThreshold, styles)
         const nameValid = name.length > 0
         const legendValid = legends.length > 0
         if (nameValid || legendValid) {
           const [leftIcons, middleIcons, rightIcons] = this.classifyTooltipIcons(icons)
-          prevRowHeight = this.drawStandardTooltipIcons(
-            ctx, activeTooltipIcon, leftIcons,
-            coordinate, paneId, indicator.id, indicator.name,
-            left, prevRowHeight, maxWidth
-          )
+          const contents: StandardTooltipContent[] = [
+            { type: 'icons', icons: leftIcons }
+          ]
 
           if (nameValid) {
             let text = name
             if (calcParamsText.length > 0) {
               text = `${text}${calcParamsText}`
             }
-            prevRowHeight = this.drawStandardTooltipLegends(
-              ctx,
-              [
+            contents.push({
+              type: 'legends',
+              legends: [
                 {
                   title: { text: '', color: tooltipTextStyles.color },
                   value: { text, color: tooltipTextStyles.color }
                 }
               ],
-              coordinate, left, prevRowHeight, maxWidth, tooltipTextStyles
-            )
+              styles: tooltipTextStyles
+            })
           }
 
-          prevRowHeight = this.drawStandardTooltipIcons(
-            ctx, activeTooltipIcon, middleIcons,
-            coordinate, paneId, indicator.id, indicator.name,
-            left, prevRowHeight, maxWidth
-          )
+          contents.push({ type: 'icons', icons: middleIcons })
 
           if (legendValid) {
-            prevRowHeight = this.drawStandardTooltipLegends(
-              ctx, legends, coordinate,
-              left, prevRowHeight, maxWidth, tooltipStyles.text
-            )
+            contents.push({ type: 'legends', legends, styles: tooltipStyles.text })
           }
 
-          // draw right icons
-          prevRowHeight = this.drawStandardTooltipIcons(
-            ctx, activeTooltipIcon, rightIcons,
-            coordinate, paneId, indicator.id, indicator.name,
-            left, prevRowHeight, maxWidth
+          contents.push({ type: 'icons', icons: rightIcons })
+
+          top = this.drawStandardTooltip(
+            ctx, activeTooltipIcon, contents,
+            paneId, indicator.id, indicator.name,
+            left, top, maxWidth, tooltipStyles
           )
-          top = coordinate.y + prevRowHeight
         }
       })
     }
     return top
   }
 
-  protected drawStandardTooltipIcons(
+  protected drawStandardTooltip(
     ctx: CanvasRenderingContext2D,
     activeIcon: TooltipIcon | null,
-    icons: TooltipIconStyle[],
-    coordinate: Coordinate,
+    contents: StandardTooltipContent[],
     paneId: string,
     indicatorId: string,
     indicatorName: string,
     left: number,
-    prevRowHeight: number,
-    maxWidth: number
+    top: number,
+    maxWidth: number,
+    styles: TooltipStyle
   ): number {
+    const layout = this.createStandardTooltipLayout(left, top)
+    contents.forEach(content => {
+      switch (content.type) {
+        case 'icons': {
+          this.layoutStandardTooltipIcons(layout, content.icons, left, maxWidth)
+          break
+        }
+        case 'legends': {
+          this.layoutStandardTooltipLegends(layout, content.legends, left, maxWidth, content.styles)
+          break
+        }
+      }
+    })
+    this.drawStandardTooltipLineBackgrounds(ctx, layout.lines, styles)
+    this.drawStandardTooltipItems(ctx, layout.items, activeIcon, paneId, indicatorId, indicatorName)
+    return layout.coordinate.y + layout.prevRowHeight
+  }
+
+  private createStandardTooltipLayout(left: number, top: number): StandardTooltipLayout {
+    return {
+      coordinate: { x: left, y: top },
+      prevRowHeight: 0,
+      lines: [],
+      items: []
+    }
+  }
+
+  private layoutStandardTooltipIcons(
+    layout: StandardTooltipLayout,
+    icons: TooltipIconStyle[],
+    left: number,
+    maxWidth: number
+  ): void {
     if (icons.length > 0) {
-      const layouts = icons.map(icon => {
+      const iconLayouts = icons.map(icon => {
         const {
           marginLeft = 0, marginTop = 0, marginRight = 0, marginBottom = 0,
           paddingLeft = 0, paddingTop = 0, paddingRight = 0, paddingBottom = 0,
@@ -161,16 +235,134 @@ export default class IndicatorTooltipView extends View {
           height: marginTop + paddingTop + size + paddingBottom + marginBottom
         }
       })
-      const width = layouts.reduce((total, layout) => total + layout.width, 0)
-      const height = layouts.reduce((max, layout) => Math.max(max, layout.height), 0)
-      if (coordinate.x + width > maxWidth) {
-        coordinate.x = left
-        coordinate.y += prevRowHeight
-        prevRowHeight = height
-      } else {
-        prevRowHeight = Math.max(prevRowHeight, height)
-      }
-      layouts.forEach(({ icon, width }) => {
+      const width = iconLayouts.reduce((total, iconLayout) => total + iconLayout.width, 0)
+      const height = iconLayouts.reduce((max, iconLayout) => Math.max(max, iconLayout.height), 0)
+      this.prepareStandardTooltipLine(layout, width, height, left, maxWidth)
+
+      let x = layout.coordinate.x
+      const y = layout.coordinate.y
+      iconLayouts.forEach(({ icon, width }) => {
+        layout.items.push({ type: 'icon', icon, x, y })
+        x += width
+      })
+      this.extendStandardTooltipLine(layout.lines, layout.coordinate.x, y, width, layout.prevRowHeight)
+      layout.coordinate.x += width
+    }
+  }
+
+  private layoutStandardTooltipLegends(
+    layout: StandardTooltipLayout,
+    legends: TooltipLegend[],
+    left: number,
+    maxWidth: number,
+    styles: TooltipTextStyle
+  ): void {
+    if (legends.length > 0) {
+      const { marginLeft, marginTop, marginRight, marginBottom, size, fontFamily, weight } = styles
+      const font = createFont(size, weight, fontFamily)
+      legends.forEach(data => {
+        const title = this.getTooltipLegendChild(data.title, styles.color)
+        const value = this.getTooltipLegendChild(data.value, styles.color)
+        const titleTextWidth = calcTextWidth(title.text, font)
+        const valueTextWidth = calcTextWidth(value.text, font)
+        const totalTextWidth = titleTextWidth + valueTextWidth
+        const width = marginLeft + totalTextWidth + marginRight
+        const height = marginTop + size + marginBottom
+        this.prepareStandardTooltipLine(layout, width, height, left, maxWidth)
+        layout.items.push({
+          type: 'legend',
+          title,
+          value,
+          x: layout.coordinate.x,
+          y: layout.coordinate.y,
+          titleTextWidth,
+          styles
+        })
+        this.extendStandardTooltipLine(layout.lines, layout.coordinate.x, layout.coordinate.y, width, layout.prevRowHeight)
+        layout.coordinate.x += width
+      })
+    }
+  }
+
+  private prepareStandardTooltipLine(
+    layout: StandardTooltipLayout,
+    width: number,
+    height: number,
+    left: number,
+    maxWidth: number
+  ): void {
+    if (layout.coordinate.x + width > maxWidth) {
+      layout.coordinate.x = left
+      layout.coordinate.y += layout.prevRowHeight
+      layout.prevRowHeight = height
+    } else {
+      layout.prevRowHeight = Math.max(layout.prevRowHeight, height)
+    }
+  }
+
+  private extendStandardTooltipLine(
+    lines: StandardTooltipLineLayout[],
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ): void {
+    if (width <= 0 || height <= 0) {
+      return
+    }
+    const line = lines[lines.length - 1]
+    if (isValid(line) && line.y === y) {
+      const left = Math.min(line.x, x)
+      const right = Math.max(line.x + line.width, x + width)
+      line.x = left
+      line.width = right - left
+      line.height = Math.max(line.height, height)
+      return
+    }
+    lines.push({ x, y, width, height })
+  }
+
+  private drawStandardTooltipLineBackgrounds(
+    ctx: CanvasRenderingContext2D,
+    lines: StandardTooltipLineLayout[],
+    styles: TooltipStyle
+  ): void {
+    if (!styles.showBackground) {
+      return
+    }
+
+    const { backgroundColor } = styles
+    const rects = lines
+      .filter(line => line.width > 0 && line.height > 0)
+      .map(line => ({
+        x: line.x,
+        y: line.y,
+        width: line.width,
+        height: line.height
+      }))
+
+    if (rects.length > 0) {
+      drawStaticFigure(ctx, 'rect', {
+        attrs: rects,
+        styles: {
+          style: PolygonType.Fill,
+          color: backgroundColor
+        }
+      })
+    }
+  }
+
+  private drawStandardTooltipItems(
+    ctx: CanvasRenderingContext2D,
+    items: StandardTooltipLayoutItem[],
+    activeIcon: TooltipIcon | null,
+    paneId: string,
+    indicatorId: string,
+    indicatorName: string
+  ): void {
+    items.forEach(item => {
+      if (item.type === 'icon') {
+        const { icon } = item
         const {
           marginLeft = 0, marginTop = 0,
           paddingLeft = 0, paddingTop = 0, paddingRight = 0, paddingBottom = 0,
@@ -179,7 +371,7 @@ export default class IndicatorTooltipView extends View {
         } = icon
         const active = activeIcon?.paneId === paneId && activeIcon?.indicatorId === indicatorId && activeIcon?.iconId === icon.id
         const iconFigure = createFigure('text')
-          .setAttrs({ text, x: coordinate.x + marginLeft, y: coordinate.y + marginTop })
+          .setAttrs({ text, x: item.x + marginLeft, y: item.y + marginTop })
           .setStyles({
             paddingLeft,
             paddingTop,
@@ -196,52 +388,28 @@ export default class IndicatorTooltipView extends View {
 
         this.addChild(iconFigure)
 
-        coordinate.x += width
+        return
+      }
+      const { title, value, titleTextWidth, styles } = item
+      const { marginLeft, marginTop, size, fontFamily, weight } = styles
+      if (title.text.length > 0) {
+        drawStaticFigure(ctx, 'text', {
+          attrs: { x: item.x + marginLeft, y: item.y + marginTop, text: title.text },
+          styles: { color: title.color, size, fontFamily, weight }
+        })
+      }
+      drawStaticFigure(ctx, 'text', {
+        attrs: { x: item.x + marginLeft + titleTextWidth, y: item.y + marginTop, text: value.text },
+        styles: { color: value.color, size, fontFamily, weight }
       })
-    }
-    return prevRowHeight
+    })
   }
 
-  protected drawStandardTooltipLegends(
-    ctx: CanvasRenderingContext2D,
-    legends: TooltipLegend[],
-    coordinate: Coordinate,
-    left: number,
-    prevRowHeight: number,
-    maxWidth: number,
-    styles: TooltipTextStyle
-  ): number {
-    if (legends.length > 0) {
-      const { marginLeft, marginTop, marginRight, marginBottom, size, fontFamily, weight } = styles
-      const font = createFont(size, weight, fontFamily)
-      legends.forEach(data => {
-        const title = data.title as TooltipLegendChild
-        const value = data.value as TooltipLegendChild
-        const titleTextWidth = calcTextWidth(title.text, font)
-        const valueTextWidth = calcTextWidth(value.text, font)
-        const totalTextWidth = titleTextWidth + valueTextWidth
-        const h = marginTop + size + marginBottom
-        if (coordinate.x + marginLeft + totalTextWidth + marginRight > maxWidth) {
-          coordinate.x = left
-          coordinate.y += prevRowHeight
-          prevRowHeight = h
-        } else {
-          prevRowHeight = Math.max(prevRowHeight, h)
-        }
-        if (title.text.length > 0) {
-          drawStaticFigure(ctx, 'text', {
-            attrs: { x: coordinate.x + marginLeft, y: coordinate.y + marginTop, text: title.text },
-            styles: { color: title.color, size, fontFamily, weight }
-          })
-        }
-        drawStaticFigure(ctx, 'text', {
-          attrs: { x: coordinate.x + marginLeft + titleTextWidth, y: coordinate.y + marginTop, text: value.text },
-          styles: { color: value.color, size, fontFamily, weight }
-        })
-        coordinate.x += (marginLeft + totalTextWidth + marginRight)
-      })
+  private getTooltipLegendChild(value: string | TooltipLegendChild, color: string): TooltipLegendChild {
+    if (isString(value)) {
+      return { text: value, color }
     }
-    return prevRowHeight
+    return value
   }
 
   protected isDrawTooltip(crosshair: Crosshair, styles: TooltipStyle): boolean {

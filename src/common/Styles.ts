@@ -184,6 +184,9 @@ export interface TooltipStyle {
   showRule: TooltipShowRule
   showType: TooltipShowType
   defaultValue: string
+  // 仅作用于 TooltipShowType.Standard，Rect tooltip 使用 rect 样式控制背景。
+  showBackground: boolean
+  backgroundColor: string
   text: TooltipTextStyle
   icons: TooltipIconStyle[]
 }
@@ -577,6 +580,8 @@ function getDefaultCandleStyle(): CandleStyle {
         { title: 'volume', value: '{volume}' }
       ],
       defaultValue: 'n/a',
+      showBackground: true,
+      backgroundColor: 'rgba(15,30,51, 0.5)',
       rect: {
         position: CandleTooltipRectPosition.Fixed,
         paddingLeft: 4,
@@ -677,6 +682,8 @@ function getDefaultIndicatorStyle(): IndicatorStyle {
       showName: true,
       showParams: true,
       defaultValue: 'n/a',
+      showBackground: true,
+      backgroundColor: 'rgba(15,30,51, 0.5)',
       text: {
         size: 12,
         fontFamily,

@@ -40,6 +40,16 @@ const light: DeepPartial<Styles> = {
     color: '#D8E0EB',
     activeBackgroundColor: 'rgba(255,255,255,0.14)'
   },
+  candle: {
+    tooltip: {
+      backgroundColor: 'rgba(255, 255, 255, 0.5)'
+    }
+  },
+  indicator: {
+    tooltip: {
+      backgroundColor: 'rgba(255, 255, 255, 0.5)'
+    }
+  },
   crosshair: {
     horizontal: {
       line: {

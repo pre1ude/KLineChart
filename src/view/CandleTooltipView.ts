@@ -21,7 +21,7 @@ import { type CustomApi, FormatDateType } from '../Options'
 import type DualYPane from '../pane/DualYPane'
 import { PaneIdConstants } from '../pane/types'
 import { type TooltipIcon } from '../store/TooltipStore'
-import IndicatorTooltipView from './IndicatorTooltipView'
+import IndicatorTooltipView, { type StandardTooltipContent } from './IndicatorTooltipView'
 
 export default class CandleTooltipView extends IndicatorTooltipView {
   override drawImp(ctx: CanvasRenderingContext2D): void {
@@ -138,13 +138,11 @@ export default class CandleTooltipView extends IndicatorTooltipView {
   ): number {
     const tooltipStyles = styles.tooltip
     const tooltipTextStyles = tooltipStyles.text
-    let prevRowHeight = 0
-    const coordinate = { x: left, y: top }
     if (this.isDrawTooltip(crosshair, tooltipStyles)) {
       const dataIndex = crosshair.dataIndex ?? 0
       const kLineData = crosshair.kLineData
       if (!kLineData) {
-        return coordinate.y + prevRowHeight
+        return top
       }
       const legends = this._getCandleTooltipLegends(
         { prev: dataList[dataIndex - 1] ?? null, current: kLineData, next: dataList[dataIndex + 1] ?? null },
@@ -153,29 +151,22 @@ export default class CandleTooltipView extends IndicatorTooltipView {
 
       const [leftIcons, middleIcons, rightIcons] = this.classifyTooltipIcons(tooltipStyles.icons)
 
-      prevRowHeight = this.drawStandardTooltipIcons(
-        ctx, activeTooltipIcon, leftIcons, coordinate,
-        paneId, '', '', left, prevRowHeight, maxWidth
-      )
-
-      prevRowHeight = this.drawStandardTooltipIcons(
-        ctx, activeTooltipIcon, middleIcons, coordinate,
-        paneId, '', '', left, prevRowHeight, maxWidth
-      )
-
+      const contents: StandardTooltipContent[] = [
+        { type: 'icons', icons: leftIcons },
+        { type: 'icons', icons: middleIcons }
+      ]
       if (legends.length > 0) {
-        prevRowHeight = this.drawStandardTooltipLegends(
-          ctx, legends, coordinate, left,
-          prevRowHeight, maxWidth, tooltipTextStyles
-        )
+        contents.push({ type: 'legends', legends, styles: tooltipTextStyles })
       }
+      contents.push({ type: 'icons', icons: rightIcons })
 
-      prevRowHeight = this.drawStandardTooltipIcons(
-        ctx, activeTooltipIcon, rightIcons, coordinate,
-        paneId, '', '', left, prevRowHeight, maxWidth
+      return this.drawStandardTooltip(
+        ctx, activeTooltipIcon, contents,
+        paneId, '', '',
+        left, top, maxWidth, tooltipStyles
       )
     }
-    return coordinate.y + prevRowHeight
+    return top
   }
 
   private _drawRectTooltip(
