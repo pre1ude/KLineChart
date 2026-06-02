@@ -221,8 +221,8 @@ describe('createTimeShareYAxisTickValues', () => {
     })
   })
 
-  it('keeps up to seven evenly distributed time-share y-axis ticks', () => {
-    expect(createTimeShareYAxisTickValues(-0.49, 0.49, 300, 12)).toHaveLength(7)
+  it('keeps up to nine evenly distributed time-share y-axis ticks', () => {
+    expect(createTimeShareYAxisTickValues(-0.49, 0.49, 300, 12)).toHaveLength(9)
   })
 
   it('keeps boundary values even when the axis is too short for middle ticks', () => {
