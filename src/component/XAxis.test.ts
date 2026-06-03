@@ -144,7 +144,6 @@ describe('selectTimeShareTickIndexes', () => {
       '10:00',
       '10:30',
       '11:00',
-      '11:30',
       '13:00',
       '13:30',
       '14:00',
@@ -154,7 +153,7 @@ describe('selectTimeShareTickIndexes', () => {
     ])
   })
 
-  it('does not use a thinned 15-minute cadence when it barely exceeds the available tick count', () => {
+  it('uses a fine cadence when session boundary filtering keeps it within the available tick count', () => {
     const timeShareTicks = [
       ...createMinuteTimeRange('09:30', '11:30'),
       ...createMinuteTimeRange('13:00', '15:15')
@@ -165,14 +164,21 @@ describe('selectTimeShareTickIndexes', () => {
       showMaxLabel: true
     }).map(index => timeShareTicks[index])).toEqual([
       '09:30',
+      '09:45',
       '10:00',
+      '10:15',
       '10:30',
+      '10:45',
       '11:00',
-      '11:30',
+      '11:15',
       '13:00',
+      '13:15',
       '13:30',
+      '13:45',
       '14:00',
+      '14:15',
       '14:30',
+      '14:45',
       '15:00',
       '15:15'
     ])
@@ -187,6 +193,18 @@ describe('selectTimeShareTickIndexes', () => {
     })).toEqual(expect.arrayContaining([0, 6, 12]))
   })
 
+  it('keeps the next day start over the previous day end when day boundary ticks are adjacent', () => {
+    const timeShareTicks = Array.from({ length: 24 * 4 }, (_, index) => formatHHmm(index * 15))
+
+    const indexes = selectTimeShareTickIndexes(timeShareTicks, 2, 200, {
+      showMinLabel: true,
+      showMaxLabel: true
+    })
+
+    expect(indexes).toEqual(expect.arrayContaining([0, timeShareTicks.length, timeShareTicks.length * 2 - 1]))
+    expect(indexes).not.toContain(timeShareTicks.length - 1)
+  })
+
   it('uses the same intraday ticks for each day in short multi-day time-share charts', () => {
     const timeShareTicks = ['09:30', '11:30', '13:00', '15:15']
 
@@ -196,13 +214,10 @@ describe('selectTimeShareTickIndexes', () => {
     })).toEqual([
       0,
       1,
-      3,
       4,
       5,
-      7,
       8,
       9,
-      11,
       12,
       13,
       15
@@ -428,10 +443,8 @@ describe('XAxisImp optimalMinuteTicks', () => {
     expect(ticks.map(tick => tick.text)).toEqual([
       '2024-01-02',
       '10:30',
-      '11:30',
       '01-03',
       '10:30',
-      '11:30',
       '01-04',
       '10:30',
       '11:30'

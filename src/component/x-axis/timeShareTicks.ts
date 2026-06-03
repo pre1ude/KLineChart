@@ -94,11 +94,19 @@ export function selectTimeShareTickIndexes(
     return selectRegularTimeShareTickIndexes(totalTickCount, selectedCountLimit, requiredIndexes)
   }
 
+  const sessions = getTimeShareSessions(tickMinutes, baseInterval)
   const steps = getTimeShareNiceSteps(baseInterval)
   let fallbackIndexes: number[] = []
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i]
-    const indexes = collectTimeShareTickIndexesByStep(tickMinutes, dayCount, step, baseInterval, requiredIndexes)
+    const indexes = collectTimeShareTickIndexesByStep(
+      tickMinutes,
+      dayCount,
+      step,
+      baseInterval,
+      requiredIndexes,
+      sessions
+    )
     if (fallbackIndexes.length === 0 || indexes.length < fallbackIndexes.length) {
       fallbackIndexes = indexes
     }
@@ -243,27 +251,50 @@ function collectTimeShareTickIndexesByStep(
   dayCount: number,
   step: number,
   baseInterval: number,
-  requiredIndexes: Set<number>
+  requiredIndexes: Set<number>,
+  sessions: Array<[number, number]>
 ): number[] {
   const indexes = new Set(requiredIndexes)
-  const sessions = getTimeShareSessions(tickMinutes, baseInterval)
   const ticksPerDay = tickMinutes.length
   for (let day = 0; day < dayCount; day++) {
     const dayOffset = day * ticksPerDay
-    sessions.forEach(([from, to]) => {
+    for (const [from, to] of sessions) {
       indexes.add(dayOffset + from)
       const startMinute = tickMinutes[from]
-      for (let i = from + 1; i <= to; i++) {
+      for (let i = from + 1; i < to; i++) {
         const elapsedMinutes = calcTimeShareMinuteDiff(startMinute, tickMinutes[i])
         if (elapsedMinutes != null && elapsedMinutes % step === 0) {
           indexes.add(dayOffset + i)
         }
       }
-      indexes.add(dayOffset + to)
-    })
+      if (shouldAddTimeShareSessionEndTick(tickMinutes, dayCount, day, to, baseInterval)) {
+        indexes.add(dayOffset + to)
+      }
+    }
   }
 
   return Array.from(indexes).sort((a, b) => a - b)
+}
+
+function shouldAddTimeShareSessionEndTick(
+  tickMinutes: Array<number | undefined>,
+  dayCount: number,
+  day: number,
+  sessionEnd: number,
+  baseInterval: number
+): boolean {
+  const ticksPerDay = tickMinutes.length
+  const currentIndex = day * ticksPerDay + sessionEnd
+  const nextIndex = currentIndex + 1
+  if (nextIndex >= ticksPerDay * dayCount) {
+    return true
+  }
+
+  const nextTickIndex = nextIndex % ticksPerDay
+  if (nextTickIndex === 0) {
+    return false
+  }
+  return !isTimeShareSessionGap(tickMinutes[sessionEnd], tickMinutes[nextTickIndex], baseInterval)
 }
 
 function getTimeShareSessions(tickMinutes: Array<number | undefined>, baseInterval: number): Array<[number, number]> {
@@ -272,17 +303,20 @@ function getTimeShareSessions(tickMinutes: Array<number | undefined>, baseInterv
     return sessions
   }
 
-  const sessionGap = baseInterval * 1.5
   let from = 0
   for (let i = 1; i < tickMinutes.length; i++) {
-    const diff = calcTimeShareMinuteDiff(tickMinutes[i - 1], tickMinutes[i])
-    if (diff == null || diff > sessionGap) {
+    if (isTimeShareSessionGap(tickMinutes[i - 1], tickMinutes[i], baseInterval)) {
       sessions.push([from, i - 1])
       from = i
     }
   }
   sessions.push([from, tickMinutes.length - 1])
   return sessions
+}
+
+function isTimeShareSessionGap(from: number | undefined, to: number | undefined, baseInterval: number): boolean {
+  const diff = calcTimeShareMinuteDiff(from, to)
+  return diff == null || diff > baseInterval * 1.5
 }
 
 function thinTimeShareTickIndexes(
