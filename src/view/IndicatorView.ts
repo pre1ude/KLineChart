@@ -64,10 +64,6 @@ export default class IndicatorView extends View {
       return indicators.filter(indicator => getIndicatorYAxisPosition(indicator, defaultPosition) === position)
     }
 
-    function setCompositeOperation(zLevel: number): void {
-      ctx.globalCompositeOperation = zLevel < 0 ? 'destination-over' : 'source-over'
-    }
-
     function tryCustomDraw(indicator: Indicator, yAxis: YAxisImp, defaultStyles: IndicatorStyle): boolean {
       if (indicator.draw == null) return false
 
@@ -91,8 +87,6 @@ export default class IndicatorView extends View {
     const drawForAxis = (indicators: Indicator[], yAxis: YAxisImp): void => {
       indicators.forEach(indicator => {
         if (!indicator.visible) return
-
-        setCompositeOperation(indicator.zLevel)
 
         const mergedDefaultStyles = getMergedDefaultStyles(indicator, chartStore.getStyles().indicator)
 
