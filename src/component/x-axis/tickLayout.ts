@@ -58,8 +58,15 @@ export function filterOverlappedXAxisTicks(
   }
 
   const selectedIndexes = ticks.map((_, index) => index)
-  const minValue = ticks[0].value
-  const maxValue = ticks[tickLength - 1].value
+  const priorities = ticks.map((tick, index) => {
+    if (options.showMaxLabel === true && index === tickLength - 1) {
+      return X_AXIS_MAX_TICK_PRIORITY
+    }
+    if (options.showMinLabel === true && index === 0) {
+      return X_AXIS_MIN_TICK_PRIORITY
+    }
+    return tick.priority ?? 0
+  })
   let i = 1
   while (i < selectedIndexes.length) {
     const leftIndex = selectedIndexes[i - 1]
@@ -69,8 +76,8 @@ export function filterOverlappedXAxisTicks(
     const leftCenter = calcXAxisTickTextX(ticks[leftIndex], leftWidth, i - 1, selectedIndexes.length, canvasWidth)
     const rightCenter = calcXAxisTickTextX(ticks[rightIndex], rightWidth, i, selectedIndexes.length, canvasWidth)
     if (isTickOverlap(leftCenter, leftWidth, rightCenter, rightWidth, minGap)) {
-      const leftPriority = getXAxisTickPriority(ticks[leftIndex], minValue, maxValue, options)
-      const rightPriority = getXAxisTickPriority(ticks[rightIndex], minValue, maxValue, options)
+      const leftPriority = priorities[leftIndex]
+      const rightPriority = priorities[rightIndex]
       if (leftPriority < rightPriority) {
         selectedIndexes.splice(i - 1, 1)
         if (i > 1) {
@@ -115,21 +122,6 @@ export function calcXAxisTickTextX(
     }
   }
   return x
-}
-
-function getXAxisTickPriority(
-  tick: XAxisTick,
-  minValue: AxisTick['value'],
-  maxValue: AxisTick['value'],
-  options: XAxisTickLayoutOptions
-): number {
-  if (options.showMaxLabel === true && tick.value === maxValue) {
-    return X_AXIS_MAX_TICK_PRIORITY
-  }
-  if (options.showMinLabel === true && tick.value === minValue) {
-    return X_AXIS_MIN_TICK_PRIORITY
-  }
-  return tick.priority ?? 0
 }
 
 function isTickOverlap(
