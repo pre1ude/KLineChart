@@ -1,7 +1,7 @@
 import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
 import { type CrosshairDirectionStyle, type CrosshairStyle, type StateTextStyle } from '../common/Styles'
-import { genTimeStamp, getDateTimeFormat } from '../common/utils/dateTimeFormat'
+import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import { isValid } from '../common/utils/typeChecks'
 import { type TextAttrs } from '../extension/figure/text'
 import { FormatDateType } from '../Options'
@@ -15,16 +15,8 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
     const isTimeShare = chartStore.getIsTimeShare()
 
     if (isTimeShare) {
-      // 分时图模式下，检查是否在时间轴范围内（而不是实际数据范围）
-      const timeShareTicks = chartStore.getTimeShareTicks()
-      const totalBarCount = chartStore.getDataList().length
-      const validDays = Math.floor((totalBarCount - 1) / timeShareTicks.length) + 1
-      const realIndex = crosshair.realDataIndex ?? -1
-      // 不能超出可预知的时间范围
-      if (realIndex < 0 || realIndex >= timeShareTicks.length * validDays) {
-        return false
-      }
-      return true
+      const realIndex = crosshair.realDataIndex
+      return realIndex != null && realIndex >= 0
     }
 
     return isValid(crosshair.kLineData) && crosshair.dataIndex === crosshair.realDataIndex
@@ -36,18 +28,17 @@ export default class CrosshairVerticalLabelView extends CrosshairLabelView {
 
   override getText(crosshair: Crosshair, chartStore: ChartStore): string {
     const isTimeShare = chartStore.getIsTimeShare()
-
     let timestamp = crosshair.kLineData?.timestamp
     if (isTimeShare) {
-      const timeShareTicks = chartStore.getTimeShareTicks()
-      const realIndex = crosshair.realDataIndex ?? 0
-
-      // 获取时间文本
-      const text = timeShareTicks[realIndex % timeShareTicks.length]
-
-      timestamp = timestamp ? genTimeStamp(text, timestamp) : undefined
+      const realIndex = crosshair.realDataIndex
+      if (realIndex == null) {
+        timestamp = undefined
+      } else if (realIndex !== crosshair.dataIndex) {
+        timestamp = chartStore.dataIndexToTimestamp(realIndex)
+      }
     }
-    if (!timestamp) {
+
+    if (timestamp == null) {
       return ''
     }
 

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Empty Y Axis Width Comparison</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #f5f7fb;
+      color: #1f2329;
+      font-family: Arial, sans-serif;
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .stack {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .title {
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .chart-box {
+      width: 500px;
+      height: 500px;
+      outline: 1px solid #c9ced8;
+      background: #ffffff;
+    }
+
+    .metrics {
+      margin-top: 8px;
+      color: #4e5969;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+  <h1>Empty data y-axis width comparison</h1>
+  <div class="stack">
+    <section>
+      <div class="title">Empty time share: left price axis, right minute percentage axis</div>
+      <div id="timeShareChart" class="chart-box"></div>
+      <div id="timeShareMetrics" class="metrics"></div>
+    </section>
+
+    <section>
+      <div class="title">USD/CNH cross-day time share: 06:00 to next 06:00</div>
+      <div id="usdCnhTimeShareChart" class="chart-box"></div>
+      <div id="usdCnhMetrics" class="metrics"></div>
+    </section>
+
+    <section>
+      <div class="title">Iron ore trading day time share: 21:00 to next 15:00</div>
+      <div id="ironOreTimeShareChart" class="chart-box"></div>
+      <div id="ironOreMetrics" class="metrics"></div>
+    </section>
+
+    <section>
+      <div class="title">Empty K-line: left price axis, right percentage axis</div>
+      <div id="kLineChart" class="chart-box"></div>
+      <div id="kLineMetrics" class="metrics"></div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { DomPosition, PaneIdConstants, init } from '../../../dist/index.js'
+
+    const timeShareTicks = createTimeShareTicks()
+    const usdCnhTimeShareTicks = createCrossDayTimeShareTicks()
+    const ironOreTimeShareTicks = createIronOreTimeShareTicks()
+    const usdCnhReferenceRate = 6.774119
+    const usdCnhReferenceText = 'USD/CNH base: 6.774119 (open.er-api latest, 2026-06-04 00:02:31 UTC)'
+    const ironOreReferencePrice = 789
+    const ironOreReferenceText = 'Iron ore trading day: 2026-06-05; night session starts 2026-06-04 21:00'
+    const sharedStyles = {
+      yAxis: {
+        position: 'both',
+        inside: false
+      }
+    }
+
+    const timeShareChart = init('timeShareChart', {
+      isTimeShare: true,
+      timeShareTicks,
+      styles: sharedStyles,
+      layout: [{
+        type: 'candle',
+        options: {
+          axisOptions: {
+            YAxis: {
+              left: { type: 'normal' },
+              right: { type: 'minute-percentage' }
+            }
+          }
+        }
+      }]
+    })
+    timeShareChart.setTimeShareBasisPrice(100)
+    timeShareChart.applyNewData([], true, () => {
+      updateMetrics(timeShareChart, 'timeShareMetrics', 'basis price: 100')
+    })
+
+    // console.log('[wxli]: usdCnhTimeShareTicks', usdCnhTimeShareTicks)
+    const usdCnhTimeShareChart = init('usdCnhTimeShareChart', {
+      isTimeShare: true,
+      timeShareTicks: usdCnhTimeShareTicks,
+      // preferXTicks: ['06:00', '12:00', '18:00', '00:00'],
+      styles: sharedStyles,
+      layout: [{
+        type: 'candle',
+        options: {
+          axisOptions: {
+            YAxis: {
+              left: { type: 'normal' },
+              right: { type: 'minute-percentage' }
+            }
+          }
+        }
+      }]
+    })
+    usdCnhTimeShareChart.setTimeShareBasisPrice(usdCnhReferenceRate)
+    usdCnhTimeShareChart.applyNewData(createUsdCnhCrossDayData(usdCnhTimeShareTicks, usdCnhReferenceRate), true, () => {
+      updateMetrics(usdCnhTimeShareChart, 'usdCnhMetrics', usdCnhReferenceText)
+    })
+
+    const ironOreTimeShareChart = init('ironOreTimeShareChart', {
+      isTimeShare: true,
+      timeShareTicks: ironOreTimeShareTicks,
+      // preferXTicks: ['21:00', '23:00', '01:00', '09:00', '10:15', '10:30', '11:30', '13:30', '15:00'],
+      styles: sharedStyles,
+      layout: [{
+        type: 'candle',
+        options: {
+          axisOptions: {
+            YAxis: {
+              left: { type: 'normal' },
+              right: { type: 'minute-percentage' }
+            }
+          }
+        }
+      }]
+    })
+    ironOreTimeShareChart.setTimeShareBasisPrice(ironOreReferencePrice)
+    ironOreTimeShareChart.applyNewData(createIronOreTimeShareData(ironOreTimeShareTicks, ironOreReferencePrice), true, () => {
+      updateMetrics(ironOreTimeShareChart, 'ironOreMetrics', ironOreReferenceText)
+    })
+
+    const kLineChart = init('kLineChart', {
+      styles: sharedStyles,
+      layout: [{
+        type: 'candle',
+        options: {
+          axisOptions: {
+            YAxis: {
+              left: { type: 'normal' },
+              right: { type: 'percentage' }
+            }
+          }
+        }
+      }]
+    })
+    kLineChart.applyNewData([], true, () => {
+      updateMetrics(kLineChart, 'kLineMetrics', 'basis price: none')
+    })
+
+    requestAnimationFrame(() => {
+      updateMetrics(timeShareChart, 'timeShareMetrics', 'basis price: 100')
+      updateMetrics(usdCnhTimeShareChart, 'usdCnhMetrics', usdCnhReferenceText)
+      updateMetrics(ironOreTimeShareChart, 'ironOreMetrics', ironOreReferenceText)
+      updateMetrics(kLineChart, 'kLineMetrics', 'basis price: none')
+    })
+
+    function updateMetrics (chart, elementId, extra) {
+      const rootSize = chart.getSize(PaneIdConstants.CANDLE)
+      const mainSize = chart.getSize(PaneIdConstants.CANDLE, DomPosition.Main)
+      if (rootSize == null || mainSize == null) {
+        return
+      }
+      const yAxisWidth = rootSize.width - mainSize.width
+      document.getElementById(elementId).textContent = [
+        extra,
+        `root width: ${rootSize.width}px`,
+        `main width: ${mainSize.width}px`,
+        `left + right y-axis reserved width: ${yAxisWidth}px`
+      ].join('\n')
+    }
+
+    function createTimeShareTicks () {
+      return [
+        ...createMinuteTicks(9, 30, 11, 30),
+        ...createMinuteTicks(13, 0, 15, 0)
+      ]
+    }
+
+    function createCrossDayTimeShareTicks () {
+      const ticks = []
+      const start = 6 * 60
+      const end = start + 24 * 60
+      for (let minute = start; minute <= end; minute += 15) {
+        ticks.push(formatMinuteTick(minute))
+      }
+      return ticks
+    }
+
+    function createIronOreTimeShareTicks () {
+      return [
+        ...createMinuteTicks(21, 0, 25, 0),
+        ...createMinuteTicks(9, 0, 10, 15),
+        ...createMinuteTicks(10, 30, 11, 30),
+        ...createMinuteTicks(13, 30, 15, 0)
+      ]
+    }
+
+    function createUsdCnhCrossDayData (timeShareTicks, referenceRate) {
+      const startTimestamp = new Date(2026, 5, 4, 6, 0).getTime()
+      const interval = 15 * 60 * 1000
+      let prevClose = roundFx(referenceRate - 0.0012)
+      return timeShareTicks.slice(0,40).map((_, index) => {
+        const progress = index / Math.max(1, timeShareTicks.length - 1)
+        const trend = (progress - 0.5) * 0.004
+        const wave = Math.sin(index * 0.31) * 0.0018 + Math.cos(index * 0.09) * 0.0009
+        const close = roundFx(referenceRate + trend + wave)
+        const open = prevClose
+        const high = roundFx(Math.max(open, close) + 0.0005 + (index % 4) * 0.00005)
+        const low = roundFx(Math.min(open, close) - 0.0005 - (index % 3) * 0.00005)
+        prevClose = close
+        return {
+          timestamp: startTimestamp + index * interval,
+          open,
+          high,
+          low,
+          close,
+          volume: 0
+        }
+      })
+    }
+
+    function createIronOreTimeShareData (timeShareTicks, referencePrice) {
+      const startTimestamp = new Date(2026, 5, 4, 21, 0).getTime()
+      const startMinutes = parseTimeShareTickMinutes(timeShareTicks[0])
+      let prevClose = referencePrice - 1.5
+      return timeShareTicks.slice(0, 30).map((tick, index) => {
+        const timestamp = startTimestamp + getTimeShareTickOffsetMinutes(tick, index, startMinutes) * 60 * 1000
+        const trend = (index / Math.max(1, timeShareTicks.length - 1) - 0.35) * 7
+        const wave = Math.sin(index * 0.045) * 3.2 + Math.cos(index * 0.017) * 1.4
+        const close = roundPrice(referencePrice + trend + wave)
+        const open = prevClose
+        const high = roundPrice(Math.max(open, close) + 0.8 + (index % 5) * 0.12)
+        const low = roundPrice(Math.min(open, close) - 0.8 - (index % 4) * 0.1)
+        prevClose = close
+        return {
+          timestamp,
+          open,
+          high,
+          low,
+          close,
+          volume: 80 + (index % 35) * 9
+        }
+      })
+    }
+
+    function roundFx (value) {
+      return Number(value.toFixed(6))
+    }
+
+    function roundPrice (value) {
+      return Number(value.toFixed(1))
+    }
+
+    function getTimeShareTickOffsetMinutes (tick, index, startMinutes) {
+      const tickMinutes = parseTimeShareTickMinutes(tick)
+      const dayOffsetMinutes = tickMinutes < startMinutes || (index > 0 && tickMinutes === startMinutes)
+        ? 24 * 60
+        : 0
+      return tickMinutes - startMinutes + dayOffsetMinutes
+    }
+
+    function parseTimeShareTickMinutes (text) {
+      const [hourText, minuteText] = text.split(':')
+      return Number(hourText) * 60 + Number(minuteText)
+    }
+
+    function createMinuteTicks (startHour, startMinute, endHour, endMinute) {
+      const ticks = []
+      const start = startHour * 60 + startMinute
+      const end = endHour * 60 + endMinute
+      for (let minute = start; minute <= end; minute++) {
+        ticks.push(formatMinuteTick(minute))
+      }
+      return ticks
+    }
+
+    function formatMinuteTick (minute) {
+      const dayMinute = minute % (24 * 60)
+      const hourText = `${Math.floor(dayMinute / 60)}`.padStart(2, '0')
+      const minuteText = `${dayMinute % 60}`.padStart(2, '0')
+      return `${hourText}:${minuteText}`
+    }
+  </script>
+</body>
+</html>

@@ -1,7 +1,6 @@
 import type VisibleRange from '../../common/VisibleRange'
 import { createDefaultTimeShareVisibleRange } from '../../common/VisibleRange'
 import { clamp } from '../../common/utils/number'
-import { formatToHHmm } from '../../common/utils/format'
 import { TimeScaleMode } from './TimeScaleMode'
 
 export class TimeShareTimeScaleMode extends TimeScaleMode {
@@ -32,16 +31,7 @@ export class TimeShareTimeScaleMode extends TimeScaleMode {
     if (totalBarCount === 0) {
       offsetRight = mainWidth
     } else {
-      const lastData = dataList[totalBarCount - 1]
-      const hhmm = formatToHHmm(lastData.timestamp)
-      const tickIndex = timeShareTicks.indexOf(hhmm)
-      if (tickIndex === -1) {
-        console.error('Last data timestamp not found in time share ticks:', hhmm, lastData)
-        return
-      }
-      const dayIndex = Math.floor((totalBarCount - 1) / timeShareTicks.length)
-      const index = dayIndex * timeShareTicks.length + tickIndex
-      offsetRight = (tickCount - index - 1) * barWidth
+      offsetRight = (tickCount - totalBarCount) * barWidth
     }
 
     this.context.setBarWidth(clamp(barWidth, this.context.getBarSpaceLimit().min, this.context.getBarSpaceLimit().max))

@@ -26,6 +26,9 @@ export default abstract class CrosshairLabelView extends View {
         const textStyles = { ...directionStyles.text }
         if (directionStyles.show && textStyles.show) {
           const text = this.getText(crosshair, chartStore)
+          if (text === '') {
+            return
+          }
           const textWidth = calcTextWidth(text, createFont(textStyles.size, textStyles.weight, textStyles.fontFamily))
           drawStaticFigure(ctx, 'text', {
             attrs: this.getTextAttrs(text, textWidth, crosshair, bounding, textStyles),

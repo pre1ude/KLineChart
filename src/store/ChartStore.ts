@@ -11,7 +11,13 @@ import { ActionType } from '../common/Action'
 import { getDefaultCustomApi, type CustomApi, defaultLocale, type DataZoomOptions, type DataZoomSliderOptions, type Options } from '../Options'
 import TimeScaleStore from './TimeScaleStore'
 import { TimeScaleModeKind } from './time-scale'
-import { resolveMinutePercentageBasis, resolveTimeShareBasisPrice, timestampToTimeShareDataIndex } from './time-share'
+import {
+  createTimeShareTimestampGetter,
+  resolveMinutePercentageBasis,
+  resolveTimeShareBasisPrice,
+  timeShareDataIndexToTimestamp,
+  timestampToTimeShareDataIndex
+} from './time-share'
 import IndicatorStore from './IndicatorStore'
 import TooltipStore from './TooltipStore'
 import OverlayStore from './OverlayStore'
@@ -51,6 +57,8 @@ export default class ChartStore {
   private _timeShareDays = 1
 
   private _timeShareTicks: string[] = []
+
+  private _getTimeShareTimestamp = createTimeShareTimestampGetter(this._timeShareTicks)
 
   private _timeShareBreakOnCrossDays = true
 
@@ -208,6 +216,7 @@ export default class ChartStore {
           }
           if (options.timeShareTicks) {
             this._timeShareTicks = options.timeShareTicks
+            this._getTimeShareTimestamp = createTimeShareTimestampGetter(this._timeShareTicks)
           }
 
           this._preferXTicks = options.preferXTicks
@@ -321,6 +330,10 @@ export default class ChartStore {
   }
 
   dataIndexToTimestamp(index: number): number | undefined {
+    if (this._isTimeShare) {
+      return timeShareDataIndexToTimestamp(this._dataList, index, this._timeShareTicks, this._getTimeShareTimestamp)
+    }
+
     const data = this.getDataByDataIndex(index)
     return data?.timestamp
   }
@@ -330,7 +343,7 @@ export default class ChartStore {
 
     // 分时模式：需确保单日分时的复盘日志均可见
     if (this._isTimeShare) {
-      return timestampToTimeShareDataIndex(this._dataList, timestamp, this._timeShareTicks)
+      return timestampToTimeShareDataIndex(this._dataList, timestamp, this._timeShareTicks, this._getTimeShareTimestamp)
     }
 
     const lb = lowerBound(this._dataList, d => d.timestamp - timestamp)

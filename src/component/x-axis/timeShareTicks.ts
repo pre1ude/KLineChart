@@ -1,6 +1,7 @@
-import { genTimeStamp, getDateTimeFormat } from '../../common/utils/dateTimeFormat'
+import { getDateTimeFormat } from '../../common/utils/dateTimeFormat'
 import { formatDate } from '../../common/utils/format'
 import { GridLineLevel } from '../../common/Styles'
+import { parseTimeShareTickMinutes } from '../../store/time-share'
 import {
   X_AXIS_DAY_START_TICK_PRIORITY,
   type XAxisTick,
@@ -13,24 +14,23 @@ const TIME_SHARE_INTRADAY_TICK_MAX_DAYS = 4
 
 export function createTimeShareXAxisTicks(
   timeShareTicks: string[],
-  timeShareDays: number,
-  dataList: Array<{ timestamp: number }>,
+  dayCount: number,
   maxTickCount: number,
   layoutOptions: Required<XAxisTickLayoutOptions>,
   preferXTicks: string[] | undefined,
+  getTimestampByDataIndex: (dataIndex: number) => number | undefined,
   convertToPixel: (dataIndex: number) => number
 ): XAxisTick[] {
   if (timeShareTicks.length === 0) {
     return []
   }
 
-  const dayCount = Math.max(1, Math.floor(timeShareDays))
   const totalTimeShareTickCount = timeShareTicks.length * dayCount
   let tickIndexes: number[]
   if (preferXTicks) {
     tickIndexes = getPreferredTimeShareTickIndexes(timeShareTicks, dayCount, preferXTicks)
   } else {
-    tickIndexes = selectTimeShareTickIndexes(timeShareTicks, timeShareDays, maxTickCount, layoutOptions)
+    tickIndexes = selectTimeShareTickIndexes(timeShareTicks, dayCount, maxTickCount, layoutOptions)
   }
   tickIndexes = mergeTimeShareDayStartTickIndexes(tickIndexes, timeShareTicks.length, dayCount)
   tickIndexes = mergeTimeShareBoundaryTickIndexes(tickIndexes, totalTimeShareTickCount, layoutOptions)
@@ -39,37 +39,36 @@ export function createTimeShareXAxisTicks(
   let prevYear: string | null = null
   return tickIndexes.map(tickIndex => {
     const index = tickIndex % timeShareTicks.length
-    const dayIndex = Math.floor(tickIndex / timeShareTicks.length)
-    const hintTs = dataList[dayIndex * timeShareTicks.length]?.timestamp ?? Date.now()
-    const timeStamp = genTimeStamp(timeShareTicks[index], hintTs)
+    const timestamp = getTimestampByDataIndex(tickIndex)
     let text = timeShareTicks[index]
     let priority: number | undefined
     let gridLineLevel: GridLineLevel | undefined
-    if (timeShareDays > 1 && index === 0) {
-      const currentYear = formatDate(dateTimeFormat, timeStamp, 'YYYY')
-      if (prevYear === null || prevYear !== currentYear) {
-        text = formatDate(dateTimeFormat, timeStamp, 'YYYY-MM-DD')
-        prevYear = currentYear
-      } else {
-        text = formatDate(dateTimeFormat, timeStamp, 'MM-DD')
+    if (dayCount > 1 && index === 0) {
+      if (timestamp != null) {
+        const currentYear = formatDate(dateTimeFormat, timestamp, 'YYYY')
+        if (prevYear === null || prevYear !== currentYear) {
+          text = formatDate(dateTimeFormat, timestamp, 'YYYY-MM-DD')
+          prevYear = currentYear
+        } else {
+          text = formatDate(dateTimeFormat, timestamp, 'MM-DD')
+        }
       }
       priority = X_AXIS_DAY_START_TICK_PRIORITY
       if (tickIndex !== 0) {
         gridLineLevel = GridLineLevel.Primary
       }
     }
-    return { text, coord: convertToPixel(tickIndex), value: timeStamp, priority, gridLineLevel }
+    return { text, coord: convertToPixel(tickIndex), value: timestamp ?? tickIndex, priority, gridLineLevel }
   })
 }
 
 export function selectTimeShareTickIndexes(
   timeShareTicks: string[],
-  timeShareDays: number,
+  dayCount: number,
   maxTickCount: number,
   options: XAxisTickLayoutOptions = {}
 ): number[] {
   const ticksPerDay = timeShareTicks.length
-  const dayCount = Math.max(1, Math.floor(timeShareDays))
   const totalTickCount = ticksPerDay * dayCount
   if (ticksPerDay === 0 || totalTickCount === 0) {
     return []
@@ -123,11 +122,12 @@ export function selectTimeShareTickIndexes(
   return thinTimeShareTickIndexes(fallbackIndexes, selectedCountLimit, requiredIndexes, tickMinutes, baseInterval)
 }
 
-function getPreferredTimeShareTickIndexes(timeShareTicks: string[], timeShareDays: number, preferXTicks: string[]): number[] {
+function getPreferredTimeShareTickIndexes(timeShareTicks: string[], dayCount: number, preferXTicks: string[]): number[] {
+  const preferredTicks = new Set(preferXTicks)
   const tickIndexes: number[] = []
   for (let i = 0; i < timeShareTicks.length; i++) {
-    if (preferXTicks.includes(timeShareTicks[i])) {
-      for (let day = 0; day < timeShareDays; day++) {
+    if (preferredTicks.has(timeShareTicks[i])) {
+      for (let day = 0; day < dayCount; day++) {
         tickIndexes.push(i + day * timeShareTicks.length)
       }
     }
@@ -169,19 +169,6 @@ function mergeTimeShareBoundaryTickIndexes(
     indexes.add(totalTickCount - 1)
   }
   return Array.from(indexes).sort((a, b) => a - b)
-}
-
-function parseTimeShareTickMinutes(text: string): number | undefined {
-  const matched = /^([0-9]{1,2}):([0-9]{2})$/.exec(text)
-  if (matched == null) {
-    return undefined
-  }
-  const hour = Number(matched[1])
-  const minute = Number(matched[2])
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
-    return undefined
-  }
-  return hour * 60 + minute
 }
 
 function calcTimeShareBaseInterval(tickMinutes: Array<number | undefined>): number {

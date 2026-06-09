@@ -98,7 +98,6 @@ export default abstract class XAxisImp extends AxisImp {
     const chartStore = chart.getChartStore()
     const timeShareTicks = chartStore.getTimeShareTicks()
     const timeShareDays = chartStore.getTimeShareDays()
-    const dataList = chartStore.getDataList()
     if (timeShareTicks.length === 0) {
       return []
     }
@@ -111,10 +110,10 @@ export default abstract class XAxisImp extends AxisImp {
     const optimalTicks = createTimeShareXAxisTicks(
       timeShareTicks,
       timeShareDays,
-      dataList,
       maxTickCount,
       layoutOptions,
       chartStore.getPreferXTicks(),
+      value => chartStore.dataIndexToTimestamp(value),
       value => this.convertToPixel(value)
     )
     return optimalTicks
