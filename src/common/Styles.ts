@@ -446,10 +446,10 @@ const white = '#FFFFFF'
 const textColor = '#76808F'
 const axisLineColor = '#DDDDDD'
 
-const upColor = '#FE5500'
+const upColor = '#FE6619'
 const downColor = '#34C734'
 const noChangeColor = '#9CA3AD'
-const indicatorUpColor = 'rgba(255, 102, 0, 0.6)'
+const indicatorUpColor = 'rgba(254, 102, 25, 0.6)'
 const indicatorDownColor = 'rgba(52, 199, 52, 0.6)'
 
 const fontFamily = getDefaultFontFamily()
