@@ -245,12 +245,15 @@ function collectTimeShareTickIndexesByStep(
   const ticksPerDay = tickMinutes.length
   for (let day = 0; day < dayCount; day++) {
     const dayOffset = day * ticksPerDay
-    for (const [from, to] of sessions) {
-      indexes.add(dayOffset + from)
+    for (let sessionIndex = 0; sessionIndex < sessions.length; sessionIndex++) {
+      const [from, to] = sessions[sessionIndex]
+      if (shouldAddTimeShareSessionStartTick(tickMinutes, sessions, sessionIndex, baseInterval)) {
+        indexes.add(dayOffset + from)
+      }
       const startMinute = tickMinutes[from]
+      const useSessionAnchor = calcTimeShareTickNicePriority(startMinute) > 0
       for (let i = from + 1; i < to; i++) {
-        const elapsedMinutes = calcTimeShareMinuteDiff(startMinute, tickMinutes[i])
-        if (elapsedMinutes != null && elapsedMinutes % step === 0) {
+        if (shouldAddTimeShareCadenceTick(startMinute, tickMinutes[i], step, useSessionAnchor)) {
           indexes.add(dayOffset + i)
         }
       }
@@ -261,6 +264,36 @@ function collectTimeShareTickIndexesByStep(
   }
 
   return Array.from(indexes).sort((a, b) => a - b)
+}
+
+function shouldAddTimeShareSessionStartTick(
+  tickMinutes: Array<number | undefined>,
+  sessions: Array<[number, number]>,
+  sessionIndex: number,
+  baseInterval: number
+): boolean {
+  if (sessionIndex === 0) {
+    return true
+  }
+  const previousSessionEnd = sessions[sessionIndex - 1][1]
+  const currentSessionStart = sessions[sessionIndex][0]
+  if (!isTimeShareSessionGap(tickMinutes[previousSessionEnd], tickMinutes[currentSessionStart], baseInterval)) {
+    return true
+  }
+  return !shouldPreferTimeShareSessionEndTick(tickMinutes[previousSessionEnd], tickMinutes[currentSessionStart])
+}
+
+function shouldAddTimeShareCadenceTick(
+  startMinute: number | undefined,
+  minuteValue: number | undefined,
+  step: number,
+  useSessionAnchor: boolean
+): boolean {
+  if (useSessionAnchor) {
+    const elapsedMinutes = calcTimeShareMinuteDiff(startMinute, minuteValue)
+    return elapsedMinutes != null && elapsedMinutes % step === 0
+  }
+  return minuteValue != null && minuteValue % step === 0
 }
 
 function shouldAddTimeShareSessionEndTick(
@@ -281,7 +314,17 @@ function shouldAddTimeShareSessionEndTick(
   if (nextTickIndex === 0) {
     return false
   }
-  return !isTimeShareSessionGap(tickMinutes[sessionEnd], tickMinutes[nextTickIndex], baseInterval)
+  if (!isTimeShareSessionGap(tickMinutes[sessionEnd], tickMinutes[nextTickIndex], baseInterval)) {
+    return true
+  }
+  return shouldPreferTimeShareSessionEndTick(tickMinutes[sessionEnd], tickMinutes[nextTickIndex])
+}
+
+function shouldPreferTimeShareSessionEndTick(
+  sessionEndMinute: number | undefined,
+  nextSessionStartMinute: number | undefined
+): boolean {
+  return calcTimeShareTickNicePriority(sessionEndMinute) > calcTimeShareTickNicePriority(nextSessionStartMinute)
 }
 
 function getTimeShareSessions(tickMinutes: Array<number | undefined>, baseInterval: number): Array<[number, number]> {
@@ -365,19 +408,28 @@ function calcTimeShareTickKeepPriority(
   const sessionGap = baseInterval * 1.5
   const prevDiff = tickIndex > 0 ? calcTimeShareMinuteDiff(tickMinutes[tickIndex - 1], minuteValue) : undefined
   const nextDiff = tickIndex < ticksPerDay - 1 ? calcTimeShareMinuteDiff(minuteValue, tickMinutes[tickIndex + 1]) : undefined
-  if (tickIndex === 0 || (prevDiff != null && prevDiff > sessionGap)) {
-    return 4
+  if (
+    tickIndex === 0 ||
+    tickIndex === ticksPerDay - 1 ||
+    (prevDiff != null && prevDiff > sessionGap) ||
+    (nextDiff != null && nextDiff > sessionGap)
+  ) {
+    return 4 + calcTimeShareTickNicePriority(minuteValue)
   }
-  if (tickIndex === ticksPerDay - 1 || (nextDiff != null && nextDiff > sessionGap)) {
-    return 3
-  }
+  return calcTimeShareTickNicePriority(minuteValue)
+}
+
+function calcTimeShareTickNicePriority(minuteValue: number | undefined): number {
   if (minuteValue == null) {
     return 0
   }
   if (minuteValue % 60 === 0) {
-    return 2
+    return 3
   }
   if (minuteValue % 30 === 0) {
+    return 2
+  }
+  if (minuteValue % 15 === 0) {
     return 1
   }
   return 0

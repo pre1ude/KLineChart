@@ -130,6 +130,80 @@ describe('selectTimeShareTickIndexes', () => {
     ])
   })
 
+  it('prefers a rounded session end over a non-rounded next session start', () => {
+    const timeShareTicks = [
+      ...createMinuteTimeRange('09:30', '11:30'),
+      ...createMinuteTimeRange('13:01', '15:00')
+    ]
+
+    expect(selectTimeShareTickIndexes(timeShareTicks, 1, 5, {
+      showMinLabel: true,
+      showMaxLabel: true
+    }).map(index => timeShareTicks[index])).toEqual([
+      '09:30',
+      '10:30',
+      '11:30',
+      '14:00',
+      '15:00'
+    ])
+  })
+
+  it('selects stable ticks for SHFE gold futures trading sessions', () => {
+    const timeShareTicks = [
+      ...createMinuteTimeRange('21:00', '23:59'),
+      ...createMinuteTimeRange('00:00', '02:30'),
+      ...createMinuteTimeRange('09:00', '10:15'),
+      ...createMinuteTimeRange('10:30', '11:30'),
+      ...createMinuteTimeRange('13:30', '15:00')
+    ]
+
+    expect(selectTimeShareTickIndexes(timeShareTicks, 1, 12, {
+      showMinLabel: true,
+      showMaxLabel: true
+    }).map(index => timeShareTicks[index])).toEqual([
+      '21:00',
+      '22:00',
+      '23:00',
+      '00:00',
+      '01:00',
+      '02:00',
+      '09:00',
+      '10:00',
+      '10:30',
+      '13:30',
+      '14:30',
+      '15:00'
+    ])
+  })
+
+  it('keeps one side of each SHFE gold futures session boundary when starts are not rounded', () => {
+    const timeShareTicks = [
+      ...createMinuteTimeRange('21:00', '23:59'),
+      ...createMinuteTimeRange('00:00', '02:30'),
+      ...createMinuteTimeRange('09:01', '10:15'),
+      ...createMinuteTimeRange('10:31', '11:30'),
+      ...createMinuteTimeRange('13:31', '15:00')
+    ]
+
+    expect(selectTimeShareTickIndexes(timeShareTicks, 1, 12, {
+      showMinLabel: true,
+      showMaxLabel: true
+    }).map(index => timeShareTicks[index])).toEqual([
+      '21:00',
+      '22:00',
+      '23:00',
+      '00:00',
+      '01:00',
+      '02:00',
+      '02:30',
+      '10:15',
+      '11:00',
+      '11:30',
+      '14:00',
+      '15:00'
+    ])
+  })
+
   it('keeps a uniform time cadence instead of mixing sparse quarter-hour ticks', () => {
     const timeShareTicks = [
       ...createMinuteTimeRange('09:30', '11:30'),
@@ -503,6 +577,7 @@ function createTestXAxis(
     getTimeShareTicks: () => options.timeShareTicks ?? [],
     getTimeShareDays: () => options.timeShareDays ?? 1,
     getPreferXTicks: () => options.preferXTicks,
+    dataIndexToTimestamp: (dataIndex: number) => dataList[dataIndex]?.timestamp,
     getTimeScaleStore: () => ({
       dataIndexToCoordinate: (dataIndex: number) => dataIndex * coordinateStep,
       getBarSpace: () => ({
