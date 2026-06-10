@@ -437,6 +437,26 @@ describe('XAxisImp optimalTicks', () => {
 })
 
 describe('XAxisImp optimalMinuteTicks', () => {
+  it('accounts for clamped boundary labels when estimating time-share tick capacity', () => {
+    const timeShareTicks = ['09:30', '09:45', '10:00', '10:15']
+    const xAxis = createTestXAxis(createTimeShareDataList(timeShareTicks), {
+      dataZoomEnabled: false,
+      showMinLabel: true,
+      showMaxLabel: true,
+      timeShareTicks,
+      width: 38
+    })
+
+    const ticks = xAxis.runOptimalMinuteTicks()
+
+    expect(ticks.map(tick => tick.text)).toEqual([
+      '09:30',
+      '09:45',
+      '10:00',
+      '10:15'
+    ])
+  })
+
   it('merges configured time-share ticks with xAxis boundary labels', () => {
     const timeShareTicks = ['09:30', '10:00', '10:30', '11:00']
     const xAxis = createTestXAxis(createTimeShareDataList(timeShareTicks), {
@@ -557,6 +577,7 @@ function createTestXAxis(
     timeShareDays?: number
     preferXTicks?: string[]
     coordinateStep?: number
+    width?: number
     formatDate?: FormatDate
     createTicks?: (params: AxisCreateTicksParams) => AxisTick[]
   } = {}
@@ -569,6 +590,7 @@ function createTestXAxis(
     customApi.formatDate = options.formatDate
   }
   const coordinateStep = options.coordinateStep ?? 100
+  const width = options.width ?? 200
   const chartStore = {
     getCustomApi: () => customApi,
     getDataList: () => dataList,
@@ -600,9 +622,9 @@ function createTestXAxis(
     getBounding: () => ({
       left: 0,
       top: 0,
-      right: 200,
+      right: width,
       bottom: 20,
-      width: 200,
+      width,
       height: 20
     })
   } as never

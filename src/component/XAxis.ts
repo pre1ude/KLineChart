@@ -104,8 +104,7 @@ export default abstract class XAxisImp extends AxisImp {
 
     const tickTextStyles = chart.getStyles().xAxis.tickText
     const defaultLabelWidth = calcTextWidth('00:00', createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.fontFamily))
-    const minLabelGap = Math.max(defaultLabelWidth * 1.5 + X_AXIS_TICK_MIN_GAP, defaultLabelWidth + X_AXIS_TICK_MIN_GAP, 1)
-    const maxTickCount = Math.max(1, Math.floor(this.getSelfBounding().width / minLabelGap))
+    const maxTickCount = calcTimeShareMaxTickCount(this.getSelfBounding().width, defaultLabelWidth)
     const layoutOptions = resolveXAxisTickLayoutOptions(chart.getStyles().xAxis, false)
     const optimalTicks = createTimeShareXAxisTicks(
       timeShareTicks,
@@ -212,4 +211,10 @@ export default abstract class XAxisImp extends AxisImp {
     }
     return Custom
   }
+}
+
+function calcTimeShareMaxTickCount(axisWidth: number, labelWidth: number): number {
+  const minCenterDistance = Math.max(labelWidth + X_AXIS_TICK_MIN_GAP, 1)
+  const centerDistance = Math.max(0, axisWidth - labelWidth)
+  return Math.max(1, Math.floor(centerDistance / minCenterDistance) + 1)
 }
