@@ -47,7 +47,7 @@ export default class CrosshairLineView extends View {
       // draw dot
       const chartStore = chart.getChartStore()
       // const barSpace = chartStore.getTimeScaleStore().getBarSpace()
-      const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+      const yAxis = (pane as DualYPane).getMainAxisWidget().getAxisComponent()
 
       const crosshair = chartStore.getTooltipStore().getCrosshair()
 

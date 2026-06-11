@@ -31,6 +31,16 @@ export function resolveIndicatorOhlcYAxisPosition(
   return getIndicatorYAxisPosition(indicator, defaultPosition)
 }
 
+function getCandleBarYAxis(pane: DualYPane, options: CandleBarOptions) {
+  if (options.yAxisPosition === YAxisPosition.Right) {
+    return pane.getYRightAxisWidget().getAxisComponent()
+  }
+  if (options.yAxisPosition === YAxisPosition.Left) {
+    return pane.getYLeftAxisWidget().getAxisComponent()
+  }
+  return pane.getMainAxisWidget().getAxisComponent()
+}
+
 export default class CandleBarView extends View {
   // 响应点击和右键事件，仅蜡烛图类型走命中测试
   override checkEventOn(event: MouseTouchEvent, name: EventName): boolean {
@@ -83,8 +93,7 @@ export default class CandleBarView extends View {
     const { open, high, low, close } = kLineData
     const barSpace = timeScaleStore.getBarSpace()
 
-    const widget = (pane as DualYPane).getYLeftAxisWidget()
-    const yAxis = widget.getAxisComponent()
+    const yAxis = getCandleBarYAxis(pane as DualYPane, candleBarOptions)
 
     let top: number
     let bottom: number
@@ -124,10 +133,7 @@ export default class CandleBarView extends View {
         }
         halfOhlcSize = Math.floor(ohlcSize / 2)
       }
-      const widget = candleBarOptions.yAxisPosition === YAxisPosition.Right
-        ? (pane as DualYPane).getYRightAxisWidget()
-        : (pane as DualYPane).getYLeftAxisWidget()
-      const yAxis = widget.getAxisComponent()
+      const yAxis = getCandleBarYAxis(pane as DualYPane, candleBarOptions)
       const visibleDataList = chartStore.getVisibleDataList()
       const barSpace = chartStore.getTimeScaleStore().getBarSpace()
 

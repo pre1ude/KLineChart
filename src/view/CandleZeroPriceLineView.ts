@@ -22,7 +22,7 @@ export default class CandleZeroPriceLineView extends View {
     const lastPriceMarkLineStyles = lastPriceMarkStyles.line
 
     if (priceMarkStyles.show && lastPriceMarkStyles.show && lastPriceMarkLineStyles.show) {
-      const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+      const yAxis = (pane as DualYPane).getMainAxisWidget().getAxisComponent()
 
       // 使用 getTimeShareBasisPrice 获取基准价格
       const basisPrice = chartStore.getTimeShareBasisPrice()

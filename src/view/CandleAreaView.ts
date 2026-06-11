@@ -29,7 +29,7 @@ export default class CandleAreaView extends View {
     const dataList = chart.getDataList()
     const lastDataIndex = dataList.length - 1
     const bounding = widget.getBounding()
-    const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+    const yAxis = (pane as DualYPane).getMainAxisWidget().getAxisComponent()
     const styles = chart.getStyles().candle.area
     let ripplePointCoordinate: Coordinate | undefined
 

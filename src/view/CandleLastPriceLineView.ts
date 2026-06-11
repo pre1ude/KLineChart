@@ -12,7 +12,7 @@ export default class CandleLastPriceView extends View {
     const lastPriceMarkStyles = priceMarkStyles.last
     const lastPriceMarkLineStyles = lastPriceMarkStyles.line
     if (priceMarkStyles.show && lastPriceMarkStyles.show && lastPriceMarkLineStyles.show) {
-      const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+      const yAxis = (pane as DualYPane).getMainAxisWidget().getAxisComponent()
       const dataList = chartStore.getDataList()
       const data = dataList[dataList.length - 1]
       if (data != null) {

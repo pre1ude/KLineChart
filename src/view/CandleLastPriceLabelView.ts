@@ -19,12 +19,13 @@ export default class CandleLastPriceLabelView extends View {
 
     if (priceMarkStyles.show && lastPriceMarkStyles.show && lastPriceMarkTextStyles.show) {
       const precision = chartStore.getPrecision()
-      const yAxis = widget.getAxisComponent()
       const dataList = chartStore.getDataList()
       const data = dataList[dataList.length - 1]
 
       if (isValid(data) && isNumber(data.close) && isNumber(data.open)) {
         const { close, open } = data
+        const axisType = widget.getAxisType()
+        const yAxis = pane.getMainAxisWidget().getAxisComponent()
         const y0 = yAxis.convertToPixel(close)
         const y = clamp(y0, 10, bounding.height - 10)
 
@@ -38,7 +39,6 @@ export default class CandleLastPriceLabelView extends View {
         }
 
         let text: string
-        const axisType = widget.getAxisType()
 
         if (axisType === YAxisType.MinutePercentage) {
           const basisPrice = chartStore.getMinutePercentageBasis()
