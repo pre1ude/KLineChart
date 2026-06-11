@@ -493,11 +493,8 @@ export default class ChartStore {
           this._forwardMore = more ?? true
           this._timeScaleStore.resetOffsetRightDistance()
           this._timeScaleStore.resetDataZoomRange()
+          this._timeScaleStore.autoInitialAlignment(false)
           adjustFlag = true
-          // 数据初始化后触发智能对齐
-          setTimeout(() => {
-            this._timeScaleStore.autoInitialAlignment()
-          }, 0)
           break
         }
         case LoadDataType.Backward: {

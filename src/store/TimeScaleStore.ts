@@ -379,11 +379,11 @@ export default class TimeScaleStore {
    * 智能初始对齐
    * 根据数据量自动选择最合适的对齐方式
    */
-  autoInitialAlignment(): void {
+  autoInitialAlignment(update: boolean = true): void {
     if (!this._autoInitialAlignment) {
       return
     }
-    if (this._mode.autoInitialAlignment()) {
+    if (this._mode.autoInitialAlignment() && update) {
       this._refreshTimeScale()
     }
   }
