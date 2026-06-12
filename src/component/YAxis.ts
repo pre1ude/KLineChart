@@ -344,7 +344,9 @@ export function resolveTimeShareMainScale(
   precision: number,
   basisPrice: number,
   firstClose: number | undefined,
-  minutePercentageBasis: number
+  minutePercentageBasis: number,
+  topRate = 0,
+  bottomRate = 0
 ): VisibleRange {
   const maxDiff = Math.max(
     Math.abs(max - basisPrice),
@@ -359,6 +361,12 @@ export function resolveTimeShareMainScale(
   from = expandedExtent[0]
   to = expandedExtent[1]
   const domain = resolveYAxisDomain(from, to, type, firstClose, minutePercentageBasis)
+  const gapRate = Math.max(topRate, bottomRate)
+  if (gapRate > 0) {
+    const range = Math.abs(to - from)
+    from -= range * gapRate
+    to += range * gapRate
+  }
   return {
     from,
     to,
@@ -773,21 +781,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const type = this.getType()
     const firstClose = chartStore.getVisibleFirstData()?.close
     const minutePercentageBasis = chartStore.getMinutePercentageBasis()
-    this._autoTickSequence = undefined
-    if (scaleMode === YAxisScaleMode.TimeShareMain) {
-      return resolveTimeShareMainScale(
-        extent.min,
-        extent.max,
-        type,
-        precision,
-        chartStore.getTimeShareBasisPrice(),
-        firstClose,
-        minutePercentageBasis
-      )
-    }
-
     const height = this.getParent()?.getBounding().height ?? 0
-    const textHeight = chart.getStyles().yAxis.tickText.size
     const { gap: paneGap, reservedSpace } = pane.getOptions()
     let topRate = normalizePaneGapRate(paneGap?.top, height)
     let bottomRate = normalizePaneGapRate(paneGap?.bottom, height)
@@ -800,6 +794,22 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     )
     topRate = nextTopRate
     bottomRate = nextBottomRate
+    this._autoTickSequence = undefined
+    if (scaleMode === YAxisScaleMode.TimeShareMain) {
+      return resolveTimeShareMainScale(
+        extent.min,
+        extent.max,
+        type,
+        precision,
+        chartStore.getTimeShareBasisPrice(),
+        firstClose,
+        minutePercentageBasis,
+        topRate,
+        bottomRate
+      )
+    }
+
+    const textHeight = chart.getStyles().yAxis.tickText.size
     const dataExtent = resolveStandardTypedExtent(extent.min, extent.max, type, precision, firstClose, minutePercentageBasis)
     const scale = resolveStandardAutoScale(
       dataExtent[0],

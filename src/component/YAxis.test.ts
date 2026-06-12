@@ -92,7 +92,7 @@ describe('resolveYAxisScaleMode', () => {
 })
 
 describe('resolveTimeShareMainScale', () => {
-  it('keeps time-share main y-axis symmetric without padding or nice ticks', () => {
+  it('keeps time-share main y-axis symmetric without padding or nice ticks when pane gap is zero', () => {
     expect(resolveTimeShareMainScale(
       2.2702,
       2.2784,
@@ -109,7 +109,46 @@ describe('resolveTimeShareMainScale', () => {
     })
   })
 
-  it('keeps minute percentage time-share main y-axis without padding or nice ticks', () => {
+  it('applies pane gap to time-share main y-axis while keeping the basis centered', () => {
+    const range = resolveTimeShareMainScale(
+      2.2702,
+      2.2784,
+      YAxisType.Normal,
+      4,
+      2.274,
+      undefined,
+      2.274,
+      0.1,
+      0.2
+    )
+
+    expect(range.from).toBeCloseTo(2.26784)
+    expect(range.to).toBeCloseTo(2.28016)
+    expect((range.from + range.to) / 2).toBeCloseTo(2.274)
+    expect(range.domainFrom).toBeCloseTo(2.2696)
+    expect(range.domainTo).toBeCloseTo(2.2784)
+  })
+
+  it('supports reserved space converted to a pane gap rate for time-share main y-axis', () => {
+    const reservedTopRate = 20 / (100 - 20)
+    const range = resolveTimeShareMainScale(
+      2.2702,
+      2.2784,
+      YAxisType.Normal,
+      4,
+      2.274,
+      undefined,
+      2.274,
+      reservedTopRate,
+      0
+    )
+
+    expect(range.from).toBeCloseTo(2.2674)
+    expect(range.to).toBeCloseTo(2.2806)
+    expect((range.from + range.to) / 2).toBeCloseTo(2.274)
+  })
+
+  it('keeps minute percentage time-share main y-axis without padding or nice ticks when pane gap is zero', () => {
     const range = resolveTimeShareMainScale(
       96.8,
       102.7,
