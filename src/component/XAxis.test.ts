@@ -227,6 +227,24 @@ describe('selectTimeShareTickIndexes', () => {
     ])
   })
 
+  it('uses a coarser nice cadence instead of removing one half-hour tick', () => {
+    const timeShareTicks = [
+      ...createMinuteTimeRange('09:30', '11:30'),
+      ...createMinuteTimeRange('13:00', '15:00')
+    ]
+
+    expect(selectTimeShareTickIndexes(timeShareTicks, 1, 8, {
+      showMinLabel: true,
+      showMaxLabel: true
+    }).map(index => timeShareTicks[index])).toEqual([
+      '09:30',
+      '10:30',
+      '13:00',
+      '14:00',
+      '15:00'
+    ])
+  })
+
   it('uses a fine cadence when session boundary filtering keeps it within the available tick count', () => {
     const timeShareTicks = [
       ...createMinuteTimeRange('09:30', '11:30'),

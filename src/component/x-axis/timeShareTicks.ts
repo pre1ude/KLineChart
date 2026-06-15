@@ -116,7 +116,7 @@ export function selectTimeShareTickIndexes(
     if (fallbackIndexes.length === 0 || indexes.length < fallbackIndexes.length) {
       fallbackIndexes = indexes
     }
-    const maxStepTickCount = step === TIME_SHARE_NICE_STEPS[0]
+    const maxStepTickCount = step <= TIME_SHARE_NICE_STEPS[1]
       ? selectedCountLimit
       : selectedCountLimit + TIME_SHARE_MAX_THINNABLE_TICK_OVERFLOW
     if (indexes.length <= maxStepTickCount) {
