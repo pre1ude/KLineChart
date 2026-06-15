@@ -1,29 +1,29 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { getDefaultStyles } from '../common/Styles'
-import XAxisView, { clampXAxisTickLineX } from './XAxisView'
+import XAxisView, { clampXAxisTickLineXInBounds } from './XAxisView'
 
 vi.mock('../common/utils/canvas', () => ({
   calcTextWidth: (text: string) => text.length,
   createFont: () => ''
 }))
 
-describe('clampXAxisTickLineX', () => {
+describe('clampXAxisTickLineXInBounds', () => {
   it('keeps one-pixel x-axis tick lines visible inside axis width', () => {
-    expect(clampXAxisTickLineX(0, 100, 1)).toBe(0)
-    expect(clampXAxisTickLineX(50, 100, 1)).toBe(50)
-    expect(clampXAxisTickLineX(100, 100, 1)).toBe(99)
+    expect(clampXAxisTickLineXInBounds(0, 100, 1)).toBe(0)
+    expect(clampXAxisTickLineXInBounds(50, 100, 1)).toBe(50)
+    expect(clampXAxisTickLineXInBounds(100, 100, 1)).toBe(99)
   })
 
   it('keeps even-width x-axis tick lines visible inside axis width', () => {
-    expect(clampXAxisTickLineX(0, 100, 2)).toBe(1)
-    expect(clampXAxisTickLineX(100, 100, 2)).toBe(99)
+    expect(clampXAxisTickLineXInBounds(0, 100, 2)).toBe(1)
+    expect(clampXAxisTickLineXInBounds(100, 100, 2)).toBe(99)
   })
 
-  it('aligns fractional x-axis tick line coordinates to the pixel grid', () => {
-    expect(clampXAxisTickLineX(10.3, 100, 1)).toBe(10)
-    expect(clampXAxisTickLineX(10.7, 100, 1)).toBe(11)
-    expect(clampXAxisTickLineX(99.6, 100, 1)).toBe(99)
+  it('keeps fractional x-axis tick line coordinates for figure-level pixel snap', () => {
+    expect(clampXAxisTickLineXInBounds(10.3, 100, 1)).toBe(10.3)
+    expect(clampXAxisTickLineXInBounds(10.7, 100, 1)).toBe(10.7)
+    expect(clampXAxisTickLineXInBounds(99.6, 100, 1)).toBe(99)
   })
 })
 

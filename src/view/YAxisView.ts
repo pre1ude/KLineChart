@@ -18,15 +18,6 @@ export function clampYAxisTickTextY(y: number, height: number, textHeight: numbe
   return clamp(y, halfTextHeight, height - halfTextHeight)
 }
 
-export function clampYAxisTickLineY(y: number, height: number, lineSize: number): number {
-  if (height <= 0 || lineSize <= 0) {
-    return y
-  }
-  const correction = lineSize % 2 === 1 ? 0.5 : 0
-  const halfLineSize = lineSize / 2
-  return clamp(y, halfLineSize - correction, height - halfLineSize - correction)
-}
-
 export default class YAxisView extends AxisView {
   override getAxisStyles(styles: Styles): AxisStyle {
     const baseStyles = styles.yAxis

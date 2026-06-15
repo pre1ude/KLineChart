@@ -7,14 +7,13 @@ import { calcXAxisTickTextX } from '../component/x-axis/tickLayout'
 import { type LineAttrs } from '../extension/figure/line'
 import AxisView, { type AxisTickText } from './AxisView'
 
-export function clampXAxisTickLineX(x: number, width: number, lineSize: number): number {
+export function clampXAxisTickLineXInBounds(x: number, width: number, lineSize: number): number {
   if (width <= 0 || lineSize <= 0) {
     return x
   }
-  const alignedX = Math.round(x)
   const correction = lineSize % 2 === 1 ? 0.5 : 0
   const halfLineSize = lineSize / 2
-  return clamp(alignedX, halfLineSize - correction, width - halfLineSize - correction)
+  return clamp(x, halfLineSize - correction, width - halfLineSize - correction)
 }
 
 export default class XAxisView extends AxisView {
@@ -35,7 +34,7 @@ export default class XAxisView extends AxisView {
     const tickLineStyles = styles.tickLine
     const axisLineSize = styles.axisLine.show ? styles.axisLine.size : 0
     return ticks.map(tick => {
-      const x = clampXAxisTickLineX(tick.coord, bounding.width, tickLineStyles.size)
+      const x = clampXAxisTickLineXInBounds(tick.coord, bounding.width, tickLineStyles.size)
       return {
         coordinates: [
           { x, y: 0 },

@@ -260,6 +260,10 @@ function lineToStraight(ctx: CanvasRenderingContext2D, points: Coordinate[]): vo
   }
 }
 
+function pixelSnapCoordinate(coord: number, correction: number): number {
+  return Math.round(coord) + correction
+}
+
 export function lineTo(ctx: CanvasRenderingContext2D, points: Coordinate[], smooth: number): void {
   const length = points.length
   if (smooth > 0 && length > 2) {
@@ -279,11 +283,13 @@ function drawSingleLine(ctx: CanvasRenderingContext2D, points: Coordinate[], smo
   ) {
     ctx.beginPath()
     if (points[0].x === points[1].x) {
-      ctx.moveTo(points[0].x + correction, points[0].y)
-      ctx.lineTo(points[1].x + correction, points[1].y)
+      const x = pixelSnapCoordinate(points[0].x, correction)
+      ctx.moveTo(x, points[0].y)
+      ctx.lineTo(x, points[1].y)
     } else {
-      ctx.moveTo(points[0].x, points[0].y + correction)
-      ctx.lineTo(points[1].x, points[1].y + correction)
+      const y = pixelSnapCoordinate(points[0].y, correction)
+      ctx.moveTo(points[0].x, y)
+      ctx.lineTo(points[1].x, y)
     }
     ctx.stroke()
     ctx.closePath()

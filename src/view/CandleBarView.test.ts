@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CandleType, getDefaultStyles, YAxisPosition, YAxisType } from '../common/Styles'
 import { createFigure } from '../extension/figure'
+import { type RectAttrs } from '../extension/figure/rect'
 import { PaneIdConstants } from '../pane/types'
 import CandleBarView, { resolveIndicatorOhlcYAxisPosition } from './CandleBarView'
 
@@ -100,5 +101,56 @@ describe('CandleBarView', () => {
     expect(leftPercentageAxis.convertToPixel).toHaveBeenCalledWith(90)
     expect(rightPriceAxis.convertToPixel).not.toHaveBeenCalled()
     expect(createFigure).toHaveBeenCalled()
+  })
+
+  it('snaps candle wick and body horizontal edges to integer fill-rect pixels', () => {
+    const styles = getDefaultStyles()
+    styles.candle.type = CandleType.CandleSolid
+    const yAxis = {
+      convertToPixel: vi.fn((value: number) => value)
+    }
+    const yAxisWidget = {
+      getAxisType: () => YAxisType.Normal,
+      getAxisComponent: () => yAxis
+    }
+    const chartStore = {
+      getIsTimeShare: () => false,
+      getStyles: () => styles,
+      getVisibleDataList: () => [{
+        dataIndex: 0,
+        x: 20.4,
+        data: { open: 100, high: 120, low: 90, close: 110 }
+      }],
+      getTimeScaleStore: () => ({
+        getBarSpace: () => ({
+          bar: 8,
+          halfBar: 4,
+          gapBar: 8,
+          halfGapBar: 4
+        })
+      }),
+      getIndicatorStore: () => ({
+        getInstances: () => []
+      })
+    }
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      getChart: () => ({ getChartStore: () => chartStore }),
+      getYLeftAxisWidget: () => yAxisWidget,
+      getYRightAxisWidget: () => yAxisWidget,
+      getMainAxisWidget: () => yAxisWidget
+    }
+    const widget = {
+      getPane: () => pane
+    }
+    const view = new CandleBarView(widget as never)
+
+    view.draw({} as never)
+
+    const [wickAttrs] = figureMock.setAttrs.mock.calls[0][0] as RectAttrs[]
+    const [bodyAttrs] = figureMock.setAttrs.mock.calls[1][0] as RectAttrs[]
+    expect(wickAttrs.x).toBe(20)
+    expect(bodyAttrs.x).toBe(16)
+    expect(bodyAttrs.width).toBe(8)
   })
 })

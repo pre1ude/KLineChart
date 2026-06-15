@@ -41,6 +41,19 @@ function getCandleBarYAxis(pane: DualYPane, options: CandleBarOptions) {
   return pane.getMainAxisWidget().getAxisComponent()
 }
 
+function pixelSnapFillRectStart(coord: number): number {
+  return Math.round(coord)
+}
+
+function createPixelSnappedBodyRect(x: number, y: number, barSpace: BarSpace, height: number): RectAttrs {
+  return {
+    x: pixelSnapFillRectStart(x - barSpace.halfGapBar),
+    y,
+    width: barSpace.gapBar,
+    height
+  }
+}
+
 export default class CandleBarView extends View {
   // 响应点击和右键事件，仅蜡烛图类型走命中测试
   override checkEventOn(event: MouseTouchEvent, name: EventName): boolean {
@@ -192,24 +205,25 @@ export default class CandleBarView extends View {
               break
             }
             case CandleType.Ohlc: {
+              const ohlcX = pixelSnapFillRectStart(x)
               rects = [
                 {
                   name: 'rect',
                   attrs: [
                     {
-                      x: x - halfOhlcSize,
+                      x: ohlcX - halfOhlcSize,
                       y: priceY[0],
                       width: ohlcSize,
                       height: priceY[3] - priceY[0]
                     },
                     {
-                      x: x - barSpace.halfGapBar,
+                      x: ohlcX - barSpace.halfGapBar,
                       y: openY + ohlcSize > priceY[3] ? priceY[3] - ohlcSize : openY,
                       width: barSpace.halfGapBar - halfOhlcSize,
                       height: ohlcSize
                     },
                     {
-                      x: x + halfOhlcSize,
+                      x: ohlcX + halfOhlcSize,
                       y: closeY + ohlcSize > priceY[3] ? priceY[3] - ohlcSize : closeY,
                       width: barSpace.halfGapBar - halfOhlcSize,
                       height: ohlcSize
@@ -287,7 +301,7 @@ export default class CandleBarView extends View {
       {
         name: 'rect',
         attrs: {
-          x,
+          x: pixelSnapFillRectStart(x),
           y: priceY[0],
           width: 1,
           height: priceY[3] - priceY[0]
@@ -296,12 +310,12 @@ export default class CandleBarView extends View {
       },
       {
         name: 'rect',
-        attrs: {
-          x: x - barSpace.halfGapBar,
-          y: priceY[1],
-          width: barSpace.gapBar,
-          height: Math.max(1, priceY[2] - priceY[1])
-        },
+        attrs: createPixelSnappedBodyRect(
+          x,
+          priceY[1],
+          barSpace,
+          Math.max(1, priceY[2] - priceY[1])
+        ),
         styles: {
           style: PolygonType.StrokeFill,
           color: colors[0],
@@ -317,13 +331,13 @@ export default class CandleBarView extends View {
         name: 'rect',
         attrs: [
           {
-            x,
+            x: pixelSnapFillRectStart(x),
             y: priceY[0],
             width: 1,
             height: priceY[1] - priceY[0]
           },
           {
-            x,
+            x: pixelSnapFillRectStart(x),
             y: priceY[2],
             width: 1,
             height: priceY[3] - priceY[2]
@@ -333,12 +347,12 @@ export default class CandleBarView extends View {
       },
       {
         name: 'rect',
-        attrs: {
-          x: x - barSpace.halfGapBar,
-          y: priceY[1],
-          width: barSpace.gapBar,
-          height: Math.max(1, priceY[2] - priceY[1])
-        },
+        attrs: createPixelSnappedBodyRect(
+          x,
+          priceY[1],
+          barSpace,
+          Math.max(1, priceY[2] - priceY[1])
+        ),
         styles: {
           style: PolygonType.Stroke,
           borderColor: colors[1]

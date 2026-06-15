@@ -14,6 +14,10 @@ export type EachChildCallback = (
   index: number
 ) => void
 
+function pixelSnapLineCoordinate(coord: number): number {
+  return Math.round(coord) + 0.5
+}
+
 export default class CandleHighLowPriceView extends View {
   override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
@@ -77,14 +81,15 @@ export default class CandleHighLowPriceView extends View {
     offsets: number[],
     styles: CandleHighLowPriceMarkStyle
   ): void {
-    const startX = coordinate.x
-    const startY = coordinate.y + offsets[0]
+    const startX = pixelSnapLineCoordinate(coordinate.x)
+    const startY = pixelSnapLineCoordinate(coordinate.y + offsets[0])
+    const arrowEndY = pixelSnapLineCoordinate(coordinate.y + offsets[0] * 2)
     drawStaticFigure(ctx, 'line', {
       attrs: {
         coordinates: [
-          { x: startX - 2, y: startY + offsets[0] },
+          { x: startX - 2, y: arrowEndY },
           { x: startX, y: startY },
-          { x: startX + 2, y: startY + offsets[0] }
+          { x: startX + 2, y: arrowEndY }
         ]
       },
       styles: { color: styles.color }
@@ -104,7 +109,7 @@ export default class CandleHighLowPriceView extends View {
       textStartX = lineEndX + styles.textOffset
     }
 
-    const y = startY + offsets[1]
+    const y = pixelSnapLineCoordinate(coordinate.y + offsets[0] + offsets[1])
     drawStaticFigure(ctx, 'line', {
       attrs: {
         coordinates: [
