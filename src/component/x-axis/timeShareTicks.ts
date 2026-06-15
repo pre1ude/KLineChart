@@ -18,6 +18,8 @@ export function createTimeShareXAxisTicks(
   maxTickCount: number,
   layoutOptions: Required<XAxisTickLayoutOptions>,
   preferXTicks: string[] | undefined,
+  showSessionGap: boolean,
+  sessionGapForN: number,
   getTimestampByDataIndex: (dataIndex: number) => number | undefined,
   convertToPixel: (dataIndex: number) => number
 ): XAxisTick[] {
@@ -36,6 +38,9 @@ export function createTimeShareXAxisTicks(
   tickIndexes = mergeTimeShareBoundaryTickIndexes(tickIndexes, totalTimeShareTickCount, layoutOptions)
 
   const dateTimeFormat = getDateTimeFormat()
+  const shouldShowSessionGap = showSessionGap && dayCount <= sessionGapForN
+  const tickMinutes = shouldShowSessionGap ? timeShareTicks.map(parseTimeShareTickMinutes) : []
+  const sessionGap = shouldShowSessionGap ? calcTimeShareBaseInterval(tickMinutes) * 1.5 : 0
   let prevYear: string | null = null
   return tickIndexes.map(tickIndex => {
     const index = tickIndex % timeShareTicks.length
@@ -57,6 +62,8 @@ export function createTimeShareXAxisTicks(
       if (tickIndex !== 0) {
         gridLineLevel = GridLineLevel.Primary
       }
+    } else if (shouldShowSessionGap && isIntradayTimeShareSessionBoundaryTick(index, tickMinutes, sessionGap)) {
+      gridLineLevel = GridLineLevel.Primary
     }
     return { text, coord: convertToPixel(tickIndex), value: timestamp ?? tickIndex, priority, gridLineLevel }
   })
@@ -347,6 +354,16 @@ function getTimeShareSessions(tickMinutes: Array<number | undefined>, baseInterv
 function isTimeShareSessionGap(from: number | undefined, to: number | undefined, baseInterval: number): boolean {
   const diff = calcTimeShareMinuteDiff(from, to)
   return diff == null || diff > baseInterval * 1.5
+}
+
+function isIntradayTimeShareSessionBoundaryTick(
+  tickIndex: number,
+  tickMinutes: Array<number | undefined>,
+  sessionGap: number
+): boolean {
+  const prevDiff = tickIndex > 0 ? calcTimeShareMinuteDiff(tickMinutes[tickIndex - 1], tickMinutes[tickIndex]) : undefined
+  const nextDiff = tickIndex < tickMinutes.length - 1 ? calcTimeShareMinuteDiff(tickMinutes[tickIndex], tickMinutes[tickIndex + 1]) : undefined
+  return (prevDiff != null && prevDiff > sessionGap) || (nextDiff != null && nextDiff > sessionGap)
 }
 
 function thinTimeShareTickIndexes(

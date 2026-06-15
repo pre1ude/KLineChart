@@ -62,6 +62,10 @@ export default class ChartStore {
 
   private _timeShareBreakOnCrossDays = true
 
+  private _timeShareShowSessionGap = false
+
+  private _timeShareSessionGapForN = Number.POSITIVE_INFINITY
+
   private _preferXTicks: string[] | undefined
 
   private _dataZoomEnabled = false
@@ -235,6 +239,12 @@ export default class ChartStore {
       if (isValid(options.timeShareBreakOnCrossDays)) {
         this._timeShareBreakOnCrossDays = options.timeShareBreakOnCrossDays
       }
+      if (isValid(options.timeShareShowSessionGap)) {
+        this._timeShareShowSessionGap = options.timeShareShowSessionGap
+      }
+      if (isNumber(options.timeShareSessionGapForN) && options.timeShareSessionGapForN > 0) {
+        this._timeShareSessionGapForN = options.timeShareSessionGapForN
+      }
     }
     return this
   }
@@ -285,6 +295,14 @@ export default class ChartStore {
 
   getTimeShareBreakOnCrossDays(): boolean {
     return this._timeShareBreakOnCrossDays
+  }
+
+  getTimeShareShowSessionGap(): boolean {
+    return this._timeShareShowSessionGap
+  }
+
+  getTimeShareSessionGapForN(): number {
+    return this._timeShareSessionGapForN
   }
 
   getPreferXTicks(): string[] | undefined {

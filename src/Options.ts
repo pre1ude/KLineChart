@@ -85,6 +85,10 @@ export interface Options {
   timeShareTicks?: string[]
   // 多日分时图是否跨天断开连接
   timeShareBreakOnCrossDays?: boolean
+  // 分时图是否强调日内 session 间隔
+  timeShareShowSessionGap?: boolean
+  // 分时图日内 session 间隔最多在 N 日分时图内展示
+  timeShareSessionGapForN?: number
   preferXTicks?: string[]
   dataZoom?: boolean | DataZoomOptions
 }

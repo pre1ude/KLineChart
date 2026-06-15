@@ -522,6 +522,163 @@ describe('XAxisImp optimalMinuteTicks', () => {
     ])
   })
 
+  it('marks selected intraday session start ticks as primary grid lines', () => {
+    const timeShareTicks = [
+      ...createMinuteTimeRange('09:30', '11:30'),
+      ...createMinuteTimeRange('13:00', '15:00')
+    ]
+    const xAxis = createTestXAxis(createTimeShareDataList(timeShareTicks), {
+      dataZoomEnabled: false,
+      showMinLabel: true,
+      showMaxLabel: true,
+      timeShareTicks,
+      timeShareShowSessionGap: true,
+      width: 50
+    })
+
+    const ticks = xAxis.runOptimalMinuteTicks()
+
+    expect(ticks.map(tick => tick.text)).toEqual([
+      '09:30',
+      '10:30',
+      '13:00',
+      '14:00',
+      '15:00'
+    ])
+    expect(ticks.filter(tick => tick.gridLineLevel === GridLineLevel.Primary).map(tick => tick.text)).toEqual(['13:00'])
+  })
+
+  it('marks selected intraday session end ticks as primary grid lines', () => {
+    const timeShareTicks = [
+      ...createMinuteTimeRange('09:30', '11:30'),
+      ...createMinuteTimeRange('13:01', '15:00')
+    ]
+    const xAxis = createTestXAxis(createTimeShareDataList(timeShareTicks), {
+      dataZoomEnabled: false,
+      showMinLabel: true,
+      showMaxLabel: true,
+      timeShareTicks,
+      timeShareShowSessionGap: true,
+      width: 50
+    })
+
+    const ticks = xAxis.runOptimalMinuteTicks()
+
+    expect(ticks.map(tick => tick.text)).toEqual([
+      '09:30',
+      '10:30',
+      '11:30',
+      '14:00',
+      '15:00'
+    ])
+    expect(ticks.filter(tick => tick.gridLineLevel === GridLineLevel.Primary).map(tick => tick.text)).toEqual(['11:30'])
+  })
+
+  it('does not mark intraday session boundaries as primary grid lines by default', () => {
+    const timeShareTicks = [
+      ...createMinuteTimeRange('09:30', '11:30'),
+      ...createMinuteTimeRange('13:00', '15:00')
+    ]
+    const xAxis = createTestXAxis(createTimeShareDataList(timeShareTicks), {
+      dataZoomEnabled: false,
+      showMinLabel: true,
+      showMaxLabel: true,
+      timeShareTicks,
+      width: 50
+    })
+
+    const ticks = xAxis.runOptimalMinuteTicks()
+
+    expect(ticks.map(tick => tick.text)).toEqual([
+      '09:30',
+      '10:30',
+      '13:00',
+      '14:00',
+      '15:00'
+    ])
+    expect(ticks.map(tick => tick.gridLineLevel)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    ])
+  })
+
+  it('can limit intraday session gap primary grid lines by time-share day count', () => {
+    const timeShareTicks = [
+      ...createMinuteTimeRange('09:30', '11:30'),
+      ...createMinuteTimeRange('13:00', '15:00')
+    ]
+    const xAxis = createTestXAxis(createTimeShareDataList(timeShareTicks, 2), {
+      dataZoomEnabled: false,
+      showMinLabel: false,
+      showMaxLabel: false,
+      timeShareTicks,
+      timeShareDays: 2,
+      timeShareShowSessionGap: true,
+      timeShareSessionGapForN: 1,
+      width: 50
+    })
+
+    const ticks = xAxis.runOptimalMinuteTicks()
+
+    expect(ticks.filter(tick => tick.text === '13:00').map(tick => tick.gridLineLevel)).toEqual([
+      undefined,
+      undefined
+    ])
+    expect(ticks.filter(tick => tick.text === '01-03').map(tick => tick.gridLineLevel)).toEqual([
+      GridLineLevel.Primary
+    ])
+  })
+
+  it('marks intraday session gap primary grid lines up to the configured time-share day count', () => {
+    const timeShareTicks = [
+      ...createMinuteTimeRange('09:30', '11:30'),
+      ...createMinuteTimeRange('13:00', '15:00')
+    ]
+    const xAxis = createTestXAxis(createTimeShareDataList(timeShareTicks, 2), {
+      dataZoomEnabled: false,
+      showMinLabel: false,
+      showMaxLabel: false,
+      timeShareTicks,
+      timeShareDays: 2,
+      timeShareShowSessionGap: true,
+      timeShareSessionGapForN: 2,
+      width: 50
+    })
+
+    const ticks = xAxis.runOptimalMinuteTicks()
+
+    expect(ticks.filter(tick => tick.text === '13:00').map(tick => tick.gridLineLevel)).toEqual([
+      GridLineLevel.Primary,
+      GridLineLevel.Primary
+    ])
+  })
+
+  it('does not mark intraday session gap primary grid lines beyond the configured time-share day count', () => {
+    const timeShareTicks = [
+      ...createMinuteTimeRange('09:30', '11:30'),
+      ...createMinuteTimeRange('13:00', '15:00')
+    ]
+    const xAxis = createTestXAxis(createTimeShareDataList(timeShareTicks, 3), {
+      dataZoomEnabled: false,
+      showMinLabel: false,
+      showMaxLabel: false,
+      timeShareTicks,
+      timeShareDays: 3,
+      timeShareShowSessionGap: true,
+      timeShareSessionGapForN: 2,
+      width: 50
+    })
+
+    const ticks = xAxis.runOptimalMinuteTicks()
+    const sessionGapTicks = ticks.filter(tick => tick.text === '13:00')
+
+    expect(sessionGapTicks.length).toBeGreaterThan(0)
+    expect(sessionGapTicks.every(tick => tick.gridLineLevel === undefined)).toBe(true)
+  })
+
   it('keeps the last endpoint as time text when day start ticks already show dates', () => {
     const timeShareTicks = ['09:30', '10:30', '11:30']
     const xAxis = createTestXAxis(createTimeShareDataList(timeShareTicks, 3), {
@@ -575,6 +732,8 @@ function createTestXAxis(
     showMaxLabel?: boolean
     timeShareTicks?: string[]
     timeShareDays?: number
+    timeShareShowSessionGap?: boolean
+    timeShareSessionGapForN?: number
     preferXTicks?: string[]
     coordinateStep?: number
     width?: number
@@ -598,6 +757,8 @@ function createTestXAxis(
     getIsTimeShare: () => false,
     getTimeShareTicks: () => options.timeShareTicks ?? [],
     getTimeShareDays: () => options.timeShareDays ?? 1,
+    getTimeShareShowSessionGap: () => options.timeShareShowSessionGap ?? false,
+    getTimeShareSessionGapForN: () => options.timeShareSessionGapForN ?? Number.POSITIVE_INFINITY,
     getPreferXTicks: () => options.preferXTicks,
     dataIndexToTimestamp: (dataIndex: number) => dataList[dataIndex]?.timestamp,
     getTimeScaleStore: () => ({

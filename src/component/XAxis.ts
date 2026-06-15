@@ -112,6 +112,8 @@ export default abstract class XAxisImp extends AxisImp {
       maxTickCount,
       layoutOptions,
       chartStore.getPreferXTicks(),
+      chartStore.getTimeShareShowSessionGap(),
+      chartStore.getTimeShareSessionGapForN(),
       value => chartStore.dataIndexToTimestamp(value),
       value => this.convertToPixel(value)
     )
