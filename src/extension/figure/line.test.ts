@@ -16,6 +16,7 @@ function createLineContext() {
     beginPath: vi.fn(),
     moveTo: vi.fn(),
     lineTo: vi.fn(),
+    bezierCurveTo: vi.fn(),
     stroke: vi.fn(),
     closePath: vi.fn()
   }
@@ -185,13 +186,62 @@ describe('drawLine pixel snap', () => {
     drawLine(ctx as unknown as CanvasRenderingContext2D, {
       coordinates: [
         { x: 10.3, y: 5.7 },
-        { x: 20.6, y: 15.2 },
+        { x: 20.6, y: 25.2 },
         { x: 30.1, y: 11.8 }
       ]
     }, { size: 1, color: '#000000', pixelSnap: 'y' })
 
     expect(ctx.moveTo).toHaveBeenCalledWith(10.3, 5.7)
-    expect(ctx.lineTo).toHaveBeenNthCalledWith(1, 20.6, 15.2)
+    expect(ctx.lineTo).toHaveBeenNthCalledWith(1, 20.6, 25.2)
     expect(ctx.lineTo).toHaveBeenNthCalledWith(2, 30.1, 11.8)
+  })
+
+  it('skips visually redundant straight-line data points when drawing polylines', () => {
+    const ctx = createLineContext()
+
+    drawLine(ctx as unknown as CanvasRenderingContext2D, {
+      coordinates: [
+        { x: 0, y: 10 },
+        { x: 10, y: 10.2 },
+        { x: 20, y: 10.4 },
+        { x: 30, y: 10.6 }
+      ]
+    }, { size: 1, color: '#000000' })
+
+    expect(ctx.moveTo).toHaveBeenCalledWith(0, 10)
+    expect(ctx.lineTo).toHaveBeenCalledTimes(1)
+    expect(ctx.lineTo).toHaveBeenCalledWith(30, 10.6)
+  })
+
+  it('keeps visible bends when simplifying polyline data points', () => {
+    const ctx = createLineContext()
+
+    drawLine(ctx as unknown as CanvasRenderingContext2D, {
+      coordinates: [
+        { x: 0, y: 10 },
+        { x: 10, y: 12 },
+        { x: 20, y: 10 }
+      ]
+    }, { size: 1, color: '#000000' })
+
+    expect(ctx.moveTo).toHaveBeenCalledWith(0, 10)
+    expect(ctx.lineTo).toHaveBeenNthCalledWith(1, 10, 12)
+    expect(ctx.lineTo).toHaveBeenNthCalledWith(2, 20, 10)
+  })
+
+  it('does not simplify smooth lines', () => {
+    const ctx = createLineContext()
+
+    drawLine(ctx as unknown as CanvasRenderingContext2D, {
+      coordinates: [
+        { x: 0, y: 10 },
+        { x: 10, y: 10.2 },
+        { x: 20, y: 10.4 },
+        { x: 30, y: 10.6 }
+      ]
+    }, { size: 1, color: '#000000', smooth: true })
+
+    expect(ctx.lineTo).not.toHaveBeenCalled()
+    expect(ctx.bezierCurveTo).toHaveBeenCalledTimes(3)
   })
 })

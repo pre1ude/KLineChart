@@ -12,6 +12,7 @@ const LINE_SYMBOL_BORDER_SIZE = 1.5
 const LINE_SYMBOL_FILL_COLOR = '#fff'
 const EMPTY_LINE_DASH: number[] = []
 const DEFAULT_LINE_DASH: number[] = [2, 2]
+const LINE_SIMPLIFY_TOLERANCE = 0.5
 type LineSymbolResolverStyle = Pick<Partial<SmoothLineStyle>, 'color' | 'symbol'>
 
 export function resolveLineSymbolStyle(styles: LineSymbolResolverStyle): LineSymbolStyle {
@@ -260,6 +261,69 @@ function lineToStraight(ctx: CanvasRenderingContext2D, points: Coordinate[]): vo
   }
 }
 
+function getPointToSegmentDistanceSquared(point: Coordinate, segmentStart: Coordinate, segmentEnd: Coordinate): number {
+  const dx = segmentEnd.x - segmentStart.x
+  const dy = segmentEnd.y - segmentStart.y
+  const lengthSquared = dx * dx + dy * dy
+
+  if (lengthSquared === 0) {
+    const pointDx = point.x - segmentStart.x
+    const pointDy = point.y - segmentStart.y
+    return pointDx * pointDx + pointDy * pointDy
+  }
+
+  const t = Math.max(0, Math.min(1, ((point.x - segmentStart.x) * dx + (point.y - segmentStart.y) * dy) / lengthSquared))
+  const projectionX = segmentStart.x + t * dx
+  const projectionY = segmentStart.y + t * dy
+  const distanceX = point.x - projectionX
+  const distanceY = point.y - projectionY
+  return distanceX * distanceX + distanceY * distanceY
+}
+
+function simplifyLinePoints(points: Coordinate[], tolerance: number): Coordinate[] {
+  const length = points.length
+  if (length <= 2 || tolerance <= 0) {
+    return points
+  }
+
+  const toleranceSquared = tolerance * tolerance
+  const keepPointFlags = new Array<boolean>(length).fill(false)
+  const ranges: Array<[number, number]> = [[0, length - 1]]
+  keepPointFlags[0] = true
+  keepPointFlags[length - 1] = true
+
+  while (ranges.length > 0) {
+    const range = ranges.pop()
+    if (range == null) {
+      continue
+    }
+    const [startIndex, endIndex] = range
+    let maxDistanceSquared = 0
+    let keepIndex = -1
+
+    for (let i = startIndex + 1; i < endIndex; i++) {
+      const distanceSquared = getPointToSegmentDistanceSquared(points[i], points[startIndex], points[endIndex])
+      if (distanceSquared > maxDistanceSquared) {
+        maxDistanceSquared = distanceSquared
+        keepIndex = i
+      }
+    }
+
+    if (maxDistanceSquared > toleranceSquared && keepIndex > startIndex) {
+      keepPointFlags[keepIndex] = true
+      ranges.push([startIndex, keepIndex], [keepIndex, endIndex])
+    }
+  }
+
+  const simplifiedPoints: Coordinate[] = []
+  for (let i = 0; i < length; i++) {
+    if (keepPointFlags[i]) {
+      simplifiedPoints.push(points[i])
+    }
+  }
+  return simplifiedPoints
+}
+
 function getCanvasPixelRatio(ctx: CanvasRenderingContext2D): number {
   const transform = ctx.getTransform?.()
   if (transform != null && isNumber(transform.a) && transform.a > 0) {
@@ -326,9 +390,12 @@ function drawSingleLine(
   }
 
   // 一般情况：不使用 correction
+  const drawPoints = smooth > 0
+    ? points
+    : simplifyLinePoints(points, LINE_SIMPLIFY_TOLERANCE / pixelRatio)
   ctx.beginPath()
-  ctx.moveTo(points[0].x, points[0].y)
-  lineTo(ctx, points, smooth)
+  ctx.moveTo(drawPoints[0].x, drawPoints[0].y)
+  lineTo(ctx, drawPoints, smooth)
   ctx.stroke()
   ctx.closePath()
 }
