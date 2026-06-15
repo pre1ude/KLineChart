@@ -62,24 +62,6 @@ export default class CandleAreaView extends View {
         currentPath.length >= 2 ||
         (currentPath.length === 1 && currentPathStartDataIndex === lastVisibleDataIndex)
       ) {
-        // 绘制线条
-        drawStaticFigure(ctx, 'line', {
-          attrs: {
-            coordinates: currentPath,
-            startDataIndex: currentPathStartDataIndex,
-            symbolStep: lineSymbolStep,
-            forceDrawSymbolDataIndex: lastVisibleDataIndex
-          },
-          styles: {
-            color: styles.lineColor,
-            size: styles.lineSize,
-            smooth: styles.smooth,
-            symbol: styles.symbol,
-            lineJoin: styles.lineJoin,
-            miterLimit: styles.lineMiterLimit
-          }
-        })
-
         // 绘制区域填充
         if (currentPath.length >= 2 && !styles.lineOnly) {
           const backgroundColor = styles.backgroundColor
@@ -111,6 +93,25 @@ export default class CandleAreaView extends View {
           ctx.fill()
           ctx.restore()
         }
+
+        // 绘制线条
+        drawStaticFigure(ctx, 'line', {
+          attrs: {
+            coordinates: currentPath,
+            startDataIndex: currentPathStartDataIndex,
+            symbolStep: lineSymbolStep,
+            forceDrawSymbolDataIndex: lastVisibleDataIndex
+          },
+          styles: {
+            color: styles.lineColor,
+            size: styles.lineSize,
+            smooth: styles.smooth,
+            symbol: styles.symbol,
+            pixelSnap: styles.linePixelSnap,
+            lineJoin: styles.lineJoin,
+            miterLimit: styles.lineMiterLimit
+          }
+        })
       }
       currentPath.length = 0
       currentPathStartDataIndex = -1

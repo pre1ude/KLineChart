@@ -37,6 +37,7 @@ export interface LineStyle {
   size: number
   color: string
   dashedValue: number[]
+  pixelSnap?: boolean | 'x' | 'y' | 'xy'
   lineJoin?: CanvasLineJoin
   miterLimit?: number
 }
@@ -206,6 +207,7 @@ export interface CandleAreaStyle {
   lineColor: string
   lineJoin?: CanvasLineJoin
   lineMiterLimit?: number
+  linePixelSnap?: boolean | 'x' | 'y' | 'xy'
   // value: 从klineData取的字段 一般为close
   value: string
   lineOnly: boolean

@@ -260,8 +260,26 @@ function lineToStraight(ctx: CanvasRenderingContext2D, points: Coordinate[]): vo
   }
 }
 
-function pixelSnapCoordinate(coord: number, correction: number): number {
-  return Math.round(coord) + correction
+function getCanvasPixelRatio(ctx: CanvasRenderingContext2D): number {
+  const transform = ctx.getTransform?.()
+  if (transform != null && isNumber(transform.a) && transform.a > 0) {
+    return transform.a
+  }
+  const canvas = ctx.canvas
+  if (canvas != null && canvas.clientWidth > 0) {
+    return canvas.width / canvas.clientWidth
+  }
+  return 1
+}
+
+function pixelSnapStrokeCoordinate(coord: number, lineWidth: number, pixelRatio: number): number {
+  const physicalLineWidth = Math.max(1, Math.round(lineWidth * pixelRatio))
+  const correction = physicalLineWidth % 2 === 1 ? 0.5 : 0
+  return (Math.round(coord * pixelRatio - correction) + correction) / pixelRatio
+}
+
+function shouldSnapAxis(pixelSnap: SmoothLineStyle['pixelSnap'], axis: 'x' | 'y'): boolean {
+  return pixelSnap == null || pixelSnap === true || pixelSnap === 'xy' || pixelSnap === axis
 }
 
 export function lineTo(ctx: CanvasRenderingContext2D, points: Coordinate[], smooth: number): void {
@@ -273,7 +291,14 @@ export function lineTo(ctx: CanvasRenderingContext2D, points: Coordinate[], smoo
   }
 }
 
-function drawSingleLine(ctx: CanvasRenderingContext2D, points: Coordinate[], smooth: number, correction: number): void {
+function drawSingleLine(
+  ctx: CanvasRenderingContext2D,
+  points: Coordinate[],
+  smooth: number,
+  lineWidth: number,
+  pixelRatio: number,
+  pixelSnap: SmoothLineStyle['pixelSnap']
+): void {
   if (points.length <= 1) return
 
   // 只对水平/垂直两点线段进行像素对齐
@@ -283,11 +308,15 @@ function drawSingleLine(ctx: CanvasRenderingContext2D, points: Coordinate[], smo
   ) {
     ctx.beginPath()
     if (points[0].x === points[1].x) {
-      const x = pixelSnapCoordinate(points[0].x, correction)
+      const x = shouldSnapAxis(pixelSnap, 'x')
+        ? pixelSnapStrokeCoordinate(points[0].x, lineWidth, pixelRatio)
+        : points[0].x
       ctx.moveTo(x, points[0].y)
       ctx.lineTo(x, points[1].y)
     } else {
-      const y = pixelSnapCoordinate(points[0].y, correction)
+      const y = shouldSnapAxis(pixelSnap, 'y')
+        ? pixelSnapStrokeCoordinate(points[0].y, lineWidth, pixelRatio)
+        : points[0].y
       ctx.moveTo(points[0].x, y)
       ctx.lineTo(points[1].x, y)
     }
@@ -315,7 +344,8 @@ export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineA
     size = 1,
     color = 'currentColor',
     dashedValue = DEFAULT_LINE_DASH,
-    lineJoin,
+    pixelSnap,
+    lineJoin = 'bevel',
     miterLimit
   } = styles
   if (!isLineStyleVisible(styles)) {
@@ -324,13 +354,11 @@ export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineA
 
   const normalizedSmooth = smoothNormalize(smooth)
   const symbolStyle = resolveLineSymbolStyle(styles)
-  const correction = size % 2 === 1 ? 0.5 : 0
+  const pixelRatio = getCanvasPixelRatio(ctx)
 
   ctx.lineWidth = size
   ctx.strokeStyle = color
-  if (lineJoin !== undefined) {
-    ctx.lineJoin = lineJoin
-  }
+  ctx.lineJoin = lineJoin
   if (miterLimit !== undefined) {
     ctx.miterLimit = miterLimit
   }
@@ -346,7 +374,7 @@ export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineA
       return
     }
 
-    drawSingleLine(ctx, attrs.coordinates, normalizedSmooth, correction)
+    drawSingleLine(ctx, attrs.coordinates, normalizedSmooth, size, pixelRatio, pixelSnap)
     if (canDrawLineSymbols(symbolStyle)) {
       drawLineSymbols(ctx, attrs, symbolStyle)
     }
@@ -357,7 +385,7 @@ export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineA
     if (!hasDrawableLineCoordinates(attrs[i].coordinates)) {
       continue
     }
-    drawSingleLine(ctx, attrs[i].coordinates, normalizedSmooth, correction)
+    drawSingleLine(ctx, attrs[i].coordinates, normalizedSmooth, size, pixelRatio, pixelSnap)
   }
 
   if (!canDrawLineSymbols(symbolStyle)) {
