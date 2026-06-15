@@ -27,7 +27,7 @@ export default abstract class DualYPane extends Pane {
       name: 'default',
       scrollZoomEnabled: true,
       YAxis: {
-        left: { type: YAxisType.Normal }, right: { type: YAxisType.Normal }
+        left: { type: YAxisType.Normal, nice: true }, right: { type: YAxisType.Normal, nice: true }
       }
     }
   }
@@ -45,22 +45,24 @@ export default abstract class DualYPane extends Pane {
   setOptions(options: Omit<PaneOptions, 'id' | 'height'>): this {
     merge(this._options, options)
 
-    // 更新Y轴Widget的类型（如果已创建且有新的类型配置）
+    // 更新Y轴Widget配置（如果已创建且有新的配置）
     if (options.axisOptions?.YAxis) {
       const yAxisConfig = options.axisOptions.YAxis
-      if (this._yLeftAxisWidget && yAxisConfig.left?.type !== undefined) {
+      if (this._yLeftAxisWidget && (yAxisConfig.left?.type !== undefined || yAxisConfig.left?.nice !== undefined)) {
         const currentOptions = this._yLeftAxisWidget.getOptions()
         this._yLeftAxisWidget.setOptions({
           ...currentOptions,
-          type: yAxisConfig.left.type
+          type: yAxisConfig.left.type ?? currentOptions.type,
+          nice: yAxisConfig.left.nice ?? currentOptions.nice
         })
         this._yLeftAxisWidget.getAxisComponent().setAutoCalcTickFlag(true)
       }
-      if (this._yRightAxisWidget && yAxisConfig.right?.type !== undefined) {
+      if (this._yRightAxisWidget && (yAxisConfig.right?.type !== undefined || yAxisConfig.right?.nice !== undefined)) {
         const currentOptions = this._yRightAxisWidget.getOptions()
         this._yRightAxisWidget.setOptions({
           ...currentOptions,
-          type: yAxisConfig.right.type
+          type: yAxisConfig.right.type ?? currentOptions.type,
+          nice: yAxisConfig.right.nice ?? currentOptions.nice
         })
         this._yRightAxisWidget.getAxisComponent().setAutoCalcTickFlag(true)
       }

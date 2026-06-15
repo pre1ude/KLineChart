@@ -16,6 +16,7 @@ export interface PaneReservedSpace {
 
 export interface PaneAxisOptionItem {
   type?: YAxisType
+  nice?: boolean
   formatter?: (v: number) => string
   axisStyle?: {
     tickTextColor?: string
@@ -27,7 +28,7 @@ export interface PaneAxisOptions {
   name?: string
   scrollZoomEnabled?: boolean
   YAxis?: {
-    [key in Exclude<YAxisPosition, 'both'>]: PaneAxisOptionItem
+    [key in Exclude<YAxisPosition, 'both'>]?: PaneAxisOptionItem
   }
 }
 

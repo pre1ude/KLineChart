@@ -213,6 +213,33 @@ describe('resolveStandardAutoScale', () => {
     expect(scale.range.to).toBeGreaterThan(scale.tickSequence.to)
     expect(maxTickCoord).toBeGreaterThanOrEqual(0)
   })
+
+  it('keeps the data extent as the scale range when nice is disabled', () => {
+    const scale = resolveStandardAutoScale(
+      0,
+      123,
+      YAxisType.Normal,
+      undefined,
+      0,
+      0,
+      0,
+      165,
+      12,
+      false
+    )
+
+    expect(scale.range).toEqual({
+      from: 0,
+      to: 123,
+      domainFrom: 0,
+      domainTo: 123
+    })
+    expect(scale.tickSequence).toMatchObject({
+      from: 0,
+      to: 123,
+      nice: false
+    })
+  })
 })
 
 describe('formatYAxisTickText', () => {

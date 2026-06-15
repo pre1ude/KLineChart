@@ -51,6 +51,7 @@ export interface YAxisTickSequence {
   to: number
   interval: number
   precision: number
+  nice: boolean
 }
 
 function normalizePaneGapRate(value: number | undefined, height: number): number {
@@ -403,10 +404,24 @@ export function resolveStandardAutoScale(
   topRate: number,
   bottomRate: number,
   height: number,
-  textHeight: number
+  textHeight: number,
+  nice = true
 ): { range: VisibleRange, tickSequence: YAxisTickSequence } {
   const contentHeight = height > 0 ? height / (1 + topRate + bottomRate) : height
   const [interval, precision] = calcYAxisTickInterval(Math.abs(to - from), contentHeight, textHeight)
+  if (!nice) {
+    return {
+      range: resolveStandardScale(from, to, type, firstClose, minutePercentageBasis, topRate, bottomRate),
+      tickSequence: {
+        from,
+        to,
+        interval,
+        precision,
+        nice
+      }
+    }
+  }
+
   const [tickFrom, tickTo] = calcYAxisTickBounds(from, to, interval, precision)
   return {
     range: resolveStandardScale(tickFrom, tickTo, type, firstClose, minutePercentageBasis, topRate, bottomRate),
@@ -414,7 +429,8 @@ export function resolveStandardAutoScale(
       from: tickFrom,
       to: tickTo,
       interval,
-      precision
+      precision,
+      nice
     }
   }
 }
@@ -820,7 +836,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       topRate,
       bottomRate,
       height,
-      textHeight
+      textHeight,
+      yAxisWidget.getOptions().nice
     )
     if (this._hasValidData) {
       this._autoTickSequence = scale.tickSequence
@@ -1014,29 +1031,27 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const ticks: AxisTick[] = []
 
     if (to - from >= 0) {
-      const [interval, precision, first, last] = this._calcTickValues(from, to)
-      let n = 0
-      let f = first
+      const [interval, precision, first, last, nice] = this._calcTickValues(from, to)
+      const values = nice
+        ? this._calcNiceTickValues(interval, precision, first, last)
+        : this._calcExactBoundaryTickValues(interval, precision, first, last)
 
-      if (interval !== 0) {
-        while (f <= last + interval / 2 && n < 10000) {
-          const v = f.toFixed(precision)
-          ticks[n] = { text: v, coord: 0, value: f }
-          ++n
-          f = round(f + interval, precision)
-        }
+      for (let n = 0; n < values.length; n++) {
+        const value = values[n]
+        ticks[n] = { text: this._formatTickText(value, precision), coord: 0, value }
       }
     }
     return ticks
   }
 
-  private _calcTickValues(from: number, to: number): [number, number, number, number] {
+  private _calcTickValues(from: number, to: number): [number, number, number, number, boolean] {
     if (this._autoCalcTickFlag && this._autoTickSequence && this._autoTickSequence.interval > 0) {
       return [
         this._autoTickSequence.interval,
         this._autoTickSequence.precision,
         this._autoTickSequence.from,
-        this._autoTickSequence.to
+        this._autoTickSequence.to,
+        this._autoTickSequence.nice
       ]
     }
 
@@ -1044,11 +1059,51 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const textHeight = this.getParent().getPane().getChart().getStyles().yAxis.tickText.size
     const [interval, precision] = calcYAxisTickInterval(to - from, height, textHeight)
     if (interval <= 0) {
-      return [0, precision, from, to]
+      return [0, precision, from, to, true]
     }
     const first = round(Math.ceil(from / interval) * interval, precision)
     const last = round(Math.floor(to / interval) * interval, precision)
-    return [interval, precision, first, last]
+    return [interval, precision, first, last, true]
+  }
+
+  private _calcNiceTickValues(interval: number, precision: number, first: number, last: number): number[] {
+    const values: number[] = []
+    let f = first
+
+    if (interval !== 0) {
+      while (f <= last + interval / 2 && values.length < 10000) {
+        values.push(f)
+        f = round(f + interval, precision)
+      }
+    }
+
+    return values
+  }
+
+  private _calcExactBoundaryTickValues(interval: number, precision: number, from: number, to: number): number[] {
+    if (from === to || interval <= 0) {
+      return [from]
+    }
+
+    const values = [from]
+    const first = round(Math.ceil(from / interval) * interval, precision)
+    const last = round(Math.floor(to / interval) * interval, precision)
+    const boundaryInset = interval / 2
+    let f = first
+
+    while (f <= last + interval / 2 && values.length < 10000) {
+      if (f > from && f < to && f - from >= boundaryInset && to - f >= boundaryInset) {
+        values.push(f)
+      }
+      f = round(f + interval, precision)
+    }
+    values.push(to)
+
+    return values
+  }
+
+  private _formatTickText(value: number, precision: number): string {
+    return value.toFixed(Math.max(precision, getPrecision(value)))
   }
 
   getSelfBounding(): Bounding {
