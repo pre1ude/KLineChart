@@ -3,7 +3,7 @@ import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
 import { CandleType } from '../../common/Styles'
 import CandleLastPriceLineView from '../../view/CandleLastPriceLineView'
-import CandleZeroPriceLineView from '../../view/CandleZeroPriceLineView'
+import CandleTimeShareZeroLineView from '../../view/CandleTimeShareZeroLineView'
 import { CandleAreaLayer } from './CandleAreaLayer'
 import { CandleBarLayer } from './CandleBarLayer'
 import { CandleHighLowPriceLayer } from './CandleHighLowPriceLayer'
@@ -20,7 +20,7 @@ export class CandleLayer implements Layer {
   private readonly _candleAreaLayer: CandleAreaLayer
   private readonly _candleHighLowPriceLayer: CandleHighLowPriceLayer
   private readonly _candleLastPriceLineView: CandleLastPriceLineView
-  private readonly _candleZeroPriceLineView: CandleZeroPriceLineView
+  private readonly _candleTimeShareZeroLineView: CandleTimeShareZeroLineView
 
   constructor(widget: DrawWidget<DualYPane>) {
     this._widget = widget
@@ -28,14 +28,14 @@ export class CandleLayer implements Layer {
     this._candleAreaLayer = new CandleAreaLayer(widget)
     this._candleHighLowPriceLayer = new CandleHighLowPriceLayer(widget)
     this._candleLastPriceLineView = new CandleLastPriceLineView(widget)
-    this._candleZeroPriceLineView = new CandleZeroPriceLineView(widget)
+    this._candleTimeShareZeroLineView = new CandleTimeShareZeroLineView(widget)
   }
 
   drawMain = (ctx: CanvasRenderingContext2D): void => {
     const chartStore = this._widget.getPane().getChart().getChartStore()
     this._drawSeries(ctx)
     if (chartStore.getIsTimeShare()) {
-      this._candleZeroPriceLineView.draw(ctx)
+      this._candleTimeShareZeroLineView.draw(ctx)
       return
     }
     this._candleLastPriceLineView.draw(ctx)

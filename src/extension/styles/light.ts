@@ -5,7 +5,10 @@ import { type Styles } from '../../common/Styles'
 const light: DeepPartial<Styles> = {
   grid: {
     horizontal: {
-      color: '#F5F9FF'
+      color: '#F5F9FF',
+      primary: {
+        color: '#D8E0EB'
+      }
     },
     vertical: {
       color: '#F5F9FF',

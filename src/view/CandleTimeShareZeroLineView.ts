@@ -1,9 +1,10 @@
 import { drawStaticFigure } from '../extension/figure'
 import type DualYPane from '../pane/DualYPane'
 import View from './View'
+import { getPrimaryGridLineStyle } from './utils/gridLineStyle'
 
 /** 分时 0% 的线 */
-export default class CandleZeroPriceLineView extends View {
+export default class CandleTimeShareZeroLineView extends View {
   override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
@@ -17,11 +18,9 @@ export default class CandleZeroPriceLineView extends View {
 
     const styles = chartStore.getStyles()
     const gridStyles = styles.grid
-    const priceMarkStyles = styles.candle.priceMark
-    const lastPriceMarkStyles = priceMarkStyles.last
-    const lastPriceMarkLineStyles = lastPriceMarkStyles.line
+    const primaryGridStyles = getPrimaryGridLineStyle(gridStyles.horizontal)
 
-    if (priceMarkStyles.show && lastPriceMarkStyles.show && lastPriceMarkLineStyles.show) {
+    if (gridStyles.show && gridStyles.horizontal.show && primaryGridStyles.show) {
       const yAxis = (pane as DualYPane).getMainAxisWidget().getAxisComponent()
 
       // 使用 getTimeShareBasisPrice 获取基准价格
@@ -37,10 +36,10 @@ export default class CandleZeroPriceLineView extends View {
             ]
           },
           styles: {
-            style: lastPriceMarkLineStyles.style,
-            color: lastPriceMarkStyles.noChangeColor,
-            size: lastPriceMarkLineStyles.size,
-            dashedValue: gridStyles.horizontal.dashedValue
+            style: primaryGridStyles.style,
+            color: primaryGridStyles.color,
+            size: primaryGridStyles.size,
+            dashedValue: primaryGridStyles.dashedValue
           }
         })
       }

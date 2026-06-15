@@ -1,9 +1,10 @@
 import { drawStaticFigure } from '../extension/figure'
-import { GridLineLevel, type GridLineStyle } from '../common/Styles'
+import { GridLineLevel } from '../common/Styles'
 import { type LineAttrs } from '../extension/figure/line'
 import type DualYPane from '../pane/DualYPane'
 import type XAxisWidget from '../widget/XAxisWidget'
 import View from './View'
+import { getPrimaryGridLineStyle } from './utils/gridLineStyle'
 
 export default class GridView extends View {
   override drawImp(ctx: CanvasRenderingContext2D): void {
@@ -69,12 +70,5 @@ export default class GridView extends View {
       }
       ctx.restore()
     }
-  }
-}
-
-function getPrimaryGridLineStyle(styles: GridLineStyle): GridLineStyle {
-  return {
-    ...styles,
-    ...styles.primary
   }
 }
