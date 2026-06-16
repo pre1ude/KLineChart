@@ -16,6 +16,7 @@ import { isIndicatorFigureVisible, type Indicator, type IndicatorFigure } from '
 
 const DEFAULT_Y_AXIS_SPLIT_NUMBER = 5
 const MIN_Y_AXIS_TICK_TEXT_SPACING = 2
+const Y_AXIS_TICK_TEXT_VERTICAL_PADDING = 2
 
 export enum YAxisScaleMode {
   TimeShareMain = 'timeShareMain',
@@ -141,13 +142,18 @@ function increaseEChartsNiceTickInterval(interval: number): number {
   return round(nf * exp10, Math.max(getPrecision(interval), 0))
 }
 
+export function calcYAxisTickTextHeight(textHeight: number): number {
+  return textHeight > 0 ? textHeight + Y_AXIS_TICK_TEXT_VERTICAL_PADDING * 2 : textHeight
+}
+
 export function calcYAxisTickInterval(range: number, height: number, textHeight: number): [number, number] {
   if (!Number.isFinite(range) || range <= 0) {
     return [0, 0]
   }
 
-  const minSpacing = height > 0 && textHeight > 0
-    ? range * textHeight * MIN_Y_AXIS_TICK_TEXT_SPACING / height
+  const tickTextHeight = calcYAxisTickTextHeight(textHeight)
+  const minSpacing = height > 0 && tickTextHeight > 0
+    ? range * tickTextHeight * MIN_Y_AXIS_TICK_TEXT_SPACING / height
     : 0
   const rawInterval = Math.max(range / DEFAULT_Y_AXIS_SPLIT_NUMBER, minSpacing)
   let interval = calcEChartsNiceTickInterval(rawInterval)
@@ -500,8 +506,9 @@ export function createTimeShareYAxisTickValues(from: number, to: number, height:
   }
 
   const range = to - from
+  const tickTextHeight = calcYAxisTickTextHeight(textHeight)
   const maxTickCount = height > 0 && textHeight > 0
-    ? Math.max(2, Math.floor(height / (textHeight * MIN_Y_AXIS_TICK_TEXT_SPACING)))
+    ? Math.max(2, Math.floor(height / (tickTextHeight * MIN_Y_AXIS_TICK_TEXT_SPACING)))
     : 2
   let splitCount = Math.min(8, Math.max(1, maxTickCount - 1))
   if (splitCount > 1 && splitCount % 2 !== 0) {

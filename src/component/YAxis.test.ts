@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  calcYAxisTickTextHeight,
   calcYAxisTickBounds,
   calcYAxisTickInterval,
   createTimeShareYAxisTickValues,
@@ -20,11 +21,28 @@ import {
 import { YAxisPosition, YAxisType } from '../common/Styles'
 import { type Indicator } from './Indicator'
 
+describe('calcYAxisTickTextHeight', () => {
+  it('includes vertical edge padding for positive text height', () => {
+    expect(calcYAxisTickTextHeight(12)).toBe(16)
+  })
+
+  it('keeps non-positive text height unchanged', () => {
+    expect(calcYAxisTickTextHeight(0)).toBe(0)
+    expect(calcYAxisTickTextHeight(-1)).toBe(-1)
+  })
+})
+
 describe('calcYAxisTickInterval', () => {
   it('keeps tick spacing large enough for label height', () => {
     const [interval] = calcYAxisTickInterval(0.0082, 153, 12)
 
     expect(interval).toBe(0.002)
+  })
+
+  it('includes vertical edge padding in tick spacing', () => {
+    const [interval] = calcYAxisTickInterval(100, 100, 12)
+
+    expect(interval).toBe(50)
   })
 
   it('uses split number as an approximate target like ECharts', () => {
@@ -285,6 +303,10 @@ describe('createTimeShareYAxisTickValues', () => {
     ticks.slice(1).forEach((tick, index) => {
       expect(tick - ticks[index]).toBeCloseTo(step)
     })
+  })
+
+  it('includes vertical edge padding when estimating time-share tick count', () => {
+    expect(createTimeShareYAxisTickValues(-0.49, 0.49, 153, 12)).toHaveLength(3)
   })
 
   it('keeps up to nine evenly distributed time-share y-axis ticks', () => {

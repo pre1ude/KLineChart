@@ -2,22 +2,20 @@ import type Bounding from '../common/Bounding'
 import { type AxisStyle, type Styles } from '../common/Styles'
 import { clamp } from '../common/utils/number'
 import { type AxisTick } from '../component/Axis'
+import { calcYAxisTickTextHeight } from '../component/YAxis'
 import { type LineAttrs } from '../extension/figure/line'
 import { type TextAttrs } from '../extension/figure/text'
 import type YAxisWidget from '../widget/YAxisWidget'
 import AxisView, { type AxisTickText } from './AxisView'
 
-const Y_AXIS_TICK_TEXT_VERTICAL_PADDING = 2
-
-export function clampYAxisTickTextY(y: number, height: number, textHeight: number, verticalPadding = 0): number {
+export function clampYAxisTickTextY(y: number, height: number, textHeight: number): number {
   if (height <= 0 || textHeight <= 0) {
     return y
   }
-  const visibleTextHeight = textHeight + verticalPadding * 2
-  if (height <= visibleTextHeight) {
+  if (height <= textHeight) {
     return height / 2
   }
-  const halfTextHeight = visibleTextHeight / 2
+  const halfTextHeight = textHeight / 2
   return clamp(y, halfTextHeight, height - halfTextHeight)
 }
 
@@ -144,9 +142,10 @@ function createYAxisTextAttrs(
   textHeight: number,
   isAlignLeft: boolean
 ): TextAttrs {
+  const tickTextHeight = calcYAxisTickTextHeight(textHeight)
   return {
     x,
-    y: clampYAxisTickTextY(tick.coord, height, textHeight, Y_AXIS_TICK_TEXT_VERTICAL_PADDING),
+    y: clampYAxisTickTextY(tick.coord, height, tickTextHeight),
     text: tick.text,
     align: isAlignLeft ? 'left' : 'right',
     baseline: 'middle'

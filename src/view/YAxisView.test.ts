@@ -11,13 +11,13 @@ describe('clampYAxisTickTextY', () => {
   })
 
   it('supports extra vertical padding for mixed-language tick text', () => {
-    expect(clampYAxisTickTextY(0, 100, 12, 2)).toBe(8)
-    expect(clampYAxisTickTextY(100, 100, 12, 2)).toBe(92)
+    expect(clampYAxisTickTextY(0, 100, 16)).toBe(8)
+    expect(clampYAxisTickTextY(100, 100, 16)).toBe(92)
   })
 
   it('centers text when axis height is smaller than text height', () => {
     expect(clampYAxisTickTextY(0, 8, 12)).toBe(4)
-    expect(clampYAxisTickTextY(0, 15, 12, 2)).toBe(7.5)
+    expect(clampYAxisTickTextY(0, 15, 16)).toBe(7.5)
   })
 })
 
