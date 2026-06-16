@@ -7,14 +7,17 @@ import { type TextAttrs } from '../extension/figure/text'
 import type YAxisWidget from '../widget/YAxisWidget'
 import AxisView, { type AxisTickText } from './AxisView'
 
-export function clampYAxisTickTextY(y: number, height: number, textHeight: number): number {
+const Y_AXIS_TICK_TEXT_VERTICAL_PADDING = 2
+
+export function clampYAxisTickTextY(y: number, height: number, textHeight: number, verticalPadding = 0): number {
   if (height <= 0 || textHeight <= 0) {
     return y
   }
-  if (height <= textHeight) {
+  const visibleTextHeight = textHeight + verticalPadding * 2
+  if (height <= visibleTextHeight) {
     return height / 2
   }
-  const halfTextHeight = textHeight / 2
+  const halfTextHeight = visibleTextHeight / 2
   return clamp(y, halfTextHeight, height - halfTextHeight)
 }
 
@@ -143,7 +146,7 @@ function createYAxisTextAttrs(
 ): TextAttrs {
   return {
     x,
-    y: clampYAxisTickTextY(tick.coord, height, textHeight),
+    y: clampYAxisTickTextY(tick.coord, height, textHeight, Y_AXIS_TICK_TEXT_VERTICAL_PADDING),
     text: tick.text,
     align: isAlignLeft ? 'left' : 'right',
     baseline: 'middle'
