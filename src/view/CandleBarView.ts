@@ -41,13 +41,17 @@ function getCandleBarYAxis(pane: DualYPane, options: CandleBarOptions) {
   return pane.getMainAxisWidget().getAxisComponent()
 }
 
-function pixelSnapFillRectStart(coord: number): number {
-  return Math.round(coord)
+function pixelSnapBarCenter(x: number): number {
+  return Math.round(x - 0.5)
+}
+
+function pixelSnapBarStart(x: number, halfWidth: number): number {
+  return pixelSnapBarCenter(x) - halfWidth
 }
 
 function createPixelSnappedBodyRect(x: number, y: number, barSpace: BarSpace, height: number): RectAttrs {
   return {
-    x: pixelSnapFillRectStart(x - barSpace.halfGapBar),
+    x: pixelSnapBarStart(x, barSpace.halfGapBar),
     y,
     width: barSpace.gapBar,
     height
@@ -126,7 +130,7 @@ export default class CandleBarView extends View {
     }
 
     const height = Math.max(1, bottom - top)
-    const left = barX - barSpace.halfGapBar
+    const left = pixelSnapBarStart(barX, barSpace.halfGapBar)
 
     return isPointInBounding({ left, top, width: barSpace.gapBar, height }, point)
   }
@@ -205,7 +209,7 @@ export default class CandleBarView extends View {
               break
             }
             case CandleType.Ohlc: {
-              const ohlcX = pixelSnapFillRectStart(x)
+              const ohlcX = pixelSnapBarCenter(x)
               rects = [
                 {
                   name: 'rect',
@@ -301,7 +305,7 @@ export default class CandleBarView extends View {
       {
         name: 'rect',
         attrs: {
-          x: pixelSnapFillRectStart(x),
+          x: pixelSnapBarStart(x, 0),
           y: priceY[0],
           width: 1,
           height: priceY[3] - priceY[0]
@@ -331,13 +335,13 @@ export default class CandleBarView extends View {
         name: 'rect',
         attrs: [
           {
-            x: pixelSnapFillRectStart(x),
+            x: pixelSnapBarStart(x, 0),
             y: priceY[0],
             width: 1,
             height: priceY[1] - priceY[0]
           },
           {
-            x: pixelSnapFillRectStart(x),
+            x: pixelSnapBarStart(x, 0),
             y: priceY[2],
             width: 1,
             height: priceY[3] - priceY[2]

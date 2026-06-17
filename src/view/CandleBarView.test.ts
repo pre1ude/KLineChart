@@ -153,4 +153,149 @@ describe('CandleBarView', () => {
     expect(bodyAttrs.x).toBe(16)
     expect(bodyAttrs.width).toBe(8)
   })
+
+  it('keeps 1px candle rects on the same pixel column as the crosshair at half-pixel data coordinates', () => {
+    const styles = getDefaultStyles()
+    styles.candle.type = CandleType.CandleSolid
+    const yAxis = {
+      convertToPixel: vi.fn((value: number) => value)
+    }
+    const yAxisWidget = {
+      getAxisType: () => YAxisType.Normal,
+      getAxisComponent: () => yAxis
+    }
+    const chartStore = {
+      getIsTimeShare: () => false,
+      getStyles: () => styles,
+      getVisibleDataList: () => [{
+        dataIndex: 0,
+        x: 20.5,
+        data: { open: 100, high: 120, low: 90, close: 110 }
+      }],
+      getTimeScaleStore: () => ({
+        getBarSpace: () => ({
+          bar: 1,
+          halfBar: 0.5,
+          gapBar: 1,
+          halfGapBar: 0
+        })
+      }),
+      getIndicatorStore: () => ({
+        getInstances: () => []
+      })
+    }
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      getChart: () => ({ getChartStore: () => chartStore }),
+      getYLeftAxisWidget: () => yAxisWidget,
+      getYRightAxisWidget: () => yAxisWidget,
+      getMainAxisWidget: () => yAxisWidget
+    }
+    const widget = {
+      getPane: () => pane
+    }
+    const view = new CandleBarView(widget as never)
+
+    view.draw({} as never)
+
+    const [wickAttrs] = figureMock.setAttrs.mock.calls[0][0] as RectAttrs[]
+    const [bodyAttrs] = figureMock.setAttrs.mock.calls[1][0] as RectAttrs[]
+    expect(wickAttrs.x).toBe(20)
+    expect(bodyAttrs.x).toBe(20)
+    expect(bodyAttrs.width).toBe(1)
+  })
+
+  it('uses the snapped candle body rect for hit testing', () => {
+    const styles = getDefaultStyles()
+    styles.candle.type = CandleType.CandleSolid
+    const yAxis = {
+      convertToPixel: vi.fn((value: number) => value)
+    }
+    const yAxisWidget = {
+      getAxisType: () => YAxisType.Normal,
+      getAxisComponent: () => yAxis
+    }
+    const chartStore = {
+      getIsTimeShare: () => false,
+      getStyles: () => styles,
+      getVisibleDataList: () => [{
+        dataIndex: 0,
+        x: 20.5,
+        data: { open: 100, high: 120, low: 90, close: 110 }
+      }],
+      getTimeScaleStore: () => ({
+        coordinateToDataIndex: () => 0,
+        getBarSpace: () => ({
+          bar: 1,
+          halfBar: 0.5,
+          gapBar: 1,
+          halfGapBar: 0
+        })
+      }),
+      getIndicatorStore: () => ({
+        getInstances: () => []
+      })
+    }
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      getChart: () => ({ getChartStore: () => chartStore }),
+      getYLeftAxisWidget: () => yAxisWidget,
+      getYRightAxisWidget: () => yAxisWidget,
+      getMainAxisWidget: () => yAxisWidget
+    }
+    const widget = {
+      getPane: () => pane
+    }
+    const view = new CandleBarView(widget as never)
+
+    expect(view.candleBarHitTest('body', { x: 20, y: 105 })).toBe(true)
+  })
+
+  it('keeps OHLC rects on the same pixel column as other candle bars at half-pixel data coordinates', () => {
+    const styles = getDefaultStyles()
+    styles.candle.type = CandleType.Ohlc
+    const yAxis = {
+      convertToPixel: vi.fn((value: number) => value)
+    }
+    const yAxisWidget = {
+      getAxisType: () => YAxisType.Normal,
+      getAxisComponent: () => yAxis
+    }
+    const chartStore = {
+      getIsTimeShare: () => false,
+      getStyles: () => styles,
+      getVisibleDataList: () => [{
+        dataIndex: 0,
+        x: 20.5,
+        data: { open: 100, high: 120, low: 90, close: 110 }
+      }],
+      getTimeScaleStore: () => ({
+        getBarSpace: () => ({
+          bar: 8,
+          halfBar: 4,
+          gapBar: 7,
+          halfGapBar: 3
+        })
+      }),
+      getIndicatorStore: () => ({
+        getInstances: () => []
+      })
+    }
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      getChart: () => ({ getChartStore: () => chartStore }),
+      getYLeftAxisWidget: () => yAxisWidget,
+      getYRightAxisWidget: () => yAxisWidget,
+      getMainAxisWidget: () => yAxisWidget
+    }
+    const widget = {
+      getPane: () => pane
+    }
+    const view = new CandleBarView(widget as never)
+
+    view.draw({} as never)
+
+    const [wickAttrs] = figureMock.setAttrs.mock.calls[0][0] as RectAttrs[]
+    expect(wickAttrs.x).toBe(20)
+  })
 })

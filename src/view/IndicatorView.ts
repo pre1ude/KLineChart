@@ -16,8 +16,8 @@ import View from './View'
 // 指标结果数据类型，支持通过字符串键访问
 type IndicatorResultData = Record<string, unknown>
 
-function pixelSnapFillRectStart(coord: number): number {
-  return Math.round(coord)
+function pixelSnapBarStart(x: number, halfWidth: number): number {
+  return Math.round(x - 0.5) - halfWidth
 }
 
 export default class IndicatorView extends View {
@@ -287,7 +287,7 @@ export default class IndicatorView extends View {
         }
         const y = valueY > baseValueY ? baseValueY : valueY
         return {
-          x: pixelSnapFillRectStart(x - halfGapBar),
+          x: pixelSnapBarStart(x, halfGapBar),
           y,
           width: Math.max(1, halfGapBar * 2),
           height
