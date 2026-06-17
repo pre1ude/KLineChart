@@ -365,24 +365,28 @@ function drawSingleLine(
 ): void {
   if (points.length <= 1) return
 
-  // 只对水平/垂直两点线段进行像素对齐
+  const drawPoints = smooth > 0
+    ? points
+    : simplifyLinePoints(points, LINE_SIMPLIFY_TOLERANCE / pixelRatio)
+
+  // 对水平/垂直两点线段进行像素对齐；多点直线会先简化成两点再进入这里。
   if (
-    points.length === 2 &&
-    (points[0].x === points[1].x || points[0].y === points[1].y)
+    drawPoints.length === 2 &&
+    (drawPoints[0].x === drawPoints[1].x || drawPoints[0].y === drawPoints[1].y)
   ) {
     ctx.beginPath()
-    if (points[0].x === points[1].x) {
+    if (drawPoints[0].x === drawPoints[1].x) {
       const x = shouldSnapAxis(pixelSnap, 'x')
-        ? pixelSnapStrokeCoordinate(points[0].x, lineWidth, pixelRatio)
-        : points[0].x
-      ctx.moveTo(x, points[0].y)
-      ctx.lineTo(x, points[1].y)
+        ? pixelSnapStrokeCoordinate(drawPoints[0].x, lineWidth, pixelRatio)
+        : drawPoints[0].x
+      ctx.moveTo(x, drawPoints[0].y)
+      ctx.lineTo(x, drawPoints[1].y)
     } else {
       const y = shouldSnapAxis(pixelSnap, 'y')
-        ? pixelSnapStrokeCoordinate(points[0].y, lineWidth, pixelRatio)
-        : points[0].y
-      ctx.moveTo(points[0].x, y)
-      ctx.lineTo(points[1].x, y)
+        ? pixelSnapStrokeCoordinate(drawPoints[0].y, lineWidth, pixelRatio)
+        : drawPoints[0].y
+      ctx.moveTo(drawPoints[0].x, y)
+      ctx.lineTo(drawPoints[1].x, y)
     }
     ctx.stroke()
     ctx.closePath()
@@ -390,9 +394,6 @@ function drawSingleLine(
   }
 
   // 一般情况：不使用 correction
-  const drawPoints = smooth > 0
-    ? points
-    : simplifyLinePoints(points, LINE_SIMPLIFY_TOLERANCE / pixelRatio)
   ctx.beginPath()
   ctx.moveTo(drawPoints[0].x, drawPoints[0].y)
   lineTo(ctx, drawPoints, smooth)

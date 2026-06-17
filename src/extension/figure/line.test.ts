@@ -51,6 +51,22 @@ describe('drawLine pixel snap', () => {
     expect(ctx.lineTo).toHaveBeenCalledWith(100, 11.5)
   })
 
+  it('snaps horizontal polylines after simplifying redundant data points', () => {
+    const ctx = createLineContext()
+
+    drawLine(ctx as unknown as CanvasRenderingContext2D, {
+      coordinates: [
+        { x: 0, y: 11.7 },
+        { x: 50, y: 11.7 },
+        { x: 100, y: 11.7 }
+      ]
+    }, { size: 1, color: '#000000' })
+
+    expect(ctx.moveTo).toHaveBeenCalledWith(0, 11.5)
+    expect(ctx.lineTo).toHaveBeenCalledTimes(1)
+    expect(ctx.lineTo).toHaveBeenCalledWith(100, 11.5)
+  })
+
   it('snaps even-width lines without half-pixel correction', () => {
     const ctx = createLineContext()
 
