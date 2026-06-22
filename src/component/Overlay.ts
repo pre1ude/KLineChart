@@ -8,7 +8,7 @@ import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
 import type { DateTimeFormat } from '../common/utils/dateTimeFormat'
-import { isNumber, isValid, merge } from '../common/utils/typeChecks'
+import { clone, isNumber, isValid, merge } from '../common/utils/typeChecks'
 import { type XAxis } from './XAxis'
 import { type YAxis } from './YAxis'
 
@@ -273,6 +273,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
 
   constructor(template: OverlayTemplate<E>, { id, groupId, paneId, zLevel, points, rawPoints, ...rest }: OverlayInitOption) {
     Object.assign(this, template)
+    this.styles = clone(this.styles)
 
     this.id = id
     this.groupId = groupId
@@ -294,7 +295,12 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
       this._applyStateFromRawPoints(rawPoints.length)
     }
 
-    Object.assign(this, rest)
+    const { styles, ...otherRest } = rest
+    Object.assign(this, otherRest)
+    if (isValid(styles)) {
+      this.styles ??= {}
+      merge(this.styles, styles)
+    }
 
     this.onCreated?.()
   }

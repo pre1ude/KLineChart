@@ -13,15 +13,26 @@ export interface ExtendDataType {
    */
   id: string | number;
 }
-
 export const textLog: OverlayTemplate<ExtendDataType> = {
   name: 'textLog',
   totalStep: 2,
-  zLevel: 100, // 默认设为100, 确保比普通画线层级高
+  zLevel: 100,
   needDefaultPointFigure: true,
+  styles: {
+    line: {
+      style: LineType.Dashed,
+      color: 'rgba(138, 174, 230, 0.5)',
+      dashedValue: [4, 2]
+    },
+    textBox: {
+      maxWidth: 150,
+      color: '#FFF',
+      backgroundColor: '#4D6180',
+      borderColor: '#8AAEE6',
+      style: PolygonType.StrokeFill
+    }
+  },
   onBodyDrag({ point, prevPoint, prevPoints }) {
-    // 只移动 point[1]（文本框），point[0]（锚点）保持不动
-    // 内部使用 dataIndex，计算简单直接
     const difDataIndex = point.dataIndex - prevPoint.dataIndex
     const difValue = point.value - prevPoint.value
 
@@ -49,7 +60,7 @@ export const textLog: OverlayTemplate<ExtendDataType> = {
           type: 'circle',
           attrs: { x: startX, y: startY, r: 6 },
           ignoreEvent: true
-        },
+        }
       ]
     }
 
@@ -62,23 +73,11 @@ export const textLog: OverlayTemplate<ExtendDataType> = {
       {
         type: 'line',
         attrs: { coordinates: [{ x: startX, y: startY }, { x: endX, y: endY }] },
-        styles: {
-          style: LineType.Dashed,
-          color: 'rgba(138, 174, 230, 0.5)',
-          dashedValue: [4, 2]
-        },
         ignoreEvent: true
       },
       {
         type: 'textBox',
-        attrs: { x: endX, y: endY, text },
-        styles: {
-          maxWidth: 150,
-          color: '#FFF',
-          backgroundColor: '#4D6180',
-          borderColor: '#8AAEE6',
-          style: PolygonType.StrokeFill
-        }
+        attrs: { x: endX, y: endY, text }
       }
     ]
   }
