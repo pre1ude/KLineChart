@@ -8,7 +8,7 @@ import {
   type XAxisTickLayoutOptions
 } from './tickLayout'
 
-const TIME_SHARE_NICE_STEPS = [15, 30, 60, 120, 240]
+const TIME_SHARE_NICE_STEPS = [15, 30, 60, 120, 240, 360]
 const TIME_SHARE_MAX_THINNABLE_TICK_OVERFLOW = 1
 const TIME_SHARE_INTRADAY_TICK_MAX_DAYS = 4
 

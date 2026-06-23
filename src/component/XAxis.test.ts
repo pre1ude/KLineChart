@@ -297,6 +297,21 @@ describe('selectTimeShareTickIndexes', () => {
     expect(indexes).not.toContain(timeShareTicks.length - 1)
   })
 
+  it('uses a six-hour cadence for full cross-day sessions when five labels fit', () => {
+    const timeShareTicks = Array.from({ length: 24 * 4 + 1 }, (_, index) => formatDayHHmm(6 * 60 + index * 15))
+
+    expect(selectTimeShareTickIndexes(timeShareTicks, 1, 5, {
+      showMinLabel: true,
+      showMaxLabel: true
+    }).map(index => timeShareTicks[index])).toEqual([
+      '06:00',
+      '12:00',
+      '18:00',
+      '00:00',
+      '06:00'
+    ])
+  })
+
   it('uses the same intraday ticks for each day in short multi-day time-share charts', () => {
     const timeShareTicks = ['09:30', '11:30', '13:00', '15:15']
 
@@ -838,6 +853,10 @@ function formatHHmm(value: number): string {
   const hour = Math.floor(value / 60).toString().padStart(2, '0')
   const minute = (value % 60).toString().padStart(2, '0')
   return `${hour}:${minute}`
+}
+
+function formatDayHHmm(value: number): string {
+  return formatHHmm(value % (24 * 60))
 }
 
 function createTimeShareDataList(timeShareTicks: string[], dayCount: number = 1): KLineData[] {
