@@ -9,7 +9,6 @@ import {
 } from './tickLayout'
 
 const TIME_SHARE_NICE_STEPS = [15, 30, 60, 120, 240, 360]
-const TIME_SHARE_MAX_THINNABLE_TICK_OVERFLOW = 1
 const TIME_SHARE_INTRADAY_TICK_MAX_DAYS = 4
 
 export function createTimeShareXAxisTicks(
@@ -116,13 +115,8 @@ export function selectTimeShareTickIndexes(
     if (fallbackIndexes.length === 0 || indexes.length < fallbackIndexes.length) {
       fallbackIndexes = indexes
     }
-    const maxStepTickCount = step <= TIME_SHARE_NICE_STEPS[1]
-      ? selectedCountLimit
-      : selectedCountLimit + TIME_SHARE_MAX_THINNABLE_TICK_OVERFLOW
-    if (indexes.length <= maxStepTickCount) {
-      return indexes.length <= selectedCountLimit
-        ? indexes
-        : thinTimeShareTickIndexes(indexes, selectedCountLimit, requiredIndexes, tickMinutes, baseInterval)
+    if (indexes.length <= selectedCountLimit) {
+      return indexes
     }
   }
 

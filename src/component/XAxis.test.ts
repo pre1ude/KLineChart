@@ -190,14 +190,11 @@ describe('selectTimeShareTickIndexes', () => {
       showMaxLabel: true
     }).map(index => timeShareTicks[index])).toEqual([
       '21:00',
-      '22:00',
       '23:00',
-      '00:00',
       '01:00',
-      '02:00',
       '02:30',
+      '10:00',
       '10:15',
-      '11:00',
       '11:30',
       '14:00',
       '15:00'
@@ -301,6 +298,21 @@ describe('selectTimeShareTickIndexes', () => {
     const timeShareTicks = Array.from({ length: 24 * 4 + 1 }, (_, index) => formatDayHHmm(6 * 60 + index * 15))
 
     expect(selectTimeShareTickIndexes(timeShareTicks, 1, 5, {
+      showMinLabel: true,
+      showMaxLabel: true
+    }).map(index => timeShareTicks[index])).toEqual([
+      '06:00',
+      '12:00',
+      '18:00',
+      '00:00',
+      '06:00'
+    ])
+  })
+
+  it('keeps the six-hour cadence instead of thinning an overflowing four-hour cadence', () => {
+    const timeShareTicks = Array.from({ length: 24 * 4 + 1 }, (_, index) => formatDayHHmm(6 * 60 + index * 15))
+
+    expect(selectTimeShareTickIndexes(timeShareTicks, 1, 6, {
       showMinLabel: true,
       showMaxLabel: true
     }).map(index => timeShareTicks[index])).toEqual([
