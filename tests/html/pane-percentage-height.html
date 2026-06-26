@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pane Percentage Height</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #f4f6f8;
+      color: #1f2329;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .demo {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+    }
+
+    .description {
+      margin: 0 0 16px;
+      color: #646a73;
+      line-height: 1.6;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #eef0f3;
+      color: #d14;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding: 12px;
+      border: 1px solid #dee2e8;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .toolbar-label {
+      margin-right: 4px;
+      color: #646a73;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    button {
+      height: 32px;
+      padding: 0 12px;
+      border: 1px solid #c9ced8;
+      border-radius: 5px;
+      background: #fff;
+      color: #1f2329;
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: #3370ff;
+      color: #3370ff;
+    }
+
+    button.active {
+      border-color: #3370ff;
+      background: #3370ff;
+      color: #fff;
+    }
+
+    .chart-shell {
+      height: 600px;
+      overflow: hidden;
+      border: 1px solid #d9dce3;
+      border-radius: 8px;
+      background: #fff;
+      transition: height 240ms ease;
+    }
+
+    #chart {
+      width: 100%;
+      height: 100%;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .metric {
+      padding: 10px 12px;
+      border: 1px solid #dee2e8;
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    .metric-name {
+      display: block;
+      margin-bottom: 4px;
+      color: #8f959e;
+      font-size: 12px;
+    }
+
+    .metric-value {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .hint {
+      margin: 12px 0 0;
+      color: #646a73;
+      font-size: 13px;
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 12px;
+      }
+
+      .metrics {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="demo">
+    <h1>Pane percentage height</h1>
+    <p class="description">
+      VOL starts with <code>height: 0.25</code>, MACD uses <code>height: 120</code>,
+      and the candle pane occupies the remaining drawable height.
+    </p>
+
+    <div class="toolbar">
+      <span class="toolbar-label">Chart height</span>
+      <button data-chart-height="420">420px</button>
+      <button class="active" data-chart-height="600">600px</button>
+      <button data-chart-height="780">780px</button>
+
+      <span class="toolbar-label">VOL height</span>
+      <button data-vol-height="0.15">15%</button>
+      <button class="active" data-vol-height="0.25">25%</button>
+      <button data-vol-height="0.4">40%</button>
+      <button data-vol-height="160">160px</button>
+    </div>
+
+    <div class="chart-shell" id="chartShell">
+      <div id="chart"></div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric">
+        <span class="metric-name">Chart container</span>
+        <span class="metric-value" id="chartHeight">-</span>
+      </div>
+      <div class="metric">
+        <span class="metric-name">Candle (remainder)</span>
+        <span class="metric-value" id="candleHeight">-</span>
+      </div>
+      <div class="metric">
+        <span class="metric-name">VOL (<span id="volMode">25%</span>)</span>
+        <span class="metric-value" id="volHeight">-</span>
+      </div>
+      <div class="metric">
+        <span class="metric-name">MACD (120px)</span>
+        <span class="metric-value" id="macdHeight">-</span>
+      </div>
+    </div>
+
+    <p class="hint">
+      Try resizing the chart and dragging the pane separators. Percentage panes keep their updated ratio;
+      pixel panes keep their pixel height.
+    </p>
+  </main>
+
+  <script type="module">
+    import { init, PaneIdConstants } from '../../dist/index.js'
+    import { generated } from '../js/dataSource.js'
+
+    const shell = document.getElementById('chartShell')
+    const chart = init('chart')
+    chart.setStyles('light')
+    const volPaneId = chart.createIndicator('VOL', false, { height: 0.25, minHeight: 60 })
+    const macdPaneId = chart.createIndicator('MACD', false, { height: 120, minHeight: 60 })
+
+    chart.applyNewData(generated(), true, updateMetrics)
+
+    document.querySelectorAll('[data-chart-height]').forEach(button => {
+      button.addEventListener('click', () => {
+        setActiveButton('[data-chart-height]', button)
+        shell.style.height = `${button.dataset.chartHeight}px`
+        window.setTimeout(() => {
+          chart.resize()
+          updateMetrics()
+        }, 260)
+      })
+    })
+
+    document.querySelectorAll('[data-vol-height]').forEach(button => {
+      button.addEventListener('click', () => {
+        setActiveButton('[data-vol-height]', button)
+        const value = button.dataset.volHeight
+        const height = Number(value)
+        chart.setPaneOptions({ id: volPaneId, height })
+        document.getElementById('volMode').textContent = button.textContent
+        updateMetrics()
+      })
+    })
+
+    chart.subscribeAction('onPaneDrag', updateMetrics)
+    new ResizeObserver(updateMetrics).observe(shell)
+
+    function setActiveButton (selector, activeButton) {
+      document.querySelectorAll(selector).forEach(button => {
+        button.classList.toggle('active', button === activeButton)
+      })
+    }
+
+    function updateMetrics () {
+      requestAnimationFrame(() => {
+        document.getElementById('chartHeight').textContent = `${shell.clientHeight}px`
+        setPaneMetric('candleHeight', PaneIdConstants.CANDLE)
+        setPaneMetric('volHeight', volPaneId)
+        setPaneMetric('macdHeight', macdPaneId)
+      })
+    }
+
+    function setPaneMetric (elementId, paneId) {
+      const size = chart.getSize(paneId)
+      document.getElementById(elementId).textContent = size ? `${Math.round(size.height)}px` : '-'
+    }
+  </script>
+</body>
+</html>

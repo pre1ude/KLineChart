@@ -22,7 +22,16 @@ import CandlePane from './pane/CandlePane'
 import IndicatorPane from './pane/IndicatorPane'
 import XAxisPane from './pane/XAxisPane'
 import SeparatorPane from './pane/SeparatorPane'
-import { type PaneOptions, PanePosition, PANE_DEFAULT_HEIGHT, PaneIdConstants, type DrawPane } from './pane/types'
+import {
+  calculatePaneHeights,
+  type PaneOptions,
+  PanePosition,
+  PANE_DEFAULT_HEIGHT,
+  PANE_DEFAULT_HEIGHT_SPEC,
+  PaneIdConstants,
+  parsePaneHeight,
+  type DrawPane
+} from './pane/types'
 import { type IndicatorFilter, type Indicator, type IndicatorCreate, type IndicatorOverride } from './component/Indicator'
 import { type Overlay, type OverlayCreate, type OverlayFilter } from './component/Overlay'
 import { getIndicatorTemplate } from './extension/indicator/index'
@@ -327,26 +336,20 @@ export default class ChartImp implements Chart {
     if (paneExcludeXAxisHeight < 0) {
       paneExcludeXAxisHeight = 0
     }
-    let indicatorPaneTotalHeight = 0
-
-    this._drawPanes.forEach(pane => {
-      if (pane.getId() !== PaneIdConstants.CANDLE && pane.getId() !== PaneIdConstants.X_AXIS) {
-        let paneHeight = pane.getBounding().height
-        const paneMinHeight = pane.getOptions().minHeight
-        if (paneHeight < paneMinHeight) {
-          paneHeight = paneMinHeight
-        }
-        if (indicatorPaneTotalHeight + paneHeight > paneExcludeXAxisHeight) {
-          indicatorPaneTotalHeight = paneExcludeXAxisHeight
-          paneHeight = Math.max(paneExcludeXAxisHeight - indicatorPaneTotalHeight, 0)
-        } else {
-          indicatorPaneTotalHeight += paneHeight
-        }
-        pane.setBounding({ height: paneHeight })
-      }
+    const indicatorPanes = this._drawPanes.filter(
+      pane => pane.getId() !== PaneIdConstants.CANDLE && pane.getId() !== PaneIdConstants.X_AXIS
+    ) as DualYPane[]
+    const layout = calculatePaneHeights(
+      indicatorPanes.map(pane => ({
+        height: pane.getHeightSpec() ?? PANE_DEFAULT_HEIGHT_SPEC,
+        minHeight: pane.getOptions().minHeight
+      })),
+      paneExcludeXAxisHeight
+    )
+    indicatorPanes.forEach((pane, index) => {
+      pane.setBounding({ height: layout.heights[index] })
     })
-    const candlePaneHeight = paneExcludeXAxisHeight - indicatorPaneTotalHeight
-    this._candlePane?.setBounding({ height: candlePaneHeight })
+    this._candlePane?.setBounding({ height: layout.remainingHeight })
     this._xAxisPane.setBounding({ height: xAxisHeight })
 
     let top = 0
@@ -446,12 +449,19 @@ export default class ChartImp implements Chart {
       let shouldMeasureHeight = false
       if (pane) {
         let shouldAdjust = forceShouldAdjust
-        if (options.id !== PaneIdConstants.CANDLE && isNumber(options.height) && options.height > 0) {
-          const minHeight = Math.max(options.minHeight ?? pane.getOptions().minHeight, 0)
-          const height = Math.max(minHeight, options.height)
-          pane.setBounding({ height })
-          shouldAdjust = true
-          shouldMeasureHeight = true
+        if (isValid(options.height)) {
+          if (options.id === PaneIdConstants.CANDLE || options.id === PaneIdConstants.X_AXIS) {
+            if (isNumber(options.height) && options.height < 1) {
+              logWarn('setPaneOptions', 'height', 'percentage height only supports indicator panes.')
+            }
+          } else {
+            const heightSpec = this._parsePaneHeight(options.height, 'setPaneOptions')
+            if (heightSpec !== null) {
+              pane.setHeightSpec(heightSpec)
+              shouldAdjust = true
+              shouldMeasureHeight = true
+            }
+          }
         }
         // 检查是否需要调整视图
         if (isString(options.axisOptions?.name) || isValid(options.gap) || isValid(options.reservedSpace) || isValid(options.axisOptions?.YAxis)) {
@@ -888,14 +898,33 @@ export default class ChartImp implements Chart {
       realPaneId ??= createId(PaneIdConstants.INDICATOR)
       const pane = this._createPane(IndicatorPane, realPaneId, paneOptions ?? {})
       const height = paneOptions?.height ?? PANE_DEFAULT_HEIGHT
-      pane.setBounding({ height })
+      const heightSpec = this._parsePaneHeight(height, 'createIndicator') ??
+        PANE_DEFAULT_HEIGHT_SPEC
+      pane.setHeightSpec(heightSpec)
+      pane.setBounding({ height: heightSpec.unit === 'pixel' ? heightSpec.value : 0 })
       indicator.paneId = realPaneId
-      void this._chartStore.getIndicatorStore().addInstance(indicator, realPaneId, isStack ?? false).finally(() => {
+      const indicatorCalcPromise = this._chartStore.getIndicatorStore().addInstance(indicator, realPaneId, isStack ?? false)
+      this._adjustPaneViewportIfReady()
+      void indicatorCalcPromise.finally(() => {
         this.adjustPaneViewport(true, true, true, true, true)
         callback?.()
       })
     }
     return realPaneId
+  }
+
+  private _adjustPaneViewportIfReady(): void {
+    if (this._dataZoomSlider !== undefined) {
+      this.adjustPaneViewport(true, true, true, true, true)
+    }
+  }
+
+  private _parsePaneHeight(height: number, api: string): ReturnType<typeof parsePaneHeight> {
+    const state = parsePaneHeight(height)
+    if (state === null) {
+      logWarn(api, 'height', 'height must be a positive number. Values less than 1 are treated as percentages; values greater than or equal to 1 are rounded pixels.')
+    }
+    return state
   }
 
   overrideIndicator(override: IndicatorOverride, paneId?: string, callback?: () => void): void {

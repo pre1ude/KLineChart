@@ -235,6 +235,7 @@ export {
 export type { Chart, ResizeAnchor, PaneScope } from './Chart'
 export type { default as ChartImp } from './Chart'
 export type { DataZoomOptions, DataZoomSliderOptions, DataZoomSliderTheme, Options } from './Options'
+export type { PaneOptions } from './pane/types'
 
 // Data Types
 export type { default as KLineData } from './common/KLineData'

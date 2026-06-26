@@ -8,6 +8,7 @@ import Widget from './Widget'
 import { WidgetNameConstants, REAL_SEPARATOR_HEIGHT } from './types'
 import type SeparatorPane from '../pane/SeparatorPane'
 import type DualYPane from '../pane/DualYPane'
+import { PaneIdConstants } from '../pane/types'
 
 export default class SeparatorWidget extends Widget<SeparatorPane> {
   private _dragFlag = false
@@ -95,12 +96,18 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
     )
     const diffHeight = reducedPaneStartHeight - reducedPaneHeight
 
+    const chart = currentPane.getChart()
+    const drawablePaneHeight = chart.getAllDrawPanes().reduce((height, pane) => {
+      return pane.getId() === PaneIdConstants.X_AXIS ? height : height + pane.getBounding().height
+    }, 0)
+
     // 更新 pane 高度
     reducedPane.setBounding({ height: reducedPaneHeight })
     increasedPane.setBounding({ height: increasedPaneStartHeight + diffHeight })
+    reducedPane.updateHeightSpecFromDrag(reducedPaneHeight, drawablePaneHeight)
+    increasedPane.updateHeightSpecFromDrag(increasedPaneStartHeight + diffHeight, drawablePaneHeight)
 
     // 触发事件和更新
-    const chart = currentPane.getChart()
     chart.getChartStore().getActionStore().execute(ActionType.OnPaneDrag, { paneId: currentPane.getId() })
     chart.adjustPaneViewport(true, true, true, true, true)
   }

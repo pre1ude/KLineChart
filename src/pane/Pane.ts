@@ -4,12 +4,14 @@ import { createDom } from '../common/utils/dom'
 import type Updater from '../common/Updater'
 import type Bounding from '../common/Bounding'
 import type Chart from '../Chart'
+import { type PaneHeightSpec, updatePaneHeightSpecFromDrag } from './types'
 export default abstract class Pane implements Updater {
   private _rootContainer: HTMLElement
   private _container: HTMLElement
   private readonly _id: string
   private readonly _chart: Chart
   private readonly _bounding: Bounding = createDefaultBounding()
+  private _heightSpec?: PaneHeightSpec
 
   constructor(rootContainer: HTMLElement, afterElement: HTMLElement | null, chart: Chart, id: string) {
     this._chart = chart
@@ -44,6 +46,20 @@ export default abstract class Pane implements Updater {
 
   getBounding(): Bounding {
     return this._bounding
+  }
+
+  setHeightSpec(spec: PaneHeightSpec): void {
+    this._heightSpec = spec
+  }
+
+  getHeightSpec(): PaneHeightSpec | undefined {
+    return this._heightSpec
+  }
+
+  updateHeightSpecFromDrag(height: number, availableHeight: number): void {
+    if (this._heightSpec !== undefined) {
+      this._heightSpec = updatePaneHeightSpecFromDrag(this._heightSpec, height, availableHeight)
+    }
   }
 
   update(level?: UpdateLevel): void {
