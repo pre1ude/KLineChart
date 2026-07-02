@@ -4,7 +4,7 @@ import type { DateTimeFormat } from './common/utils/dateTimeFormat'
 import { formatDate, formatBigNumber } from './common/utils/format'
 
 import { type IndicatorCreate } from './component/Indicator'
-import { type PaneOptions } from './pane/types'
+import { type PaneOptions, type PaneResizeMode } from './pane/types'
 
 export enum FormatDateType {
   Tooltip,
@@ -74,6 +74,7 @@ export interface DataZoomOptions {
 
 export interface Options {
   layout?: LayoutChild[]
+  paneResizeMode?: PaneResizeMode
   locale?: string
   timezone?: string
   styles?: string | DeepPartialStyles

@@ -42,6 +42,8 @@ export interface PaneHeightSpec {
   value: number
 }
 
+export type PaneResizeMode = 'adjacent' | 'main-flex'
+
 export interface PaneOptions {
   id?: string
   height?: number

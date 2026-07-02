@@ -5,6 +5,19 @@ import type Chart from '../Chart'
 import ChartStore from './ChartStore'
 
 describe('ChartStore', () => {
+  it('uses main-flex pane resizing by default and accepts adjacent mode', () => {
+    const chart = {
+      adjustPaneViewport: vi.fn()
+    } as unknown as Chart
+
+    const store = new ChartStore(chart)
+    expect(store.getPaneResizeMode()).toBe('main-flex')
+
+    store.setOptions({ paneResizeMode: 'adjacent' })
+
+    expect(store.getPaneResizeMode()).toBe('adjacent')
+  })
+
   it('applies initial auto alignment before the first init data render', () => {
     vi.useFakeTimers()
     const timeoutSpy = vi.spyOn(globalThis, 'setTimeout')

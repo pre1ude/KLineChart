@@ -9,6 +9,7 @@ import type LoadDataCallback from '../common/LoadDataCallback'
 import { type LoadDataParams, LoadDataType } from '../common/LoadDataCallback'
 import { ActionType } from '../common/Action'
 import { getDefaultCustomApi, type CustomApi, defaultLocale, type DataZoomOptions, type DataZoomSliderOptions, type Options } from '../Options'
+import type { PaneResizeMode } from '../pane/types'
 import TimeScaleStore from './TimeScaleStore'
 import { TimeScaleModeKind } from './time-scale'
 import {
@@ -73,6 +74,8 @@ export default class ChartStore {
   private _dataZoomOptions: DataZoomOptions = {}
 
   private _styleTheme: 'dark' | 'light' = 'light'
+
+  private _paneResizeMode: PaneResizeMode = 'main-flex'
 
   private _timeShareBasisPrice: number | undefined
 
@@ -182,7 +185,10 @@ export default class ChartStore {
 
   setOptions(options?: Options): this {
     if (isValid(options)) {
-      const { locale, timezone, styles, customApi, thousandsSeparator, decimalFoldThreshold } = options
+      const { locale, timezone, styles, customApi, thousandsSeparator, decimalFoldThreshold, paneResizeMode } = options
+      if (paneResizeMode === 'adjacent' || paneResizeMode === 'main-flex') {
+        this._paneResizeMode = paneResizeMode
+      }
       if (isString(locale)) {
         this._locale = locale
       }
@@ -262,6 +268,10 @@ export default class ChartStore {
 
   getStyleTheme(): 'dark' | 'light' {
     return this._styleTheme
+  }
+
+  getPaneResizeMode(): PaneResizeMode {
+    return this._paneResizeMode
   }
 
   getLocale(): string {

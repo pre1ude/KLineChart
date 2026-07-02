@@ -10,9 +10,36 @@ import type SeparatorPane from '../pane/SeparatorPane'
 import type DualYPane from '../pane/DualYPane'
 import { PaneIdConstants } from '../pane/types'
 
+interface MainFlexPaneResizeParams {
+  dragDistance: number
+  targetPaneStartHeight: number
+  targetPaneMinHeight: number
+  mainPaneStartHeight: number
+  mainPaneMinHeight: number
+}
+
+export function calculateMainFlexPaneResize({
+  dragDistance,
+  targetPaneStartHeight,
+  targetPaneMinHeight,
+  mainPaneStartHeight,
+  mainPaneMinHeight
+}: MainFlexPaneResizeParams): { targetPaneHeight: number, mainPaneHeight: number } {
+  const wantedTargetPaneHeight = targetPaneStartHeight - dragDistance
+  const minTargetPaneHeight = Math.max(targetPaneMinHeight, 0)
+  const minMainPaneHeight = Math.max(mainPaneMinHeight, 0)
+  const maxTargetPaneHeight = targetPaneStartHeight + Math.max(mainPaneStartHeight - minMainPaneHeight, 0)
+  const targetPaneHeight = Math.min(Math.max(wantedTargetPaneHeight, minTargetPaneHeight), maxTargetPaneHeight)
+  return {
+    targetPaneHeight,
+    mainPaneHeight: mainPaneStartHeight - (targetPaneHeight - targetPaneStartHeight)
+  }
+}
+
 export default class SeparatorWidget extends Widget<SeparatorPane> {
   private _dragFlag = false
   private _dragStartY = 0
+  private _mainPaneHeight = 0
   private _topPaneHeight = 0
   private _bottomPaneHeight = 0
 
@@ -45,6 +72,8 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
     this._dragFlag = true
     this._dragStartY = event.pageY
     const pane = this.getPane()
+    const mainPane = pane.getChart().getDrawPaneById(PaneIdConstants.CANDLE)
+    this._mainPaneHeight = mainPane?.getBounding().height ?? 0
     this._topPaneHeight = pane.getTopPane().getBounding().height
     this._bottomPaneHeight = pane.getBottomPane().getBounding().height
   }
@@ -62,6 +91,33 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
 
     // 检查是否允许拖动
     if (!topPane || !bottomPane?.getOptions().dragEnabled) {
+      return
+    }
+
+    const chart = currentPane.getChart()
+    const drawablePaneHeight = chart.getAllDrawPanes().reduce((height, pane) => {
+      return pane.getId() === PaneIdConstants.X_AXIS ? height : height + pane.getBounding().height
+    }, 0)
+
+    if (chart.getChartStore().getPaneResizeMode() === 'main-flex') {
+      const mainPane = chart.getDrawPaneById(PaneIdConstants.CANDLE) as DualYPane | undefined
+      if (!mainPane) {
+        return
+      }
+      const { targetPaneHeight, mainPaneHeight } = calculateMainFlexPaneResize({
+        dragDistance,
+        targetPaneStartHeight: this._bottomPaneHeight,
+        targetPaneMinHeight: bottomPane.getOptions().minHeight,
+        mainPaneStartHeight: this._mainPaneHeight,
+        mainPaneMinHeight: mainPane.getOptions().minHeight
+      })
+
+      bottomPane.setBounding({ height: targetPaneHeight })
+      mainPane.setBounding({ height: mainPaneHeight })
+      bottomPane.updateHeightSpecFromDrag(targetPaneHeight, drawablePaneHeight)
+
+      chart.getChartStore().getActionStore().execute(ActionType.OnPaneDrag, { paneId: currentPane.getId() })
+      chart.adjustPaneViewport(true, true, true, true, true)
       return
     }
 
@@ -95,11 +151,6 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
       reducedPaneMinHeight
     )
     const diffHeight = reducedPaneStartHeight - reducedPaneHeight
-
-    const chart = currentPane.getChart()
-    const drawablePaneHeight = chart.getAllDrawPanes().reduce((height, pane) => {
-      return pane.getId() === PaneIdConstants.X_AXIS ? height : height + pane.getBounding().height
-    }, 0)
 
     // 更新 pane 高度
     reducedPane.setBounding({ height: reducedPaneHeight })
