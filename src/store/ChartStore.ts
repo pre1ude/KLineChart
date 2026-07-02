@@ -9,7 +9,7 @@ import type LoadDataCallback from '../common/LoadDataCallback'
 import { type LoadDataParams, LoadDataType } from '../common/LoadDataCallback'
 import { ActionType } from '../common/Action'
 import { getDefaultCustomApi, type CustomApi, defaultLocale, type DataZoomOptions, type DataZoomSliderOptions, type Options } from '../Options'
-import type { PaneResizeMode } from '../pane/types'
+import { PANE_DEFAULT_HEIGHT, PANE_MIN_HEIGHT, type PaneResizeMode } from '../pane/types'
 import TimeScaleStore from './TimeScaleStore'
 import { TimeScaleModeKind } from './time-scale'
 import {
@@ -76,6 +76,10 @@ export default class ChartStore {
   private _styleTheme: 'dark' | 'light' = 'light'
 
   private _paneResizeMode: PaneResizeMode = 'main-flex'
+
+  private _indicatorPaneDefaultHeight = PANE_DEFAULT_HEIGHT
+
+  private _minIndicatorPaneHeight = PANE_MIN_HEIGHT
 
   private _timeShareBasisPrice: number | undefined
 
@@ -185,9 +189,25 @@ export default class ChartStore {
 
   setOptions(options?: Options): this {
     if (isValid(options)) {
-      const { locale, timezone, styles, customApi, thousandsSeparator, decimalFoldThreshold, paneResizeMode } = options
+      const {
+        locale,
+        timezone,
+        styles,
+        customApi,
+        thousandsSeparator,
+        decimalFoldThreshold,
+        paneResizeMode,
+        indicatorPaneDefaultHeight,
+        minIndicatorPaneHeight
+      } = options
       if (paneResizeMode === 'adjacent' || paneResizeMode === 'main-flex') {
         this._paneResizeMode = paneResizeMode
+      }
+      if (isNumber(indicatorPaneDefaultHeight) && indicatorPaneDefaultHeight > 0) {
+        this._indicatorPaneDefaultHeight = indicatorPaneDefaultHeight
+      }
+      if (isNumber(minIndicatorPaneHeight) && minIndicatorPaneHeight > 0) {
+        this._minIndicatorPaneHeight = minIndicatorPaneHeight
       }
       if (isString(locale)) {
         this._locale = locale
@@ -272,6 +292,14 @@ export default class ChartStore {
 
   getPaneResizeMode(): PaneResizeMode {
     return this._paneResizeMode
+  }
+
+  getIndicatorPaneDefaultHeight(): number {
+    return this._indicatorPaneDefaultHeight
+  }
+
+  getMinIndicatorPaneHeight(): number {
+    return this._minIndicatorPaneHeight
   }
 
   getLocale(): string {

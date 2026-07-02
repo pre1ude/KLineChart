@@ -6,6 +6,7 @@ function createPendingIndicatorChart(ready = true): {
   chart: ChartImp
   addInstance: ReturnType<typeof vi.fn>
   adjustPaneViewport: ReturnType<typeof vi.fn>
+  createPane: ReturnType<typeof vi.fn>
   pane: {
     setHeightSpec: ReturnType<typeof vi.fn>
     setBounding: ReturnType<typeof vi.fn>
@@ -18,18 +19,21 @@ function createPendingIndicatorChart(ready = true): {
   }
   const addInstance = vi.fn(() => new Promise<boolean>(() => {}))
   const adjustPaneViewport = vi.fn()
+  const createPane = vi.fn(() => pane)
 
   Reflect.set(chart, '_chartStore', {
+    getIndicatorPaneDefaultHeight: () => 0.25,
+    getMinIndicatorPaneHeight: () => 80,
     getIndicatorStore: () => ({ addInstance })
   })
-  Reflect.set(chart, '_createPane', vi.fn(() => pane))
+  Reflect.set(chart, '_createPane', createPane)
   Reflect.set(chart, 'getDrawPaneById', vi.fn(() => undefined))
   Reflect.set(chart, 'adjustPaneViewport', adjustPaneViewport)
   if (ready) {
     Reflect.set(chart, '_dataZoomSlider', {})
   }
 
-  return { chart, addInstance, adjustPaneViewport, pane }
+  return { chart, addInstance, adjustPaneViewport, createPane, pane }
 }
 
 describe('ChartImp.createIndicator', () => {
@@ -51,5 +55,29 @@ describe('ChartImp.createIndicator', () => {
     chart.createIndicator('VOL', false, { height: 0.25 })
 
     expect(adjustPaneViewport).not.toHaveBeenCalled()
+  })
+
+  it('uses global indicator pane defaults when pane options omit them', () => {
+    const { chart, createPane, pane } = createPendingIndicatorChart()
+
+    chart.createIndicator('VOL')
+
+    expect(createPane).toHaveBeenCalledWith(expect.any(Function), expect.any(String), {
+      height: 0.25,
+      minHeight: 80
+    })
+    expect(pane.setHeightSpec).toHaveBeenCalledWith({ unit: 'percent', value: 0.25 })
+  })
+
+  it('keeps explicit indicator pane height and min height above global defaults', () => {
+    const { chart, createPane, pane } = createPendingIndicatorChart()
+
+    chart.createIndicator('VOL', false, { height: 120, minHeight: 60 })
+
+    expect(createPane).toHaveBeenCalledWith(expect.any(Function), expect.any(String), {
+      height: 120,
+      minHeight: 60
+    })
+    expect(pane.setHeightSpec).toHaveBeenCalledWith({ unit: 'pixel', value: 120 })
   })
 })

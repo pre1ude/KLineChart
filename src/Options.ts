@@ -75,6 +75,8 @@ export interface DataZoomOptions {
 export interface Options {
   layout?: LayoutChild[]
   paneResizeMode?: PaneResizeMode
+  indicatorPaneDefaultHeight?: number
+  minIndicatorPaneHeight?: number
   locale?: string
   timezone?: string
   styles?: string | DeepPartialStyles

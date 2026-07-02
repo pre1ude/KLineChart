@@ -18,6 +18,24 @@ describe('ChartStore', () => {
     expect(store.getPaneResizeMode()).toBe('adjacent')
   })
 
+  it('uses built-in indicator pane defaults and accepts global overrides', () => {
+    const chart = {
+      adjustPaneViewport: vi.fn()
+    } as unknown as Chart
+
+    const store = new ChartStore(chart)
+    expect(store.getIndicatorPaneDefaultHeight()).toBe(0.1)
+    expect(store.getMinIndicatorPaneHeight()).toBe(30)
+
+    store.setOptions({
+      indicatorPaneDefaultHeight: 120,
+      minIndicatorPaneHeight: 50
+    })
+
+    expect(store.getIndicatorPaneDefaultHeight()).toBe(120)
+    expect(store.getMinIndicatorPaneHeight()).toBe(50)
+  })
+
   it('applies initial auto alignment before the first init data render', () => {
     vi.useFakeTimers()
     const timeoutSpy = vi.spyOn(globalThis, 'setTimeout')

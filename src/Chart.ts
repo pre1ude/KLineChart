@@ -26,7 +26,6 @@ import {
   calculatePaneHeights,
   type PaneOptions,
   PanePosition,
-  PANE_DEFAULT_HEIGHT,
   PANE_DEFAULT_HEIGHT_SPEC,
   PaneIdConstants,
   parsePaneHeight,
@@ -895,9 +894,14 @@ export default class ChartImp implements Chart {
         this._setPaneOptions(paneOptions ?? {}, forceShouldAdjust ?? false)
       }).catch(_ => {})
     } else {
+      const height = paneOptions?.height ?? this._chartStore.getIndicatorPaneDefaultHeight()
+      const resolvedPaneOptions = {
+        ...paneOptions,
+        height,
+        minHeight: paneOptions?.minHeight ?? this._chartStore.getMinIndicatorPaneHeight()
+      }
       realPaneId ??= createId(PaneIdConstants.INDICATOR)
-      const pane = this._createPane(IndicatorPane, realPaneId, paneOptions ?? {})
-      const height = paneOptions?.height ?? PANE_DEFAULT_HEIGHT
+      const pane = this._createPane(IndicatorPane, realPaneId, resolvedPaneOptions)
       const heightSpec = this._parsePaneHeight(height, 'createIndicator') ??
         PANE_DEFAULT_HEIGHT_SPEC
       pane.setHeightSpec(heightSpec)
