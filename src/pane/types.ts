@@ -57,7 +57,7 @@ export interface PaneOptions {
 
 export const PANE_MIN_HEIGHT = 30
 
-export const PANE_DEFAULT_HEIGHT = 0.2
+export const PANE_DEFAULT_HEIGHT = 0.15
 
 export function parsePaneHeight(height: number): PaneHeightSpec | null {
   if (!Number.isFinite(height) || height <= 0) {
