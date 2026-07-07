@@ -66,17 +66,17 @@ export interface ConvertFinder {
 
 export type ResizeAnchor = 'domainFrom' | 'domainTo'
 
-// Layout refresh is a small transaction: semantic entry points choose layout
-// stages and whether to render, then passes run until geometry settles.
+// Layout refresh is state-derived work: semantic entry points merge pending
+// requests, then passes run until geometry settles before repainting.
 const MAX_LAYOUT_DRAIN_PASSES = 10
 
 type LayoutSettledCallback = () => void
 
-type LayoutTransaction = {
+type LayoutRequest = {
   stages: LayoutStage
   resizeAnchor?: ResizeAnchor
-  afterLayoutSettled?: LayoutSettledCallback
-  render?: boolean
+  afterLayoutSettledCallbacks: LayoutSettledCallback[]
+  render: boolean
 }
 
 const enum LayoutStage {
@@ -209,8 +209,8 @@ export default class ChartImp implements Chart {
   private _xAxisPane!: XAxisPane
   private readonly _separatorPanes = new Map<DrawPane, SeparatorPane>()
   private _layoutFrameId = DEFAULT_REQUEST_ID
-  private _isRunningLayoutTransaction = false
-  private _queuedLayoutTransactions: LayoutTransaction[] = []
+  private _isFlushingLayout = false
+  private _pendingLayoutRequest?: LayoutRequest
 
   constructor(container: HTMLElement, options?: Options) {
     this.id = createId('chart_')
@@ -549,20 +549,19 @@ export default class ChartImp implements Chart {
    * Layout refresh pipeline.
    *
    * Keep external callers on the semantic entry points below. This block is the
-   * boundary where semantic refresh reasons become layout transactions, passes
+   * boundary where semantic refresh reasons become layout requests, passes
    * converge geometry, and panes repaint only after layout settles.
    */
   refreshViewportLayout(afterLayoutSettled?: LayoutSettledCallback): void {
-    this._runSynchronousLayoutTransaction({
-      stages: VIEWPORT_LAYOUT_STAGES,
+    this._runSynchronousLayoutRequest(this._createLayoutRequest(VIEWPORT_LAYOUT_STAGES, {
       afterLayoutSettled,
       render: true
-    })
+    }))
   }
 
   requestViewportLayout(): void {
-    if (this._isRunningLayoutTransaction) {
-      this._queueViewportLayoutTransaction()
+    this._mergeLayoutRequest(this._createViewportLayoutRequest())
+    if (this._isFlushingLayout) {
       return
     }
     const layoutFrameId = this._layoutFrameId ?? DEFAULT_REQUEST_ID
@@ -574,7 +573,7 @@ export default class ChartImp implements Chart {
         return
       }
       this._layoutFrameId = DEFAULT_REQUEST_ID
-      this._runLayoutTransaction(this._createViewportLayoutTransaction())
+      this._flushPendingLayout()
     })
     this._layoutFrameId = frameId
   }
@@ -588,15 +587,14 @@ export default class ChartImp implements Chart {
   }
 
   refreshResizeLayout(anchor?: ResizeAnchor): void {
-    this._runSynchronousLayoutTransaction({
-      stages: LayoutStage.VerticalLayout | EXACT_LAYOUT_STAGES,
+    this._runSynchronousLayoutRequest(this._createLayoutRequest(LayoutStage.VerticalLayout | EXACT_LAYOUT_STAGES, {
       resizeAnchor: anchor,
       render: true
-    })
+    }))
   }
 
   private _refreshInitialLayout(): void {
-    this._runSynchronousLayoutTransaction({ stages: INITIAL_LAYOUT_STAGES, render: true })
+    this._runSynchronousLayoutRequest(this._createLayoutRequest(INITIAL_LAYOUT_STAGES, { render: true }))
   }
 
   private _refreshExactLayout(shouldApplyVerticalLayout: boolean = true): void {
@@ -604,39 +602,82 @@ export default class ChartImp implements Chart {
     if (shouldApplyVerticalLayout) {
       stages |= LayoutStage.VerticalLayout
     }
-    this._runSynchronousLayoutTransaction({ stages, render: true })
+    this._runSynchronousLayoutRequest(this._createLayoutRequest(stages, { render: true }))
   }
 
   private _refreshPaneViews(): void {
     this._renderLayoutNow()
   }
 
-  private _runSynchronousLayoutTransaction(transaction: LayoutTransaction): void {
+  private _runSynchronousLayoutRequest(request: LayoutRequest): void {
     this._cancelPendingLayoutFrame()
-    this._runLayoutTransaction(transaction)
+    this._mergeLayoutRequest(request)
+    this._flushPendingLayout()
   }
 
-  private _queueLayoutTransaction(transaction: LayoutTransaction): void {
-    this._queuedLayoutTransactions ??= []
-    this._queuedLayoutTransactions.push(transaction)
+  private _createViewportLayoutRequest(): LayoutRequest {
+    return this._createLayoutRequest(VIEWPORT_LAYOUT_STAGES, { render: true })
   }
 
-  private _queueViewportLayoutTransaction(): void {
-    if (this._queuedLayoutTransactions?.some(transaction => this._isPlainViewportLayoutTransaction(transaction)) === true) {
+  private _createLayoutRequest(
+    stages: LayoutStage,
+    options: {
+      resizeAnchor?: ResizeAnchor
+      afterLayoutSettled?: LayoutSettledCallback
+      render?: boolean
+    } = {}
+  ): LayoutRequest {
+    const afterLayoutSettledCallbacks = options.afterLayoutSettled === undefined
+      ? []
+      : [options.afterLayoutSettled]
+    return {
+      stages,
+      resizeAnchor: options.resizeAnchor,
+      afterLayoutSettledCallbacks,
+      render: options.render === true
+    }
+  }
+
+  private _mergeLayoutRequest(request: LayoutRequest): void {
+    if (this._pendingLayoutRequest === undefined) {
+      this._pendingLayoutRequest = this._cloneLayoutRequest(request)
       return
     }
-    this._queueLayoutTransaction(this._createViewportLayoutTransaction())
+    this._pendingLayoutRequest = this._mergeLayoutRequests(this._pendingLayoutRequest, request)
   }
 
-  private _createViewportLayoutTransaction(): LayoutTransaction {
-    return { stages: VIEWPORT_LAYOUT_STAGES, render: true }
+  private _cloneLayoutRequest(request: LayoutRequest): LayoutRequest {
+    return {
+      stages: request.stages,
+      resizeAnchor: request.resizeAnchor,
+      afterLayoutSettledCallbacks: [...request.afterLayoutSettledCallbacks],
+      render: request.render
+    }
   }
 
-  private _isPlainViewportLayoutTransaction(transaction: LayoutTransaction): boolean {
-    return transaction.stages === VIEWPORT_LAYOUT_STAGES &&
-      transaction.render === true &&
-      transaction.resizeAnchor === undefined &&
-      transaction.afterLayoutSettled === undefined
+  private _mergeLayoutRequests(baseRequest: LayoutRequest, request: LayoutRequest): LayoutRequest {
+    const mergedRequest = this._cloneLayoutRequest(baseRequest)
+    mergedRequest.stages |= request.stages
+    if (request.resizeAnchor !== undefined) {
+      mergedRequest.resizeAnchor = request.resizeAnchor
+    }
+    mergedRequest.afterLayoutSettledCallbacks.push(...request.afterLayoutSettledCallbacks)
+    mergedRequest.render = mergedRequest.render || request.render
+    return mergedRequest
+  }
+
+  private _mergeWithPendingAfterCurrent(carriedRequest: LayoutRequest): LayoutRequest {
+    const pendingRequest = this._consumePendingLayoutRequest()
+    if (pendingRequest === undefined) {
+      return carriedRequest
+    }
+    return this._mergeLayoutRequests(carriedRequest, pendingRequest)
+  }
+
+  private _consumePendingLayoutRequest(): LayoutRequest | undefined {
+    const request = this._pendingLayoutRequest
+    this._pendingLayoutRequest = undefined
+    return request
   }
 
   private _cancelPendingLayoutFrame(): void {
@@ -648,48 +689,56 @@ export default class ChartImp implements Chart {
     this._layoutFrameId = DEFAULT_REQUEST_ID
   }
 
-  private _runLayoutTransaction(transaction: LayoutTransaction): void {
-    if (this._isRunningLayoutTransaction) {
-      this._queueLayoutTransaction(transaction)
+  private _flushPendingLayout(): void {
+    if (this._isFlushingLayout) {
       return
     }
-    this._isRunningLayoutTransaction = true
+    this._isFlushingLayout = true
     let drainPasses = 0
-    let currentTransaction: LayoutTransaction | undefined = transaction
+    let currentRequest = this._consumePendingLayoutRequest()
     try {
-      while (currentTransaction !== undefined) {
+      while (currentRequest !== undefined) {
         if (drainPasses >= MAX_LAYOUT_DRAIN_PASSES) {
-          logWarn('layout', 'transaction', 'layout transaction did not settle before the drain pass limit.')
-          this._queuedLayoutTransactions = []
+          logWarn('layout', 'request', 'layout request did not settle before the drain pass limit.')
+          this._pendingLayoutRequest = undefined
           break
         }
         drainPasses++
-        const nextStages = this._runLayoutPass(currentTransaction.stages, currentTransaction.resizeAnchor)
+        const nextStages = this._runLayoutPass(currentRequest.stages, currentRequest.resizeAnchor)
         if (nextStages !== LayoutStage.None) {
-          currentTransaction = {
+          currentRequest = this._mergeWithPendingAfterCurrent({
             stages: nextStages,
-            resizeAnchor: currentTransaction.resizeAnchor,
-            afterLayoutSettled: currentTransaction.afterLayoutSettled,
-            render: currentTransaction.render
-          }
+            resizeAnchor: currentRequest.resizeAnchor,
+            afterLayoutSettledCallbacks: [...currentRequest.afterLayoutSettledCallbacks],
+            render: currentRequest.render
+          })
           continue
         }
-        if (this._runLayoutSettledCallback(currentTransaction.afterLayoutSettled)) {
-          currentTransaction = this._dequeueLayoutTransaction()
+        if (this._pendingLayoutRequest !== undefined) {
+          currentRequest = this._mergeWithPendingAfterCurrent({
+            stages: LayoutStage.None,
+            afterLayoutSettledCallbacks: [...currentRequest.afterLayoutSettledCallbacks],
+            render: currentRequest.render
+          })
           continue
         }
-        if (currentTransaction.render === true) {
+        this._runLayoutSettledCallbacks(currentRequest.afterLayoutSettledCallbacks)
+        if (this._pendingLayoutRequest !== undefined) {
+          currentRequest = this._mergeWithPendingAfterCurrent({
+            stages: LayoutStage.None,
+            afterLayoutSettledCallbacks: [],
+            render: currentRequest.render
+          })
+          continue
+        }
+        if (currentRequest.render) {
           this._renderLayoutNow()
         }
-        currentTransaction = this._dequeueLayoutTransaction()
+        currentRequest = this._consumePendingLayoutRequest()
       }
     } finally {
-      this._isRunningLayoutTransaction = false
+      this._isFlushingLayout = false
     }
-  }
-
-  private _dequeueLayoutTransaction(): LayoutTransaction | undefined {
-    return this._queuedLayoutTransactions?.shift()
   }
 
   private _runLayoutPass(stages: LayoutStage, resizeAnchor?: ResizeAnchor): LayoutStage {
@@ -699,12 +748,10 @@ export default class ChartImp implements Chart {
     return this._applyAxisAndHorizontalLayout(stages, resizeAnchor)
   }
 
-  private _runLayoutSettledCallback(callback?: LayoutSettledCallback): boolean {
-    if (callback === undefined) {
-      return false
-    }
-    callback()
-    return (this._queuedLayoutTransactions?.length ?? 0) > 0
+  private _runLayoutSettledCallbacks(callbacks: LayoutSettledCallback[]): void {
+    callbacks.forEach(callback => {
+      callback()
+    })
   }
 
   private _applyAxisAndHorizontalLayout(stages: LayoutStage, resizeAnchor?: ResizeAnchor): LayoutStage {
@@ -1593,7 +1640,7 @@ export default class ChartImp implements Chart {
 
   destroy(): void {
     this._cancelPendingLayoutFrame()
-    this._queuedLayoutTransactions = []
+    this._pendingLayoutRequest = undefined
     this._chartStore.destroy()
     this._chartEvent.destroy()
     this._drawPanes.forEach(pane => {

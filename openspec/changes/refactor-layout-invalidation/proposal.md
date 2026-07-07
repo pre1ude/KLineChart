@@ -2,14 +2,14 @@
 
 Chart layout refreshes previously relied on direct calls to `adjustPaneViewport(...)` from chart, store, event, and widget code. The boolean argument combinations are difficult to read and make the layout dependency cycle between pane size, axis ticks, axis width, visible range, and repaint harder to reason about.
 
-This change introduces semantic layout refresh entry points so callers describe what changed, while `Chart` remains the single owner of the low-level layout transaction and render pipeline.
+This change introduces semantic layout refresh entry points so callers describe what changed, while `Chart` remains the single owner of the low-level layout request scheduler and render pipeline.
 
 ## What Changes
 
 - Add semantic chart-level methods for common layout refresh reasons such as viewport changes, pane layout changes, metric/style changes, and resize.
-- Add internal layout stage flags and a shared layout transaction runner that translates refresh reasons into layout passes.
+- Add internal layout stage flags and a shared coalescing layout request scheduler that translates refresh reasons into layout passes.
 - Keep the existing synchronous behavior and remove the legacy `adjustPaneViewport(...)` boolean adapter.
-- Move main-width convergence into the shared layout transaction so data, axis, pane, and resize refreshes use the same convergence behavior.
+- Move main-width convergence into the shared layout request pipeline so data, axis, pane, and resize refreshes use the same convergence behavior.
 - Separate layout stages from render intent so panes repaint only after layout settles.
 - Preserve current auto Y-axis width during viewport-only refreshes unless labels need more width; allow exact shrink only in full metric/layout refreshes.
 - Replace non-`Chart` callers that pass magic boolean combinations with semantic methods.
