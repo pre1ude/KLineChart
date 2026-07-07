@@ -638,7 +638,7 @@ export class DataZoomSlider {
 
   private setRange(start: number, end: number): void {
     const range = toOrderedRange(start, end)
-    const changed = this._chart.getChartStore().getTimeScaleStore().setDataZoomRange(range.start, range.end)
+    const changed = this._chart.getChartStore().getTimeScaleStore().setDataZoomRange(range.start, range.end, true)
     if (!changed) {
       this.update()
     }
@@ -650,7 +650,7 @@ export class DataZoomSlider {
 
   private moveRange(start: number, end: number, delta: number, handleIndex: 'all' | 0 | 1): PercentRange | undefined {
     const timeScaleStore = this._chart.getChartStore().getTimeScaleStore()
-    const result = timeScaleStore.setDataZoomRangeByMove(start, end, delta, handleIndex)
+    const result = timeScaleStore.setDataZoomRangeByMove(start, end, delta, handleIndex, true)
     if (result == null) {
       this.update()
       return undefined

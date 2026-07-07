@@ -72,10 +72,14 @@ export default class TimeScaleStore {
     this._mode = this.createMode(TimeScaleModeKind.KLine)
   }
 
-  private _refreshTimeScale(): void {
+  private _refreshTimeScale(requestLayout: boolean = false): void {
     this.adjustVisibleRange()
     this._chartStore.getTooltipStore().recalculateCrosshair(true)
-    this._chartStore.getChart().adjustPaneViewport(false, true, true, true)
+    if (requestLayout) {
+      this._chartStore.getChart().requestViewportLayout()
+    } else {
+      this._chartStore.getChart().refreshViewportLayout()
+    }
   }
 
   private createMode(kind: TimeScaleModeKind): TimeScaleMode {
@@ -118,18 +122,18 @@ export default class TimeScaleStore {
     return 100
   }
 
-  setDataZoomRange(start: number, end: number): boolean {
+  setDataZoomRange(start: number, end: number, requestLayout: boolean = false): boolean {
     if (!(this._mode instanceof DataZoomTimeScaleMode)) {
       return false
     }
     if (!this._mode.setRange(start, end)) {
       return false
     }
-    this._refreshTimeScale()
+    this._refreshTimeScale(requestLayout)
     return true
   }
 
-  setDataZoomRangeByMove(start: number, end: number, delta: number, handleIndex: DataZoomRangeMoveHandle): DataZoomRangeMoveResult | undefined {
+  setDataZoomRangeByMove(start: number, end: number, delta: number, handleIndex: DataZoomRangeMoveHandle, requestLayout: boolean = false): DataZoomRangeMoveResult | undefined {
     if (!(this._mode instanceof DataZoomTimeScaleMode)) {
       return undefined
     }
@@ -137,7 +141,7 @@ export default class TimeScaleStore {
     if (!result.changed) {
       return result
     }
-    this._refreshTimeScale()
+    this._refreshTimeScale(requestLayout)
     return result
   }
 
@@ -296,7 +300,7 @@ export default class TimeScaleStore {
     return calcTimeScaleHorizontalInset(this._chartStore.getStyles())
   }
 
-  scroll(distance: number): void {
+  scroll(distance: number, requestLayout: boolean = false): void {
     if (!this._scrollEnabled) {
       return
     }
@@ -304,7 +308,7 @@ export default class TimeScaleStore {
     if (!this._mode.scroll(distance)) {
       return
     }
-    this._refreshTimeScale()
+    this._refreshTimeScale(requestLayout)
     const realDistance = Math.round(prevOffsetRight - this._offsetRight)
     if (realDistance !== 0) {
       this._chartStore.getActionStore().execute(ActionType.OnScroll, { distance: realDistance })
@@ -320,7 +324,7 @@ export default class TimeScaleStore {
     return Math.floor(this._xScale.invert(x) + 0.5)
   }
 
-  zoom(scaleDelta: number, xCoord?: number): void {
+  zoom(scaleDelta: number, xCoord?: number, requestLayout: boolean = false): void {
     if (!this._zoomEnabled) {
       return
     }
@@ -328,7 +332,7 @@ export default class TimeScaleStore {
     if (realScaleRatio === undefined) {
       return
     }
-    this._refreshTimeScale()
+    this._refreshTimeScale(requestLayout)
 
     if (realScaleRatio !== 1) {
       this._chartStore.getActionStore().execute(ActionType.OnZoom, { scale: realScaleRatio })

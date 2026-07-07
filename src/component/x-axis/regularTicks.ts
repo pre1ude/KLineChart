@@ -77,7 +77,8 @@ function createRegularCoreTicks(
     .map(item => ({
       text: item.text,
       coord: convertToPixel(item.dataIndex),
-      value: item.timestamp
+      value: item.timestamp,
+      dataIndex: item.dataIndex
     }))
 }
 
@@ -230,7 +231,8 @@ function createBoundaryXAxisTicks(
     return {
       text,
       coord: convertToPixel(index),
-      value: timestamp
+      value: timestamp,
+      dataIndex: index
     }
   })
 }

@@ -64,7 +64,7 @@ export function createTimeShareXAxisTicks(
     } else if (shouldShowSessionGap && isIntradayTimeShareSessionBoundaryTick(index, tickMinutes, sessionGap)) {
       gridLineLevel = GridLineLevel.Primary
     }
-    return { text, coord: convertToPixel(tickIndex), value: timestamp ?? tickIndex, priority, gridLineLevel }
+    return { text, coord: convertToPixel(tickIndex), value: timestamp ?? tickIndex, dataIndex: tickIndex, priority, gridLineLevel }
   })
 }
 

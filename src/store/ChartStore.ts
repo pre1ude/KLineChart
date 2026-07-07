@@ -164,12 +164,14 @@ export default class ChartStore {
    */
   private _dataReadyCallbacks: Array<() => void> = []
 
+  private _afterNextDataLayout?: () => void
+
   constructor(chart: Chart, options?: Options) {
     this._chart = chart
     this.setOptions(options)
 
     this._taskScheduler = new TaskScheduler(() => {
-      this._chart.adjustPaneViewport(false, true, true, true)
+      this._refreshViewportLayoutAfterDataChange()
       // 执行待处理的回调
       this._executeDataReadyCallbacks()
     }, ({ key, error }) => { console.error(`Task ${key} error:`, error) })
@@ -185,6 +187,12 @@ export default class ChartStore {
         console.error('Data ready callback error:', error)
       }
     })
+  }
+
+  private _refreshViewportLayoutAfterDataChange(): void {
+    const afterNextDataLayout = this._afterNextDataLayout
+    this._afterNextDataLayout = undefined
+    this._chart.refreshViewportLayout(afterNextDataLayout)
   }
 
   setOptions(options?: Options): this {
@@ -549,7 +557,9 @@ export default class ChartStore {
           this._forwardMore = more ?? true
           this._timeScaleStore.resetOffsetRightDistance()
           this._timeScaleStore.resetDataZoomRange()
-          this._timeScaleStore.autoInitialAlignment(false)
+          this._afterNextDataLayout = () => {
+            this._timeScaleStore.autoInitialAlignment()
+          }
           adjustFlag = true
           break
         }
@@ -607,7 +617,7 @@ export default class ChartStore {
         const filterIndicators = this._indicatorStore.getIndicatorsByFilter({})
 
         if (filterIndicators.length > 0) {
-          // 有指标需要计算：先计算指标，TaskScheduler 完成后会自动调用 adjustPaneViewport
+          // 有指标需要计算：先计算指标，TaskScheduler 完成后会自动刷新数据视口
           // 这样确保 calcRange() 使用的是最新的 indicator.result
           this._indicatorStore.calcInstance(filterIndicators)
           // 将回调加入队列，等待指标计算完成
@@ -616,7 +626,7 @@ export default class ChartStore {
           }
         } else {
           // 没有指标：直接调整视口
-          this._chart.adjustPaneViewport(false, true, true, true)
+          this._refreshViewportLayoutAfterDataChange()
           // 立即执行回调
           callback?.()
         }
@@ -643,7 +653,7 @@ export default class ChartStore {
         this._dataReadyCallbacks.push(callback)
       }
     } else {
-      this._chart.adjustPaneViewport(false, true, true, true)
+      this._refreshViewportLayoutAfterDataChange()
       callback?.()
     }
     this._actionStore.execute(ActionType.OnDataReady, undefined)

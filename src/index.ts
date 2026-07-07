@@ -1,4 +1,4 @@
-import Chart, { DomPosition } from './Chart'
+import ChartImp, { DomPosition, type Chart } from './Chart'
 import { type Options, FormatDateType, LayoutChildType } from './Options'
 
 // Enums and Constants
@@ -66,7 +66,7 @@ import { registerStyles } from './extension/styles/index'
 import { registerXAxis } from './extension/x-axis'
 import { registerYAxis } from './extension/y-axis'
 
-const instances = new Map<string, Chart>()
+const instances = new Map<string, ChartImp>()
 let chartBaseId = 1
 
 /**
@@ -100,7 +100,7 @@ function init(ds: HTMLElement | string, options?: Options): Chart {
     return chart
   }
   const id = `k_line_chart_${chartBaseId++}`
-  chart = new Chart(dom, options)
+  chart = new ChartImp(dom, options)
   chart.id = id
   dom.setAttribute('k-line-chart-id', id)
   instances.set(id, chart)
@@ -113,16 +113,13 @@ function init(ds: HTMLElement | string, options?: Options): Chart {
  */
 function dispose(dcs: HTMLElement | Chart | string): void {
   let id: string | null
-  if (dcs instanceof Chart) {
-    id = dcs.id
-  } else {
-    let dom: HTMLElement | null
-    if (isString(dcs)) {
-      dom = document.getElementById(dcs)
-    } else {
-      dom = dcs
-    }
+  if (isString(dcs)) {
+    const dom = document.getElementById(dcs)
     id = dom?.getAttribute('k-line-chart-id') ?? null
+  } else if (isFunction((dcs as HTMLElement).getAttribute)) {
+    id = (dcs as HTMLElement).getAttribute('k-line-chart-id') ?? null
+  } else {
+    id = dcs.id
   }
   if (id !== null) {
     instances.get(id)?.destroy()

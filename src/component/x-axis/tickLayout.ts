@@ -6,7 +6,10 @@ export const X_AXIS_DAY_START_TICK_PRIORITY = 1
 const X_AXIS_MIN_TICK_PRIORITY = 2
 const X_AXIS_MAX_TICK_PRIORITY = 3
 
-export type XAxisTick = AxisTick & { priority?: number }
+export type XAxisTick = AxisTick & {
+  dataIndex?: number
+  priority?: number
+}
 
 export type XAxisTickLayoutOptions = {
   showMinLabel?: boolean
@@ -23,7 +26,7 @@ export function resolveXAxisTickLayoutOptions(
   }
 }
 
-export function mergeBoundaryXAxisTicks(ticks: AxisTick[], boundaryTicks: AxisTick[]): AxisTick[] {
+export function mergeBoundaryXAxisTicks(ticks: XAxisTick[], boundaryTicks: XAxisTick[]): XAxisTick[] {
   if (boundaryTicks.length === 0) {
     return ticks
   }

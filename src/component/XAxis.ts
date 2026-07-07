@@ -32,16 +32,25 @@ export default abstract class XAxisImp extends AxisImp {
   private _autoCalcTickFlag = true
   private _range: VisibleRange = { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
   private _prevRange: VisibleRange = { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
-  private _ticks: AxisTick[] = []
+  private _prevBoundingWidth = 0
+  private _prevBarSpace = 0
+  private _ticks: XAxisTick[] = []
 
   buildTicks(force: boolean): boolean {
     if (this._autoCalcTickFlag) {
       this._range = this.calcRange()
     }
-    if (this._prevRange.from !== this._range.from || this._prevRange.to !== this._range.to || force) {
+    const chart = this.getParent().getPane().getChart()
+    const chartStore = chart.getChartStore()
+    const boundingWidth = this.getSelfBounding().width
+    const barSpace = chartStore.getTimeScaleStore().getBarSpace().bar
+    const indexRangeChanged = this._prevRange.from !== this._range.from || this._prevRange.to !== this._range.to
+    const domainRangeChanged = this._prevRange.domainFrom !== this._range.domainFrom || this._prevRange.domainTo !== this._range.domainTo
+    const metricChanged = this._prevBoundingWidth !== boundingWidth || this._prevBarSpace !== barSpace
+    if (force || indexRangeChanged || metricChanged) {
       this._prevRange = this._range
-      const chart = this.getParent().getPane().getChart()
-      const chartStore = chart.getChartStore()
+      this._prevBoundingWidth = boundingWidth
+      this._prevBarSpace = barSpace
       const isTimeShare = chartStore.getIsTimeShare()
       const layoutOptions = isTimeShare
         ? resolveXAxisTickLayoutOptions(chart.getStyles().xAxis, false)
@@ -58,6 +67,12 @@ export default abstract class XAxisImp extends AxisImp {
       })
       this._ticks = this._filterOverlappedTicks(ticks, layoutOptions)
       return true
+    }
+    if (domainRangeChanged) {
+      if (!this._repositionTicks()) {
+        return this.buildTicks(true)
+      }
+      this._prevRange = this._range
     }
     return false
   }
@@ -120,12 +135,23 @@ export default abstract class XAxisImp extends AxisImp {
     return optimalTicks
   }
 
-  private _filterOverlappedTicks(ticks: XAxisTick[], options?: XAxisTickLayoutOptions): AxisTick[] {
+  private _filterOverlappedTicks(ticks: XAxisTick[], options?: XAxisTickLayoutOptions): XAxisTick[] {
     const tickTextStyles = this.getParent().getPane().getChart().getStyles().xAxis.tickText
     const font = createFont(tickTextStyles.size, tickTextStyles.weight, tickTextStyles.fontFamily)
     const canvasWidth = this.getSelfBounding().width
     const widths = measureXAxisTickWidths(ticks, text => calcTextWidth(text, font))
     return filterOverlappedXAxisTicks(ticks, widths, canvasWidth, options)
+  }
+
+  private _repositionTicks(): boolean {
+    if (this._ticks.some(tick => tick.dataIndex === undefined)) {
+      return false
+    }
+    this._ticks = this._ticks.map(tick => ({
+      ...tick,
+      coord: this.convertToPixel(tick.dataIndex as number)
+    }))
+    return true
   }
 
   override getAutoSize(): number {

@@ -16,6 +16,7 @@ import { createDom } from './common/utils/dom'
 import { initCanvas } from './common/utils/canvas'
 import { isString, isArray, isValid, isNumber } from './common/utils/typeChecks'
 import { logWarn } from './common/utils/logger'
+import { cancelAnimationFrame, DEFAULT_REQUEST_ID, requestAnimationFrame } from './common/utils/compatible'
 import { LoadDataType } from './common/LoadDataCallback'
 import ChartStore from './store/ChartStore'
 import CandlePane from './pane/CandlePane'
@@ -64,6 +65,43 @@ export interface ConvertFinder {
 }
 
 export type ResizeAnchor = 'domainFrom' | 'domainTo'
+
+// Layout refresh is intentionally modeled in three layers:
+// semantic refresh methods describe why layout is dirty, invalidation masks
+// describe what low-level stages must run, and the drain pass applies stages
+// until re-entrant invalidations settle before repainting.
+const MAX_LAYOUT_DRAIN_PASSES = 10
+
+type LayoutSettledCallback = () => void
+
+const enum LayoutInvalidation {
+  None = 0,
+  VerticalLayout = 1 << 0,
+  HorizontalLayout = 1 << 1,
+  UpdatePane = 1 << 2,
+  AxisTicks = 1 << 3,
+  ForceAxisTicks = 1 << 4,
+  AllowAxisWidthShrink = 1 << 5
+}
+
+const VIEWPORT_LAYOUT_INVALIDATION =
+  LayoutInvalidation.HorizontalLayout |
+  LayoutInvalidation.UpdatePane |
+  LayoutInvalidation.AxisTicks
+
+const EXACT_LAYOUT_INVALIDATION =
+  LayoutInvalidation.HorizontalLayout |
+  LayoutInvalidation.UpdatePane |
+  LayoutInvalidation.AxisTicks |
+  LayoutInvalidation.ForceAxisTicks |
+  LayoutInvalidation.AllowAxisWidthShrink
+
+const INITIAL_LAYOUT_INVALIDATION =
+  LayoutInvalidation.VerticalLayout |
+  LayoutInvalidation.HorizontalLayout |
+  LayoutInvalidation.UpdatePane |
+  LayoutInvalidation.AxisTicks |
+  LayoutInvalidation.ForceAxisTicks
 
 export interface Chart {
   id: string
@@ -169,6 +207,11 @@ export default class ChartImp implements Chart {
   private _candlePane?: CandlePane
   private _xAxisPane!: XAxisPane
   private readonly _separatorPanes = new Map<DrawPane, SeparatorPane>()
+  private _pendingLayoutInvalidation = LayoutInvalidation.None
+  private _pendingLayoutResizeAnchor?: ResizeAnchor
+  private _isFlushingLayout = false
+  private _layoutFrameId = DEFAULT_REQUEST_ID
+  private _layoutSettledCallbacks: LayoutSettledCallback[] = []
 
   constructor(container: HTMLElement, options?: Options) {
     this.id = createId('chart_')
@@ -194,7 +237,7 @@ export default class ChartImp implements Chart {
     this._chartStore = new ChartStore(this, options)
     this._initPanes(options)
     this._dataZoomSlider = new DataZoomSlider(this._chartContainer, this)
-    this.adjustPaneViewport(true, true, true)
+    this._refreshInitialLayout()
   }
 
   private _initPanes(options?: Options): void {
@@ -325,7 +368,7 @@ export default class ChartImp implements Chart {
     return pane
   }
 
-  private _measurePaneHeight(): void {
+  private _applyVerticalLayout(): void {
     const totalHeight = Math.floor(this._container.clientHeight)
     const separatorSize = this._chartStore.getStyles().separator.size
     const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
@@ -369,7 +412,7 @@ export default class ChartImp implements Chart {
 
   // todo read the pane axisOptions
   // todo deprecated partial of yAxis style
-  private _measurePaneWidth(resizeAnchor?: ResizeAnchor): void {
+  private _applyHorizontalLayout(resizeAnchor?: ResizeAnchor, allowAxisWidthShrink: boolean = true): boolean {
     const totalWidth = Math.floor(this._container.clientWidth)
     const styles = this._chartStore.getStyles()
     const yAxisStyles = styles.yAxis
@@ -382,8 +425,15 @@ export default class ChartImp implements Chart {
     let mainLeft = 0
     this._drawPanes.forEach(pane => {
       if (pane.getId() !== PaneIdConstants.X_AXIS) {
-        yLeftAxisWidth = Math.max(yLeftAxisWidth, (pane as DualYPane).getYLeftAxisWidget()?.getAxisComponent().getAutoSize() ?? 0)
-        yRightAxisWidth = Math.max(yRightAxisWidth, (pane as DualYPane).getYRightAxisWidget()?.getAxisComponent().getAutoSize() ?? 0)
+        const dualYPane = pane as DualYPane
+        const leftAxisWidget = dualYPane.getYLeftAxisWidget()
+        const rightAxisWidget = dualYPane.getYRightAxisWidget()
+        const leftAutoSize = leftAxisWidget?.getAxisComponent().getAutoSize() ?? 0
+        const rightAutoSize = rightAxisWidget?.getAxisComponent().getAutoSize() ?? 0
+        const leftCurrentWidth = yAxisStyles.size === 'auto' ? leftAxisWidget?.getBounding().width ?? 0 : 0
+        const rightCurrentWidth = yAxisStyles.size === 'auto' ? rightAxisWidget?.getBounding().width ?? 0 : 0
+        yLeftAxisWidth = Math.max(yLeftAxisWidth, allowAxisWidthShrink ? leftAutoSize : Math.max(leftAutoSize, leftCurrentWidth))
+        yRightAxisWidth = Math.max(yRightAxisWidth, allowAxisWidthShrink ? rightAutoSize : Math.max(rightAutoSize, rightCurrentWidth))
       }
     })
     if (yLeftAxisWidth > totalWidth) {
@@ -440,6 +490,7 @@ export default class ChartImp implements Chart {
       pane.setBounding(paneBounding, mainBounding, yLeftAxisBounding, yRightAxisBounding)
     })
     this._dataZoomSlider.setLayout(mainBounding)
+    return mainWidth !== prevMainWidth
   }
 
   private _setPaneOptions(options: PaneOptions, forceShouldAdjust: boolean): void {
@@ -468,7 +519,7 @@ export default class ChartImp implements Chart {
         }
         pane.setOptions(options)
         if (shouldAdjust) {
-          this.adjustPaneViewport(shouldMeasureHeight, true, true, true, true)
+          this._refreshExactLayout(shouldMeasureHeight)
         }
       }
     }
@@ -495,45 +546,193 @@ export default class ChartImp implements Chart {
 
   getAllSeparatorPanes(): Map<DrawPane, SeparatorPane> { return this._separatorPanes }
 
-  adjustPaneViewport(
-    shouldMeasureHeight: boolean,
-    shouldMeasureWidth: boolean,
-    shouldUpdate: boolean,
-    shouldAdjustYAxis?: boolean,
-    shouldForceAdjustYAxis?: boolean,
-    resizeAnchor?: ResizeAnchor
-  ): void {
-    if (shouldMeasureHeight) {
-      this._measurePaneHeight()
-    }
-    let forceMeasureWidth = shouldMeasureWidth
-    const adjustYAxis = shouldAdjustYAxis ?? false
-    const forceAdjustYAxis = shouldForceAdjustYAxis ?? false
-    if (adjustYAxis || forceAdjustYAxis) {
-      this._drawPanes.forEach(pane => {
-        let adjust = false
-        if (pane.getId() === PaneIdConstants.X_AXIS) {
-          adjust = (pane.getMainWidget() as XAxisWidget).getAxisComponent().buildTicks(forceAdjustYAxis)
-        } else {
-          const leftAdjust = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent().buildTicks(forceAdjustYAxis)
-          const rightAdjust = (pane as DualYPane).getYRightAxisWidget().getAxisComponent().buildTicks(forceAdjustYAxis)
-          adjust = leftAdjust || rightAdjust
-        }
+  /**
+   * Layout refresh pipeline.
+   *
+   * Keep external callers on the semantic entry points below. This block is the
+   * boundary where semantic refresh reasons become low-level invalidation masks,
+   * pending masks are merged, and drain passes converge layout before repaint.
+   */
+  refreshViewportLayout(afterLayoutSettled?: LayoutSettledCallback): void {
+    this._invalidateLayout(VIEWPORT_LAYOUT_INVALIDATION, undefined, afterLayoutSettled)
+  }
 
-        if (!forceMeasureWidth) {
-          forceMeasureWidth = adjust
+  requestViewportLayout(): void {
+    this._requestLayout(VIEWPORT_LAYOUT_INVALIDATION)
+  }
+
+  refreshPaneLayout(): void {
+    this._refreshExactLayout()
+  }
+
+  refreshMetricLayout(): void {
+    this._refreshExactLayout()
+  }
+
+  refreshResizeLayout(anchor?: ResizeAnchor): void {
+    this._invalidateLayout(
+      LayoutInvalidation.VerticalLayout | EXACT_LAYOUT_INVALIDATION,
+      anchor
+    )
+  }
+
+  private _refreshInitialLayout(): void {
+    this._invalidateLayout(INITIAL_LAYOUT_INVALIDATION)
+  }
+
+  private _refreshExactLayout(shouldApplyVerticalLayout: boolean = true): void {
+    let invalidation = EXACT_LAYOUT_INVALIDATION
+    if (shouldApplyVerticalLayout) {
+      invalidation |= LayoutInvalidation.VerticalLayout
+    }
+    this._invalidateLayout(invalidation)
+  }
+
+  private _refreshPaneViews(): void {
+    this._invalidateLayout(LayoutInvalidation.UpdatePane)
+  }
+
+  private _invalidateLayout(invalidation: LayoutInvalidation, resizeAnchor?: ResizeAnchor, afterLayoutSettled?: LayoutSettledCallback): void {
+    this._mergeLayoutInvalidation(invalidation, resizeAnchor)
+    this._addLayoutSettledCallback(afterLayoutSettled)
+    this._cancelPendingLayoutFrame()
+    this._flushPendingLayout()
+  }
+
+  private _requestLayout(invalidation: LayoutInvalidation, resizeAnchor?: ResizeAnchor): void {
+    this._mergeLayoutInvalidation(invalidation, resizeAnchor)
+    if (this._isFlushingLayout || (this._layoutFrameId ?? DEFAULT_REQUEST_ID) !== DEFAULT_REQUEST_ID) {
+      return
+    }
+    this._layoutFrameId = requestAnimationFrame(() => {
+      this._layoutFrameId = DEFAULT_REQUEST_ID
+      this._flushPendingLayout()
+    })
+  }
+
+  private _mergeLayoutInvalidation(invalidation: LayoutInvalidation, resizeAnchor?: ResizeAnchor): void {
+    this._pendingLayoutInvalidation = (this._pendingLayoutInvalidation ?? LayoutInvalidation.None) | invalidation
+    if (resizeAnchor !== undefined) {
+      this._pendingLayoutResizeAnchor = resizeAnchor
+    }
+  }
+
+  private _addLayoutSettledCallback(callback?: LayoutSettledCallback): void {
+    if (callback === undefined) {
+      return
+    }
+    this._layoutSettledCallbacks ??= []
+    this._layoutSettledCallbacks.push(callback)
+  }
+
+  private _cancelPendingLayoutFrame(): void {
+    const layoutFrameId = this._layoutFrameId ?? DEFAULT_REQUEST_ID
+    if (layoutFrameId === DEFAULT_REQUEST_ID) {
+      return
+    }
+    cancelAnimationFrame(layoutFrameId)
+    this._layoutFrameId = DEFAULT_REQUEST_ID
+  }
+
+  private _flushPendingLayout(): void {
+    if (this._isFlushingLayout) {
+      return
+    }
+    this._isFlushingLayout = true
+    let drainPasses = 0
+    try {
+      while (this._pendingLayoutInvalidation !== LayoutInvalidation.None) {
+        if (drainPasses >= MAX_LAYOUT_DRAIN_PASSES) {
+          logWarn('layout', 'invalidation', 'layout invalidation did not settle before the drain pass limit.')
+          this._pendingLayoutInvalidation = LayoutInvalidation.None
+          this._pendingLayoutResizeAnchor = undefined
+          break
         }
-      })
+        drainPasses++
+        const invalidation = this._pendingLayoutInvalidation
+        const resizeAnchor = this._pendingLayoutResizeAnchor
+        this._pendingLayoutInvalidation = LayoutInvalidation.None
+        this._pendingLayoutResizeAnchor = undefined
+        if (resizeAnchor === undefined) {
+          this._flushLayout(invalidation)
+        } else {
+          this._flushLayout(invalidation, resizeAnchor)
+        }
+      }
+    } finally {
+      this._isFlushingLayout = false
     }
-    if (forceMeasureWidth) {
-      this._measurePaneWidth(resizeAnchor)
+  }
+
+  private _flushLayout(invalidation: LayoutInvalidation, resizeAnchor?: ResizeAnchor): void {
+    if ((invalidation & LayoutInvalidation.VerticalLayout) !== 0) {
+      this._applyVerticalLayout()
     }
-    if (shouldUpdate ?? false) {
-      const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
-      const xAxis = xAxisWidget.getAxisComponent()
-      xAxis.buildTicks(true)
-      this.updatePane(UpdateLevel.All)
+    const invalidatedMoreLayout = this._applyAxisAndHorizontalLayout(invalidation, resizeAnchor)
+    if ((invalidation & LayoutInvalidation.UpdatePane) !== 0 && !invalidatedMoreLayout) {
+      if (this._runLayoutSettledCallbacks()) {
+        return
+      }
+      this._updatePaneViews()
     }
+  }
+
+  private _runLayoutSettledCallbacks(): boolean {
+    if ((this._layoutSettledCallbacks?.length ?? 0) === 0) {
+      return false
+    }
+    const callbacks = this._layoutSettledCallbacks
+    this._layoutSettledCallbacks = []
+    callbacks.forEach(callback => {
+      callback()
+    })
+    return this._pendingLayoutInvalidation !== LayoutInvalidation.None
+  }
+
+  private _applyAxisAndHorizontalLayout(invalidation: LayoutInvalidation, resizeAnchor?: ResizeAnchor): boolean {
+    const adjustAxis = (invalidation & LayoutInvalidation.AxisTicks) !== 0
+    const forceAdjustAxis = (invalidation & LayoutInvalidation.ForceAxisTicks) !== 0
+    const allowAxisWidthShrink = (invalidation & LayoutInvalidation.AllowAxisWidthShrink) !== 0
+    let shouldApplyHorizontalLayout = (invalidation & LayoutInvalidation.HorizontalLayout) !== 0
+    if (adjustAxis || forceAdjustAxis) {
+      shouldApplyHorizontalLayout = this._buildAxisTicks(forceAdjustAxis) || shouldApplyHorizontalLayout
+    }
+    if (!shouldApplyHorizontalLayout) {
+      return false
+    }
+
+    const mainWidthChanged = this._applyHorizontalLayout(resizeAnchor, allowAxisWidthShrink)
+    if (!mainWidthChanged || (!adjustAxis && !forceAdjustAxis)) {
+      return false
+    }
+
+    let nextInvalidation = LayoutInvalidation.AxisTicks | LayoutInvalidation.ForceAxisTicks
+    if ((invalidation & LayoutInvalidation.UpdatePane) !== 0) {
+      nextInvalidation |= LayoutInvalidation.UpdatePane
+    }
+    if (allowAxisWidthShrink) {
+      nextInvalidation |= LayoutInvalidation.AllowAxisWidthShrink
+    }
+    this._invalidateLayout(nextInvalidation, resizeAnchor)
+    return true
+  }
+
+  private _buildAxisTicks(forceAdjustAxis: boolean): boolean {
+    let adjust = false
+    this._drawPanes.forEach(pane => {
+      if (pane.getId() === PaneIdConstants.X_AXIS) {
+        adjust = (pane.getMainWidget() as XAxisWidget).getAxisComponent().buildTicks(forceAdjustAxis) || adjust
+      } else {
+        const leftAdjust = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent().buildTicks(forceAdjustAxis)
+        const rightAdjust = (pane as DualYPane).getYRightAxisWidget().getAxisComponent().buildTicks(forceAdjustAxis)
+        adjust = leftAdjust || rightAdjust || adjust
+      }
+    })
+    return adjust
+  }
+
+  private _updatePaneViews(): void {
+    this.updatePane(UpdateLevel.All)
   }
 
   updatePane(level: UpdateLevel, paneId?: string): void {
@@ -693,7 +892,7 @@ export default class ChartImp implements Chart {
     this._candlePane?.getYLeftAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
     this._candlePane?.getYRightAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
     // }
-    this.adjustPaneViewport(true, true, true, true, true)
+    this.refreshMetricLayout()
   }
 
   getStyles(): Styles {
@@ -702,12 +901,12 @@ export default class ChartImp implements Chart {
 
   setOptions(options: Options): void {
     this._chartStore.setOptions(options)
-    this.adjustPaneViewport(true, true, true, true, true)
+    this.refreshMetricLayout()
   }
 
   setLocale(locale: string): void {
     this._chartStore.setOptions({ locale })
-    this.adjustPaneViewport(true, true, true, true, true)
+    this.refreshMetricLayout()
   }
 
   getLocale(): string {
@@ -716,7 +915,7 @@ export default class ChartImp implements Chart {
 
   setCustomApi(customApi: Partial<CustomApi>): void {
     this._chartStore.setOptions({ customApi })
-    this.adjustPaneViewport(true, true, true, true, true)
+    this.refreshMetricLayout()
   }
 
   setPriceVolumePrecision(pricePrecision: number, volumePrecision: number): void {
@@ -831,7 +1030,7 @@ export default class ChartImp implements Chart {
 
   clearData(): void {
     this._chartStore.clear()
-    this.adjustPaneViewport(false, true, true, true)
+    this.refreshViewportLayout()
   }
 
   getDataList(): KLineData[] {
@@ -908,18 +1107,18 @@ export default class ChartImp implements Chart {
       pane.setBounding({ height: heightSpec.unit === 'pixel' ? heightSpec.value : 0 })
       indicator.paneId = realPaneId
       const indicatorCalcPromise = this._chartStore.getIndicatorStore().addInstance(indicator, realPaneId, isStack ?? false)
-      this._adjustPaneViewportIfReady()
+      this._refreshExactLayoutIfReady()
       void indicatorCalcPromise.finally(() => {
-        this.adjustPaneViewport(true, true, true, true, true)
+        this.refreshPaneLayout()
         callback?.()
       })
     }
     return realPaneId
   }
 
-  private _adjustPaneViewportIfReady(): void {
+  private _refreshExactLayoutIfReady(): void {
     if (this._dataZoomSlider !== undefined) {
-      this.adjustPaneViewport(true, true, true, true, true)
+      this.refreshPaneLayout()
     }
   }
 
@@ -934,8 +1133,11 @@ export default class ChartImp implements Chart {
   overrideIndicator(override: IndicatorOverride, paneId?: string, callback?: () => void): void {
     this._chartStore.getIndicatorStore().override(override, paneId).then(
       ([onlyUpdateFlag, resizeFlag]) => {
-        if (onlyUpdateFlag || resizeFlag) {
-          this.adjustPaneViewport(false, resizeFlag, true, resizeFlag)
+        if (resizeFlag) {
+          this.refreshViewportLayout()
+          callback?.()
+        } else if (onlyUpdateFlag) {
+          this._refreshPaneViews()
           callback?.()
         }
       }
@@ -990,7 +1192,7 @@ export default class ChartImp implements Chart {
           }
         }
       }
-      this.adjustPaneViewport(shouldMeasureHeight, true, true, true, true)
+      this._refreshExactLayout(shouldMeasureHeight)
     }
   }
 
@@ -1364,21 +1566,7 @@ export default class ChartImp implements Chart {
         dualYPane.getYRightAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
       }
     })
-    let previousMainWidth = this._chartStore.mainWidth
-    let shouldMeasureHeight = true
-
-    // Width changes can shift visible range, which in turn affects Y-axis range.
-    // Re-run until main width is stable so Y-axis calculations use the latest range.
-    for (let i = 0; i < 3; i++) {
-      this.adjustPaneViewport(shouldMeasureHeight, true, true, true, true, anchor)
-      shouldMeasureHeight = false
-
-      const nextMainWidth = this._chartStore.mainWidth
-      if (nextMainWidth === previousMainWidth) {
-        break
-      }
-      previousMainWidth = nextMainWidth
-    }
+    this.refreshResizeLayout(anchor)
   }
 
   focus(): void {
@@ -1386,6 +1574,10 @@ export default class ChartImp implements Chart {
   }
 
   destroy(): void {
+    this._cancelPendingLayoutFrame()
+    this._pendingLayoutInvalidation = LayoutInvalidation.None
+    this._pendingLayoutResizeAnchor = undefined
+    this._layoutSettledCallbacks = []
     this._chartStore.destroy()
     this._chartEvent.destroy()
     this._drawPanes.forEach(pane => {

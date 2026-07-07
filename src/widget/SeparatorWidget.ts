@@ -117,7 +117,7 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
       bottomPane.updateHeightSpecFromDrag(targetPaneHeight, drawablePaneHeight)
 
       chart.getChartStore().getActionStore().execute(ActionType.OnPaneDrag, { paneId: currentPane.getId() })
-      chart.adjustPaneViewport(true, true, true, true, true)
+      chart.refreshPaneLayout()
       return
     }
 
@@ -160,7 +160,7 @@ export default class SeparatorWidget extends Widget<SeparatorPane> {
 
     // 触发事件和更新
     chart.getChartStore().getActionStore().execute(ActionType.OnPaneDrag, { paneId: currentPane.getId() })
-    chart.adjustPaneViewport(true, true, true, true, true)
+    chart.refreshPaneLayout()
   }
 
   private readonly _throttledPressedMouseMove = throttle(this._pressedTouchMouseMoveEvent, 20)

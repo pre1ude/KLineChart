@@ -479,6 +479,71 @@ describe('XAxisImp optimalTicks', () => {
 
     expect(xAxis.getTicks().map(tick => tick.text)).toEqual(['custom-left', ''])
   })
+
+  it('repositions built-in ticks when only the domain range changes', () => {
+    const dataList = createSequentialDataList(10)
+    const createTicks = vi.fn((params: AxisCreateTicksParams) => params.defaultTicks)
+    let coordinateOffset = 0
+    const xAxis = createTestXAxis(dataList, {
+      dataZoomEnabled: false,
+      coordinateStep: 10,
+      createTicks,
+      dataIndexToCoordinate: dataIndex => dataIndex * 10 - coordinateOffset
+    })
+    xAxis.setRange({
+      from: 0,
+      to: 10,
+      domainFrom: 0,
+      domainTo: 10
+    })
+
+    expect(xAxis.runBuildTicks(false)).toBe(true)
+    const originalTicks = xAxis.getTicks().map(tick => ({ ...tick }))
+
+    coordinateOffset = 3
+    xAxis.setRange({
+      from: 0,
+      to: 10,
+      domainFrom: 0.3,
+      domainTo: 10.3
+    })
+
+    expect(xAxis.runBuildTicks(false)).toBe(false)
+    expect(createTicks).toHaveBeenCalledTimes(1)
+    expect(xAxis.getTicks().map(tick => tick.value)).toEqual(originalTicks.map(tick => tick.value))
+    expect(xAxis.getTicks().map(tick => tick.text)).toEqual(originalTicks.map(tick => tick.text))
+    expect(xAxis.getTicks().map(tick => tick.coord)).toEqual(originalTicks.map(tick => tick.coord - 3))
+  })
+
+  it('rebuilds ticks when bar space changes even if the integer range is unchanged', () => {
+    const dataList = createSequentialDataList(10)
+    const createTicks = vi.fn((params: AxisCreateTicksParams) => params.defaultTicks)
+    let coordinateStep = 10
+    const xAxis = createTestXAxis(dataList, {
+      dataZoomEnabled: false,
+      getCoordinateStep: () => coordinateStep,
+      createTicks
+    })
+    xAxis.setRange({
+      from: 0,
+      to: 10,
+      domainFrom: 0,
+      domainTo: 10
+    })
+
+    expect(xAxis.runBuildTicks(false)).toBe(true)
+
+    coordinateStep = 12
+    xAxis.setRange({
+      from: 0,
+      to: 10,
+      domainFrom: 0,
+      domainTo: 8.33
+    })
+
+    expect(xAxis.runBuildTicks(false)).toBe(true)
+    expect(createTicks).toHaveBeenCalledTimes(2)
+  })
 })
 
 describe('XAxisImp optimalMinuteTicks', () => {
@@ -781,6 +846,8 @@ function createTestXAxis(
     timeShareSessionGapForN?: number
     preferXTicks?: string[]
     coordinateStep?: number
+    getCoordinateStep?: () => number
+    dataIndexToCoordinate?: (dataIndex: number) => number
     width?: number
     formatDate?: FormatDate
     createTicks?: (params: AxisCreateTicksParams) => AxisTick[]
@@ -793,7 +860,7 @@ function createTestXAxis(
   if (options.formatDate != null) {
     customApi.formatDate = options.formatDate
   }
-  const coordinateStep = options.coordinateStep ?? 100
+  const getCoordinateStep = options.getCoordinateStep ?? (() => options.coordinateStep ?? 100)
   const width = options.width ?? 200
   const chartStore = {
     getCustomApi: () => customApi,
@@ -807,12 +874,12 @@ function createTestXAxis(
     getPreferXTicks: () => options.preferXTicks,
     dataIndexToTimestamp: (dataIndex: number) => dataList[dataIndex]?.timestamp,
     getTimeScaleStore: () => ({
-      dataIndexToCoordinate: (dataIndex: number) => dataIndex * coordinateStep,
+      dataIndexToCoordinate: (dataIndex: number) => options.dataIndexToCoordinate?.(dataIndex) ?? dataIndex * getCoordinateStep(),
       getBarSpace: () => ({
-        bar: coordinateStep,
-        halfBar: coordinateStep / 2,
-        gapBar: coordinateStep,
-        halfGapBar: coordinateStep / 2
+        bar: getCoordinateStep(),
+        halfBar: getCoordinateStep() / 2,
+        gapBar: getCoordinateStep(),
+        halfGapBar: getCoordinateStep() / 2
       })
     })
   }

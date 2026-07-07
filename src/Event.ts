@@ -80,7 +80,7 @@ export default class Event implements EventHandler {
       const event = this._makeWidgetEvent(e, widget)
       const zoomScale = (scale - this._pinchScale) * 0.5
       this._pinchScale = scale
-      this._chart.getChartStore().getTimeScaleStore().zoom(zoomScale, event.x)
+      this._chart.getChartStore().getTimeScaleStore().zoom(zoomScale, event.x, true)
       return true
     }
     return false
@@ -88,7 +88,7 @@ export default class Event implements EventHandler {
 
   mouseWheelHortEvent(_: MouseTouchEvent, distance: number): boolean {
     const timeScaleStore = this._chart.getChartStore().getTimeScaleStore()
-    timeScaleStore.scroll(distance)
+    timeScaleStore.scroll(distance, true)
     return true
   }
 
@@ -98,7 +98,7 @@ export default class Event implements EventHandler {
     const name = widget?.getName()
     if (name === WidgetNameConstants.MAIN) {
       const scale = normDeltaY * 0.1
-      this._chart.getChartStore().getTimeScaleStore().zoom(scale, event.x)
+      this._chart.getChartStore().getTimeScaleStore().zoom(scale, event.x, true)
       return true
     }
     return false
@@ -233,7 +233,7 @@ export default class Event implements EventHandler {
 
             const distance = event.x - this._startScrollCoordinate.x
             this._startScrollCoordinate = { x: event.x, y: event.y }
-            this._chart.getChartStore().getTimeScaleStore().scroll(distance)
+            this._chart.getChartStore().getTimeScaleStore().scroll(distance, true)
           }
           this._chart.getChartStore().getTooltipStore().setCrosshair({ x: event.x, y: event.y, paneId: pane?.getId() })
           this._syncCursor(widget)
@@ -248,7 +248,7 @@ export default class Event implements EventHandler {
               if (Number.isFinite(scale)) {
                 const zoomScale = scale - this._xAxisScale
                 this._xAxisScale = scale
-                this._chart.getChartStore().getTimeScaleStore().zoom(zoomScale, this._xAxisStartScaleCoordinate?.x)
+                this._chart.getChartStore().getTimeScaleStore().zoom(zoomScale, this._xAxisStartScaleCoordinate?.x, true)
               }
             }
           } else {
@@ -302,7 +302,7 @@ export default class Event implements EventHandler {
                 })
               }
 
-              this._chart.adjustPaneViewport(false, true, true, true)
+              this._chart.requestViewportLayout()
             }
           } else {
             this._chart.updatePane(UpdateLevel.Overlay)
@@ -459,7 +459,7 @@ export default class Event implements EventHandler {
 
           yLeftAxis.setAutoCalcTickFlag(true)
           yRightAxis.setAutoCalcTickFlag(true)
-          this._chart.adjustPaneViewport(false, true, true, true)
+          this._chart.requestViewportLayout()
           consumed = true
           break
         }
@@ -559,7 +559,7 @@ export default class Event implements EventHandler {
               Math.abs(this._startScrollCoordinate.x - event.x) > this._startScrollCoordinate.y - event.y
           ) {
             const distance = event.x - this._startScrollCoordinate.x
-            chartStore.getTimeScaleStore().scroll(distance)
+            chartStore.getTimeScaleStore().scroll(distance, true)
           }
           return true
         }
@@ -595,7 +595,7 @@ export default class Event implements EventHandler {
               const timeScaleStore = this._chart.getChartStore().getTimeScaleStore()
               const flingScroll: (() => void) = () => {
                 this._flingScrollRequestId = requestAnimationFrame(() => {
-                  timeScaleStore.scroll(v)
+                  timeScaleStore.scroll(v, true)
                   v = v * (1 - 0.025)
                   if (Math.abs(v) < 1) {
                     if (this._flingScrollRequestId) {
