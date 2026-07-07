@@ -20,26 +20,37 @@ Stores, event handlers, and widgets MUST NOT directly choose low-level boolean c
 
 #### Scenario: Non-Chart component refreshes layout
 - **WHEN** a store, event handler, or widget needs a normal layout refresh
-- **THEN** it SHALL call a semantic chart refresh method that maps to the correct low-level pipeline internally
+- **THEN** it SHALL call a semantic chart refresh method that maps to the correct internal layout transaction
 
-### Requirement: Layout invalidation pipeline
-Chart internals SHALL translate semantic refresh reasons and legacy viewport arguments into layout invalidation flags before flushing layout stages.
+### Requirement: Layout transaction pipeline
+Chart internals SHALL translate semantic refresh reasons into layout transactions before running layout stages.
 
 #### Scenario: Semantic refresh is requested
 - **WHEN** a semantic chart refresh method is invoked
-- **THEN** the chart SHALL submit a layout invalidation mask through the shared invalidation path
+- **THEN** the chart SHALL create a layout transaction with layout stages and render intent
 
 #### Scenario: Chart internals need a specialized refresh
 - **WHEN** Chart internals need a refresh that is more specific than a public semantic refresh entry point
-- **THEN** the chart SHALL use a narrowly named private intent helper or submit a layout invalidation mask through the shared invalidation path
+- **THEN** the chart SHALL use a narrowly named private intent helper or create a layout transaction directly
 
-#### Scenario: Multiple invalidations are pending
-- **WHEN** layout invalidation is requested while another invalidation mask is pending
-- **THEN** the chart SHALL merge the masks before flushing layout
+#### Scenario: Transaction is requested during another transaction
+- **WHEN** layout refresh is requested while a layout transaction is already running
+- **THEN** the chart SHALL queue the requested transaction and run it after the current transaction reaches a safe handoff point
 
-#### Scenario: Invalidation is requested during layout flush
-- **WHEN** a layout stage requests another layout invalidation while a layout flush is already in progress
-- **THEN** the chart SHALL merge the new mask into the pending mask and drain it after the current pass without recursively entering another flush
+#### Scenario: Layout pass requests follow-up work
+- **WHEN** a layout pass detects that geometry changed in a way that requires another axis/tick pass
+- **THEN** the pass SHALL return follow-up layout stages instead of recursively starting another refresh
+
+### Requirement: Layout and render are separate transaction concerns
+Layout stages SHALL describe geometry and tick work only, while pane repaint SHALL be represented by render intent on the layout transaction.
+
+#### Scenario: Layout transaction settles
+- **WHEN** a layout transaction has no follow-up stages and no queued transaction supersedes its render
+- **THEN** the chart SHALL render panes only if the transaction render intent is set
+
+#### Scenario: Pure pane repaint is needed
+- **WHEN** Chart internals need to repaint panes without layout work
+- **THEN** the chart SHALL render through the render boundary without submitting layout stages
 
 ### Requirement: Public chart contract remains narrow
 The public chart type returned by `init()` SHALL use the exported `Chart` interface rather than the concrete implementation class.
@@ -49,45 +60,49 @@ The public chart type returned by `init()` SHALL use the exported `Chart` interf
 - **THEN** the returned value SHALL be typed as the public `Chart` interface without internal layout refresh methods
 
 ### Requirement: Synchronous behavior is preserved
-The semantic layout refresh entry points for data callbacks, resize, pane layout, metric layout, and direct refreshes SHALL preserve synchronous refresh behavior.
+The semantic layout refresh entry points for data callbacks, resize, pane layout, metric layout, and direct refreshes SHALL preserve synchronous layout behavior.
 
 #### Scenario: Data callback after refresh
 - **WHEN** data replacement or update completes through a path that refreshes layout before invoking a callback
-- **THEN** the callback SHALL still be invoked after the synchronous layout refresh
+- **THEN** the callback SHALL still be invoked after the synchronous layout transaction
 
 #### Scenario: Resize refresh
 - **WHEN** chart resize is requested
-- **THEN** the resize path SHALL continue to complete its layout refresh synchronously
+- **THEN** the resize path SHALL continue to complete its layout transaction synchronously
 
 ### Requirement: Viewport refresh requests can be frame-batched
-Chart internals SHALL provide a viewport-only layout refresh request path that coalesces with other viewport requests in the same animation frame.
+Chart internals SHALL provide a viewport-only layout refresh request path that coalesces repeated viewport requests in the same animation frame.
 
 #### Scenario: Multiple viewport requests happen before the next frame
 - **WHEN** viewport layout refresh is requested multiple times before the scheduled frame runs
-- **THEN** the chart SHALL merge the invalidation masks and perform at most one layout drain for those requests
+- **THEN** the chart SHALL schedule at most one viewport transaction for the next frame
+
+#### Scenario: Multiple viewport requests happen during another transaction
+- **WHEN** viewport layout refresh is requested multiple times while a layout transaction is already running
+- **THEN** the chart SHALL queue at most one plain viewport transaction for the transaction handoff
 
 #### Scenario: Synchronous refresh arrives while viewport request is pending
 - **WHEN** a synchronous layout refresh is requested while a frame-batched viewport refresh is pending
-- **THEN** the chart SHALL cancel the scheduled frame and flush the merged invalidation synchronously
+- **THEN** the chart SHALL cancel the scheduled frame and run the synchronous layout transaction immediately
 
-### Requirement: Invalidation-driven layout convergence
-The viewport refresh pipeline SHALL converge layout through pending invalidation masks when axis ticks and axis width measurement can affect visible range.
+### Requirement: Transaction-driven layout convergence
+The viewport refresh pipeline SHALL converge layout through follow-up layout passes when axis ticks and axis width measurement can affect visible range.
 
 #### Scenario: Axis width changes main width
-- **WHEN** a viewport refresh measures pane width and the resulting `mainWidth` changes
-- **THEN** the pipeline SHALL enqueue a follow-up axis-tick invalidation and continue draining pending invalidations until the layout settles or the safety limit is reached
+- **WHEN** a viewport transaction measures pane width and the resulting `mainWidth` changes
+- **THEN** the layout pass SHALL return follow-up axis/tick stages and the transaction SHALL continue until layout settles or the safety limit is reached
 
 #### Scenario: Pane repaint is requested before convergence settles
-- **WHEN** a layout pass that includes pane repaint also enqueues follow-up layout invalidation
-- **THEN** pane repaint SHALL be deferred and carried forward until the follow-up layout invalidations have drained
+- **WHEN** a layout transaction has render intent but a layout pass returns follow-up stages
+- **THEN** pane repaint SHALL be deferred until follow-up layout passes have settled
 
 #### Scenario: Initial auto alignment depends on stable layout width
 - **WHEN** initial data loading needs automatic time-scale alignment
-- **THEN** the chart SHALL run the automatic alignment after layout invalidations have drained and before the final pane repaint
+- **THEN** the chart SHALL run the automatic alignment after layout passes settle and before the transaction renders
 
-#### Scenario: Layout-settled callback enqueues more layout
-- **WHEN** a layout-settled callback submits another viewport invalidation
-- **THEN** the chart SHALL skip the current pane repaint and continue draining the new invalidation before repainting
+#### Scenario: Layout-settled callback queues more layout
+- **WHEN** a layout-settled callback submits another viewport transaction
+- **THEN** the chart SHALL skip the current render and run the queued transaction before repainting
 
 ### Requirement: Viewport refresh preserves current auto axis width unless widening is required
 Viewport-only refreshes SHALL NOT shrink auto Y-axis width when labels become shorter, while full metric/layout refreshes SHALL be allowed to shrink auto Y-axis width to the exact measured size.
@@ -98,7 +113,7 @@ Viewport-only refreshes SHALL NOT shrink auto Y-axis width when labels become sh
 
 #### Scenario: Viewport refresh measures a larger auto axis width
 - **WHEN** `yAxis.size` is `auto` and a viewport refresh measures an axis label width larger than the current axis width
-- **THEN** the horizontal layout SHALL allow the axis width to grow and SHALL enqueue follow-up layout invalidation if `mainWidth` changes
+- **THEN** the horizontal layout SHALL allow the axis width to grow and SHALL return follow-up layout stages if `mainWidth` changes
 
 #### Scenario: Full metric layout measures a smaller auto axis width
 - **WHEN** `yAxis.size` is `auto` and a full metric, pane, or resize layout measures an axis label width smaller than the current axis width

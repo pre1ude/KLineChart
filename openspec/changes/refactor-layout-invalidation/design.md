@@ -20,51 +20,69 @@ container / pane / style state
   -> mainWidth
 ```
 
-The problem is not that this pipeline exists. The problem is that callers outside `Chart` must know which booleans trigger which portions of the pipeline.
+The problem is not that this pipeline exists. The problem is that callers outside `Chart` must know which booleans trigger which portions of the pipeline, and that layout work and pane repaint were not described as separate concepts.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
 - Make layout refresh call sites semantic and readable.
-- Keep `Chart` as the only owner of low-level layout recalculation flags.
+- Keep `Chart` as the owner of low-level layout stages, convergence, and render timing.
 - Preserve current synchronous behavior for data callbacks, resize, and indicator calculation completion.
-- Create a structure that supports dirty-flag batching without another broad call-site rewrite.
-- Coalesce high-frequency viewport-only refresh requests through the existing invalidation mask.
+- Coalesce high-frequency viewport-only interaction refreshes into one frame-batched viewport transaction.
+- Separate layout stages from render intent so panes repaint only after layout settles.
 
 **Non-Goals:**
 
 - Do not change public chart APIs.
 - Do not rewrite axis tick calculation, pane height allocation, or time scale modes.
 - Do not make data callbacks, resize, pane layout, metric layout, or exact layout paths asynchronous.
-- Do not introduce a broader rendering pipeline rewrite.
+- Do not introduce a broader rendering scheduler for all pane updates in this change.
 
 ## Decisions
 
 ### Add semantic refresh methods on `Chart`
 
-`ChartImp` will expose internal semantic methods used by chart-owned stores, events, and widgets:
+`ChartImp` exposes internal semantic methods used by chart-owned stores, events, and widgets:
 
 - `refreshPaneLayout()`
 - `refreshViewportLayout(afterLayoutSettled?)`
+- `requestViewportLayout()`
 - `refreshMetricLayout()`
 - `refreshResizeLayout(anchor?)`
 
-The semantic methods submit a layout invalidation mask to the shared flush pipeline. Data changes, time-scale changes, and axis interactions all use `refreshViewportLayout()` because they need the same viewport/tick/update sequence. Style, option, locale, and metric-affecting changes use `refreshMetricLayout()` because they can legitimately recalculate exact axis metrics. Callers outside `Chart` should no longer pass low-level boolean combinations for layout refresh.
+The semantic methods submit layout transactions rather than low-level boolean combinations. Data changes, time-scale changes, and axis interactions use viewport layout stages because they need the same visible range, tick, horizontal layout, and render sequence. Style, option, locale, and metric-affecting changes use exact layout stages because they can legitimately force tick rebuilding and shrink auto axis width.
 
 Alternative considered: replace `adjustPaneViewport(...)` with an options object immediately. This improves readability at each call site, but still leaks low-level layout mechanics to stores and widgets.
 
-### Use layout invalidation flags as the synchronous pipeline primitive
+### Use layout transactions as the synchronous pipeline primitive
 
-The first migration adds internal invalidation flags for `VerticalLayout`, `HorizontalLayout`, `UpdatePane`, `AxisTicks`, `ForceAxisTicks`, and `AllowAxisWidthShrink`. Semantic refresh methods and private intent helpers submit these flags through `_invalidateLayout(...)`, which merges them into a pending mask and then synchronously drains pending work. If layout work enqueues another invalidation while a flush is already in progress, the new mask is merged and handled by the same drain after the current pass. The legacy `adjustPaneViewport(...)` boolean adapter is removed.
+The shared pipeline is modeled as a layout transaction:
 
-Alternative considered: introduce a full requestAnimationFrame scheduler for all layout work. That is closer to Lightweight Charts, but it changes callback and interaction timing. This change adopts the invalidation mask and pending-merge shape while keeping authoritative refresh paths synchronous.
+- `stages`: low-level layout work such as `VerticalLayout`, `HorizontalLayout`, `AxisTicks`, `ForceAxisTicks`, and `AllowAxisWidthShrink`.
+- `resizeAnchor`: optional resize anchoring metadata.
+- `afterLayoutSettled`: optional callback to run after layout passes settle.
+- `render`: whether panes should repaint after the transaction settles.
+
+Synchronous semantic methods cancel any pending viewport frame and run a transaction immediately. If another transaction is submitted while a transaction is already running, it is queued and handled after the current transaction completes its current pass. The legacy `adjustPaneViewport(...)` boolean adapter is removed.
+
+Alternative considered: use a generic pending mask merge system. That shape supports dirty-flag batching, but it makes ordinary synchronous refreshes look more complex than they are. The transaction model keeps re-entrant work explicit without making mask merging the central abstraction.
 
 ### Add frame-batched viewport requests for high-frequency interactions
 
-After callers are routed through semantic refresh methods, `Chart` adds a narrower `requestViewportLayout()` path for high-frequency viewport-only work. The request path merges the same `HorizontalLayout`, `UpdatePane`, and `AxisTicks` mask as `refreshViewportLayout()`, but schedules the drain on the next animation frame so repeated scroll, zoom, and range interactions within a frame collapse into one flush.
+`requestViewportLayout()` schedules a viewport transaction on the next animation frame. Repeated viewport requests before that frame reuse the scheduled frame instead of running repeated layout work. If viewport requests happen while another layout transaction is already running, only one plain viewport transaction is queued for the next safe handoff point.
 
-Synchronous entry points remain authoritative. If a synchronous pane, metric, resize, or direct viewport refresh arrives while a viewport request is scheduled, the pending frame is canceled and the merged mask is flushed immediately. This keeps data callbacks and exact layout operations synchronous while gaining Lightweight Charts-style batching for bursty viewport updates.
+Synchronous entry points remain authoritative. If a synchronous pane, metric, resize, or direct viewport refresh arrives while a viewport frame is scheduled, the frame is canceled and the synchronous transaction runs immediately. This keeps data callbacks and exact layout operations synchronous while gaining Lightweight Charts-style batching for bursty viewport interactions.
+
+### Keep layout and render separate
+
+Layout stages only compute geometry, ticks, visible range, crosshair state, and pane bounds. Pane repaint is represented by the transaction's `render` intent and runs only after layout has settled. Pure pane repaint paths can render directly without submitting a layout transaction.
+
+This separation keeps the timing contract clear:
+
+- Synchronous data, pane, metric, and resize paths complete layout before returning.
+- Frame-batched viewport requests defer both viewport layout and its resulting repaint to the scheduled frame.
+- Pane repaint is skipped for an intermediate pass when a follow-up layout pass or layout-settled callback submits more layout work.
 
 ### Keep the public chart type narrow
 
@@ -72,43 +90,124 @@ The root `init()` API should return the exported `Chart` interface rather than t
 
 Alternative considered: expose refresh methods on the public `Chart` type and mark them internal by convention. That is easy, but it still leaks implementation details to consumers and external mocks.
 
-### Use invalidation-driven layout convergence in the shared flush pipeline
+### Use transaction-driven layout convergence
 
-The existing resize path ran multiple passes until `mainWidth` stabilized because width changes can shift visible range, which can then affect Y-axis ticks and axis label width. This logic belongs in the shared viewport refresh primitive rather than a single resize caller.
+The existing resize path ran multiple passes until `mainWidth` stabilized because width changes can shift visible range, which can then affect Y-axis range, axis ticks, and axis label width. This logic belongs in the shared layout transaction rather than a single resize caller.
 
-The shared flush pipeline drains pending invalidation masks until no more layout work is requested. A pass that changes `mainWidth` enqueues another axis-tick invalidation instead of running a local fixed-pass loop. If pane repaint was requested, repaint is carried forward and executed only after the layout drain settles. A high safety cap prevents accidental infinite layout drains, but normal convergence is driven by invalidations becoming empty rather than by a fixed stabilization count.
+Each transaction pass runs the requested layout stages. If horizontal layout changes `mainWidth` after axis ticks were involved, the pass returns follow-up axis stages. The transaction loop then runs another pass before repainting. A high safety cap prevents accidental infinite layout loops, but normal convergence is driven by passes returning no follow-up stages.
 
-Alternative considered: leave stabilization only in resize. That keeps the smaller code change, but it leaves the main layout cycle unresolved for the non-resize paths that also change visible range and axis label width.
+Alternative considered: leave stabilization only in resize. That keeps the smaller code change, but it leaves the main layout cycle unresolved for non-resize paths that also change visible range and axis label width.
 
 ### Run initial auto alignment after layout settles
 
-Initial data alignment depends on the final `mainWidth`, which can change after data-driven axis ticks are built and Y-axis label widths are measured. Init data loading therefore calls `refreshViewportLayout(...)` with `autoInitialAlignment()` as its layout-settled callback instead of registering that work separately before the first viewport refresh.
+Initial data alignment depends on the final `mainWidth`, which can change after data-driven axis ticks are built and Y-axis label widths are measured. Init data loading therefore calls `refreshViewportLayout(...)` with `autoInitialAlignment()` as its layout-settled callback.
 
-Layout-settled callbacks run after the layout drain has no more pending invalidations but before the final pane repaint. If a callback changes time-scale state and submits another viewport invalidation, the pending repaint is skipped and the drain continues. This lets initial auto alignment use the stable width while avoiding an intermediate pane update based on the pre-alignment visible range.
+Layout-settled callbacks run after layout passes have no follow-up stages but before the transaction renders. If a callback changes time-scale state and submits another viewport transaction, the current render is skipped and the queued transaction runs next. This lets initial auto alignment use stable width while avoiding an intermediate repaint based on the pre-alignment visible range.
 
 ### Keep viewport refreshes grow-only for auto axis width
 
-Viewport refreshes follow the Lightweight Charts-style approach of avoiding a full layout contraction when axis labels become shorter. When `yAxis.size` is `auto`, `refreshViewportLayout()` measures the new label width but keeps the previous axis width if the new optimal width is smaller. If labels require more space, the axis can still widen and enqueue another axis-tick invalidation when the resulting `mainWidth` changes.
+Viewport refreshes avoid full layout contraction when axis labels become shorter. When `yAxis.size` is `auto`, viewport transactions measure the new label width but keep the previous axis width if the new optimal width is smaller. If labels require more space, the axis can widen and return a follow-up axis pass when the resulting `mainWidth` changes.
 
 Full metric/layout paths (`refreshPaneLayout()`, `refreshMetricLayout()`, and `refreshResizeLayout(anchor?)`) include `AllowAxisWidthShrink`, so they recompute exact axis width and may shrink it. This avoids turning ordinary scroll/data updates into full layout churn while still allowing style, pane, and resize changes to settle to the exact layout.
 
+## Layout Refresh Flow
+
+```plantuml
+@startuml
+title Chart Layout Refresh Transaction Flow
+
+legend
+Layout stages = VerticalLayout, HorizontalLayout, AxisTicks, ForceAxisTicks, AllowAxisWidthShrink
+Render intent = transaction.render
+Viewport transaction = HorizontalLayout + AxisTicks + render
+Exact transaction = HorizontalLayout + AxisTicks + ForceAxisTicks + AllowAxisWidthShrink + render
+endlegend
+
+start
+
+:Chart state changes;
+
+if (Refresh type?) then (sync)
+  :Semantic refresh method;
+  :Create LayoutTransaction(stages, anchor?, afterSettled?, render);
+  :Cancel pending viewport frame;
+  :Run layout transaction now;
+else (frame-batched viewport)
+  :requestViewportLayout();
+  if (transaction currently running?) then (yes)
+    :Queue viewport transaction if one is not already queued;
+    stop
+  endif
+  if (viewport frame already scheduled?) then (yes)
+    :Return;
+    stop
+  else (no)
+    :Schedule requestAnimationFrame;
+    :On next frame;
+    :Run viewport transaction;
+  endif
+endif
+
+repeat
+  :Run one layout pass with current stages;
+  if (VerticalLayout stage?) then (yes)
+    :Apply pane heights;
+  endif
+  if (AxisTicks or ForceAxisTicks stage?) then (yes)
+    :Build X/Y axis ticks;
+  endif
+  if (HorizontalLayout needed?) then (yes)
+    :Apply pane widths and axis widths;
+    :Adjust visible range;
+    :Recalculate crosshair;
+    :Apply pane/widget bounds;
+  endif
+
+  if (mainWidth changed and axis ticks were involved?) then (yes)
+    :Return follow-up AxisTicks + ForceAxisTicks stages;
+    :Carry resize anchor, afterSettled callback, and render intent;
+  else (no)
+    if (afterSettled callback exists?) then (yes)
+      :Run afterSettled callback;
+      if (callback queued another transaction?) then (yes)
+        :Skip current render;
+        :Dequeue next transaction;
+      else (no)
+        if (render intent?) then (yes)
+          :Render panes now;
+        endif
+      endif
+    else (no)
+      if (render intent?) then (yes)
+        :Render panes now;
+      endif
+    endif
+  endif
+
+repeat while (follow-up stages or queued transaction?) is (yes)
+
+stop
+@enduml
+```
+
 ## Risks / Trade-offs
 
-- [Risk] A semantic method may map to the wrong boolean combination and subtly miss a refresh step. -> Mitigation: implement wrappers as direct aliases for existing call patterns and add focused tests against delegation.
-- [Risk] Some tests mock only the old boolean refresh adapter; replacing call sites can break mocks without behavior changes. -> Mitigation: update mocks to use semantic methods or private intent helpers where needed.
+- [Risk] A semantic method may map to the wrong layout stages and subtly miss a refresh step. -> Mitigation: add focused tests against transaction creation and layout pass behavior.
+- [Risk] Some tests mock only the old boolean refresh adapter; replacing call sites can break mocks without behavior changes. -> Mitigation: update mocks to use semantic methods or transaction-level helpers where needed.
 - [Risk] Narrowing the `init()` return type may expose consumer code that relied on implementation-class-only methods. -> Mitigation: this aligns the generated type with the documented public `Chart` contract and keeps internal refresh hooks out of that contract.
-- [Risk] The codebase may still have direct legacy boolean refresh calls inside `Chart`. -> Mitigation: replace remaining internal calls with semantic methods or narrowly named private intent helpers.
-- [Risk] Applying convergence to more refresh paths can add extra axis tick/width work when axis labels change. -> Mitigation: drive follow-up work only from concrete invalidations and keep a safety cap for unexpected non-settling drains.
+- [Risk] Applying convergence to more refresh paths can add extra axis tick/width work when axis labels change. -> Mitigation: drive follow-up work only from concrete layout stage results and keep a safety cap for unexpected non-settling transactions.
+- [Risk] Confusing layout and render timing can lead to subtle callback assumptions. -> Mitigation: keep render intent separate from layout stages and preserve synchronous behavior for public data, pane, metric, and resize paths.
 
 ## Migration Plan
 
 1. Add semantic refresh methods to `ChartImp`.
-2. Add internal layout invalidation flags, pending mask merging, and a shared synchronous flush pipeline.
-3. Remove `adjustPaneViewport(...)` and route all remaining internal cases through semantic methods or private intent helpers.
-4. Return the exported `Chart` interface from `init()` while keeping `ChartImp` as the internal concrete class.
-5. Move main-width convergence from `resize()` into the shared invalidation drain.
-6. Replace non-`Chart` call sites in stores, events, and widgets with semantic methods.
-7. Update focused tests and mocks.
-8. Run targeted tests, then type-check.
+2. Add internal layout stage flags and a shared synchronous layout transaction runner.
+3. Separate layout stages from transaction render intent.
+4. Remove `adjustPaneViewport(...)` and route all remaining internal cases through semantic methods or private intent helpers.
+5. Return the exported `Chart` interface from `init()` while keeping `ChartImp` as the internal concrete class.
+6. Move main-width convergence from `resize()` into layout transaction follow-up passes.
+7. Replace non-`Chart` call sites in stores, events, and widgets with semantic methods.
+8. Update focused tests and mocks.
+9. Run targeted tests, then type-check.
 
-Rollback is straightforward: restore the replaced call sites to their previous boolean refresh invocations and remove the semantic methods.
+Rollback is straightforward: restore the replaced call sites to their previous boolean refresh invocations and remove the semantic methods and transaction runner.

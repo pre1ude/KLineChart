@@ -9,10 +9,9 @@ import {
 } from './types'
 
 describe('parsePaneHeight', () => {
-  it('uses ten percent as the built-in default indicator pane height', () => {
-    expect(PANE_DEFAULT_HEIGHT).toBe(0.1)
-    expect(parsePaneHeight(PANE_DEFAULT_HEIGHT)).toEqual({ unit: 'percent', value: 0.1 })
-    expect(PANE_DEFAULT_HEIGHT_SPEC).toEqual({ unit: 'percent', value: 0.1 })
+  it('uses the built-in default indicator pane height as a percentage ratio', () => {
+    expect(parsePaneHeight(PANE_DEFAULT_HEIGHT)).toEqual({ unit: 'percent', value: PANE_DEFAULT_HEIGHT })
+    expect(PANE_DEFAULT_HEIGHT_SPEC).toEqual({ unit: 'percent', value: PANE_DEFAULT_HEIGHT })
   })
 
   it('keeps positive numbers greater than or equal to one as rounded pixel heights', () => {

@@ -66,42 +66,43 @@ export interface ConvertFinder {
 
 export type ResizeAnchor = 'domainFrom' | 'domainTo'
 
-// Layout refresh is intentionally modeled in three layers:
-// semantic refresh methods describe why layout is dirty, invalidation masks
-// describe what low-level stages must run, and the drain pass applies stages
-// until re-entrant invalidations settle before repainting.
+// Layout refresh is a small transaction: semantic entry points choose layout
+// stages and whether to render, then passes run until geometry settles.
 const MAX_LAYOUT_DRAIN_PASSES = 10
 
 type LayoutSettledCallback = () => void
 
-const enum LayoutInvalidation {
+type LayoutTransaction = {
+  stages: LayoutStage
+  resizeAnchor?: ResizeAnchor
+  afterLayoutSettled?: LayoutSettledCallback
+  render?: boolean
+}
+
+const enum LayoutStage {
   None = 0,
   VerticalLayout = 1 << 0,
   HorizontalLayout = 1 << 1,
-  UpdatePane = 1 << 2,
-  AxisTicks = 1 << 3,
-  ForceAxisTicks = 1 << 4,
-  AllowAxisWidthShrink = 1 << 5
+  AxisTicks = 1 << 2,
+  ForceAxisTicks = 1 << 3,
+  AllowAxisWidthShrink = 1 << 4
 }
 
-const VIEWPORT_LAYOUT_INVALIDATION =
-  LayoutInvalidation.HorizontalLayout |
-  LayoutInvalidation.UpdatePane |
-  LayoutInvalidation.AxisTicks
+const VIEWPORT_LAYOUT_STAGES =
+  LayoutStage.HorizontalLayout |
+  LayoutStage.AxisTicks
 
-const EXACT_LAYOUT_INVALIDATION =
-  LayoutInvalidation.HorizontalLayout |
-  LayoutInvalidation.UpdatePane |
-  LayoutInvalidation.AxisTicks |
-  LayoutInvalidation.ForceAxisTicks |
-  LayoutInvalidation.AllowAxisWidthShrink
+const EXACT_LAYOUT_STAGES =
+  LayoutStage.HorizontalLayout |
+  LayoutStage.AxisTicks |
+  LayoutStage.ForceAxisTicks |
+  LayoutStage.AllowAxisWidthShrink
 
-const INITIAL_LAYOUT_INVALIDATION =
-  LayoutInvalidation.VerticalLayout |
-  LayoutInvalidation.HorizontalLayout |
-  LayoutInvalidation.UpdatePane |
-  LayoutInvalidation.AxisTicks |
-  LayoutInvalidation.ForceAxisTicks
+const INITIAL_LAYOUT_STAGES =
+  LayoutStage.VerticalLayout |
+  LayoutStage.HorizontalLayout |
+  LayoutStage.AxisTicks |
+  LayoutStage.ForceAxisTicks
 
 export interface Chart {
   id: string
@@ -207,11 +208,9 @@ export default class ChartImp implements Chart {
   private _candlePane?: CandlePane
   private _xAxisPane!: XAxisPane
   private readonly _separatorPanes = new Map<DrawPane, SeparatorPane>()
-  private _pendingLayoutInvalidation = LayoutInvalidation.None
-  private _pendingLayoutResizeAnchor?: ResizeAnchor
-  private _isFlushingLayout = false
   private _layoutFrameId = DEFAULT_REQUEST_ID
-  private _layoutSettledCallbacks: LayoutSettledCallback[] = []
+  private _isRunningLayoutTransaction = false
+  private _queuedLayoutTransactions: LayoutTransaction[] = []
 
   constructor(container: HTMLElement, options?: Options) {
     this.id = createId('chart_')
@@ -550,15 +549,34 @@ export default class ChartImp implements Chart {
    * Layout refresh pipeline.
    *
    * Keep external callers on the semantic entry points below. This block is the
-   * boundary where semantic refresh reasons become low-level invalidation masks,
-   * pending masks are merged, and drain passes converge layout before repaint.
+   * boundary where semantic refresh reasons become layout transactions, passes
+   * converge geometry, and panes repaint only after layout settles.
    */
   refreshViewportLayout(afterLayoutSettled?: LayoutSettledCallback): void {
-    this._invalidateLayout(VIEWPORT_LAYOUT_INVALIDATION, undefined, afterLayoutSettled)
+    this._runSynchronousLayoutTransaction({
+      stages: VIEWPORT_LAYOUT_STAGES,
+      afterLayoutSettled,
+      render: true
+    })
   }
 
   requestViewportLayout(): void {
-    this._requestLayout(VIEWPORT_LAYOUT_INVALIDATION)
+    if (this._isRunningLayoutTransaction) {
+      this._queueViewportLayoutTransaction()
+      return
+    }
+    const layoutFrameId = this._layoutFrameId ?? DEFAULT_REQUEST_ID
+    if (layoutFrameId !== DEFAULT_REQUEST_ID) {
+      return
+    }
+    const frameId = requestAnimationFrame(() => {
+      if (this._layoutFrameId !== frameId) {
+        return
+      }
+      this._layoutFrameId = DEFAULT_REQUEST_ID
+      this._runLayoutTransaction(this._createViewportLayoutTransaction())
+    })
+    this._layoutFrameId = frameId
   }
 
   refreshPaneLayout(): void {
@@ -570,59 +588,55 @@ export default class ChartImp implements Chart {
   }
 
   refreshResizeLayout(anchor?: ResizeAnchor): void {
-    this._invalidateLayout(
-      LayoutInvalidation.VerticalLayout | EXACT_LAYOUT_INVALIDATION,
-      anchor
-    )
-  }
-
-  private _refreshInitialLayout(): void {
-    this._invalidateLayout(INITIAL_LAYOUT_INVALIDATION)
-  }
-
-  private _refreshExactLayout(shouldApplyVerticalLayout: boolean = true): void {
-    let invalidation = EXACT_LAYOUT_INVALIDATION
-    if (shouldApplyVerticalLayout) {
-      invalidation |= LayoutInvalidation.VerticalLayout
-    }
-    this._invalidateLayout(invalidation)
-  }
-
-  private _refreshPaneViews(): void {
-    this._invalidateLayout(LayoutInvalidation.UpdatePane)
-  }
-
-  private _invalidateLayout(invalidation: LayoutInvalidation, resizeAnchor?: ResizeAnchor, afterLayoutSettled?: LayoutSettledCallback): void {
-    this._mergeLayoutInvalidation(invalidation, resizeAnchor)
-    this._addLayoutSettledCallback(afterLayoutSettled)
-    this._cancelPendingLayoutFrame()
-    this._flushPendingLayout()
-  }
-
-  private _requestLayout(invalidation: LayoutInvalidation, resizeAnchor?: ResizeAnchor): void {
-    this._mergeLayoutInvalidation(invalidation, resizeAnchor)
-    if (this._isFlushingLayout || (this._layoutFrameId ?? DEFAULT_REQUEST_ID) !== DEFAULT_REQUEST_ID) {
-      return
-    }
-    this._layoutFrameId = requestAnimationFrame(() => {
-      this._layoutFrameId = DEFAULT_REQUEST_ID
-      this._flushPendingLayout()
+    this._runSynchronousLayoutTransaction({
+      stages: LayoutStage.VerticalLayout | EXACT_LAYOUT_STAGES,
+      resizeAnchor: anchor,
+      render: true
     })
   }
 
-  private _mergeLayoutInvalidation(invalidation: LayoutInvalidation, resizeAnchor?: ResizeAnchor): void {
-    this._pendingLayoutInvalidation = (this._pendingLayoutInvalidation ?? LayoutInvalidation.None) | invalidation
-    if (resizeAnchor !== undefined) {
-      this._pendingLayoutResizeAnchor = resizeAnchor
-    }
+  private _refreshInitialLayout(): void {
+    this._runSynchronousLayoutTransaction({ stages: INITIAL_LAYOUT_STAGES, render: true })
   }
 
-  private _addLayoutSettledCallback(callback?: LayoutSettledCallback): void {
-    if (callback === undefined) {
+  private _refreshExactLayout(shouldApplyVerticalLayout: boolean = true): void {
+    let stages = EXACT_LAYOUT_STAGES
+    if (shouldApplyVerticalLayout) {
+      stages |= LayoutStage.VerticalLayout
+    }
+    this._runSynchronousLayoutTransaction({ stages, render: true })
+  }
+
+  private _refreshPaneViews(): void {
+    this._renderLayoutNow()
+  }
+
+  private _runSynchronousLayoutTransaction(transaction: LayoutTransaction): void {
+    this._cancelPendingLayoutFrame()
+    this._runLayoutTransaction(transaction)
+  }
+
+  private _queueLayoutTransaction(transaction: LayoutTransaction): void {
+    this._queuedLayoutTransactions ??= []
+    this._queuedLayoutTransactions.push(transaction)
+  }
+
+  private _queueViewportLayoutTransaction(): void {
+    if (this._queuedLayoutTransactions?.some(transaction => this._isPlainViewportLayoutTransaction(transaction)) === true) {
       return
     }
-    this._layoutSettledCallbacks ??= []
-    this._layoutSettledCallbacks.push(callback)
+    this._queueLayoutTransaction(this._createViewportLayoutTransaction())
+  }
+
+  private _createViewportLayoutTransaction(): LayoutTransaction {
+    return { stages: VIEWPORT_LAYOUT_STAGES, render: true }
+  }
+
+  private _isPlainViewportLayoutTransaction(transaction: LayoutTransaction): boolean {
+    return transaction.stages === VIEWPORT_LAYOUT_STAGES &&
+      transaction.render === true &&
+      transaction.resizeAnchor === undefined &&
+      transaction.afterLayoutSettled === undefined
   }
 
   private _cancelPendingLayoutFrame(): void {
@@ -634,87 +648,87 @@ export default class ChartImp implements Chart {
     this._layoutFrameId = DEFAULT_REQUEST_ID
   }
 
-  private _flushPendingLayout(): void {
-    if (this._isFlushingLayout) {
+  private _runLayoutTransaction(transaction: LayoutTransaction): void {
+    if (this._isRunningLayoutTransaction) {
+      this._queueLayoutTransaction(transaction)
       return
     }
-    this._isFlushingLayout = true
+    this._isRunningLayoutTransaction = true
     let drainPasses = 0
+    let currentTransaction: LayoutTransaction | undefined = transaction
     try {
-      while (this._pendingLayoutInvalidation !== LayoutInvalidation.None) {
+      while (currentTransaction !== undefined) {
         if (drainPasses >= MAX_LAYOUT_DRAIN_PASSES) {
-          logWarn('layout', 'invalidation', 'layout invalidation did not settle before the drain pass limit.')
-          this._pendingLayoutInvalidation = LayoutInvalidation.None
-          this._pendingLayoutResizeAnchor = undefined
+          logWarn('layout', 'transaction', 'layout transaction did not settle before the drain pass limit.')
+          this._queuedLayoutTransactions = []
           break
         }
         drainPasses++
-        const invalidation = this._pendingLayoutInvalidation
-        const resizeAnchor = this._pendingLayoutResizeAnchor
-        this._pendingLayoutInvalidation = LayoutInvalidation.None
-        this._pendingLayoutResizeAnchor = undefined
-        if (resizeAnchor === undefined) {
-          this._flushLayout(invalidation)
-        } else {
-          this._flushLayout(invalidation, resizeAnchor)
+        const nextStages = this._runLayoutPass(currentTransaction.stages, currentTransaction.resizeAnchor)
+        if (nextStages !== LayoutStage.None) {
+          currentTransaction = {
+            stages: nextStages,
+            resizeAnchor: currentTransaction.resizeAnchor,
+            afterLayoutSettled: currentTransaction.afterLayoutSettled,
+            render: currentTransaction.render
+          }
+          continue
         }
+        if (this._runLayoutSettledCallback(currentTransaction.afterLayoutSettled)) {
+          currentTransaction = this._dequeueLayoutTransaction()
+          continue
+        }
+        if (currentTransaction.render === true) {
+          this._renderLayoutNow()
+        }
+        currentTransaction = this._dequeueLayoutTransaction()
       }
     } finally {
-      this._isFlushingLayout = false
+      this._isRunningLayoutTransaction = false
     }
   }
 
-  private _flushLayout(invalidation: LayoutInvalidation, resizeAnchor?: ResizeAnchor): void {
-    if ((invalidation & LayoutInvalidation.VerticalLayout) !== 0) {
+  private _dequeueLayoutTransaction(): LayoutTransaction | undefined {
+    return this._queuedLayoutTransactions?.shift()
+  }
+
+  private _runLayoutPass(stages: LayoutStage, resizeAnchor?: ResizeAnchor): LayoutStage {
+    if ((stages & LayoutStage.VerticalLayout) !== 0) {
       this._applyVerticalLayout()
     }
-    const invalidatedMoreLayout = this._applyAxisAndHorizontalLayout(invalidation, resizeAnchor)
-    if ((invalidation & LayoutInvalidation.UpdatePane) !== 0 && !invalidatedMoreLayout) {
-      if (this._runLayoutSettledCallbacks()) {
-        return
-      }
-      this._updatePaneViews()
-    }
+    return this._applyAxisAndHorizontalLayout(stages, resizeAnchor)
   }
 
-  private _runLayoutSettledCallbacks(): boolean {
-    if ((this._layoutSettledCallbacks?.length ?? 0) === 0) {
+  private _runLayoutSettledCallback(callback?: LayoutSettledCallback): boolean {
+    if (callback === undefined) {
       return false
     }
-    const callbacks = this._layoutSettledCallbacks
-    this._layoutSettledCallbacks = []
-    callbacks.forEach(callback => {
-      callback()
-    })
-    return this._pendingLayoutInvalidation !== LayoutInvalidation.None
+    callback()
+    return (this._queuedLayoutTransactions?.length ?? 0) > 0
   }
 
-  private _applyAxisAndHorizontalLayout(invalidation: LayoutInvalidation, resizeAnchor?: ResizeAnchor): boolean {
-    const adjustAxis = (invalidation & LayoutInvalidation.AxisTicks) !== 0
-    const forceAdjustAxis = (invalidation & LayoutInvalidation.ForceAxisTicks) !== 0
-    const allowAxisWidthShrink = (invalidation & LayoutInvalidation.AllowAxisWidthShrink) !== 0
-    let shouldApplyHorizontalLayout = (invalidation & LayoutInvalidation.HorizontalLayout) !== 0
+  private _applyAxisAndHorizontalLayout(stages: LayoutStage, resizeAnchor?: ResizeAnchor): LayoutStage {
+    const adjustAxis = (stages & LayoutStage.AxisTicks) !== 0
+    const forceAdjustAxis = (stages & LayoutStage.ForceAxisTicks) !== 0
+    const allowAxisWidthShrink = (stages & LayoutStage.AllowAxisWidthShrink) !== 0
+    let shouldApplyHorizontalLayout = (stages & LayoutStage.HorizontalLayout) !== 0
     if (adjustAxis || forceAdjustAxis) {
       shouldApplyHorizontalLayout = this._buildAxisTicks(forceAdjustAxis) || shouldApplyHorizontalLayout
     }
     if (!shouldApplyHorizontalLayout) {
-      return false
+      return LayoutStage.None
     }
 
     const mainWidthChanged = this._applyHorizontalLayout(resizeAnchor, allowAxisWidthShrink)
     if (!mainWidthChanged || (!adjustAxis && !forceAdjustAxis)) {
-      return false
+      return LayoutStage.None
     }
 
-    let nextInvalidation = LayoutInvalidation.AxisTicks | LayoutInvalidation.ForceAxisTicks
-    if ((invalidation & LayoutInvalidation.UpdatePane) !== 0) {
-      nextInvalidation |= LayoutInvalidation.UpdatePane
-    }
+    let nextStages = LayoutStage.AxisTicks | LayoutStage.ForceAxisTicks
     if (allowAxisWidthShrink) {
-      nextInvalidation |= LayoutInvalidation.AllowAxisWidthShrink
+      nextStages |= LayoutStage.AllowAxisWidthShrink
     }
-    this._invalidateLayout(nextInvalidation, resizeAnchor)
-    return true
+    return nextStages
   }
 
   private _buildAxisTicks(forceAdjustAxis: boolean): boolean {
@@ -731,11 +745,15 @@ export default class ChartImp implements Chart {
     return adjust
   }
 
-  private _updatePaneViews(): void {
-    this.updatePane(UpdateLevel.All)
+  private _renderLayoutNow(): void {
+    this._renderPaneViews(UpdateLevel.All)
   }
 
   updatePane(level: UpdateLevel, paneId?: string): void {
+    this._renderPaneViews(level, paneId)
+  }
+
+  private _renderPaneViews(level: UpdateLevel, paneId?: string): void {
     if (isValid(paneId)) {
       const pane = this.getDrawPaneById(paneId)
       pane?.update(level)
@@ -1575,9 +1593,7 @@ export default class ChartImp implements Chart {
 
   destroy(): void {
     this._cancelPendingLayoutFrame()
-    this._pendingLayoutInvalidation = LayoutInvalidation.None
-    this._pendingLayoutResizeAnchor = undefined
-    this._layoutSettledCallbacks = []
+    this._queuedLayoutTransactions = []
     this._chartStore.destroy()
     this._chartEvent.destroy()
     this._drawPanes.forEach(pane => {

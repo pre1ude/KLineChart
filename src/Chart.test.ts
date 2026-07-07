@@ -3,8 +3,29 @@ import ChartImp from './Chart'
 import { YAxisPosition } from './common/Styles'
 import { PaneIdConstants } from './pane/types'
 
-const VIEWPORT_LAYOUT_INVALIDATION_MASK = 14
-const EXACT_LAYOUT_INVALIDATION_MASK = 63
+const enum TestLayoutStage {
+  None = 0,
+  VerticalLayout = 1 << 0,
+  HorizontalLayout = 1 << 1,
+  AxisTicks = 1 << 2,
+  ForceAxisTicks = 1 << 3,
+  AllowAxisWidthShrink = 1 << 4
+}
+
+const VIEWPORT_LAYOUT_STAGES =
+  TestLayoutStage.HorizontalLayout |
+  TestLayoutStage.AxisTicks
+
+const FOLLOW_UP_AXIS_LAYOUT_STAGES =
+  TestLayoutStage.AxisTicks |
+  TestLayoutStage.ForceAxisTicks
+
+const EXACT_LAYOUT_TRANSACTION_STAGES =
+  TestLayoutStage.VerticalLayout |
+  TestLayoutStage.HorizontalLayout |
+  TestLayoutStage.AxisTicks |
+  TestLayoutStage.ForceAxisTicks |
+  TestLayoutStage.AllowAxisWidthShrink
 
 function createPendingIndicatorChart(ready = true): {
   chart: ChartImp
@@ -87,41 +108,71 @@ describe('ChartImp.createIndicator', () => {
 })
 
 describe('ChartImp layout refresh methods', () => {
-  it('maps semantic refresh methods to layout invalidation masks', () => {
+  it('maps semantic refresh methods to layout transactions', () => {
     const chart = Object.create(ChartImp.prototype) as ChartImp
-    const flushLayout = vi.fn()
-    Reflect.set(chart, '_flushLayout', flushLayout)
+    const runLayoutTransaction = vi.fn()
+    Reflect.set(chart, '_runLayoutTransaction', runLayoutTransaction)
 
     chart.refreshPaneLayout()
     chart.refreshViewportLayout()
     chart.refreshMetricLayout()
     chart.refreshResizeLayout('domainTo')
 
-    expect(flushLayout).toHaveBeenNthCalledWith(1, EXACT_LAYOUT_INVALIDATION_MASK)
-    expect(flushLayout).toHaveBeenNthCalledWith(2, VIEWPORT_LAYOUT_INVALIDATION_MASK)
-    expect(flushLayout).toHaveBeenNthCalledWith(3, EXACT_LAYOUT_INVALIDATION_MASK)
-    expect(flushLayout).toHaveBeenNthCalledWith(4, EXACT_LAYOUT_INVALIDATION_MASK, 'domainTo')
+    expect(runLayoutTransaction).toHaveBeenNthCalledWith(1, { stages: EXACT_LAYOUT_TRANSACTION_STAGES, render: true })
+    expect(runLayoutTransaction).toHaveBeenNthCalledWith(2, { stages: VIEWPORT_LAYOUT_STAGES, afterLayoutSettled: undefined, render: true })
+    expect(runLayoutTransaction).toHaveBeenNthCalledWith(3, { stages: EXACT_LAYOUT_TRANSACTION_STAGES, render: true })
+    expect(runLayoutTransaction).toHaveBeenNthCalledWith(4, { stages: EXACT_LAYOUT_TRANSACTION_STAGES, resizeAnchor: 'domainTo', render: true })
   })
 
-  it('merges pending layout invalidations before flushing', () => {
+  it('queues re-entrant layout transactions until the current transaction finishes', () => {
     const chart = Object.create(ChartImp.prototype) as ChartImp
-    const flushLayout = vi.fn()
-    const measureWidthInvalidation = 2
-    const adjustAxisInvalidation = 8
-    Reflect.set(chart, '_flushLayout', flushLayout)
-    Reflect.set(chart, '_pendingLayoutInvalidation', measureWidthInvalidation)
-    Reflect.set(chart, '_pendingLayoutResizeAnchor', 'domainFrom')
+    const horizontalLayoutStage = TestLayoutStage.HorizontalLayout
+    const forceAxisTicksStage = TestLayoutStage.ForceAxisTicks
+    const runLayoutPass = vi.fn(() => {
+      if (runLayoutPass.mock.calls.length === 1) {
+        Reflect.get(chart, '_runLayoutTransaction').call(chart, { stages: forceAxisTicksStage })
+      }
+      return TestLayoutStage.None
+    })
+    Reflect.set(chart, '_runLayoutPass', runLayoutPass)
 
-    Reflect.get(chart, '_invalidateLayout').call(chart, adjustAxisInvalidation, 'domainTo')
+    Reflect.get(chart, '_runLayoutTransaction').call(chart, { stages: horizontalLayoutStage })
 
-    expect(flushLayout).toHaveBeenCalledWith(measureWidthInvalidation | adjustAxisInvalidation, 'domainTo')
-    expect(Reflect.get(chart, '_pendingLayoutInvalidation')).toBe(0)
-    expect(Reflect.get(chart, '_pendingLayoutResizeAnchor')).toBeUndefined()
+    expect(runLayoutPass).toHaveBeenNthCalledWith(1, horizontalLayoutStage, undefined)
+    expect(runLayoutPass).toHaveBeenNthCalledWith(2, forceAxisTicksStage, undefined)
+    expect(Reflect.get(chart, '_queuedLayoutTransactions')).toEqual([])
+    expect(Reflect.get(chart, '_isRunningLayoutTransaction')).toBe(false)
+  })
+
+  it('coalesces viewport requests queued during a running transaction', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const runLayoutPass = vi.fn(() => {
+      if (runLayoutPass.mock.calls.length === 1) {
+        chart.requestViewportLayout()
+        chart.requestViewportLayout()
+      }
+      return TestLayoutStage.None
+    })
+    const renderLayoutNow = vi.fn()
+    Reflect.set(chart, '_runLayoutPass', runLayoutPass)
+    Reflect.set(chart, '_renderLayoutNow', renderLayoutNow)
+
+    Reflect.get(chart, '_runLayoutTransaction').call(chart, {
+      stages: TestLayoutStage.HorizontalLayout,
+      render: true
+    })
+
+    expect(runLayoutPass).toHaveBeenCalledTimes(2)
+    expect(runLayoutPass).toHaveBeenNthCalledWith(1, TestLayoutStage.HorizontalLayout, undefined)
+    expect(runLayoutPass).toHaveBeenNthCalledWith(2, VIEWPORT_LAYOUT_STAGES, undefined)
+    expect(renderLayoutNow).toHaveBeenCalledTimes(2)
+    expect(Reflect.get(chart, '_queuedLayoutTransactions')).toEqual([])
+    expect(Reflect.get(chart, '_isRunningLayoutTransaction')).toBe(false)
   })
 
   it('batches requested viewport layout refreshes into one frame', () => {
     const chart = Object.create(ChartImp.prototype) as ChartImp
-    const flushLayout = vi.fn()
+    const runLayoutTransaction = vi.fn()
     let frameCallback: FrameRequestCallback | undefined
     const requestFrame = vi.fn((callback: FrameRequestCallback) => {
       frameCallback = callback
@@ -129,19 +180,19 @@ describe('ChartImp layout refresh methods', () => {
     })
     const cancelFrame = vi.fn()
     vi.stubGlobal('window', { requestAnimationFrame: requestFrame, cancelAnimationFrame: cancelFrame })
-    Reflect.set(chart, '_flushLayout', flushLayout)
+    Reflect.set(chart, '_runLayoutTransaction', runLayoutTransaction)
 
     try {
       chart.requestViewportLayout()
       chart.requestViewportLayout()
 
       expect(requestFrame).toHaveBeenCalledTimes(1)
-      expect(flushLayout).not.toHaveBeenCalled()
+      expect(runLayoutTransaction).not.toHaveBeenCalled()
 
       frameCallback?.(0)
 
-      expect(flushLayout).toHaveBeenCalledOnce()
-      expect(flushLayout).toHaveBeenCalledWith(VIEWPORT_LAYOUT_INVALIDATION_MASK)
+      expect(runLayoutTransaction).toHaveBeenCalledOnce()
+      expect(runLayoutTransaction).toHaveBeenCalledWith({ stages: VIEWPORT_LAYOUT_STAGES, render: true })
       expect(cancelFrame).not.toHaveBeenCalled()
       expect(Reflect.get(chart, '_layoutFrameId')).toBe(-1)
     } finally {
@@ -149,9 +200,9 @@ describe('ChartImp layout refresh methods', () => {
     }
   })
 
-  it('flushes requested viewport layout synchronously when a sync invalidation arrives', () => {
+  it('flushes requested viewport layout synchronously when a sync transaction arrives', () => {
     const chart = Object.create(ChartImp.prototype) as ChartImp
-    const flushLayout = vi.fn()
+    const runLayoutTransaction = vi.fn()
     let frameCallback: FrameRequestCallback | undefined
     const requestFrame = vi.fn((callback: FrameRequestCallback) => {
       frameCallback = callback
@@ -159,20 +210,19 @@ describe('ChartImp layout refresh methods', () => {
     })
     const cancelFrame = vi.fn()
     vi.stubGlobal('window', { requestAnimationFrame: requestFrame, cancelAnimationFrame: cancelFrame })
-    Reflect.set(chart, '_flushLayout', flushLayout)
+    Reflect.set(chart, '_runLayoutTransaction', runLayoutTransaction)
 
     try {
       chart.requestViewportLayout()
       chart.refreshPaneLayout()
 
       expect(cancelFrame).toHaveBeenCalledWith(7)
-      expect(flushLayout).toHaveBeenCalledOnce()
-      expect(flushLayout).toHaveBeenCalledWith(EXACT_LAYOUT_INVALIDATION_MASK)
+      expect(runLayoutTransaction).toHaveBeenCalledOnce()
+      expect(runLayoutTransaction).toHaveBeenCalledWith({ stages: EXACT_LAYOUT_TRANSACTION_STAGES, render: true })
 
       frameCallback?.(0)
 
-      expect(flushLayout).toHaveBeenCalledOnce()
-      expect(Reflect.get(chart, '_pendingLayoutInvalidation')).toBe(0)
+      expect(runLayoutTransaction).toHaveBeenCalledOnce()
       expect(Reflect.get(chart, '_layoutFrameId')).toBe(-1)
     } finally {
       vi.unstubAllGlobals()
@@ -181,49 +231,53 @@ describe('ChartImp layout refresh methods', () => {
 
   it('runs viewport layout settled callbacks before the final pane update', () => {
     const chart = Object.create(ChartImp.prototype) as ChartImp
-    const applyAxisAndHorizontalLayout = vi.fn(() => false)
-    const updatePaneViews = vi.fn()
+    const applyAxisAndHorizontalLayout = vi.fn(() => TestLayoutStage.None)
+    const renderLayoutNow = vi.fn()
     const onLayoutSettled = vi.fn(() => {
       chart.refreshViewportLayout()
     })
     Reflect.set(chart, '_applyAxisAndHorizontalLayout', applyAxisAndHorizontalLayout)
-    Reflect.set(chart, '_updatePaneViews', updatePaneViews)
+    Reflect.set(chart, '_renderLayoutNow', renderLayoutNow)
 
     chart.refreshViewportLayout(onLayoutSettled)
 
     expect(applyAxisAndHorizontalLayout).toHaveBeenCalledTimes(2)
-    expect(applyAxisAndHorizontalLayout).toHaveBeenNthCalledWith(1, VIEWPORT_LAYOUT_INVALIDATION_MASK, undefined)
-    expect(applyAxisAndHorizontalLayout).toHaveBeenNthCalledWith(2, VIEWPORT_LAYOUT_INVALIDATION_MASK, undefined)
+    expect(applyAxisAndHorizontalLayout).toHaveBeenNthCalledWith(1, VIEWPORT_LAYOUT_STAGES, undefined)
+    expect(applyAxisAndHorizontalLayout).toHaveBeenNthCalledWith(2, VIEWPORT_LAYOUT_STAGES, undefined)
     expect(onLayoutSettled).toHaveBeenCalledOnce()
-    expect(updatePaneViews).toHaveBeenCalledOnce()
-    expect(updatePaneViews.mock.invocationCallOrder[0]).toBeGreaterThan(onLayoutSettled.mock.invocationCallOrder[0])
-    expect(updatePaneViews.mock.invocationCallOrder[0]).toBeGreaterThan(applyAxisAndHorizontalLayout.mock.invocationCallOrder[1])
+    expect(renderLayoutNow).toHaveBeenCalledOnce()
+    expect(renderLayoutNow.mock.invocationCallOrder[0]).toBeGreaterThan(onLayoutSettled.mock.invocationCallOrder[0])
+    expect(renderLayoutNow.mock.invocationCallOrder[0]).toBeGreaterThan(applyAxisAndHorizontalLayout.mock.invocationCallOrder[1])
   })
 
-  it('drains re-entrant layout invalidations after the current flush pass', () => {
+  it('keeps layout settled callbacks until follow-up layout passes settle', () => {
     const chart = Object.create(ChartImp.prototype) as ChartImp
-    const measureWidthInvalidation = 2
-    const adjustAxisInvalidation = 8
-    const flushLayout = vi.fn(() => {
-      if (flushLayout.mock.calls.length === 1) {
-        Reflect.get(chart, '_invalidateLayout').call(chart, adjustAxisInvalidation)
-      }
-    })
-    Reflect.set(chart, '_flushLayout', flushLayout)
+    const applyAxisAndHorizontalLayout = vi.fn(() => (
+      applyAxisAndHorizontalLayout.mock.calls.length === 1
+        ? FOLLOW_UP_AXIS_LAYOUT_STAGES
+        : TestLayoutStage.None
+    ))
+    const renderLayoutNow = vi.fn()
+    const onLayoutSettled = vi.fn()
+    Reflect.set(chart, '_applyAxisAndHorizontalLayout', applyAxisAndHorizontalLayout)
+    Reflect.set(chart, '_renderLayoutNow', renderLayoutNow)
 
-    Reflect.get(chart, '_invalidateLayout').call(chart, measureWidthInvalidation)
+    chart.refreshViewportLayout(onLayoutSettled)
 
-    expect(flushLayout).toHaveBeenNthCalledWith(1, measureWidthInvalidation)
-    expect(flushLayout).toHaveBeenNthCalledWith(2, adjustAxisInvalidation)
-    expect(Reflect.get(chart, '_pendingLayoutInvalidation')).toBe(0)
-    expect(Reflect.get(chart, '_isFlushingLayout')).toBe(false)
+    expect(applyAxisAndHorizontalLayout).toHaveBeenCalledTimes(2)
+    expect(applyAxisAndHorizontalLayout).toHaveBeenNthCalledWith(1, VIEWPORT_LAYOUT_STAGES, undefined)
+    expect(applyAxisAndHorizontalLayout).toHaveBeenNthCalledWith(2, FOLLOW_UP_AXIS_LAYOUT_STAGES, undefined)
+    expect(onLayoutSettled).toHaveBeenCalledOnce()
+    expect(onLayoutSettled.mock.invocationCallOrder[0]).toBeGreaterThan(applyAxisAndHorizontalLayout.mock.invocationCallOrder[1])
+    expect(renderLayoutNow).toHaveBeenCalledOnce()
+    expect(renderLayoutNow.mock.invocationCallOrder[0]).toBeGreaterThan(onLayoutSettled.mock.invocationCallOrder[0])
   })
 
-  it('uses pending invalidations to converge when measured axis width changes main width', () => {
+  it('uses follow-up layout passes to converge when measured axis width changes main width', () => {
     const chart = Object.create(ChartImp.prototype) as ChartImp
     const buildTicks = vi.fn(() => true)
     const applyHorizontalLayout = vi.fn(() => applyHorizontalLayout.mock.calls.length === 1)
-    const updatePaneViews = vi.fn()
+    const renderLayoutNow = vi.fn()
 
     Reflect.set(chart, '_drawPanes', [
       {
@@ -234,29 +288,29 @@ describe('ChartImp layout refresh methods', () => {
       }
     ])
     Reflect.set(chart, '_applyHorizontalLayout', applyHorizontalLayout)
-    Reflect.set(chart, '_updatePaneViews', updatePaneViews)
+    Reflect.set(chart, '_renderLayoutNow', renderLayoutNow)
 
-    Reflect.get(chart, '_invalidateLayout').call(chart, VIEWPORT_LAYOUT_INVALIDATION_MASK)
+    Reflect.get(chart, '_runLayoutTransaction').call(chart, { stages: VIEWPORT_LAYOUT_STAGES, render: true })
 
     expect(buildTicks).toHaveBeenCalledTimes(2)
     expect(buildTicks).toHaveBeenNthCalledWith(1, false)
     expect(buildTicks).toHaveBeenNthCalledWith(2, true)
     expect(applyHorizontalLayout).toHaveBeenCalledTimes(2)
-    expect(updatePaneViews).toHaveBeenCalledTimes(1)
-    expect(updatePaneViews.mock.invocationCallOrder[0]).toBeGreaterThan(applyHorizontalLayout.mock.invocationCallOrder[1])
+    expect(renderLayoutNow).toHaveBeenCalledTimes(1)
+    expect(renderLayoutNow.mock.invocationCallOrder[0]).toBeGreaterThan(applyHorizontalLayout.mock.invocationCallOrder[1])
   })
 
   it('keeps viewport refreshes grow-only for auto y-axis width', () => {
     const chart = Object.create(ChartImp.prototype) as ChartImp
     const applyVerticalLayout = vi.fn()
     const applyHorizontalLayout = vi.fn(() => false)
-    const updatePaneViews = vi.fn()
+    const renderLayoutNow = vi.fn()
 
     Reflect.set(chart, '_chartStore', { mainWidth: 100 })
     Reflect.set(chart, '_drawPanes', [])
     Reflect.set(chart, '_applyVerticalLayout', applyVerticalLayout)
     Reflect.set(chart, '_applyHorizontalLayout', applyHorizontalLayout)
-    Reflect.set(chart, '_updatePaneViews', updatePaneViews)
+    Reflect.set(chart, '_renderLayoutNow', renderLayoutNow)
 
     chart.refreshViewportLayout()
     chart.refreshPaneLayout()
@@ -268,7 +322,7 @@ describe('ChartImp layout refresh methods', () => {
     expect(applyHorizontalLayout).toHaveBeenNthCalledWith(3, undefined, true)
     expect(applyHorizontalLayout).toHaveBeenNthCalledWith(4, 'domainFrom', true)
     expect(applyVerticalLayout).toHaveBeenCalledTimes(3)
-    expect(updatePaneViews).toHaveBeenCalledTimes(4)
+    expect(renderLayoutNow).toHaveBeenCalledTimes(4)
   })
 
   it('preserves current auto y-axis width when shrink is not allowed', () => {
