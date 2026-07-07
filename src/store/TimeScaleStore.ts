@@ -155,10 +155,10 @@ export default class TimeScaleStore {
   private calcMinRemainWidth(): void {
     if (this._calcMode === 'DISTANCE_MODE') {
       if (this._maxOffsetLeftDistance != null) {
-        this._minRemainWidth.right = this._chartStore.mainWidth - this._maxOffsetLeftDistance
+        this._minRemainWidth.right = Math.max(0, this._chartStore.mainWidth - this._maxOffsetLeftDistance)
       }
       if (this._maxOffsetRightDistance != null) {
-        this._minRemainWidth.left = this._chartStore.mainWidth - this._maxOffsetRightDistance
+        this._minRemainWidth.left = Math.max(0, this._chartStore.mainWidth - this._maxOffsetRightDistance)
       }
     } else if (this._calcMode === 'BARCOUNT_MODE') {
       if (this._leftMinVisibleBarCount != null) {

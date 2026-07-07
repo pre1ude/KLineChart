@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type KLineData from '../common/KLineData'
 import { CandleType, getDefaultStyles } from '../common/Styles'
 import TimeScaleStore, { calcTimeScaleHorizontalInset } from './TimeScaleStore'
 
@@ -63,3 +64,66 @@ describe('TimeScaleStore viewport refresh scheduling', () => {
     expect(requestViewportLayout).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('TimeScaleStore offsetRight resize bounds', () => {
+  it('keeps offsetRight while the resized visible candle width remains above the minimum', () => {
+    const { chartStore, timeScaleStore } = createTimeScaleHarness(250)
+    timeScaleStore.setMaxOffsetRightDistance(120)
+    timeScaleStore.setOffsetRightDistance(100)
+
+    chartStore.mainWidth = 180
+    timeScaleStore.adjustVisibleRange()
+
+    expect(timeScaleStore.getOffsetRightDistance()).toBe(100)
+  })
+
+  it('reduces offsetRight after resize when visible candle width reaches the minimum', () => {
+    const { chartStore, timeScaleStore } = createTimeScaleHarness(250)
+    timeScaleStore.setMaxOffsetRightDistance(120)
+    timeScaleStore.setOffsetRightDistance(100)
+
+    chartStore.mainWidth = 90
+    timeScaleStore.adjustVisibleRange()
+
+    expect(timeScaleStore.getOffsetRightDistance()).toBe(90)
+  })
+})
+
+function createTimeScaleHarness(mainWidth: number): {
+  chartStore: { mainWidth: number }
+  timeScaleStore: TimeScaleStore
+} {
+  const chartStore = {
+    mainWidth,
+    getDataList: () => createDataList(100),
+    getMinRemainWidth: () => ({ left: 0, right: 0 }),
+    getTimeShareTicks: () => [],
+    getTimeShareDays: () => 1,
+    getTooltipStore: () => ({
+      getCrosshair: () => undefined,
+      recalculateCrosshair: vi.fn()
+    }),
+    getActionStore: () => ({
+      execute: vi.fn()
+    }),
+    adjustVisibleDataList: vi.fn(),
+    executeLoadDataCallback: vi.fn(),
+    getStyles: () => getDefaultStyles()
+  }
+  const timeScaleStore = new TimeScaleStore(chartStore as never)
+
+  return {
+    chartStore,
+    timeScaleStore
+  }
+}
+
+function createDataList(count: number): KLineData[] {
+  return Array.from({ length: count }, (_, index) => ({
+    timestamp: index,
+    open: index,
+    high: index,
+    low: index,
+    close: index
+  }))
+}
