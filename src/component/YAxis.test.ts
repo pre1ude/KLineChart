@@ -9,6 +9,7 @@ import {
   getIndicatorYAxisPosition,
   layoutYAxisTicks,
   mapYAxisTicksToPixels,
+  resolveDefaultYAxisPosition,
   resolveStandardAutoScale,
   resolveStandardScale,
   resolveStandardTypedExtent,
@@ -69,13 +70,13 @@ describe('getIndicatorYAxisPosition', () => {
 
   it('supports global y-axis position fallback rules for indicators without explicit axis binding', () => {
     const indicator: Pick<Indicator, 'yAxisPosition'> = {}
-    const resolveDefaultPosition = (position: YAxisPosition): 'left' | 'right' => (
-      position === YAxisPosition.Right ? YAxisPosition.Right : YAxisPosition.Left
-    )
 
-    expect(getIndicatorYAxisPosition(indicator, resolveDefaultPosition(YAxisPosition.Left))).toBe('left')
-    expect(getIndicatorYAxisPosition(indicator, resolveDefaultPosition(YAxisPosition.Right))).toBe('right')
-    expect(getIndicatorYAxisPosition(indicator, resolveDefaultPosition(YAxisPosition.Both))).toBe('left')
+    expect(getIndicatorYAxisPosition(indicator, resolveDefaultYAxisPosition(YAxisPosition.Left))).toBe('left')
+    expect(getIndicatorYAxisPosition(indicator, resolveDefaultYAxisPosition(YAxisPosition.Right))).toBe('right')
+    expect(getIndicatorYAxisPosition(indicator, resolveDefaultYAxisPosition(YAxisPosition.Both))).toBe('left')
+    expect(getIndicatorYAxisPosition(indicator, resolveDefaultYAxisPosition(YAxisPosition.Both, 'right'))).toBe('right')
+    expect(getIndicatorYAxisPosition(indicator, resolveDefaultYAxisPosition(YAxisPosition.Left, 'right'))).toBe('left')
+    expect(getIndicatorYAxisPosition(indicator, resolveDefaultYAxisPosition(YAxisPosition.Right, 'left'))).toBe('right')
   })
 })
 

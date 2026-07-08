@@ -120,6 +120,8 @@ export default abstract class DualYPane extends Pane {
       return this._yLeftAxisWidget
     } else if (position === YAxisPosition.Right) {
       return this._yRightAxisWidget
+    } else if (yAxisStyles.mainPosition === YAxisPosition.Right) {
+      return this._yRightAxisWidget
     }
     // default to left if both are enabled
     return this._yLeftAxisWidget

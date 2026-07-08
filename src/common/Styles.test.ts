@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getDefaultStyles } from './Styles'
+import { getDefaultStyles, YAxisPosition } from './Styles'
 
 describe('getDefaultStyles', () => {
   it('面积图 line symbol 默认关闭', () => {
@@ -20,5 +20,11 @@ describe('getDefaultStyles', () => {
 
     expect(styles.xAxis.showMinLabel).toBe(true)
     expect(styles.xAxis.showMaxLabel).toBe(true)
+  })
+
+  it('Y 轴默认以左轴作为主轴', () => {
+    const styles = getDefaultStyles()
+
+    expect(styles.yAxis.mainPosition).toBe(YAxisPosition.Left)
   })
 })

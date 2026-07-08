@@ -36,14 +36,26 @@ export function getIndicatorYAxisPosition(
   return indicator.yAxisPosition ?? defaultPosition
 }
 
+export function resolveDefaultYAxisPosition(
+  position: YAxisPosition,
+  mainPosition: 'left' | 'right' = YAxisPosition.Left
+): 'left' | 'right' {
+  if (position === YAxisPosition.Right) {
+    return YAxisPosition.Right
+  }
+  if (position === YAxisPosition.Both) {
+    return mainPosition
+  }
+  return YAxisPosition.Left
+}
+
 function filterIndicatorsByYAxisPosition(
   indicators: Indicator[],
   position: 'left' | 'right',
-  globalYAxisPosition: YAxisPosition
+  globalYAxisPosition: YAxisPosition,
+  mainYAxisPosition: 'left' | 'right' = YAxisPosition.Left
 ): Indicator[] {
-  const defaultPosition = globalYAxisPosition === YAxisPosition.Right
-    ? YAxisPosition.Right
-    : YAxisPosition.Left
+  const defaultPosition = resolveDefaultYAxisPosition(globalYAxisPosition, mainYAxisPosition)
   return indicators.filter(indicator => getIndicatorYAxisPosition(indicator, defaultPosition) === position)
 }
 
@@ -764,13 +776,15 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const paneIndicators = chartStore.getIndicatorStore().getInstances(pane.getId())
     const inCandle = this.isInCandle()
     const yAxisWidget = this.getParent() as YAxisWidget
+    const yAxisStyles = chart.getStyles().yAxis
 
     const indicators = inCandle
       ? paneIndicators
       : filterIndicatorsByYAxisPosition(
         paneIndicators,
         yAxisWidget.getOptions().position,
-        chart.getStyles().yAxis.position
+        yAxisStyles.position,
+        yAxisStyles.mainPosition
       )
 
     indicators.forEach(indicator => {

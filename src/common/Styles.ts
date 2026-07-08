@@ -378,6 +378,7 @@ export enum YAxisType {
 export interface YAxisStyle extends AxisStyle {
   // type: YAxisType
   position: YAxisPosition
+  mainPosition: Exclude<YAxisPosition, YAxisPosition.Both>
   inside: boolean
   reverse: boolean
   showMinLabel: boolean
@@ -733,6 +734,7 @@ function getDefaultXAxisStyle(): XAxisStyle {
 function getDefaultYAxisStyle(): YAxisStyle {
   const style = getDefaultXAxisStyle() as YAxisStyle
   style.position = YAxisPosition.Left
+  style.mainPosition = YAxisPosition.Left
   style.inside = false
   style.reverse = false
   style.showMinLabel = true

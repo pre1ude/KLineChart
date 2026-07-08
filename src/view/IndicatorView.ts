@@ -4,7 +4,7 @@ import { type IndicatorStyle, YAxisPosition } from '../common/Styles'
 import type { EventName, MouseTouchEvent } from '../common/SyntheticEvent'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorFigureVisible, type Indicator, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
-import { getIndicatorYAxisPosition } from '../component/YAxis'
+import { getIndicatorYAxisPosition, resolveDefaultYAxisPosition } from '../component/YAxis'
 import type YAxisImp from '../component/YAxis'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import { getLineSymbolStepBySpacing, resolveLineSymbolStyle } from '../extension/figure/line'
@@ -40,7 +40,7 @@ export default class IndicatorView extends View {
     const pane = widget.getPane()
     const isMain = pane.getId() === PaneIdConstants.CANDLE
     const chart = pane.getChart()
-    const globalYAxisPosition = chart.getStyles().yAxis.position
+    const yAxisStyles = chart.getStyles().yAxis
     const bounding = widget.getBounding()
     const xAxis = (chart.getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
     const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
@@ -60,11 +60,10 @@ export default class IndicatorView extends View {
     function filterIndicatorsByAxisPosition(
       indicators: Indicator[],
       position: 'left' | 'right',
-      yAxisPosition: YAxisPosition
+      yAxisPosition: YAxisPosition,
+      mainYAxisPosition: 'left' | 'right'
     ): Indicator[] {
-      const defaultPosition = yAxisPosition === YAxisPosition.Right
-        ? YAxisPosition.Right
-        : YAxisPosition.Left
+      const defaultPosition = resolveDefaultYAxisPosition(yAxisPosition, mainYAxisPosition)
       return indicators.filter(indicator => getIndicatorYAxisPosition(indicator, defaultPosition) === position)
     }
 
@@ -304,8 +303,8 @@ export default class IndicatorView extends View {
       drawForAxis(paneIndicators, yLeftAxis)
     } else {
       // 在副图
-      drawForAxis(filterIndicatorsByAxisPosition(paneIndicators, YAxisPosition.Left, globalYAxisPosition), yLeftAxis)
-      drawForAxis(filterIndicatorsByAxisPosition(paneIndicators, YAxisPosition.Right, globalYAxisPosition), yRightAxis)
+      drawForAxis(filterIndicatorsByAxisPosition(paneIndicators, YAxisPosition.Left, yAxisStyles.position, yAxisStyles.mainPosition), yLeftAxis)
+      drawForAxis(filterIndicatorsByAxisPosition(paneIndicators, YAxisPosition.Right, yAxisStyles.position, yAxisStyles.mainPosition), yRightAxis)
     }
     ctx.restore()
   }

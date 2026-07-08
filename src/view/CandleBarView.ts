@@ -5,7 +5,7 @@ import { CandleType, PolygonType, type CandleBarColor, type RectStyle, YAxisPosi
 import { isValid } from '../common/utils/typeChecks'
 import { type FigureCreate } from '../component/Figure'
 import { type Indicator } from '../component/Indicator'
-import { getIndicatorYAxisPosition } from '../component/YAxis'
+import { getIndicatorYAxisPosition, resolveDefaultYAxisPosition } from '../component/YAxis'
 import { createFigure } from '../extension/figure'
 import { type RectAttrs } from '../extension/figure/rect'
 import type DualYPane from '../pane/DualYPane'
@@ -23,11 +23,10 @@ export type CandleHitTestMode = 'body' | 'full'
 
 export function resolveIndicatorOhlcYAxisPosition(
   indicator: Pick<Indicator, 'yAxisPosition'>,
-  globalYAxisPosition: YAxisPosition
+  globalYAxisPosition: YAxisPosition,
+  mainYAxisPosition: 'left' | 'right' = YAxisPosition.Left
 ): 'left' | 'right' {
-  const defaultPosition = globalYAxisPosition === YAxisPosition.Right
-    ? YAxisPosition.Right
-    : YAxisPosition.Left
+  const defaultPosition = resolveDefaultYAxisPosition(globalYAxisPosition, mainYAxisPosition)
   return getIndicatorYAxisPosition(indicator, defaultPosition)
 }
 
@@ -271,7 +270,7 @@ export default class CandleBarView extends View {
       if (indicator.shouldOhlc && indicator.visible) {
         const styles = chartStore.getStyles()
         const defaultOhlcStyles = styles.indicator.ohlc
-        const yAxisPosition = resolveIndicatorOhlcYAxisPosition(indicator, styles.yAxis.position)
+        const yAxisPosition = resolveIndicatorOhlcYAxisPosition(indicator, styles.yAxis.position, styles.yAxis.mainPosition)
         const ohlcStyles = {
           ...defaultOhlcStyles,
           ...indicator.styles?.ohlc

@@ -37,9 +37,12 @@ describe('resolveIndicatorOhlcYAxisPosition', () => {
     expect(resolveIndicatorOhlcYAxisPosition({ yAxisPosition: 'left' }, YAxisPosition.Right)).toBe('left')
   })
 
-  it('falls back to left when global y-axis position is left or both', () => {
+  it('uses the main y-axis as the default when both y-axes are visible', () => {
     expect(resolveIndicatorOhlcYAxisPosition({}, YAxisPosition.Left)).toBe('left')
     expect(resolveIndicatorOhlcYAxisPosition({}, YAxisPosition.Both)).toBe('left')
+    expect(resolveIndicatorOhlcYAxisPosition({}, YAxisPosition.Both, 'right')).toBe('right')
+    expect(resolveIndicatorOhlcYAxisPosition({}, YAxisPosition.Left, 'right')).toBe('left')
+    expect(resolveIndicatorOhlcYAxisPosition({}, YAxisPosition.Right, 'left')).toBe('right')
   })
 })
 
