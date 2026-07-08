@@ -25,6 +25,9 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
     const widget = this.getWidget() as unknown as YAxisWidget
     const axisType = widget.getAxisType()
     const yAxis = widget.getAxisComponent()
+    if (!yAxis.hasValidData()) {
+      return ''
+    }
     if (!crosshair.y) {
       return ''
     }

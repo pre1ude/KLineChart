@@ -618,6 +618,7 @@ export function createSyncedYAxisTick(
 
 export interface YAxis extends Axis {
   isInCandle: () => boolean
+  hasValidData: () => boolean
 }
 
 export type YAxisConstructor = new (parent: YAxisWidget) => YAxisImp
@@ -695,6 +696,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
   getTicks(): AxisTick[] {
     return this._ticks
+  }
+
+  hasValidData(): boolean {
+    return this._hasValidData
   }
 
   setRange(range: VisibleRange): void {
