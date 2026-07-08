@@ -209,4 +209,77 @@ describe('CandleLastPriceLabelView', () => {
       text: '110.00'
     })
   })
+
+  it('does not draw latest-price labels when the price line is outside the y-axis range', () => {
+    const styles = getDefaultStyles()
+    const leftPriceAxis = {
+      convertToPixel: vi.fn(() => -1)
+    }
+    const leftPriceWidget = {
+      getAxisComponent: () => leftPriceAxis
+    }
+    const chartStore = {
+      getStyles: () => styles,
+      getPrecision: () => ({ price: 2 }),
+      getDataList: () => [{ open: 105, close: 110 }],
+      getVisibleFirstData: () => ({ close: 100 }),
+      getMinutePercentageBasis: () => 100,
+      getThousandsSeparator: () => ',',
+      getDecimalFoldThreshold: () => 100
+    }
+    const pane = {
+      getChart: () => ({ getChartStore: () => chartStore }),
+      getMainAxisWidget: () => leftPriceWidget
+    }
+    const widget = {
+      getPane: () => pane,
+      getBounding: () => ({ width: 80, height: 120, left: 0, top: 0 }),
+      getAxisType: () => YAxisType.Normal,
+      isAlignLeft: () => false
+    }
+    const view = new CandleLastPriceLabelView(widget as never)
+
+    view.draw({} as never)
+
+    expect(leftPriceAxis.convertToPixel).toHaveBeenCalledWith(110)
+    expect(vi.mocked(drawStaticFigure)).not.toHaveBeenCalled()
+  })
+
+  it('keeps latest-price labels fully visible when the price line is inside the y-axis range', () => {
+    const styles = getDefaultStyles()
+    const leftPriceAxis = {
+      convertToPixel: vi.fn(() => 2)
+    }
+    const leftPriceWidget = {
+      getAxisComponent: () => leftPriceAxis
+    }
+    const chartStore = {
+      getStyles: () => styles,
+      getPrecision: () => ({ price: 2 }),
+      getDataList: () => [{ open: 105, close: 110 }],
+      getVisibleFirstData: () => ({ close: 100 }),
+      getMinutePercentageBasis: () => 100,
+      getThousandsSeparator: () => ',',
+      getDecimalFoldThreshold: () => 100
+    }
+    const pane = {
+      getChart: () => ({ getChartStore: () => chartStore }),
+      getMainAxisWidget: () => leftPriceWidget
+    }
+    const widget = {
+      getPane: () => pane,
+      getBounding: () => ({ width: 80, height: 120, left: 0, top: 0 }),
+      getAxisType: () => YAxisType.Normal,
+      isAlignLeft: () => false
+    }
+    const view = new CandleLastPriceLabelView(widget as never)
+
+    view.draw({} as never)
+
+    expect(vi.mocked(drawStaticFigure)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(drawStaticFigure).mock.calls[0][2].attrs).toMatchObject({
+      y: 10,
+      text: '110.00'
+    })
+  })
 })

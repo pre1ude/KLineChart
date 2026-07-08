@@ -27,6 +27,9 @@ export default class CandleLastPriceLabelView extends View {
         const axisType = widget.getAxisType()
         const yAxis = pane.getMainAxisWidget().getAxisComponent()
         const y0 = yAxis.convertToPixel(close)
+        if (y0 < 0 || y0 > bounding.height) {
+          return
+        }
         const y = clamp(y0, 10, bounding.height - 10)
 
         let backgroundColor: string
