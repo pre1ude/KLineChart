@@ -1,23 +1,24 @@
 import { describe, expect, it } from 'vitest'
 
 import { getDefaultStyles } from '../common/Styles'
-import YAxisView, { clampYAxisTickTextY } from './YAxisView'
+import YAxisView from './YAxisView'
+import { clampYAxisLabelY } from './utils/labelPosition'
 
-describe('clampYAxisTickTextY', () => {
+describe('clampYAxisLabelY', () => {
   it('keeps y-axis tick text fully visible inside axis height', () => {
-    expect(clampYAxisTickTextY(-4, 100, 12)).toBe(6)
-    expect(clampYAxisTickTextY(50, 100, 12)).toBe(50)
-    expect(clampYAxisTickTextY(104, 100, 12)).toBe(94)
+    expect(clampYAxisLabelY(-4, 100, 12)).toBe(6)
+    expect(clampYAxisLabelY(50, 100, 12)).toBe(50)
+    expect(clampYAxisLabelY(104, 100, 12)).toBe(94)
   })
 
   it('supports extra vertical padding for mixed-language tick text', () => {
-    expect(clampYAxisTickTextY(0, 100, 16)).toBe(8)
-    expect(clampYAxisTickTextY(100, 100, 16)).toBe(92)
+    expect(clampYAxisLabelY(0, 100, 16)).toBe(8)
+    expect(clampYAxisLabelY(100, 100, 16)).toBe(92)
   })
 
   it('centers text when axis height is smaller than text height', () => {
-    expect(clampYAxisTickTextY(0, 8, 12)).toBe(4)
-    expect(clampYAxisTickTextY(0, 15, 16)).toBe(7.5)
+    expect(clampYAxisLabelY(0, 8, 12)).toBe(4)
+    expect(clampYAxisLabelY(0, 15, 16)).toBe(7.5)
   })
 })
 

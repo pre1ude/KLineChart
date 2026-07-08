@@ -1,11 +1,10 @@
 
-import { clamp } from '@/common/utils/number'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorFigureVisible } from '../component/Indicator'
 import { drawStaticFigure } from '../extension/figure'
 import type YAxisWidget from '../widget/YAxisWidget'
-import { calculateYAxisLabelLayout } from './utils/labelPosition'
+import { calculateYAxisLabelLayout, calcYAxisLabelHeight, clampYAxisLabelY } from './utils/labelPosition'
 import View from './View'
 
 export default class IndicatorLastValueView extends View {
@@ -51,7 +50,7 @@ export default class IndicatorLastValueView extends View {
               const color = figureStyles.color ?? mergedDefaultStyles.lastValueMark.text.color
 
               const y0 = yAxis.convertToPixel(value)
-              const y = clamp(y0, 10, bounding.height - 10)
+              const y = clampYAxisLabelY(y0, bounding.height, calcYAxisLabelHeight(lastValueMarkTextStyles))
 
               let text = formatPrecision(value, precision)
               if (indicator.shouldFormatBigNumber) {

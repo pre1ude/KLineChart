@@ -3,6 +3,9 @@
  */
 
 import type { AxisStyle, StateTextStyle } from '../../common/Styles'
+import { clamp } from '../../common/utils/number'
+
+export type YAxisLabelHeightStyle = Pick<StateTextStyle, 'paddingTop' | 'size' | 'paddingBottom'>
 
 export interface YAxisLabelLayout {
   x: number
@@ -16,6 +19,21 @@ export interface XAxisLabelLayout {
   baseline: 'top'
   paddingTop: number
   paddingBottom: number
+}
+
+export function calcYAxisLabelHeight(styles: YAxisLabelHeightStyle): number {
+  return styles.paddingTop + styles.size + styles.paddingBottom
+}
+
+export function clampYAxisLabelY(y: number, height: number, labelHeight: number): number {
+  if (height <= 0 || labelHeight <= 0) {
+    return y
+  }
+  if (height <= labelHeight) {
+    return height / 2
+  }
+  const halfLabelHeight = labelHeight / 2
+  return clamp(y, halfLabelHeight, height - halfLabelHeight)
 }
 
 /**

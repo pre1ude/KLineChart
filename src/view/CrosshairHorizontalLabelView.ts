@@ -2,24 +2,11 @@ import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
 import { YAxisType, type CrosshairDirectionStyle, type CrosshairStyle, type StateTextStyle } from '../common/Styles'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
-import { clamp } from '../common/utils/number'
 import { type TextAttrs } from '../extension/figure/text'
 import type ChartStore from '../store/ChartStore'
 import type YAxisWidget from '../widget/YAxisWidget'
 import CrosshairLabelView from './CrosshairLabelView'
-import { calculateYAxisLabelLayout } from './utils/labelPosition'
-
-function clampYAxisLabelY(y: number, height: number, styles: StateTextStyle): number {
-  const labelHeight = styles.paddingTop + styles.size + styles.paddingBottom
-  if (height <= 0 || labelHeight <= 0) {
-    return y
-  }
-  if (height <= labelHeight) {
-    return height / 2
-  }
-  const halfLabelHeight = labelHeight / 2
-  return clamp(y, halfLabelHeight, height - halfLabelHeight)
-}
+import { calculateYAxisLabelLayout, calcYAxisLabelHeight, clampYAxisLabelY } from './utils/labelPosition'
 
 export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
   protected compare(crosshair: Crosshair, paneId: string): boolean {
@@ -96,7 +83,7 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
     styles.paddingLeft = layout.paddingLeft
     styles.paddingRight = layout.paddingRight
 
-    const y = clampYAxisLabelY(crosshair.y ?? 0, bounding.height, styles)
+    const y = clampYAxisLabelY(crosshair.y ?? 0, bounding.height, calcYAxisLabelHeight(styles))
     return { x: layout.x, y, text, align: layout.align, baseline: 'middle' }
   }
 }
