@@ -500,16 +500,19 @@ describe('ChartImp layout refresh methods', () => {
     const recalculateCrosshair = vi.fn()
     const setDataZoomLayout = vi.fn()
     const renderLayoutNow = vi.fn()
+    const leftAxisWidget = {
+      getAxisComponent: () => ({ buildTicks, getAutoSize: () => 20 }),
+      getBounding: () => ({ width: 10 })
+    }
+    const rightAxisWidget = {
+      getAxisComponent: () => ({ buildTicks, getAutoSize: () => 30 }),
+      getBounding: () => ({ width: 10 })
+    }
     const pane = {
       getId: () => PaneIdConstants.CANDLE,
-      getYLeftAxisWidget: () => ({
-        getAxisComponent: () => ({ buildTicks, getAutoSize: () => 20 }),
-        getBounding: () => ({ width: 10 })
-      }),
-      getYRightAxisWidget: () => ({
-        getAxisComponent: () => ({ buildTicks, getAutoSize: () => 30 }),
-        getBounding: () => ({ width: 10 })
-      }),
+      getYLeftAxisWidget: () => leftAxisWidget,
+      getYRightAxisWidget: () => rightAxisWidget,
+      getMainAxisWidget: () => leftAxisWidget,
       setBounding: vi.fn()
     }
     const xAxisPane = {
@@ -557,6 +560,36 @@ describe('ChartImp layout refresh methods', () => {
     )
     expect(renderLayoutNow).toHaveBeenCalledOnce()
     expect(renderLayoutNow.mock.invocationCallOrder[0]).toBeGreaterThan(pane.setBounding.mock.invocationCallOrder[1])
+  })
+
+  it('builds the configured main y-axis before the secondary y-axis', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const calls: string[] = []
+    const leftBuildTicks = vi.fn((force: boolean) => {
+      calls.push(`left:${force}`)
+      return false
+    })
+    const rightBuildTicks = vi.fn((force: boolean) => {
+      calls.push(`right:${force}`)
+      return true
+    })
+    const leftAxisWidget = {
+      getAxisComponent: () => ({ buildTicks: leftBuildTicks })
+    }
+    const rightAxisWidget = {
+      getAxisComponent: () => ({ buildTicks: rightBuildTicks })
+    }
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      getYLeftAxisWidget: () => leftAxisWidget,
+      getYRightAxisWidget: () => rightAxisWidget,
+      getMainAxisWidget: () => rightAxisWidget
+    }
+
+    Reflect.set(chart, '_drawPanes', [pane])
+
+    expect(Reflect.get(chart, '_buildAxisTicks').call(chart, false)).toBe(true)
+    expect(calls).toEqual(['right:false', 'left:false'])
   })
 
   it('keeps viewport refreshes grow-only for auto y-axis width', () => {

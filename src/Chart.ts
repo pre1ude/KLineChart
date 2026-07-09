@@ -784,9 +784,14 @@ export default class ChartImp implements Chart {
       if (pane.getId() === PaneIdConstants.X_AXIS) {
         adjust = (pane.getMainWidget() as XAxisWidget).getAxisComponent().buildTicks(forceAdjustAxis) || adjust
       } else {
-        const leftAdjust = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent().buildTicks(forceAdjustAxis)
-        const rightAdjust = (pane as DualYPane).getYRightAxisWidget().getAxisComponent().buildTicks(forceAdjustAxis)
-        adjust = leftAdjust || rightAdjust || adjust
+        const dualYPane = pane as DualYPane
+        const leftAxisWidget = dualYPane.getYLeftAxisWidget()
+        const rightAxisWidget = dualYPane.getYRightAxisWidget()
+        const mainAxisWidget = dualYPane.getMainAxisWidget()
+        const secondaryAxisWidget = mainAxisWidget === rightAxisWidget ? leftAxisWidget : rightAxisWidget
+        const mainAdjust = mainAxisWidget.getAxisComponent().buildTicks(forceAdjustAxis)
+        const secondaryAdjust = secondaryAxisWidget.getAxisComponent().buildTicks(forceAdjustAxis)
+        adjust = mainAdjust || secondaryAdjust || adjust
       }
     })
     return adjust
