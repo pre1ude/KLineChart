@@ -1322,6 +1322,7 @@ export default class ChartImp implements Chart {
       }
     }
     this._chartStore.getOverlayStore().removeInstance(OverlayFilter)
+    this._chartEvent.syncCursor()
   }
 
   deselectOverlay(): void {

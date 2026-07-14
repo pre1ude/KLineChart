@@ -429,6 +429,10 @@ export default class OverlayStore {
         })
       })
       this._instances.clear()
+      this._hoverInfo = undefined
+      this._selectedInfo = undefined
+      this._isPressed = false
+      this._isDragging = false
     } else {
       // Remove filtered overlays
       const filterInstances = this.find(filter)
@@ -462,6 +466,16 @@ export default class OverlayStore {
         // Clean up empty pane
         if (paneInstances.length === 0) {
           this._instances.delete(targetPaneId)
+        }
+
+        if (this._hoverInfo?.overlay === instance) {
+          this._hoverInfo = undefined
+        }
+
+        if (this._selectedInfo?.overlay === instance) {
+          this._selectedInfo = undefined
+          this._isPressed = false
+          this._isDragging = false
         }
       })
     }

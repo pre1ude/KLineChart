@@ -149,6 +149,23 @@ describe('ChartImp.createIndicator', () => {
   })
 })
 
+describe('ChartImp.removeOverlay', () => {
+  it('synchronizes the cursor after removing overlays', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const removeInstance = vi.fn()
+    const syncCursor = vi.fn()
+    Reflect.set(chart, '_chartStore', {
+      getOverlayStore: () => ({ removeInstance })
+    })
+    Reflect.set(chart, '_chartEvent', { syncCursor })
+
+    chart.removeOverlay('overlay_1')
+
+    expect(removeInstance).toHaveBeenCalledWith({ id: 'overlay_1' })
+    expect(syncCursor).toHaveBeenCalledOnce()
+  })
+})
+
 describe('ChartImp layout refresh methods', () => {
   it('maps semantic refresh methods to layout requests', () => {
     const chart = Object.create(ChartImp.prototype) as ChartImp
