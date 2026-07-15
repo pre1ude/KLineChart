@@ -50,6 +50,8 @@ export type OverlayMouseTouchEvent<E = DefaultExtendData> = Omit<MouseTouchEvent
 
 export type OverlayMode = 'normal' | 'weak_magnet' | 'strong_magnet'
 
+export type OverlayControlPointVisibility = 'auto' | 'always'
+
 export enum OverlayState {
   CREATED = 'created',
   DRAWING = 'drawing',
@@ -64,6 +66,11 @@ export interface OverlayFigure {
   attrs: object | object[]
   styles?: object
   ignoreEvent?: boolean | FigureEventType[]
+}
+
+export interface OverlayControlPoint {
+  key: string
+  coordinate: Coordinate
 }
 
 export type InteractType = 'control-point' | 'body'
@@ -108,10 +115,17 @@ export interface OverlayCreateFiguresCallbackParams<E = DefaultExtendData> {
   isAlignLeft?: boolean
 }
 
+export interface OverlayCreateControlPointsCallbackParams<E = DefaultExtendData> {
+  overlay: Overlay<E>
+  coordinates: Coordinate[]
+}
+
 /** Overlay 交互事件回调 */
 export type OverlayEventCallback<E = DefaultExtendData> = (event: OverlayMouseTouchEvent<E>) => void
 
 export type OverlayCreateFiguresCallback<E = DefaultExtendData> = (params: OverlayCreateFiguresCallbackParams<E>) => OverlayFigure | OverlayFigure[]
+
+export type OverlayCreateControlPointsCallback<E = DefaultExtendData> = (params: OverlayCreateControlPointsCallbackParams<E>) => OverlayControlPoint[]
 
 export interface OverlayEventHandlers<E = DefaultExtendData> {
   /** 当 overlay 实例被创建完毕时触发，不论是否已经绘制完成 */
@@ -153,16 +167,18 @@ export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers<
   needDefaultYAxisFigure: boolean
   mode: OverlayMode
   modeSensitivity: number
+  controlPointVisibility: OverlayControlPointVisibility
   points: IPoint[]
   extendData: E
   styles?: DeepPartial<OverlayStyle>
   createFigures?: OverlayCreateFiguresCallback<E>
   createXAxisFigures?: OverlayCreateFiguresCallback<E>
   createYAxisFigures?: OverlayCreateFiguresCallback<E>
+  createControlPoints?: OverlayCreateControlPointsCallback<E>
   /** 绘制点更新回调，可通过 this 访问 overlay 实例 */
   onDrawPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint) => void
   /** 控制点更新回调，可通过 this 访问 overlay 实例 */
-  onControlPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint) => void
+  onControlPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint, controlPointKey?: string) => void
   /** 拖动 overlay 主体时的回调，可通过 this 访问 overlay 实例 */
   onBodyDrag?: (this: Overlay<E>, params: {
     point: IPoint
@@ -175,7 +191,7 @@ export type OverlayTemplate<E = DefaultExtendData> = PartialExcept<Omit<OverlayA
 
 /** 外部 API 使用的 Overlay 创建类型，points 使用外部格式 (timestamp + offset + value) */
 export type OverlayCreate<E = DefaultExtendData> = Omit<
-  PartialExcept<Omit<OverlayApi<E>, 'currentStep' | 'totalStep' | 'state' | 'createFigures' | 'createXAxisFigures' | 'createYAxisFigures' | 'onBodyDrag' | 'onControlPointUpdate' | 'onDrawPointUpdate'>, 'name'>,
+  PartialExcept<Omit<OverlayApi<E>, 'currentStep' | 'totalStep' | 'state' | 'createFigures' | 'createXAxisFigures' | 'createYAxisFigures' | 'createControlPoints' | 'onBodyDrag' | 'onControlPointUpdate' | 'onDrawPointUpdate'>, 'name'>,
   'points'
 > & {
   /** 外部格式的点数据 (timestamp + offset + value) */
@@ -229,6 +245,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   zLevel?: number
   mode: OverlayMode = 'normal'
   modeSensitivity: number = 8
+  controlPointVisibility: OverlayControlPointVisibility = 'auto'
   extendData: E = undefined as E
   styles?: DeepPartial<OverlayStyle>
 
@@ -239,9 +256,10 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   createFigures?: OverlayCreateFiguresCallback<E>
   createXAxisFigures?: OverlayCreateFiguresCallback<E>
   createYAxisFigures?: OverlayCreateFiguresCallback<E>
+  createControlPoints?: OverlayCreateControlPointsCallback<E>
 
   onDrawPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint) => void
-  onControlPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint) => void
+  onControlPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint, controlPointKey?: string) => void
   onBodyDrag?: (this: Overlay<E>, params: {
     point: IPoint
     prevPoint: IPoint
@@ -316,6 +334,13 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   updateInternalPoints(points: IPoint[]): void {
     this.points = points
     this._skipDraw = false
+  }
+
+  getControlPoints(coordinates: Coordinate[]): OverlayControlPoint[] {
+    return this.createControlPoints?.({ overlay: this, coordinates }) ?? coordinates.map((coordinate, index) => ({
+      key: `${OVERLAY_FIGURE_KEY_PREFIX}point_${index}`,
+      coordinate
+    }))
   }
 
   update(overlay: Partial<Overlay<E>>): void {
@@ -441,6 +466,10 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
       changes.push('mode')
     }
 
+    if (nextProps.controlPointVisibility !== undefined && nextProps.controlPointVisibility !== this.controlPointVisibility) {
+      changes.push('controlPointVisibility')
+    }
+
     if (nextProps.styles !== this.styles) {
       changes.push('styles')
     }
@@ -521,12 +550,15 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     this._updatePoint(this.points[this.currentStep] ??= ({} as unknown as IPoint), point)
   }
 
-  onDragMoveControlPoint(point: IPoint, pointIndex: number): void {
+  onDragMoveControlPoint(point: IPoint, pointIndex: number, controlPointKey?: string): void {
     if (this.onControlPointUpdate) {
-      this.onControlPointUpdate(this.points, pointIndex, point)
+      this.onControlPointUpdate(this.points, pointIndex, point, controlPointKey)
       return
     }
-    this._updatePoint(this.points[pointIndex], point)
+    const targetPoint = this.points[pointIndex]
+    if (targetPoint) {
+      this._updatePoint(targetPoint, point)
+    }
   }
 
   private _updatePoint(p: IPoint, np: IPoint) {

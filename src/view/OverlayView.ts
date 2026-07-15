@@ -12,7 +12,6 @@ import { type DateTimeFormat, getDateTimeFormat } from '../common/utils/dateTime
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { isNumber, isString } from '../common/utils/typeChecks'
 import type { EventOverlayInfo, FigureEventType, Overlay, OverlayFigure, OverlayFigureData, OverlayPrecision } from '../component/Overlay'
-import { OVERLAY_FIGURE_KEY_PREFIX } from '../component/Overlay'
 import type XAxis from '../component/XAxis'
 import type YAxis from '../component/YAxis'
 import { createFigure, drawStaticFigure } from '../extension/figure'
@@ -267,7 +266,7 @@ export default class OverlayView extends View {
       this.drawFigures(ctx, overlay, figures, defaultStyles, bindEvent, ignoreEvents)
     }
     if (drawDefaultFigures) {
-      this.drawDefaultFigures(ctx, overlay, coordinates, bounding, precision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis, ignoreEvents)
+      this.drawDefaultFigures(ctx, overlay, coordinates, bounding, precision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis, ignoreEvents, bindEvent)
     }
   }
 
@@ -343,7 +342,7 @@ export default class OverlayView extends View {
     }
   }
 
-  protected drawDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, dateTimeFormat: DateTimeFormat, customApi: CustomApi, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, _xAxis?: XAxis, _yAxis?: YAxis, ignoreEvents?: FigureEventType[]): void {
+  protected drawDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, dateTimeFormat: DateTimeFormat, customApi: CustomApi, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, _xAxis?: XAxis, _yAxis?: YAxis, ignoreEvents?: FigureEventType[], bindEvent: boolean = true): void {
     switch (this._type) {
       case 'xAxis':
         this._drawXAxisDefaultFigures(ctx, overlay, coordinates, bounding, dateTimeFormat, customApi, defaultStyles, clickInfo)
@@ -352,7 +351,7 @@ export default class OverlayView extends View {
         this._drawYAxisDefaultFigures(ctx, overlay, coordinates, bounding, precision, thousandsSeparator, decimalFoldThreshold, defaultStyles, clickInfo)
         break
       default:
-        this._drawMainDefaultFigures(ctx, overlay, coordinates, defaultStyles, hoverInfo, clickInfo, ignoreEvents)
+        this._drawMainDefaultFigures(ctx, overlay, coordinates, defaultStyles, hoverInfo, clickInfo, ignoreEvents, bindEvent)
     }
   }
 
@@ -361,8 +360,8 @@ export default class OverlayView extends View {
     return themeBgMap[chartStore.getStyleTheme()]
   }
 
-  private _drawMainDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, ignoreEvents?: FigureEventType[]): void {
-    if (!overlay.needDefaultPointFigure) return
+  private _drawMainDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, ignoreEvents?: FigureEventType[], bindEvent: boolean = true): void {
+    if (!overlay.needDefaultPointFigure && overlay.createControlPoints == null) return
 
     // 正在绘制的 overlay 始终显示控制点
     const isDrawing = !overlay.isCompleted()
@@ -371,16 +370,21 @@ export default class OverlayView extends View {
     const isHovered = hoverInfo?.overlay?.id === overlay.id
     const isSelected = clickInfo?.overlay?.id === overlay.id
 
-    if (!isDrawing && !isHovered && !isSelected) return
+    const isAlwaysVisible = overlay.controlPointVisibility === 'always'
+
+    if (!isDrawing && !isHovered && !isSelected && !isAlwaysVisible) return
 
     const isHoveredControlPoint = isHovered && hoverInfo.interactType === 'control-point'
 
     const pointStyles = { ...defaultStyles.point, ...overlay.styles?.point }
     const pointFillColor = this._getControlPointFillColor()
 
-    coordinates.forEach(({ x, y }, index) => {
-      // 绘制中的最后一个点是预览点，不响应事件
-      const isPreviewPoint = isDrawing && index === coordinates.length - 1
+    const controlPoints = overlay.getControlPoints(coordinates)
+    const hasCustomControlPoints = overlay.createControlPoints != null
+
+    controlPoints.forEach(({ key, coordinate: { x, y } }, index) => {
+      // 自定义派生控制点在绘制完成前都不响应事件；默认控制点仅最后一个预览点不响应事件
+      const isPreviewPoint = isDrawing && (hasCustomControlPoints || index === controlPoints.length - 1)
       const isHoveredPoint = isHoveredControlPoint && hoverInfo.figureIndex === index
       const style = isSelected ? {
         radius: pointStyles.activeRadius,
@@ -415,20 +419,19 @@ export default class OverlayView extends View {
         styles: { color: isTransparent(style.color) ? pointFillColor : style.color }
       })
 
-      const hitRadius = style.radius + style.borderSize + (isHoveredPoint ? ACTIVE_POINT_OUTER_RING_SIZE : 0)
-      const dot = createFigure('circle')
-      dot.setAttrs({ x, y, r: hitRadius })
-        .setStyles({ color: 'transparent' })
-        .setData({
-          overlayId: overlay.id,
-          interactType: 'control-point',
-          figureKey: `${OVERLAY_FIGURE_KEY_PREFIX}point_${index}`,
-          figureIndex: index,
-          attrsIndex: 0
-        })
-        .draw(ctx)
-      // 预览点只绘制不响应事件
-      if (!isPreviewPoint) {
+      if (bindEvent && !isPreviewPoint) {
+        const hitRadius = style.radius + style.borderSize + (isHoveredPoint ? ACTIVE_POINT_OUTER_RING_SIZE : 0)
+        const dot = createFigure('circle')
+        dot.setAttrs({ x, y, r: hitRadius })
+          .setStyles({ color: 'transparent' })
+          .setData({
+            overlayId: overlay.id,
+            interactType: 'control-point',
+            figureKey: key,
+            figureIndex: index,
+            attrsIndex: 0
+          })
+          .draw(ctx)
         dot.setIgnoreEvent(ignoreEvents)
         this.addChild(dot)
       }
