@@ -173,8 +173,15 @@ export default class OverlayView extends View {
       overlayPrecision.excludePriceVolumeMin = Math.min(overlayPrecision.excludePriceVolumeMin, p)
     })
 
+    const selectedOverlay = clickInfo?.overlay
+    const promotedSelectedOverlay = this._type === 'main' &&
+      selectedOverlay?.visible === true &&
+      overlays.includes(selectedOverlay)
+      ? selectedOverlay
+      : undefined
+
     overlays.forEach((overlay) => {
-      if (overlay.visible) {
+      if (overlay.visible && overlay !== promotedSelectedOverlay) {
         this._drawOverlay(
           ctx, overlay, bounding, barSpace, overlayPrecision,
           dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
@@ -189,7 +196,8 @@ export default class OverlayView extends View {
     if (hoveredOverlay) {
       const shouldDrawHoveredAgain = this._type === 'main' &&
         hoveredOverlay.visible &&
-        overlays.includes(hoveredOverlay)
+        overlays.includes(hoveredOverlay) &&
+        hoveredOverlay !== promotedSelectedOverlay
       if (shouldDrawHoveredAgain) {
         this._drawOverlay(
           ctx, hoveredOverlay, bounding, barSpace, overlayPrecision,
@@ -198,6 +206,15 @@ export default class OverlayView extends View {
           false // bindEvent = false，不添加到事件树
         )
       }
+    }
+
+    if (promotedSelectedOverlay) {
+      this._drawOverlay(
+        ctx, promotedSelectedOverlay, bounding, barSpace, overlayPrecision,
+        dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
+        defaultStyles, hoverInfo, clickInfo, xAxis, yAxis,
+        true // 选中态最后注册事件，确保被遮挡时仍可操作
+      )
     }
 
     const progressOverlay = overlayStore.getProgressOverlay()

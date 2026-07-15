@@ -14,12 +14,13 @@ Control-point visibility is also coupled to drawing, hover, and selection state.
 - Pass custom control-point identity to the overlay when a handle is dragged.
 - Give the built-in rectangle four draggable corner handles without changing its two-anchor serialization or two-step drawing flow.
 - Allow an individual overlay to choose automatic or persistent control-point visibility.
+- Keep a selected overlay fully operable when another overlay would otherwise cover its body or handles.
 
 **Non-Goals:**
 
 - Store derived rectangle corners in `overlay.points`.
 - Add edge-midpoint, rotation, or arbitrary custom-shaped handles.
-- Change body dragging, overlay locking, selection, or drawing-step semantics.
+- Change body-drag semantics, overlay locking, selection lifecycle, or drawing-step semantics.
 - Change the visual style of existing default control points.
 
 ## Decisions
@@ -54,6 +55,14 @@ The hovered overlay is drawn a second time to keep its visuals above later overl
 
 The first normal pass remains event-bound, so control points retain one canonical hit target. This removes duplicate transient figures without changing the overlay's visual stacking.
 
+### Selected overlays are promoted for drawing and hit testing
+
+Treat selection as an active editing state rather than another hover decoration. In the main overlay view, omit the selected overlay from the normal pass and draw it once after the normal overlays and any visual-only hover redraw, with event binding enabled.
+
+The event tree checks later children first, so the selected overlay's body and control points receive hit priority over overlapping completed overlays. Drawing it once avoids duplicate figures and event nodes. When hover and selection refer to the same overlay, skip the hover-only redraw; when they differ, the selected overlay remains above the hovered overlay. This promotion is frame-local and does not mutate the overlay's persisted order or `zLevel`.
+
+Axis views keep their existing ordering because their default selected figures are visual annotations rather than main-view editing handles.
+
 ### Add per-overlay control-point visibility policy
 
 Add `controlPointVisibility: 'auto' | 'always'` with a default of `auto`.
@@ -82,6 +91,8 @@ Keys describe anchor-component ownership rather than visual names such as `topLe
 - [Drawing previews have derived handles] → Draw custom handles during progress but do not register them as draggable until the overlay is completed; default preview behavior remains unchanged.
 - [Additional callback argument affects typings] → Append an optional argument rather than replacing existing arguments.
 - [Visual-only hover redraw loses control-point interaction] → Keep the first normal draw event-bound and cover the second-pass behavior with a regression test that verifies visuals remain while no children are registered.
+- [Selected overlay is drawn twice] → Exclude it from the normal pass and append exactly one event-bound selected draw.
+- [Hover obscures the selected editing target] → Draw a different hovered overlay visual-only before the selected overlay.
 
 ## Migration Plan
 

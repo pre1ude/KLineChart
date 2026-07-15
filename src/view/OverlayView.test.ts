@@ -79,6 +79,61 @@ function createRectOverlay(): Overlay {
   })
 }
 
+interface OverlayViewDrawSpy {
+  _drawOverlay: (...args: unknown[]) => void
+}
+
+function createDrawView(overlays: Overlay[], hoveredOverlay?: Overlay, selectedOverlay?: Overlay): TestOverlayView {
+  const overlayStore = {
+    getHoverInfo: () => hoveredOverlay == null ? undefined : { overlay: hoveredOverlay },
+    getSelectedInfo: () => selectedOverlay == null ? undefined : { overlay: selectedOverlay },
+    getInstances: () => overlays,
+    getProgressOverlay: () => undefined
+  }
+  const chartStore = {
+    getCustomApi: () => ({}),
+    getThousandsSeparator: () => ',',
+    getDecimalFoldThreshold: () => 0,
+    getTimeScaleStore: () => ({ getBarSpace: () => ({}) }),
+    getPrecision: () => ({ price: 2, volume: 0 }),
+    getStyles: () => getDefaultStyles(),
+    getOverlayStore: () => overlayStore,
+    getTooltipStore: () => ({ getCrosshair: () => ({}) }),
+    getIndicatorStore: () => ({ getInstances: () => [] })
+  }
+  const chart = {
+    getChartStore: () => chartStore,
+    getXAxisPane: () => ({
+      getMainWidget: () => ({ getAxisComponent: () => ({}) })
+    })
+  }
+  const pane = {
+    getId: () => 'candle',
+    getChart: () => chart,
+    getYLeftAxisWidget: () => ({ getAxisComponent: () => ({}) })
+  }
+  const widget = {
+    getPane: () => pane,
+    getName: () => 'main',
+    getBounding: () => ({})
+  }
+  return new TestOverlayView(widget as never)
+}
+
+function getDrawCalls(view: TestOverlayView): Array<{ id: string, bindEvent: boolean }> {
+  const drawOverlay = vi.spyOn(
+    view as unknown as OverlayViewDrawSpy,
+    '_drawOverlay'
+  ).mockImplementation(() => {})
+
+  view.drawImp({} as CanvasRenderingContext2D)
+
+  return drawOverlay.mock.calls.map(call => ({
+    id: (call[1] as Overlay).id,
+    bindEvent: call[14] as boolean
+  }))
+}
+
 beforeEach(() => {
   vi.mocked(createFigure).mockClear()
   vi.mocked(drawStaticFigure).mockClear()
@@ -109,5 +164,56 @@ describe('OverlayView control-point event binding', () => {
     expect(drawStaticFigure).toHaveBeenCalledTimes(8)
     expect(createFigure).toHaveBeenCalledTimes(4)
     expect(view.getEventChildCount()).toBe(4)
+  })
+})
+
+describe('OverlayView selected overlay ordering', () => {
+  function createOverlays(): Overlay[] {
+    return ['first', 'hovered', 'last'].map(id => new Overlay(rect, {
+      id,
+      groupId: id,
+      paneId: 'candle',
+      points: [
+        { dataIndex: 10, value: 100 },
+        { dataIndex: 20, value: 200 }
+      ]
+    }))
+  }
+
+  it('draws a different hovered overlay visual-only before the selected overlay', () => {
+    const overlays = createOverlays()
+
+    const calls = getDrawCalls(createDrawView(overlays, overlays[1], overlays[0]))
+
+    expect(calls).toEqual([
+      { id: 'hovered', bindEvent: true },
+      { id: 'last', bindEvent: true },
+      { id: 'hovered', bindEvent: false },
+      { id: 'first', bindEvent: true }
+    ])
+  })
+
+  it('draws and binds an overlay once when it is both hovered and selected', () => {
+    const overlays = createOverlays()
+
+    const calls = getDrawCalls(createDrawView(overlays, overlays[0], overlays[0]))
+
+    expect(calls).toEqual([
+      { id: 'hovered', bindEvent: true },
+      { id: 'last', bindEvent: true },
+      { id: 'first', bindEvent: true }
+    ])
+  })
+
+  it('restores persisted ordering after selection is cleared', () => {
+    const overlays = createOverlays()
+
+    const calls = getDrawCalls(createDrawView(overlays))
+
+    expect(calls).toEqual([
+      { id: 'first', bindEvent: true },
+      { id: 'hovered', bindEvent: true },
+      { id: 'last', bindEvent: true }
+    ])
   })
 })

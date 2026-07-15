@@ -22,3 +22,9 @@
 - [x] 5.1 Propagate the event-binding flag through default control-point drawing and skip transparent hit figures and event nodes on visual-only redraws
 - [x] 5.2 Add a regression test proving visual-only control-point redraws render visuals without registering event children
 - [x] 5.3 Run focused and full verification and validate the updated OpenSpec change
+
+## 6. Selected Overlay Interaction Priority
+
+- [x] 6.1 Draw the selected main-view overlay once after normal and hover-only overlays with event binding enabled
+- [x] 6.2 Add focused regression tests for selected ordering, hover/selection coexistence, and deselection
+- [x] 6.3 Run focused and full verification and validate the updated OpenSpec change
