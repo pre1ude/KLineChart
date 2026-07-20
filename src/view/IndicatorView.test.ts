@@ -267,6 +267,89 @@ describe('IndicatorView', () => {
     expect(rightYAxis.convertToPixel).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ['only the right y-axis is visible', YAxisPosition.Right],
+    ['both y-axes are visible with the right one as main', YAxisPosition.Both]
+  ])('draws main-pane indicators on the main y-axis when %s', (_, position) => {
+    const styles = getDefaultStyles()
+    styles.yAxis.position = position
+    styles.yAxis.mainPosition = YAxisPosition.Right
+    const leftYAxis = {
+      convertToPixel: vi.fn((value: number) => value === 0 ? 100 : 60)
+    }
+    const rightYAxis = {
+      convertToPixel: vi.fn((value: number) => value === 0 ? 80 : 20)
+    }
+    const xAxis = {}
+    const dataList = [{ open: 1, high: 1, low: 1, close: 1, volume: 10 }]
+    const indicator = {
+      visible: true,
+      figures: [{ key: 'volume', type: 'bar', baseValue: 0 }],
+      result: [{ volume: 10 }]
+    }
+    const chartStore = {
+      getDataList: () => dataList,
+      getVisibleDataList: () => [{
+        dataIndex: 0,
+        x: 20.4,
+        data: dataList[0]
+      }],
+      getTimeScaleStore: () => ({
+        getVisibleRange: () => ({ from: 0, to: 0 }),
+        getBarSpace: () => ({
+          bar: 8,
+          halfBar: 4,
+          gapBar: 8,
+          halfGapBar: 4
+        })
+      }),
+      getIndicatorStore: () => ({
+        getInstances: () => [indicator]
+      }),
+      getIsTimeShare: () => false,
+      getTimeShareTicks: () => [],
+      getTimeShareBreakOnCrossDays: () => false,
+      getStyles: () => styles
+    }
+    const chart = {
+      getStyles: () => styles,
+      getChartStore: () => chartStore,
+      getXAxisPane: () => ({
+        getMainWidget: () => ({
+          getAxisComponent: () => xAxis
+        })
+      })
+    }
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      getChart: () => chart,
+      getMainAxisWidget: () => ({
+        getAxisComponent: () => rightYAxis
+      }),
+      getYLeftAxisWidget: () => ({
+        getAxisComponent: () => leftYAxis
+      }),
+      getYRightAxisWidget: () => ({
+        getAxisComponent: () => rightYAxis
+      })
+    }
+    const widget = {
+      getPane: () => pane,
+      getBounding: () => ({ width: 100, height: 100, left: 0, top: 0 })
+    }
+    const ctx = {
+      save: vi.fn(),
+      restore: vi.fn()
+    }
+    const view = new IndicatorView(widget as never)
+
+    view.draw(ctx as never)
+
+    expect(leftYAxis.convertToPixel).not.toHaveBeenCalled()
+    expect(rightYAxis.convertToPixel).toHaveBeenCalledWith(10)
+    expect(rightYAxis.convertToPixel).toHaveBeenCalledWith(0)
+  })
+
   it('keeps a 1px bar on the same pixel column as the crosshair at half-pixel data coordinates', () => {
     const styles = getDefaultStyles()
     const yAxis = {

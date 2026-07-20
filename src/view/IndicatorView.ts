@@ -300,7 +300,7 @@ export default class IndicatorView extends View {
     ctx.save()
     if (isMain) {
       // 在主图
-      drawForAxis(paneIndicators, yLeftAxis)
+      drawForAxis(paneIndicators, (pane as DualYPane).getMainAxisWidget().getAxisComponent())
     } else {
       // 在副图
       drawForAxis(filterIndicatorsByAxisPosition(paneIndicators, YAxisPosition.Left, yAxisStyles.position, yAxisStyles.mainPosition), yLeftAxis)
