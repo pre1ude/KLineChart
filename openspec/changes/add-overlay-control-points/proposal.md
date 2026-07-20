@@ -10,7 +10,6 @@ Overlay control points are currently inferred one-for-one from the stored drawin
 - Route control-point drag updates back to the overlay with a stable control-point key as well as its rendered index.
 - Update the built-in rectangle overlay to expose all four corners as draggable control points while retaining its two-point data model and two-step drawing flow.
 - Keep visual-only hover redraws from duplicating transparent control-point hit figures or event-tree nodes.
-- Promote the selected overlay above completed overlays for both drawing and hit testing while keeping hover promotion visual-only.
 - Add focused tests for default control points, custom control-point rendering metadata, and all four rectangle drag mappings.
 
 ## Capabilities
@@ -27,7 +26,6 @@ None.
 
 - Overlay type definitions and overlay template callbacks.
 - Overlay view control-point construction and event metadata.
-- Overlay view draw ordering for hovered and selected overlays.
 - Overlay drag dispatch in the overlay widget layer.
 - Built-in rectangle overlay behavior.
 - Unit tests for overlay interaction and rectangle geometry.
