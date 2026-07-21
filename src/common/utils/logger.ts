@@ -27,6 +27,19 @@ export function logError(api: string, invalidParam: string, append?: string): vo
   )
 }
 
+export function logInfo(scope: string, message: string, data?: unknown): void {
+  if (DEV) {
+    console.log(
+      '%cℹ klinecharts info%c [%s] %s',
+      'padding:3px 4px;border-radius:2px;color:#ffffff;background-color:#1677FF',
+      'color:#1677FF',
+      scope,
+      message,
+      data
+    )
+  }
+}
+
 export function logTag(): void {
   log(
     '%c❤️ Welcome to klinecharts. Version is __VERSION__',

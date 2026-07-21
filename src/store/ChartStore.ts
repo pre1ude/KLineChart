@@ -23,11 +23,13 @@ import IndicatorStore from './IndicatorStore'
 import TooltipStore from './TooltipStore'
 import OverlayStore from './OverlayStore'
 import ActionStore from './ActionStore'
+import GapStore from './GapStore'
 import { getStyles } from '../extension/styles/index'
 import type Chart from '../Chart'
 import { setTimezone } from '../common/utils/dateTimeFormat'
 import { binarySearchNearest, lowerBound } from '../common/utils/number'
 import TaskScheduler from '@/common/TaskScheduler'
+import type { GapDataChangeContext } from '../component/Gap'
 
 export default class ChartStore {
   /**
@@ -150,6 +152,11 @@ export default class ChartStore {
   private readonly _actionStore = new ActionStore()
 
   /**
+   * Candlestick gap store
+   */
+  private readonly _gapStore = new GapStore(this)
+
+  /**
    * Visible data array
    */
   private _visibleDataList: VisibleData[] = []
@@ -266,6 +273,9 @@ export default class ChartStore {
         this._dataZoomOptions = getDataZoomOptions(options.dataZoom)
         this._timeScaleStore.setDataZoomOptions(this._dataZoomOptions)
         this._timeScaleStore.setMode(this.getTimeScaleModeKind())
+      }
+      if (isValid(options.gaps)) {
+        this._gapStore.setOptions(options.gaps)
       }
       if (isValid(options.timeShareDays)) {
         this._timeShareDays = options.timeShareDays
@@ -549,6 +559,7 @@ export default class ChartStore {
 
   addData(data: KLineData | KLineData[], type?: LoadDataType, more?: boolean, callback?: () => void): void {
     let adjustFlag = false
+    let gapContext: GapDataChangeContext | undefined
     if (isArray<KLineData>(data)) {
       switch (type) {
         case LoadDataType.Init: {
@@ -561,6 +572,7 @@ export default class ChartStore {
             this._timeScaleStore.autoInitialAlignment()
           }
           adjustFlag = true
+          gapContext = { kind: 'init', fromIndex: 0 }
           break
         }
         case LoadDataType.Backward: {
@@ -572,16 +584,19 @@ export default class ChartStore {
             // 尝试恢复之前因为超出左边界而 skipDraw 的 overlay
             this._overlayStore.tryRecoverSkippedOverlays('left')
             adjustFlag = true
+            gapContext = { kind: 'prepend', fromIndex: 0 }
           }
           this._backwardMore = more ?? false
           break
         }
         case LoadDataType.Forward: {
+          const fromIndex = this._dataList.length
           if (data.length > 0) {
             this._dataList = this._dataList.concat(data)
             // 尝试恢复之前因为超出右边界而 skipDraw 的 overlay
             this._overlayStore.tryRecoverSkippedOverlays('right')
             adjustFlag = true
+            gapContext = { kind: 'append', fromIndex }
           }
           this._forwardMore = more ?? false
           break
@@ -596,22 +611,28 @@ export default class ChartStore {
         this._dataList.push(data)
         this._timeScaleStore.onAppendData()
         adjustFlag = true
+        gapContext = { kind: 'append', fromIndex: dataCount }
       } else if (timestamp === lastDataTimestamp) {
         // 更新最后一条
         this._dataList[dataCount - 1] = data
         adjustFlag = true
+        gapContext = { kind: 'update-latest', fromIndex: Math.max(0, dataCount - 1) }
       } else {
         // 更新历史数据：二分查找匹配的 timestamp
         const index = this.timestampToDataIndex(timestamp)
         if (index !== undefined && this._dataList[index].timestamp === timestamp) {
           this._dataList[index] = data
           adjustFlag = true
+          gapContext = { kind: 'update-history', fromIndex: index }
         }
       }
     }
     if (adjustFlag) {
       this._dataVersion++
       try {
+        if (gapContext) {
+          this._gapStore.recalculate(this._dataList, gapContext)
+        }
         this._timeScaleStore.adjustVisibleRange()
         this._tooltipStore.recalculateCrosshair(true)
         const filterIndicators = this._indicatorStore.getIndicatorsByFilter({})
@@ -642,6 +663,7 @@ export default class ChartStore {
     this._dataVersion++
     this._overlayStore.reconvertAllFromRaw()
     this._backwardMore = more ?? false
+    this._gapStore.recalculate(this._dataList, { kind: 'replace', fromIndex: 0 })
 
     this._timeScaleStore.adjustVisibleRange()
     this._tooltipStore.recalculateCrosshair(true)
@@ -710,6 +732,7 @@ export default class ChartStore {
     this._visibleDataList = []
     this._timeScaleStore.clear()
     this._tooltipStore.clear()
+    this._gapStore.clear()
     this._taskScheduler.clear()
     this._dataReadyCallbacks = []
   }
@@ -740,6 +763,10 @@ export default class ChartStore {
 
   getActionStore(): ActionStore {
     return this._actionStore
+  }
+
+  getGapStore(): GapStore {
+    return this._gapStore
   }
 
   getChart(): Chart {

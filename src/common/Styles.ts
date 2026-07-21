@@ -432,6 +432,17 @@ export interface SeparatorStyle {
   activeBackgroundColor: string
 }
 
+export interface GapDirectionStyle {
+  borderColor?: string
+  backgroundColor: string
+  borderSize?: number
+}
+
+export interface GapStyle {
+  up: GapDirectionStyle
+  down: GapDirectionStyle
+}
+
 export interface Styles {
   grid: GridStyle
   candle: CandleStyle
@@ -441,6 +452,7 @@ export interface Styles {
   separator: SeparatorStyle
   crosshair: CrosshairStyle
   overlay: OverlayStyle
+  gap: GapStyle
 }
 
 export type DeepPartialStyles = DeepPartial<Styles>
@@ -897,6 +909,21 @@ function getDefaultSeparatorStyle(): SeparatorStyle {
   }
 }
 
+function getDefaultGapStyle(): GapStyle {
+  return {
+    up: {
+      borderColor: 'red',
+      backgroundColor: 'rgba(255, 0, 0, 0.15)',
+      borderSize: 1
+    },
+    down: {
+      borderColor: 'green',
+      backgroundColor: 'rgba(0, 128, 0, 0.15)',
+      borderSize: 1
+    }
+  }
+}
+
 export function getDefaultStyles(): Styles {
   return {
     grid: getDefaultGridStyle(),
@@ -906,6 +933,7 @@ export function getDefaultStyles(): Styles {
     yAxis: getDefaultYAxisStyle(),
     separator: getDefaultSeparatorStyle(),
     crosshair: getDefaultCrosshairStyle(),
-    overlay: getDefaultOverlayStyle()
+    overlay: getDefaultOverlayStyle(),
+    gap: getDefaultGapStyle()
   }
 }

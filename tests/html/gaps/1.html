@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="KLineChart candlestick gaps feature demo" />
+    <title>AAPL Daily Gaps Demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        color: #1f2329;
+        background: #f5f6f8;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .header {
+        padding: 12px 16px 8px;
+        background: #ffffff;
+        border-bottom: 1px solid #e5e6eb;
+      }
+
+      .header h1 {
+        margin: 0 0 4px;
+        font-size: 20px;
+      }
+
+      .header p {
+        margin: 0;
+        color: #646a73;
+        font-size: 13px;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px 16px;
+        padding: 10px 16px;
+        background: #ffffff;
+        border-bottom: 1px solid #e5e6eb;
+        font-size: 13px;
+      }
+
+      .toolbar label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+
+      input[type="number"],
+      select,
+      button {
+        height: 30px;
+        border: 1px solid #c9cdd4;
+        border-radius: 5px;
+        background: #ffffff;
+        color: #1f2329;
+      }
+
+      input[type="number"] {
+        width: 64px;
+        padding: 0 8px;
+      }
+
+      select {
+        padding: 0 8px;
+      }
+
+      button {
+        padding: 0 12px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: #1677ff;
+        color: #1677ff;
+      }
+
+      button.primary {
+        color: #ffffff;
+        border-color: #1677ff;
+        background: #1677ff;
+      }
+
+      button.primary:hover {
+        background: #4096ff;
+      }
+
+      .content {
+        min-height: 0;
+        flex: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 280px;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .chart-panel,
+      .guide {
+        min-height: 0;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 2px 8px rgba(31, 35, 41, 0.08);
+      }
+
+      #chart {
+        width: 100%;
+        height: 100%;
+      }
+
+      .guide {
+        overflow: auto;
+        padding: 14px 16px;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .guide h2 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+
+      .guide ol {
+        margin: 8px 0 16px;
+        padding-left: 20px;
+      }
+
+      .guide code {
+        padding: 1px 4px;
+        border-radius: 3px;
+        color: #c41d7f;
+        background: #fff0f6;
+      }
+
+      #status {
+        padding: 8px;
+        border-radius: 5px;
+        color: #4e5969;
+        background: #f2f3f5;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        word-break: break-word;
+      }
+
+      @media (max-width: 900px) {
+        body {
+          overflow: auto;
+        }
+
+        .content {
+          grid-template-columns: 1fr;
+          grid-template-rows: 560px auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>AAPL 日线缺口（Gaps）</h1>
+      <p><span id="dataMeta">正在加载日线快照…</span>；行为通过 <code>setOptions({ gaps })</code> 更新，外观通过 <code>setStyles({ gap })</code> 更新。</p>
+    </div>
+
+    <div class="toolbar">
+      <label><input id="enabled" type="checkbox" checked />显示缺口</label>
+      <label><input id="partial" type="checkbox" checked />部分回补</label>
+      <label>最小偏差 <input id="deviation" type="number" min="1" max="100" value="30" />%</label>
+      <label>最多显示 <input id="maxCount" type="number" min="1" max="500" value="15" /></label>
+      <label><input id="limitTrail" type="checkbox" />限制延伸</label>
+      <label>延伸长度 <input id="trailLength" type="number" min="1" value="30" /></label>
+      <label>
+        样式
+        <select id="stylePreset">
+          <option value="default">红涨绿跌</option>
+          <option value="blueOrange">蓝涨橙跌</option>
+          <option value="fillOnly">仅填充</option>
+        </select>
+      </label>
+      <button id="showAll" class="primary">显示完整数据</button>
+      <button id="restart">重新播放</button>
+      <button id="next">追加一根</button>
+      <button id="autoPlay">自动播放</button>
+    </div>
+
+    <div class="content">
+      <div class="chart-panel"><div id="chart"></div></div>
+      <aside class="guide">
+        <h2>观察要点</h2>
+        <ol>
+          <li>默认 30% 门槛可识别 11 个完整缺口；将最小偏差调到 20% 可观察更多小缺口。</li>
+          <li>2025-04-03 的下跌缺口直到 2025-08-08 才完全回补，适合比较部分回补与触碰关闭。</li>
+          <li>2025-10-20 的上涨缺口持续到 2026-01-20，可启用延伸限制观察视觉截断。</li>
+          <li>将“最多显示”调小，可观察系统优先保留最近形成的缺口。</li>
+          <li>样式切换只更新 <code>Styles.gap</code>，不会重新计算缺口记录。</li>
+        </ol>
+        <p>“重新播放”会回放最近 90 个交易日。使用“追加一根”或“自动播放”时，开发构建会在控制台输出 <code>New Gap Appeared</code> 和 <code>Gap Closed</code>。</p>
+        <div id="status"></div>
+      </aside>
+    </div>
+
+    <script type="module">
+      import { init } from '../../../dist/index.js'
+
+      let demoData = []
+      let replayStartIndex = 0
+      let nextDataIndex = 0
+      let playTimer
+
+      const chart = init('chart', {
+        gaps: getGapOptions(),
+        styles: {
+          yAxis: {
+            position: 'right',
+            mainPosition: 'right'
+          }
+        }
+      })
+
+      for (const id of ['enabled', 'partial', 'deviation', 'maxCount', 'limitTrail', 'trailLength']) {
+        document.getElementById(id).addEventListener('change', applyGapOptions)
+      }
+
+      document.getElementById('stylePreset').addEventListener('change', event => {
+        chart.setStyles({ gap: getGapStyle(event.target.value) })
+        updateStatus(`已切换样式：${event.target.options[event.target.selectedIndex].text}`)
+      })
+
+      document.getElementById('showAll').addEventListener('click', showAllData)
+      document.getElementById('restart').addEventListener('click', restartReplay)
+      document.getElementById('next').addEventListener('click', appendNextData)
+      document.getElementById('autoPlay').addEventListener('click', toggleAutoPlay)
+
+      loadDemoData()
+
+      async function loadDemoData () {
+        try {
+          const response = await fetch('../../data/aapl-daily.json')
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`)
+          }
+          const snapshot = await response.json()
+          demoData = snapshot.data
+          replayStartIndex = Math.max(14, demoData.length - 90)
+          nextDataIndex = demoData.length
+          document.getElementById('dataMeta').textContent = `${snapshot.symbol} ${snapshot.interval}，${snapshot.from} 至 ${snapshot.to}，${demoData.length} 根，来源：${snapshot.source}`
+          chart.applyNewData(demoData, false, () => {
+            chart.fitToWidth()
+            updateStatus('已加载 AAPL 日线快照')
+          })
+        } catch (error) {
+          console.error(error)
+          document.getElementById('dataMeta').textContent = 'AAPL 日线快照加载失败'
+          updateStatus(`数据加载失败：${error.message}`)
+        }
+      }
+
+      function getGapOptions () {
+        return {
+          closeGapsPartially: document.getElementById('partial')?.checked ?? true,
+          maxGapCount: Number(document.getElementById('maxCount')?.value ?? 15),
+          minimalDeviationPercent: Number(document.getElementById('deviation')?.value ?? 30),
+          limitMaxTrailLength: document.getElementById('limitTrail')?.checked ?? false,
+          maxTrailLength: Number(document.getElementById('trailLength')?.value ?? 30)
+        }
+      }
+
+      function applyGapOptions () {
+        const enabled = document.getElementById('enabled').checked
+        chart.setOptions({ gaps: enabled ? getGapOptions() : false })
+        updateStatus(enabled ? '缺口行为配置已更新' : '缺口显示已关闭')
+      }
+
+      function getGapStyle (preset) {
+        if (preset === 'blueOrange') {
+          return {
+            up: {
+              borderColor: '#1677ff',
+              backgroundColor: 'rgba(22, 119, 255, 0.18)',
+              borderSize: 1
+            },
+            down: {
+              borderColor: '#fa8c16',
+              backgroundColor: 'rgba(250, 140, 22, 0.18)',
+              borderSize: 1
+            }
+          }
+        }
+        if (preset === 'fillOnly') {
+          return {
+            up: {
+              borderColor: 'transparent',
+              backgroundColor: 'rgba(255, 77, 79, 0.22)',
+              borderSize: 0
+            },
+            down: {
+              borderColor: 'transparent',
+              backgroundColor: 'rgba(82, 196, 26, 0.22)',
+              borderSize: 0
+            }
+          }
+        }
+        return {
+          up: {
+            borderColor: 'red',
+            backgroundColor: 'rgba(255, 0, 0, 0.15)',
+            borderSize: 1
+          },
+          down: {
+            borderColor: 'green',
+            backgroundColor: 'rgba(0, 128, 0, 0.15)',
+            borderSize: 1
+          }
+        }
+      }
+
+      function showAllData () {
+        if (demoData.length === 0) return
+        stopAutoPlay()
+        nextDataIndex = demoData.length
+        chart.replaceData(demoData, false, () => {
+          chart.fitToWidth()
+          updateStatus('已显示完整演示数据')
+        })
+      }
+
+      function restartReplay () {
+        if (demoData.length === 0) return
+        stopAutoPlay()
+        nextDataIndex = replayStartIndex
+        chart.replaceData(demoData.slice(0, replayStartIndex), false, () => {
+          chart.fitToWidth()
+          updateStatus('已准备回放最近 90 个交易日')
+        })
+      }
+
+      function appendNextData () {
+        if (demoData.length === 0) return
+        if (nextDataIndex >= demoData.length) {
+          stopAutoPlay()
+          updateStatus('演示数据已经播放完毕')
+          return
+        }
+        const appendedIndex = nextDataIndex
+        chart.appendData([demoData[nextDataIndex]], false, () => {
+          updateStatus(`已追加第 ${appendedIndex + 1} 根 K 线`)
+        })
+        nextDataIndex++
+      }
+
+      function toggleAutoPlay () {
+        if (demoData.length === 0) {
+          updateStatus('日线快照尚未加载')
+          return
+        }
+        if (playTimer !== undefined) {
+          stopAutoPlay()
+          updateStatus('已暂停自动播放')
+          return
+        }
+        if (nextDataIndex >= demoData.length) {
+          restartReplay()
+        }
+        document.getElementById('autoPlay').textContent = '暂停播放'
+        playTimer = window.setInterval(appendNextData, 120)
+        updateStatus('正在自动播放')
+      }
+
+      function stopAutoPlay () {
+        if (playTimer !== undefined) {
+          window.clearInterval(playTimer)
+          playTimer = undefined
+        }
+        document.getElementById('autoPlay').textContent = '自动播放'
+      }
+
+      function updateStatus (message) {
+        const enabled = document.getElementById('enabled').checked
+        document.getElementById('status').textContent = [
+          message,
+          `data=${chart.getDataList().length}/${demoData.length}`,
+          `enabled=${enabled}`,
+          `partial=${document.getElementById('partial').checked}`,
+          `deviation=${document.getElementById('deviation').value}%`,
+          `trail=${document.getElementById('limitTrail').checked ? document.getElementById('trailLength').value : 'unlimited'}`
+        ].join(' | ')
+      }
+
+    </script>
+  </body>
+</html>

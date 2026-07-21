@@ -231,7 +231,7 @@ export {
 // Core Types
 export type { Chart, ResizeAnchor, PaneScope } from './Chart'
 export type { default as ChartImp } from './Chart'
-export type { DataZoomOptions, DataZoomSliderOptions, DataZoomSliderTheme, Options } from './Options'
+export type { DataZoomOptions, DataZoomSliderOptions, DataZoomSliderTheme, GapOptions, Options } from './Options'
 export type { PaneOptions, PaneResizeMode } from './pane/types'
 
 // Data Types
@@ -250,6 +250,8 @@ export type {
   CandleTooltipCustomCallbackData,
   IndicatorStyle,
   OverlayStyle,
+  GapDirectionStyle,
+  GapStyle,
   FigureStyleConfig,
 } from './common/Styles'
 

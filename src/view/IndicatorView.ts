@@ -11,14 +11,11 @@ import { getLineSymbolStepBySpacing, resolveLineSymbolStyle } from '../extension
 import type DualYPane from '../pane/DualYPane'
 import { PaneIdConstants } from '../pane/types'
 import type XAxisWidget from '../widget/XAxisWidget'
+import { pixelSnapBarStart } from './utils/barPixel'
 import View from './View'
 
 // 指标结果数据类型，支持通过字符串键访问
 type IndicatorResultData = Record<string, unknown>
-
-function pixelSnapBarStart(x: number, halfWidth: number): number {
-  return Math.round(x - 0.5) - halfWidth
-}
 
 export default class IndicatorView extends View {
   private _hoverInfo: IndicatorFigureData | null = null

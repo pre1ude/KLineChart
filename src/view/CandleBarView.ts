@@ -11,6 +11,7 @@ import { type RectAttrs } from '../extension/figure/rect'
 import type DualYPane from '../pane/DualYPane'
 import { PaneIdConstants } from '../pane/types'
 import type ChartStore from '../store/ChartStore'
+import { pixelSnapBarCenter, pixelSnapBarStart } from './utils/barPixel'
 import View from './View'
 
 export interface CandleBarOptions {
@@ -38,14 +39,6 @@ function getCandleBarYAxis(pane: DualYPane, options: CandleBarOptions) {
     return pane.getYLeftAxisWidget().getAxisComponent()
   }
   return pane.getMainAxisWidget().getAxisComponent()
-}
-
-function pixelSnapBarCenter(x: number): number {
-  return Math.round(x - 0.5)
-}
-
-function pixelSnapBarStart(x: number, halfWidth: number): number {
-  return pixelSnapBarCenter(x) - halfWidth
 }
 
 function createPixelSnappedBodyRect(x: number, y: number, barSpace: BarSpace, height: number): RectAttrs {

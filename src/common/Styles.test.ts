@@ -27,4 +27,21 @@ describe('getDefaultStyles', () => {
 
     expect(styles.yAxis.mainPosition).toBe(YAxisPosition.Left)
   })
+
+  it('缺口默认使用上涨红色和下跌绿色', () => {
+    const styles = getDefaultStyles()
+
+    expect(styles.gap).toEqual({
+      up: {
+        borderColor: 'red',
+        backgroundColor: 'rgba(255, 0, 0, 0.15)',
+        borderSize: 1
+      },
+      down: {
+        borderColor: 'green',
+        backgroundColor: 'rgba(0, 128, 0, 0.15)',
+        borderSize: 1
+      }
+    })
+  })
 })

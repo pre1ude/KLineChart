@@ -72,6 +72,14 @@ export interface DataZoomOptions {
   slider?: boolean | DataZoomSliderOptions
 }
 
+export interface GapOptions {
+  closeGapsPartially?: boolean
+  maxGapCount?: number
+  minimalDeviationPercent?: number
+  limitMaxTrailLength?: boolean
+  maxTrailLength?: number
+}
+
 export interface Options {
   layout?: LayoutChild[]
   paneResizeMode?: PaneResizeMode
@@ -94,4 +102,6 @@ export interface Options {
   timeShareSessionGapForN?: number
   preferXTicks?: string[]
   dataZoom?: boolean | DataZoomOptions
+  /** TradingView-style full candlestick gap regions. Disabled by default. */
+  gaps?: boolean | GapOptions
 }

@@ -69,13 +69,18 @@ export function drawRect(ctx: CanvasRenderingContext2D, attrs: RectAttrs | RectA
     const correction = borderSize % 2 === 1 ? 0.5 : 0
     const doubleCorrection = Math.round(correction * 2)
     rects.forEach(({ x, y, width: w, height: h }) => {
-      if (w > borderSize * 2 && h > borderSize * 2) {
+      if (w > 0 && h > 0) {
         ctx.beginPath()
-        draw.call(ctx, x + correction, y + correction, w - doubleCorrection, h - doubleCorrection, r)
+        draw.call(
+          ctx,
+          x + correction,
+          y + correction,
+          Math.max(0, w - doubleCorrection),
+          Math.max(0, h - doubleCorrection),
+          r
+        )
         ctx.closePath()
         ctx.stroke()
-      } else if (!solid) {
-        ctx.fillRect(x, y, w, h)
       }
     })
   }
