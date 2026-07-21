@@ -24,6 +24,7 @@ import TooltipStore from './TooltipStore'
 import OverlayStore from './OverlayStore'
 import ActionStore from './ActionStore'
 import GapStore from './GapStore'
+import Gap1Store from './Gap1Store'
 import { getStyles } from '../extension/styles/index'
 import type Chart from '../Chart'
 import { setTimezone } from '../common/utils/dateTimeFormat'
@@ -157,6 +158,11 @@ export default class ChartStore {
   private readonly _gapStore = new GapStore(this)
 
   /**
+   * Visible-range candlestick gap store
+   */
+  private readonly _gap1Store = new Gap1Store(this)
+
+  /**
    * Visible data array
    */
   private _visibleDataList: VisibleData[] = []
@@ -276,6 +282,9 @@ export default class ChartStore {
       }
       if (isValid(options.gaps)) {
         this._gapStore.setOptions(options.gaps)
+      }
+      if (isValid(options.gap1)) {
+        this._gap1Store.setOptions(options.gap1)
       }
       if (isValid(options.timeShareDays)) {
         this._timeShareDays = options.timeShareDays
@@ -555,6 +564,7 @@ export default class ChartStore {
         data: this._dataList[i]
       })
     }
+    this._gap1Store.recalculate(this._dataList, this._timeScaleStore.getVisibleRange())
   }
 
   addData(data: KLineData | KLineData[], type?: LoadDataType, more?: boolean, callback?: () => void): void {
@@ -733,6 +743,7 @@ export default class ChartStore {
     this._timeScaleStore.clear()
     this._tooltipStore.clear()
     this._gapStore.clear()
+    this._gap1Store.clear()
     this._taskScheduler.clear()
     this._dataReadyCallbacks = []
   }
@@ -767,6 +778,10 @@ export default class ChartStore {
 
   getGapStore(): GapStore {
     return this._gapStore
+  }
+
+  getGap1Store(): Gap1Store {
+    return this._gap1Store
   }
 
   getChart(): Chart {

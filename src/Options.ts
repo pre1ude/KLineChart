@@ -80,6 +80,11 @@ export interface GapOptions {
   maxTrailLength?: number
 }
 
+export interface Gap1Options {
+  maxGapCount?: number
+  showValue?: boolean
+}
+
 export interface Options {
   layout?: LayoutChild[]
   paneResizeMode?: PaneResizeMode
@@ -104,4 +109,6 @@ export interface Options {
   dataZoom?: boolean | DataZoomOptions
   /** TradingView-style full candlestick gap regions. Disabled by default. */
   gaps?: boolean | GapOptions
+  /** Visible-range domestic-style unfilled gap regions. Disabled by default. */
+  gap1?: boolean | Gap1Options
 }

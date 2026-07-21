@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="KLineChart candlestick gaps feature demo" />
-    <title>AAPL Daily Gaps Demo</title>
+    <meta name="description" content="KLineChart TradingView Gap and visible-range Gap1 feature demo" />
+    <title>AAPL Daily Gap &amp; Gap1 Demo</title>
     <style>
       * {
         box-sizing: border-box;
@@ -40,13 +40,20 @@
 
       .toolbar {
         display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 10px 16px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
         padding: 10px 16px;
         background: #ffffff;
         border-bottom: 1px solid #e5e6eb;
         font-size: 13px;
+      }
+
+      .toolbar-row {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px 16px;
       }
 
       .toolbar label {
@@ -164,29 +171,36 @@
   </head>
   <body>
     <div class="header">
-      <h1>AAPL 日线缺口（Gaps）</h1>
-      <p><span id="dataMeta">正在加载日线快照…</span>；行为通过 <code>setOptions({ gaps })</code> 更新，外观通过 <code>setStyles({ gap })</code> 更新。</p>
+      <h1>AAPL 日线缺口（Gap / Gap1）</h1>
+      <p><span id="dataMeta">正在加载日线快照…</span>；Gap 与 Gap1 可独立开启并共用 <code>Styles.gap</code>。</p>
     </div>
 
     <div class="toolbar">
-      <label><input id="enabled" type="checkbox" checked />显示缺口</label>
-      <label><input id="partial" type="checkbox" checked />部分回补</label>
-      <label>最小偏差 <input id="deviation" type="number" min="1" max="100" value="30" />%</label>
-      <label>最多显示 <input id="maxCount" type="number" min="1" max="500" value="15" /></label>
-      <label><input id="limitTrail" type="checkbox" />限制延伸</label>
-      <label>延伸长度 <input id="trailLength" type="number" min="1" value="30" /></label>
-      <label>
-        样式
-        <select id="stylePreset">
-          <option value="default">红涨绿跌</option>
-          <option value="blueOrange">蓝涨橙跌</option>
-          <option value="fillOnly">仅填充</option>
-        </select>
-      </label>
-      <button id="showAll" class="primary">显示完整数据</button>
-      <button id="restart">重新播放</button>
-      <button id="next">追加一根</button>
-      <button id="autoPlay">自动播放</button>
+      <div class="toolbar-row">
+        <label><input id="enabled" type="checkbox" checked />Gap（TradingView）</label>
+        <label><input id="partial" type="checkbox" checked />部分回补</label>
+        <label>最小偏差 <input id="deviation" type="number" min="1" max="100" value="30" />%</label>
+        <label>最多显示 <input id="maxCount" type="number" min="1" max="500" value="15" /></label>
+        <label><input id="limitTrail" type="checkbox" />限制延伸</label>
+        <label>延伸长度 <input id="trailLength" type="number" min="1" value="30" /></label>
+        <label>
+          样式
+          <select id="stylePreset">
+            <option value="default">红涨绿跌</option>
+            <option value="blueOrange">蓝涨橙跌</option>
+            <option value="fillOnly">仅填充</option>
+          </select>
+        </label>
+        <button id="showAll" class="primary">显示完整数据</button>
+        <button id="restart">重新播放</button>
+        <button id="next">追加一根</button>
+        <button id="autoPlay">自动播放</button>
+      </div>
+      <div class="toolbar-row">
+        <label><input id="gap1Enabled" type="checkbox" checked />Gap1（当前视口）</label>
+        <label>Gap1 最多显示 <input id="gap1MaxCount" type="number" min="1" max="500" value="15" /></label>
+        <label><input id="gap1ShowValue" type="checkbox" />显示数值</label>
+      </div>
     </div>
 
     <div class="content">
@@ -194,13 +208,16 @@
       <aside class="guide">
         <h2>观察要点</h2>
         <ol>
-          <li>默认 30% 门槛可识别 11 个完整缺口；将最小偏差调到 20% 可观察更多小缺口。</li>
+          <li>Gap 使用历史分段矩形；Gap1 每个未回补缺口只显示一个“剩余价格范围 → 视口最右侧”的矩形。</li>
+          <li>拖动图表或滚轮缩放会改变当前可见范围，并立即重新计算 Gap1；右侧不可见数据中的回补不会影响当前视口。</li>
+          <li>Gap 与 Gap1 可以同时开启。重叠区域可能颜色加深，可分别关闭开关进行对比。</li>
+          <li>Gap 默认 30% 门槛可识别 11 个完整缺口；Gap1 默认最多显示开始日期较新的 15 个缺口。</li>
+          <li>Gap1 开启“显示数值”后，会在缺口下方/上方显示价格区间、百分比和缺口宽度。</li>
           <li>2025-04-03 的下跌缺口直到 2025-08-08 才完全回补，适合比较部分回补与触碰关闭。</li>
           <li>2025-10-20 的上涨缺口持续到 2026-01-20，可启用延伸限制观察视觉截断。</li>
-          <li>将“最多显示”调小，可观察系统优先保留最近形成的缺口。</li>
-          <li>样式切换只更新 <code>Styles.gap</code>，不会重新计算缺口记录。</li>
+          <li>样式切换会同时更新 Gap 与 Gap1 外观，但不会重新计算记录。</li>
         </ol>
-        <p>“重新播放”会回放最近 90 个交易日。使用“追加一根”或“自动播放”时，开发构建会在控制台输出 <code>New Gap Appeared</code> 和 <code>Gap Closed</code>。</p>
+        <p>“重新播放”会回放最近 90 个交易日。开发构建仅为 Gap 输出 <code>New Gap Appeared</code> 和 <code>Gap Closed</code>；Gap1 始终保持静默。</p>
         <div id="status"></div>
       </aside>
     </div>
@@ -212,9 +229,11 @@
       let replayStartIndex = 0
       let nextDataIndex = 0
       let playTimer
+      let statusMessage = '正在加载 AAPL 日线快照'
 
       const chart = init('chart', {
         gaps: getGapOptions(),
+        gap1: getGap1Options(),
         styles: {
           yAxis: {
             position: 'right',
@@ -226,6 +245,18 @@
       for (const id of ['enabled', 'partial', 'deviation', 'maxCount', 'limitTrail', 'trailLength']) {
         document.getElementById(id).addEventListener('change', applyGapOptions)
       }
+
+      for (const id of ['gap1Enabled', 'gap1MaxCount', 'gap1ShowValue']) {
+        document.getElementById(id).addEventListener('change', applyGap1Option)
+      }
+
+      chart.subscribeAction('onVisibleRangeChange', () => {
+        if (document.getElementById('gap1Enabled').checked) {
+          updateStatus('视口已变化，Gap1 已按当前范围重新计算')
+        } else {
+          updateStatus(statusMessage)
+        }
+      })
 
       document.getElementById('stylePreset').addEventListener('change', event => {
         chart.setStyles({ gap: getGapStyle(event.target.value) })
@@ -274,7 +305,20 @@
       function applyGapOptions () {
         const enabled = document.getElementById('enabled').checked
         chart.setOptions({ gaps: enabled ? getGapOptions() : false })
-        updateStatus(enabled ? '缺口行为配置已更新' : '缺口显示已关闭')
+        updateStatus(enabled ? 'Gap 行为配置已更新' : 'Gap 已关闭')
+      }
+
+      function applyGap1Option () {
+        const enabled = document.getElementById('gap1Enabled').checked
+        chart.setOptions({ gap1: enabled ? getGap1Options() : false })
+        updateStatus(enabled ? 'Gap1 配置已更新，并按当前视口计算' : 'Gap1 已关闭')
+      }
+
+      function getGap1Options () {
+        return {
+          maxGapCount: Number(document.getElementById('gap1MaxCount')?.value ?? 15),
+          showValue: document.getElementById('gap1ShowValue')?.checked ?? false
+        }
       }
 
       function getGapStyle (preset) {
@@ -381,11 +425,16 @@
       }
 
       function updateStatus (message) {
-        const enabled = document.getElementById('enabled').checked
+        statusMessage = message
+        const visibleRange = chart.getVisibleRange()
         document.getElementById('status').textContent = [
           message,
           `data=${chart.getDataList().length}/${demoData.length}`,
-          `enabled=${enabled}`,
+          `visible=[${visibleRange.from}, ${visibleRange.to})`,
+          `gap=${document.getElementById('enabled').checked}`,
+          `gap1=${document.getElementById('gap1Enabled').checked}`,
+          `gap1Max=${document.getElementById('gap1MaxCount').value}`,
+          `gap1Value=${document.getElementById('gap1ShowValue').checked}`,
           `partial=${document.getElementById('partial').checked}`,
           `deviation=${document.getElementById('deviation').value}%`,
           `trail=${document.getElementById('limitTrail').checked ? document.getElementById('trailLength').value : 'unlimited'}`
