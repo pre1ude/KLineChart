@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Independent Gap1 configuration
-The chart SHALL expose `Options.gap1` as an optional `boolean | Gap1Options` setting that is disabled by default. `Gap1Options.maxGapCount` SHALL default to 15 and be normalized to an integer from 1 through 500. `Gap1Options.showValue` SHALL default to `false`. Passing an object SHALL enable Gap1 and merge it with the retained normalized configuration. Gap1 SHALL be enabled and disabled independently from `Options.gaps`, and SHALL reuse upward/downward appearance from `Styles.gap` without adding Gap1-specific styles.
+The chart SHALL expose `Options.gap1` as an optional `boolean | Gap1Options` setting that is disabled by default. `Gap1Options.maxGapCount` SHALL default to 15 and be normalized to an integer from 1 through 500. `Gap1Options.showValue` SHALL default to `false`. Passing an object SHALL enable Gap1 and merge it with the retained normalized configuration. Gap1 SHALL be enabled and disabled independently from `Options.gaps`, and SHALL reuse upward/downward appearance from `Styles.gap` without adding Gap1-specific styles. Each `Styles.gap.up/down.borderColor` SHALL be mandatory; a fill-only presentation SHALL set `borderSize` to `0` while retaining a usable border color for Gap1 value text.
 
 #### Scenario: Enable Gap1
 - **WHEN** a chart receives `setOptions({ gap1: true })`

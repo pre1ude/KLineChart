@@ -433,7 +433,7 @@ export interface SeparatorStyle {
 }
 
 export interface GapDirectionStyle {
-  borderColor?: string
+  borderColor: string
   backgroundColor: string
   borderSize?: number
 }

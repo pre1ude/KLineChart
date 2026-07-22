@@ -57,3 +57,8 @@
 
 - [x] 10.1 Add calculator regression tests for upward/downward rejection at or below 0.02%, acceptance above 0.02%, and retention after the remaining region shrinks below the threshold.
 - [x] 10.2 Implement the fixed original-formation threshold before Gap1 record creation and run focused/full verification plus final OpenSpec validation.
+
+## 11. Fill-Only Border Semantics
+
+- [x] 11.1 Add style/view regression coverage for mandatory direction border colors and visible Gap1 statistics when `borderSize` is `0`.
+- [x] 11.2 Make `GapDirectionStyle.borderColor` required and update the fill-only demo preset to use `borderSize: 0`; run focused/full verification and final OpenSpec validation.

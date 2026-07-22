@@ -110,8 +110,8 @@ describe('GapView', () => {
 
   it('uses gap appearance from the chart style tree', () => {
     const gapStyles: GapStyle = {
-      up: { backgroundColor: '#ff000026' },
-      down: { backgroundColor: '#00ff0026' }
+      up: { borderColor: '#ff0000', backgroundColor: '#ff000026' },
+      down: { borderColor: '#00ff00', backgroundColor: '#00ff0026' }
     }
     const { view } = createView([
       gap('up', [{ fromIndex: 1, top: 80, bottom: 60 }])
@@ -121,7 +121,7 @@ describe('GapView', () => {
 
     expect(vi.mocked(drawRect).mock.calls[0][2]).toMatchObject({
       color: '#ff000026',
-      borderColor: undefined,
+      borderColor: '#ff0000',
       borderSize: undefined
     })
   })

@@ -72,7 +72,7 @@ export default class Gap1View extends View {
           baseline: isUp ? 'top' : 'bottom',
           priceText: `${formatPrecision(start, pricePrecision)}-${formatPrecision(end, pricePrecision)}`,
           changeText: `${sign}${(change / start * 100).toFixed(3)}%(${sign}${formatPrecision(change, pricePrecision)})`,
-          changeColor: directionStyles.borderColor ?? 'transparent'
+          changeColor: directionStyles.borderColor
         })
       }
     })

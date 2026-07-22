@@ -14,6 +14,7 @@ The chart already recalculates `VisibleRange`, rebuilds `ChartStore._visibleData
 - Use only candles through the visible right boundary to derive the remaining unfilled region.
 - Render exactly one current-state rectangle for each still-unfilled Gap1 record.
 - Keep the newest retained gaps under a configurable count limit and optionally render precision-aware value labels.
+- Require a color for each gap direction and represent fill-only styles with zero border size rather than a transparent color.
 - Recalculate deterministically for every visible-range and data change.
 - Reuse the main price axis, bar pixel alignment, gap styles, and gap main-canvas z-order.
 
@@ -39,7 +40,7 @@ Alternatives considered:
 
 ### Expose an independent boolean or object option
 
-Add `Options.gap1?: boolean | Gap1Options`, disabled by default. The object contains `maxGapCount` (default 15, integer-clamped to 1-500) and `showValue` (default false); passing an object enables Gap1 and merges into the retained normalized configuration. Enabling recalculates from the current data and visible range; disabling clears Gap1 records without discarding configuration. `Options.gaps` and `Options.gap1` are evaluated independently, so both may be enabled. Appearance is always read from `Styles.gap`; style-only and `showValue`-only updates redraw without recalculating records.
+Add `Options.gap1?: boolean | Gap1Options`, disabled by default. The object contains `maxGapCount` (default 15, integer-clamped to 1-500) and `showValue` (default false); passing an object enables Gap1 and merges into the retained normalized configuration. Enabling recalculates from the current data and visible range; disabling clears Gap1 records without discarding configuration. `Options.gaps` and `Options.gap1` are evaluated independently, so both may be enabled. Appearance is always read from `Styles.gap`; both direction styles require `borderColor`, while `borderSize: 0` suppresses strokes for fill-only presentations. Style-only and `showValue`-only updates redraw without recalculating records.
 
 Gap1 intentionally has no configurable minimum-deviation, trail-length, or close-mode option. A fixed original-formation threshold rejects increases/decreases at or below 0.02%, using the prior boundary as the percentage denominator. The threshold is checked before record creation only; remaining-region tracking always follows partial-fill semantics and can retain a remainder below the threshold. Final active records are sorted by `openTimestamp` descending before applying `maxGapCount` so newer gaps win deterministically.
 
@@ -80,7 +81,7 @@ Gap1 records remain internal. They do not enter indicators, crosshair data, tool
 
 ### Extend the existing AAPL gaps demo
 
-Keep one demo page so users can compare the two gap semantics against identical data and styles. Add independent Gap and Gap1 switches, initialize both for coexistence, and place Gap1's switch, maximum-count input, and value-label switch on their own toolbar row. Show the effective visible range in the status panel and update that status on visible-range actions. Existing TradingView Gap behavior controls remain scoped to `Options.gaps`; the shared style selector continues to update `Styles.gap` for both features. The guide explains that dragging or zooming recalculates Gap1 and that later offscreen fills are intentionally ignored.
+Keep one demo page so users can compare the two gap semantics against identical data and styles. Add independent Gap and Gap1 switches, initialize both for coexistence, and place Gap1's switch, maximum-count input, and value-label switch on their own toolbar row. Show the effective visible range in the status panel and update that status on visible-range actions. Existing TradingView Gap behavior controls remain scoped to `Options.gaps`; the shared style selector continues to update `Styles.gap` for both features. The fill-only preset keeps direction colors for text and sets `borderSize: 0` so Gap1 statistics remain visible. The guide explains that dragging or zooming recalculates Gap1 and that later offscreen fills are intentionally ignored.
 
 ## Risks / Trade-offs
 

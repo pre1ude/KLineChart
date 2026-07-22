@@ -146,7 +146,7 @@ describe('Gap1View', () => {
   it('uses the shared gap appearance', () => {
     const styles: GapStyle = {
       up: { backgroundColor: '#ff000026', borderColor: '#ff0000', borderSize: 2 },
-      down: { backgroundColor: '#00ff0026' }
+      down: { backgroundColor: '#00ff0026', borderColor: '#00ff00' }
     }
     const { view } = createView([gap1('up', 1, 70, 60)], value => value, true, styles)
 
@@ -212,5 +212,19 @@ describe('Gap1View', () => {
     view.draw(ctx)
 
     expect(ctx.textCalls).toEqual([])
+  })
+
+  it('keeps value colors when the fill-only border size is zero', () => {
+    const styles: GapStyle = {
+      up: { borderColor: '#ff0000', backgroundColor: '#ff000026', borderSize: 0 },
+      down: { borderColor: '#00ff00', backgroundColor: '#00ff0026', borderSize: 0 }
+    }
+    const { view } = createView([gap1('up', 1, 70, 60)], value => value, true, styles, true)
+    const ctx = createContext()
+
+    view.draw(ctx)
+
+    expect(vi.mocked(drawRect).mock.calls[0][2]).toMatchObject({ borderSize: 0 })
+    expect(ctx.textCalls[1].color).toBe('#ff0000')
   })
 })
