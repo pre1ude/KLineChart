@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Standard indicator tooltip runtime theme switch regression demo" />
+    <title>Standard Indicator Tooltip Theme Switch</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: 20px;
+        color: #1f2329;
+        background: #f5f6f8;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .demo {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 24px;
+      }
+
+      .description {
+        margin: 0 0 16px;
+        color: #646a73;
+        line-height: 1.6;
+      }
+
+      .toolbar,
+      .diagnostics {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid #dee2e8;
+        background: #ffffff;
+      }
+
+      .toolbar {
+        border-radius: 8px 8px 0 0;
+      }
+
+      button {
+        height: 32px;
+        padding: 0 14px;
+        border: 1px solid #c9ced8;
+        border-radius: 5px;
+        background: #ffffff;
+        color: #1f2329;
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: #3370ff;
+        color: #3370ff;
+      }
+
+      button.active {
+        border-color: #3370ff;
+        background: #3370ff;
+        color: #ffffff;
+      }
+
+      .chart-shell {
+        height: 560px;
+        overflow: hidden;
+        border-right: 1px solid #dee2e8;
+        border-left: 1px solid #dee2e8;
+        background: #0f1e33;
+        transition: background-color 160ms ease;
+      }
+
+      .chart-shell.light {
+        background: #ffffff;
+      }
+
+      #chart {
+        width: 100%;
+        height: 100%;
+      }
+
+      .diagnostics {
+        border-radius: 0 0 8px 8px;
+        font-size: 13px;
+      }
+
+      .diagnostics code {
+        padding: 3px 6px;
+        border-radius: 4px;
+        background: #f2f3f5;
+      }
+
+      .swatch {
+        width: 24px;
+        height: 24px;
+        border: 1px solid #8f959e;
+        border-radius: 4px;
+      }
+
+      .hint {
+        margin: 12px 0 0;
+        color: #646a73;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="demo">
+      <h1>Standard 指标文字运行时主题切换</h1>
+      <p class="description">
+        MA 位于主图，蜡烛 Tooltip 已隐藏，指标 Tooltip 固定使用 <code>standard</code>。
+        从 Dark 切换到 Light 后，指标文字背景应变为当前注册的 Light 主题配置色。
+      </p>
+
+      <div class="toolbar">
+        <strong>运行时主题：</strong>
+        <button type="button" data-theme="dark" class="active">Dark</button>
+        <button type="button" data-theme="light">Light</button>
+        <button type="button" id="cycleTheme">Dark → Light</button>
+      </div>
+
+      <div class="chart-shell" id="chartShell">
+        <div id="chart"></div>
+      </div>
+
+      <div class="diagnostics">
+        <strong>当前主题：</strong>
+        <code id="currentTheme">dark</code>
+        <strong>indicator.tooltip.backgroundColor：</strong>
+        <code id="backgroundColor">-</code>
+        <span class="swatch" id="colorSwatch" aria-label="当前配置色预览"></span>
+      </div>
+
+      <p class="hint">
+        观察主图左上角 MA 指标文字。诊断值来自 <code>chart.getStyles()</code>，用于与 Canvas 实际显示结果对照。
+      </p>
+    </main>
+
+    <script type="module">
+      import { init } from '../../../dist/index.js'
+      import { generated } from '../../js/dataSource.js'
+
+      const chartShell = document.getElementById('chartShell')
+      const currentTheme = document.getElementById('currentTheme')
+      const backgroundColor = document.getElementById('backgroundColor')
+      const colorSwatch = document.getElementById('colorSwatch')
+
+      const chart = init('chart', { styles: 'dark' })
+      chart.setStyles({
+        candle: {
+          tooltip: {
+            showRule: 'none'
+          }
+        },
+        indicator: {
+          tooltip: {
+            showRule: 'always',
+            showType: 'standard',
+            showBackground: true
+          }
+        }
+      })
+      chart.createIndicator('MA', false, { id: 'candle_pane' })
+      chart.applyNewData(generated(), true)
+
+      function setTheme (theme) {
+        chart.setStyles(theme)
+        chartShell.classList.toggle('light', theme === 'light')
+        document.querySelectorAll('[data-theme]').forEach(button => {
+          button.classList.toggle('active', button.dataset.theme === theme)
+        })
+
+        const color = chart.getStyles().indicator.tooltip.backgroundColor
+        currentTheme.textContent = theme
+        backgroundColor.textContent = color
+        colorSwatch.style.backgroundColor = color
+        document.documentElement.dataset.theme = theme
+        document.documentElement.dataset.indicatorTooltipBackground = color
+      }
+
+      document.querySelectorAll('[data-theme]').forEach(button => {
+        button.addEventListener('click', () => setTheme(button.dataset.theme))
+      })
+
+      document.getElementById('cycleTheme').addEventListener('click', () => {
+        setTheme('dark')
+        window.setTimeout(() => setTheme('light'), 600)
+      })
+
+      window.themeSwitchDemo = { chart, setTheme }
+      setTheme('dark')
+    </script>
+  </body>
+</html>
