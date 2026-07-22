@@ -1,6 +1,6 @@
 ## 1. Public Option and Gap1 Model
 
-- [x] 1.1 Add the disabled-by-default `Options.gap1?: boolean | Gap1Options` public option without changing `Options.gaps`.
+- [x] 1.1 Add configuration-only `Options.gaps?: GapOptions`/`Options.gap1?: Gap1Options` fields without boolean union forms.
 - [x] 1.2 Add internal Gap1 direction/record types and a pure visible-range calculator contract.
 
 ## 2. Visible-Range Calculation
@@ -62,3 +62,9 @@
 
 - [x] 11.1 Add style/view regression coverage for mandatory direction border colors and visible Gap1 statistics when `borderSize` is `0`.
 - [x] 11.2 Make `GapDirectionStyle.borderColor` required and update the fill-only demo preset to use `borderSize: 0`; run focused/full verification and final OpenSpec validation.
+
+## 12. Explicit Gap Visibility Switches
+
+- [x] 12.1 Add `Options.gapShow` and `Options.gap1Show` tests covering hidden preconfiguration, show-on/show-off, retained configuration, and simultaneous enablement.
+- [x] 12.2 Split Gap/Gap1 store configuration updates from visibility updates and migrate ChartStore/Demo to explicit switches without legacy boolean forms.
+- [x] 12.3 Run focused/full tests, type check, ESLint, build, diff check, and final OpenSpec validation.

@@ -8,7 +8,7 @@ The chart already recalculates `VisibleRange`, rebuilds `ChartStore._visibleData
 
 **Goals:**
 
-- Add an independent `gap1` boolean/object option without changing `gaps` behavior.
+- Add independent `gapShow`/`gap1Show` switches without coupling visibility to `gaps`/`gap1` configuration updates.
 - Detect every positive-width full high/low gap whose opening candle is in the visible range.
 - Reject original formation changes at or below 0.02% without applying the threshold again after partial fills.
 - Use only candles through the visible right boundary to derive the remaining unfilled region.
@@ -38,9 +38,9 @@ Alternatives considered:
 - **Calculate inside Gap1View:** rejected because calculation should remain pure/testable and should not repeat on redraws unrelated to the visible range.
 - **Generate overlays:** rejected because Gap1 is automatic, non-interactive, and must remain outside overlay persistence and event APIs.
 
-### Expose an independent boolean or object option
+### Separate configuration from visibility
 
-Add `Options.gap1?: boolean | Gap1Options`, disabled by default. The object contains `maxGapCount` (default 15, integer-clamped to 1-500) and `showValue` (default false); passing an object enables Gap1 and merges into the retained normalized configuration. Enabling recalculates from the current data and visible range; disabling clears Gap1 records without discarding configuration. `Options.gaps` and `Options.gap1` are evaluated independently, so both may be enabled. Appearance is always read from `Styles.gap`; both direction styles require `borderColor`, while `borderSize: 0` suppresses strokes for fill-only presentations. Style-only and `showValue`-only updates redraw without recalculating records.
+Use `Options.gaps?: GapOptions` and `Options.gap1?: Gap1Options` only for retained normalized behavior, and add `Options.gapShow?: boolean` and `Options.gap1Show?: boolean` for visibility. Configuration updates while hidden do not calculate or render records. Show updates clear or calculate only their feature, and a show-on update uses the latest retained configuration. When both a hide/show flag and configuration arrive in one `setOptions` call, process hides first, merge configurations second, then process shows so enabling calculates exactly once with the newest values. The legacy boolean union forms are intentionally removed because this API is not released yet. Appearance is always read from `Styles.gap`; both direction styles require `borderColor`, while `borderSize: 0` suppresses strokes for fill-only presentations. Style-only and `showValue`-only updates redraw without recalculating records.
 
 Gap1 intentionally has no configurable minimum-deviation, trail-length, or close-mode option. A fixed original-formation threshold rejects increases/decreases at or below 0.02%, using the prior boundary as the percentage denominator. The threshold is checked before record creation only; remaining-region tracking always follows partial-fill semantics and can retain a remainder below the threshold. Final active records are sorted by `openTimestamp` descending before applying `maxGapCount` so newer gaps win deterministically.
 
@@ -61,7 +61,7 @@ Only active records at the exclusive right boundary are returned. Data at index 
 
 `ChartStore.adjustVisibleDataList()` is the single integration point for visible-range-derived state. After rebuilding the visible data list, it asks Gap1Store to recalculate from the current data and `TimeScaleStore.getVisibleRange()`. This path is already reached after scrolling, zooming, resizing, alignment, data-zoom changes, initial/replaced/updated data, and layout-driven range changes.
 
-Enabling Gap1 performs an immediate calculation using the current range. Clearing chart data explicitly clears Gap1 records. This avoids subscribing an internal feature to public action callbacks and avoids coupling TimeScaleStore directly to Gap1.
+Showing Gap1 performs an immediate calculation using the current range. Clearing chart data explicitly clears Gap1 records. This avoids subscribing an internal feature to public action callbacks and avoids coupling TimeScaleStore directly to Gap1.
 
 ### Draw one current-state rectangle per active gap
 
@@ -81,7 +81,7 @@ Gap1 records remain internal. They do not enter indicators, crosshair data, tool
 
 ### Extend the existing AAPL gaps demo
 
-Keep one demo page so users can compare the two gap semantics against identical data and styles. Add independent Gap and Gap1 switches, initialize both for coexistence, and place Gap1's switch, maximum-count input, and value-label switch on their own toolbar row. Show the effective visible range in the status panel and update that status on visible-range actions. Existing TradingView Gap behavior controls remain scoped to `Options.gaps`; the shared style selector continues to update `Styles.gap` for both features. The fill-only preset keeps direction colors for text and sets `borderSize: 0` so Gap1 statistics remain visible. The guide explains that dragging or zooming recalculates Gap1 and that later offscreen fills are intentionally ignored.
+Keep one demo page so users can compare the two gap semantics against identical data and styles. Add independent Gap and Gap1 switches, initialize both for coexistence, and place Gap1's switch, maximum-count input, and value-label switch on their own toolbar row. The switches update `gapShow`/`gap1Show`, while all behavior controls update `gaps`/`gap1` without implicitly changing visibility. Show the effective visible range in the status panel and update that status on visible-range actions. The shared style selector continues to update `Styles.gap` for both features. The fill-only preset keeps direction colors for text and sets `borderSize: 0` so Gap1 statistics remain visible. The guide explains that dragging or zooming recalculates Gap1 and that later offscreen fills are intentionally ignored.
 
 ## Risks / Trade-offs
 
@@ -93,7 +93,7 @@ Keep one demo page so users can compare the two gap semantics against identical 
 
 ## Migration Plan
 
-1. Add the disabled-by-default option and internal calculator/store.
+1. Add the disabled-by-default configuration fields, explicit show switches, and internal Gap1 calculator/store.
 2. Integrate recalculation with visible-data adjustment and data clearing.
 3. Add Gap1View to the existing GapLayer after GapView.
 4. Add focused behavior, coexistence, isolation, and regression tests.

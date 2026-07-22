@@ -233,7 +233,9 @@
 
       const chart = init('chart', {
         gaps: getGapOptions(),
+        gapShow: document.getElementById('enabled').checked,
         gap1: getGap1Options(),
+        gap1Show: document.getElementById('gap1Enabled').checked,
         styles: {
           yAxis: {
             position: 'right',
@@ -304,13 +306,13 @@
 
       function applyGapOptions () {
         const enabled = document.getElementById('enabled').checked
-        chart.setOptions({ gaps: enabled ? getGapOptions() : false })
+        chart.setOptions({ gaps: getGapOptions(), gapShow: enabled })
         updateStatus(enabled ? 'Gap 行为配置已更新' : 'Gap 已关闭')
       }
 
       function applyGap1Option () {
         const enabled = document.getElementById('gap1Enabled').checked
-        chart.setOptions({ gap1: enabled ? getGap1Options() : false })
+        chart.setOptions({ gap1: getGap1Options(), gap1Show: enabled })
         updateStatus(enabled ? 'Gap1 配置已更新，并按当前视口计算' : 'Gap1 已关闭')
       }
 

@@ -38,25 +38,29 @@ export default class GapStore {
     return this._gaps
   }
 
-  setOptions(value: boolean | GapOptions): void {
-    if (value === false) {
+  setOptions(value: GapOptions): void {
+    const previousSignature = getGapCalculationSignature(this._options)
+    const nextOptions = normalizeGapOptions(this._options, value)
+    const nextSignature = getGapCalculationSignature(nextOptions)
+
+    this._options = nextOptions
+
+    if (this._enabled && previousSignature !== nextSignature) {
+      this.recalculate(this._chartStore.getDataList(), { kind: 'options', fromIndex: 0 })
+    }
+  }
+
+  setShow(show: boolean): void {
+    if (!show) {
       this._enabled = false
       this._gaps = []
       this._resetLogState()
       return
     }
 
-    const wasEnabled = this._enabled
-    const previousSignature = getGapCalculationSignature(this._options)
-    const nextOptions = normalizeGapOptions(this._options, value)
-    const nextSignature = getGapCalculationSignature(nextOptions)
-
+    if (this._enabled) return
     this._enabled = true
-    this._options = nextOptions
-
-    if (!wasEnabled || previousSignature !== nextSignature) {
-      this.recalculate(this._chartStore.getDataList(), { kind: 'options', fromIndex: 0 })
-    }
+    this.recalculate(this._chartStore.getDataList(), { kind: 'options', fromIndex: 0 })
   }
 
   recalculate(dataList: KLineData[], context: GapDataChangeContext): void {

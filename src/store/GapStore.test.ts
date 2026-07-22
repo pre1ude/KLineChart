@@ -29,11 +29,13 @@ describe('GapStore', () => {
     vi.mocked(logInfo).mockClear()
   })
 
-  it('enables with defaults and retains records when equivalent options are reapplied', () => {
+  it('keeps configuration separate from visibility and retains records when equivalent options are reapplied', () => {
     const data = [candle(0, 90, 100), candle(1, 103, 110)]
     const { store } = createStore(data)
 
-    store.setOptions(true)
+    store.setOptions({})
+    expect(store.getGaps()).toEqual([])
+    store.setShow(true)
     const records = store.getGaps()
     store.setOptions({ maxGapCount: 15 })
 
@@ -47,8 +49,8 @@ describe('GapStore', () => {
     const { store } = createStore([candle(0, 90, 100), candle(1, 103, 110)])
     store.setOptions({ maxGapCount: 2 })
 
-    store.setOptions(false)
-    store.setOptions(true)
+    store.setShow(false)
+    store.setShow(true)
 
     expect(store.getOptions().maxGapCount).toBe(2)
     expect(store.getGaps()).toHaveLength(1)
@@ -58,7 +60,7 @@ describe('GapStore', () => {
   it('keeps initial, prepend, historical, replace, and option recalculations silent', () => {
     const data = [candle(0, 90, 100), candle(1, 103, 110)]
     const { store } = createStore(data)
-    store.setOptions(true)
+    store.setShow(true)
 
     store.recalculate(data, { kind: 'init', fromIndex: 0 })
     store.recalculate(data, { kind: 'prepend', fromIndex: 0 })
@@ -73,7 +75,7 @@ describe('GapStore', () => {
     const initial = [candle(0, 90, 100)]
     const next = [...initial, candle(1, 103, 110)]
     const { store, setData } = createStore(initial)
-    store.setOptions(true)
+    store.setShow(true)
     setData(next)
 
     store.recalculate(next, { kind: 'append', fromIndex: 1 })
@@ -91,7 +93,7 @@ describe('GapStore', () => {
     const initial = [candle(0, 90, 100), candle(1, 110, 120)]
     const closed = [...initial, candle(2, 109, 115)]
     const { store } = createStore(initial)
-    store.setOptions(true)
+    store.setShow(true)
     vi.mocked(logInfo).mockClear()
 
     store.recalculate(closed, { kind: 'append', fromIndex: 2 })
@@ -112,6 +114,7 @@ describe('GapStore', () => {
     const filled = [...partial, candle(3, 100, 108)]
     const { store } = createStore(initial)
     store.setOptions({ closeGapsPartially: true })
+    store.setShow(true)
     vi.mocked(logInfo).mockClear()
 
     store.recalculate(partial, { kind: 'append', fromIndex: 2 })
@@ -133,6 +136,7 @@ describe('GapStore', () => {
     ]
     const { store } = createStore(initial)
     store.setOptions({ maxGapCount: 1 })
+    store.setShow(true)
     vi.mocked(logInfo).mockClear()
 
     store.recalculate(appended, { kind: 'append', fromIndex: 1 })
@@ -143,7 +147,7 @@ describe('GapStore', () => {
   it('clear removes records and resets log de-duplication state', () => {
     const data = [candle(0, 90, 100), candle(1, 103, 110)]
     const { store } = createStore(data)
-    store.setOptions(true)
+    store.setShow(true)
 
     store.clear()
 

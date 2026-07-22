@@ -280,11 +280,23 @@ export default class ChartStore {
         this._timeScaleStore.setDataZoomOptions(this._dataZoomOptions)
         this._timeScaleStore.setMode(this.getTimeScaleModeKind())
       }
+      if (options.gapShow === false) {
+        this._gapStore.setShow(false)
+      }
+      if (options.gap1Show === false) {
+        this._gap1Store.setShow(false)
+      }
       if (isValid(options.gaps)) {
         this._gapStore.setOptions(options.gaps)
       }
       if (isValid(options.gap1)) {
         this._gap1Store.setOptions(options.gap1)
+      }
+      if (options.gapShow === true) {
+        this._gapStore.setShow(true)
+      }
+      if (options.gap1Show === true) {
+        this._gap1Store.setShow(true)
       }
       if (isValid(options.timeShareDays)) {
         this._timeShareDays = options.timeShareDays

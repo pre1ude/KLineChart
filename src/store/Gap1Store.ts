@@ -33,26 +33,33 @@ export default class Gap1Store {
     return this._gaps
   }
 
-  setOptions(value: boolean | Gap1Options): void {
-    if (value === false) {
-      this._enabled = false
-      this._gaps = []
-      return
-    }
-
-    const wasEnabled = this._enabled
+  setOptions(value: Gap1Options): void {
     const previousMaxGapCount = this._options.maxGapCount
     const nextOptions = normalizeGap1Options(this._options, value)
 
-    this._enabled = true
     this._options = nextOptions
 
-    if (!wasEnabled || previousMaxGapCount !== nextOptions.maxGapCount) {
+    if (this._enabled && previousMaxGapCount !== nextOptions.maxGapCount) {
       this.recalculate(
         this._chartStore.getDataList(),
         this._chartStore.getTimeScaleStore().getVisibleRange()
       )
     }
+  }
+
+  setShow(show: boolean): void {
+    if (!show) {
+      this._enabled = false
+      this._gaps = []
+      return
+    }
+
+    if (this._enabled) return
+    this._enabled = true
+    this.recalculate(
+      this._chartStore.getDataList(),
+      this._chartStore.getTimeScaleStore().getVisibleRange()
+    )
   }
 
   recalculate(dataList: KLineData[], visibleRange: VisibleRange): void {

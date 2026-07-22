@@ -69,7 +69,7 @@ describe('ChartStore', () => {
     const chart = {
       refreshViewportLayout: vi.fn()
     } as unknown as Chart
-    const store = new ChartStore(chart, { gaps: true })
+    const store = new ChartStore(chart, { gaps: {}, gapShow: true })
 
     store.addData([
       { timestamp: 0, open: 90, high: 100, low: 90, close: 100 },
@@ -82,15 +82,65 @@ describe('ChartStore', () => {
     expect(store.getOverlayStore().getInstances()).toEqual([])
     expect(store.getOverlayStore().exportAllOverlays()).toEqual([])
 
-    store.setOptions({ gaps: false })
+    store.setOptions({ gapShow: false })
     expect(store.getGapStore().getGaps()).toEqual([])
+  })
+
+  it('preconfigures Gap and Gap1 without showing and applies configuration before enabling', () => {
+    const chart = {
+      refreshViewportLayout: vi.fn()
+    } as unknown as Chart
+    const store = new ChartStore(chart, {
+      gaps: { maxGapCount: 2 },
+      gap1: { maxGapCount: 2, showValue: true }
+    })
+    store.mainWidth = 100
+    store.addData([
+      { timestamp: 0, open: 90, high: 100, low: 90, close: 100 },
+      { timestamp: 1, open: 110, high: 120, low: 110, close: 120 }
+    ], LoadDataType.Init)
+
+    expect(store.getGapStore().isEnabled()).toBe(false)
+    expect(store.getGap1Store().isEnabled()).toBe(false)
+    expect(store.getGapStore().getGaps()).toEqual([])
+    expect(store.getGap1Store().getGaps()).toEqual([])
+
+    const recalculateGap = vi.spyOn(store.getGapStore(), 'recalculate')
+    const recalculateGap1 = vi.spyOn(store.getGap1Store(), 'recalculate')
+    store.setOptions({
+      gaps: { maxGapCount: 1 },
+      gapShow: true,
+      gap1: { maxGapCount: 1 },
+      gap1Show: true
+    })
+
+    expect(store.getGapStore().getOptions().maxGapCount).toBe(1)
+    expect(store.getGap1Store().getOptions()).toEqual({ maxGapCount: 1, showValue: true })
+    expect(recalculateGap).toHaveBeenCalledTimes(1)
+    expect(recalculateGap1).toHaveBeenCalledTimes(1)
+
+    recalculateGap.mockClear()
+    recalculateGap1.mockClear()
+    store.setOptions({
+      gapShow: false,
+      gaps: { maxGapCount: 3 },
+      gap1Show: false,
+      gap1: { maxGapCount: 3 }
+    })
+
+    expect(store.getGapStore().getOptions().maxGapCount).toBe(3)
+    expect(store.getGap1Store().getOptions().maxGapCount).toBe(3)
+    expect(store.getGapStore().getGaps()).toEqual([])
+    expect(store.getGap1Store().getGaps()).toEqual([])
+    expect(recalculateGap).not.toHaveBeenCalled()
+    expect(recalculateGap1).not.toHaveBeenCalled()
   })
 
   it('updates gap styles without recalculating gap records', () => {
     const chart = {
       refreshViewportLayout: vi.fn()
     } as unknown as Chart
-    const store = new ChartStore(chart, { gaps: true })
+    const store = new ChartStore(chart, { gaps: {}, gapShow: true })
     store.addData([
       { timestamp: 0, open: 90, high: 100, low: 90, close: 100 },
       { timestamp: 1, open: 103, high: 110, low: 103, close: 110 }
@@ -115,7 +165,7 @@ describe('ChartStore', () => {
     const chart = {
       refreshViewportLayout: vi.fn()
     } as unknown as Chart
-    const store = new ChartStore(chart, { gaps: true })
+    const store = new ChartStore(chart, { gaps: {}, gapShow: true })
     const recalculate = vi.spyOn(store.getGapStore(), 'recalculate')
 
     store.addData(createTimestampDataList([10, 20]), LoadDataType.Init)
@@ -142,8 +192,10 @@ describe('ChartStore', () => {
       refreshViewportLayout: vi.fn()
     } as unknown as Chart
     const store = new ChartStore(chart, {
-      gaps: true,
-      gap1: { maxGapCount: 2, showValue: true }
+      gaps: {},
+      gapShow: true,
+      gap1: { maxGapCount: 2, showValue: true },
+      gap1Show: true
     })
     expect(store.getGap1Store().getOptions()).toEqual({ maxGapCount: 2, showValue: true })
     store.mainWidth = 100
@@ -163,7 +215,7 @@ describe('ChartStore', () => {
     store.adjustVisibleDataList()
     expect(store.getGap1Store().getGaps()).toEqual([])
 
-    store.setOptions({ gap1: false })
+    store.setOptions({ gap1Show: false })
     expect(store.getGap1Store().isEnabled()).toBe(false)
     expect(store.getGapStore().isEnabled()).toBe(true)
   })
@@ -172,7 +224,7 @@ describe('ChartStore', () => {
     const chart = {
       refreshViewportLayout: vi.fn()
     } as unknown as Chart
-    const store = new ChartStore(chart, { gap1: true })
+    const store = new ChartStore(chart, { gap1: {}, gap1Show: true })
     store.mainWidth = 100
     store.addData(createDataList(20), LoadDataType.Init)
     const recalculate = vi.spyOn(store.getGap1Store(), 'recalculate')
@@ -209,7 +261,7 @@ describe('ChartStore', () => {
     const chart = {
       refreshViewportLayout: vi.fn()
     } as unknown as Chart
-    const store = new ChartStore(chart, { gap1: true })
+    const store = new ChartStore(chart, { gap1: {}, gap1Show: true })
     store.mainWidth = 100
     store.addData([
       { timestamp: 0, open: 90, high: 100, low: 90, close: 100 },
@@ -229,7 +281,7 @@ describe('ChartStore', () => {
       const chart = {
         refreshViewportLayout: vi.fn()
       } as unknown as Chart
-      const store = new ChartStore(chart, { gap1: true })
+      const store = new ChartStore(chart, { gap1: {}, gap1Show: true })
       store.mainWidth = 100
 
       store.addData([

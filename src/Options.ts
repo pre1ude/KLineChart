@@ -107,8 +107,12 @@ export interface Options {
   timeShareSessionGapForN?: number
   preferXTicks?: string[]
   dataZoom?: boolean | DataZoomOptions
-  /** TradingView-style full candlestick gap regions. Disabled by default. */
-  gaps?: boolean | GapOptions
-  /** Visible-range domestic-style unfilled gap regions. Disabled by default. */
-  gap1?: boolean | Gap1Options
+  /** TradingView-style full candlestick gap behavior configuration. */
+  gaps?: GapOptions
+  /** Whether TradingView-style full candlestick gap regions are visible. */
+  gapShow?: boolean
+  /** Visible-range domestic-style unfilled gap behavior configuration. */
+  gap1?: Gap1Options
+  /** Whether visible-range domestic-style unfilled gap regions are visible. */
+  gap1Show?: boolean
 }

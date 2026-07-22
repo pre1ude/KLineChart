@@ -42,21 +42,24 @@ describe('Gap1Store', () => {
     const data = [candle(0, 90, 100), candle(1, 110, 120)]
     const { store } = createStore(data, range(0, 2))
 
-    store.setOptions(true)
+    store.setShow(true)
     expect(store.getGaps()).toHaveLength(1)
 
-    store.setOptions(false)
+    store.setShow(false)
     expect(store.isEnabled()).toBe(false)
     expect(store.getGaps()).toEqual([])
   })
 
-  it('enables with normalized object options and retains them across disable and re-enable', () => {
+  it('normalizes hidden configuration and retains it across disable and re-enable', () => {
     const data = [candle(0, 90, 100), candle(1, 110, 120)]
     const { store } = createStore(data, range(0, 2))
 
     store.setOptions({ maxGapCount: 0, showValue: true })
-    store.setOptions(false)
-    store.setOptions(true)
+    expect(store.isEnabled()).toBe(false)
+    expect(store.getGaps()).toEqual([])
+    store.setShow(true)
+    store.setShow(false)
+    store.setShow(true)
 
     expect(store.isEnabled()).toBe(true)
     expect(store.getOptions()).toEqual({ maxGapCount: 1, showValue: true })
@@ -70,7 +73,7 @@ describe('Gap1Store', () => {
       candle(3, 100, 108)
     ]
     const { store, setRange } = createStore(data, range(0, 3))
-    store.setOptions(true)
+    store.setShow(true)
 
     expect(store.getGaps()).toMatchObject([{ bottom: 100, top: 106 }])
 
@@ -83,12 +86,12 @@ describe('Gap1Store', () => {
     const initial = [candle(0, 90, 100)]
     const next = [...initial, candle(1, 110, 120)]
     const { store, setData, setRange } = createStore(initial, range(0, 1))
-    store.setOptions(true)
-    store.setOptions(false)
+    store.setShow(true)
+    store.setShow(false)
     setData(next)
     setRange(range(0, 2))
 
-    store.setOptions(true)
+    store.setShow(true)
     expect(store.getGaps()).toHaveLength(1)
 
     store.clear()
@@ -104,6 +107,7 @@ describe('Gap1Store', () => {
     ]
     const { store } = createStore(data, range(0, 4))
     store.setOptions({ maxGapCount: 2 })
+    store.setShow(true)
 
     const records = store.getGaps()
     expect(records.map(gap => gap.openTimestamp)).toEqual([3, 2])

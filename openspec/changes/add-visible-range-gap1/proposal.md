@@ -4,7 +4,7 @@ Domestic-market chart users need an unfilled-gap view whose meaning is tied to t
 
 ## What Changes
 
-- Add an independent, opt-in `gap1` chart option for domestic-style visible-range gaps, supporting both a boolean switch and object options.
+- Add explicit `gapShow` and `gap1Show` switches so Gap/Gap1 visibility is independent from their retained configuration objects.
 - Detect full high/low gaps whose opening candle is visible, including a gap on the first visible candle by reading one preceding context candle.
 - Ignore gaps whose original formation increase/decrease is at most 0.02%; once accepted, retain later partially filled remnants regardless of their remaining percentage.
 - Recalculate Gap1 whenever the visible range or candle data changes; determine fill state only through the current viewport right boundary, ignoring later offscreen fills.
@@ -12,7 +12,7 @@ Domestic-market chart users need an unfilled-gap view whose meaning is tied to t
 - Limit retained Gap1 records to the newest opening timestamps, with a default maximum of 15 and a configurable range of 1-500.
 - Render one current-state rectangle per retained gap, spanning from its original formation boundary to the viewport right edge and using only its remaining unfilled price range.
 - Optionally render a precision-aware, direction-signed value label below upward gaps and above downward gaps, using the current X-axis text color for prices and direction-colored percentage/width text.
-- Reuse `Styles.gap` for upward/downward appearance and allow `gaps` and `gap1` to be enabled simultaneously.
+- Reuse `Styles.gap` for upward/downward appearance and allow `gapShow` and `gap1Show` to be enabled simultaneously.
 - Keep each gap direction's `borderColor` mandatory; the fill-only demo preset disables rectangle strokes with `borderSize: 0` instead of using a transparent border color.
 - Update the AAPL daily Gaps demo with independent Gap and Gap1 controls, coexistence, and visible-range recalculation guidance.
 - Keep Gap1 silent and separate from indicators, overlays, price-axis range calculation, and the existing Gap lifecycle/logging behavior.
@@ -25,12 +25,12 @@ Domestic-market chart users need an unfilled-gap view whose meaning is tied to t
 
 ### Modified Capabilities
 
-None.
+- `chart-gaps`: Separate the retained `gaps` behavior configuration from the explicit `gapShow` visibility switch.
 
 ## Impact
 
-- Public API: add `Options.gap1?: boolean | Gap1Options`, disabled by default, with `maxGapCount` and `showValue` options; reuse the existing `Styles.gap` appearance contract.
+- Public API: make `Options.gaps?: GapOptions` and `Options.gap1?: Gap1Options` configuration-only fields, and add disabled-by-default `Options.gapShow?: boolean` and `Options.gap1Show?: boolean` switches; reuse the existing `Styles.gap` appearance contract.
 - Chart state: add dedicated Gap1 calculation/state that derives records from the current visible range.
 - Viewport integration: visible-data adjustment becomes the deterministic trigger for Gap1 recalculation after scrolling, zooming, resizing, data changes, and alignment operations.
 - Rendering: extend the existing gap main-canvas layer to draw Gap1 after TradingView-style gaps and before candles.
-- No new dependencies and no changes to existing `Options.gaps`, indicator, overlay, tooltip, crosshair, logging, or Y-axis range contracts.
+- This is a clean-break API change for the unreleased Gap/Gap1 options: `gaps: true/false` and `gap1: true/false` are no longer accepted. There are no new dependencies and no changes to indicator, overlay, tooltip, crosshair, logging, or Y-axis range contracts.

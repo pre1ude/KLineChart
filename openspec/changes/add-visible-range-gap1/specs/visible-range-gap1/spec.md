@@ -1,27 +1,35 @@
 ## ADDED Requirements
 
-### Requirement: Independent Gap1 configuration
-The chart SHALL expose `Options.gap1` as an optional `boolean | Gap1Options` setting that is disabled by default. `Gap1Options.maxGapCount` SHALL default to 15 and be normalized to an integer from 1 through 500. `Gap1Options.showValue` SHALL default to `false`. Passing an object SHALL enable Gap1 and merge it with the retained normalized configuration. Gap1 SHALL be enabled and disabled independently from `Options.gaps`, and SHALL reuse upward/downward appearance from `Styles.gap` without adding Gap1-specific styles. Each `Styles.gap.up/down.borderColor` SHALL be mandatory; a fill-only presentation SHALL set `borderSize` to `0` while retaining a usable border color for Gap1 value text.
+### Requirement: Independent Gap and Gap1 configuration
+The chart SHALL expose `Options.gaps?: GapOptions` and `Options.gap1?: Gap1Options` as configuration-only fields, plus independent `Options.gapShow?: boolean` and `Options.gap1Show?: boolean` switches that default to `false`. Updating either configuration SHALL merge and retain normalized values without changing visibility. Setting a show switch SHALL enable or disable only its corresponding feature; disabling SHALL clear records while retaining configuration. Gap and Gap1 SHALL be independently switchable and SHALL reuse upward/downward appearance from `Styles.gap` without adding Gap1-specific styles. Each `Styles.gap.up/down.borderColor` SHALL be mandatory; a fill-only presentation SHALL set `borderSize` to `0` while retaining a usable border color for Gap1 value text. The legacy boolean forms `gaps: true/false` and `gap1: true/false` SHALL NOT be part of the public API.
 
-#### Scenario: Enable Gap1
-- **WHEN** a chart receives `setOptions({ gap1: true })`
+#### Scenario: Configure Gap1 while hidden
+- **WHEN** a chart receives `setOptions({ gap1: { maxGapCount: 20, showValue: true } })` while `gap1Show` is false
+- **THEN** Gap1 retains the normalized configuration and produces no records or rectangles
+
+#### Scenario: Show Gap1 with retained configuration
+- **WHEN** a chart receives `setOptions({ gap1Show: true })` after configuring Gap1
 - **THEN** Gap1 is calculated for the current visible range and rendered with `Styles.gap`
-
-#### Scenario: Enable Gap1 with object options
-- **WHEN** a chart receives `setOptions({ gap1: { maxGapCount: 20, showValue: true } })`
-- **THEN** Gap1 is enabled with a maximum of 20 rendered gaps and value labels enabled
 
 #### Scenario: Normalize maximum count
 - **WHEN** `maxGapCount` is fractional or outside 1-500
 - **THEN** it is rounded to an integer and clamped to the supported range
 
 #### Scenario: Disable Gap1
-- **WHEN** an enabled chart receives `setOptions({ gap1: false })`
-- **THEN** Gap1 records are cleared and no Gap1 rectangles are rendered
+- **WHEN** an enabled chart receives `setOptions({ gap1Show: false })`
+- **THEN** Gap1 records are cleared, no Gap1 rectangles are rendered, and the retained configuration is unchanged
 
 #### Scenario: Enable both gap features
-- **WHEN** `gaps` and `gap1` are both enabled
+- **WHEN** `gapShow` and `gap1Show` are both true
 - **THEN** both features remain active and render independently
+
+#### Scenario: Configure Gap while hidden
+- **WHEN** a chart receives `setOptions({ gaps: { maxGapCount: 20 } })` while `gapShow` is false
+- **THEN** Gap retains the normalized configuration and produces no Gap records or rectangles
+
+#### Scenario: Show Gap with retained configuration
+- **WHEN** a chart receives `setOptions({ gapShow: true })` after configuring Gap
+- **THEN** Gap is recalculated with the retained configuration and rendered
 
 #### Scenario: Update shared appearance
 - **WHEN** `Styles.gap` changes while Gap1 is enabled
