@@ -105,9 +105,12 @@ export default class Gap1View extends View {
       ctx.textAlign = 'left'
       labels.forEach(label => {
         ctx.textBaseline = label.baseline
+        const priceTextWidth = ctx.measureText(`${label.priceText} `).width
+        const changeTextWidth = ctx.measureText(label.changeText).width
+        const labelX = Math.max(0, Math.min(label.x, bounding.width - priceTextWidth - changeTextWidth))
         ctx.fillStyle = priceTextColor
-        ctx.fillText(label.priceText, label.x, label.y)
-        const changeX = label.x + ctx.measureText(`${label.priceText} `).width
+        ctx.fillText(label.priceText, labelX, label.y)
+        const changeX = labelX + priceTextWidth
         ctx.fillStyle = label.changeColor
         ctx.fillText(label.changeText, changeX, label.y)
       })

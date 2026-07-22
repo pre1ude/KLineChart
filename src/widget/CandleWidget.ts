@@ -16,8 +16,8 @@ export function CandleWidget(
 ): MainWidget {
   return new MainWidget(rootContainer, pane, [
     GridLayer,
-    GapLayer,
     CandleLayer,
+    GapLayer,
     IndicatorLayer,
     OverlayLayer,
     CrosshairLayer,

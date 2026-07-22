@@ -30,7 +30,8 @@ function createView(
   gapStyles: GapStyle = getDefaultStyles().gap,
   showValue: boolean = false,
   pricePrecision: number = 2,
-  xAxisTextColor: string = getDefaultStyles().xAxis.tickText.color
+  xAxisTextColor: string = getDefaultStyles().xAxis.tickText.color,
+  widgetWidth: number = 100
 ) {
   const mainYAxis = { convertToPixel: vi.fn(convertY) }
   const leftYAxis = { convertToPixel: vi.fn(convertY) }
@@ -60,7 +61,7 @@ function createView(
   }
   const widget = {
     getPane: () => pane,
-    getBounding: () => ({ width: 100, height: 120, left: 0, top: 0 })
+    getBounding: () => ({ width: widgetWidth, height: 120, left: 0, top: 0 })
   }
 
   return {
@@ -188,7 +189,7 @@ describe('Gap1View', () => {
     const { view } = createView([
       gap1('up', 1, 106.005, 105.955),
       gap1('down', 2, 109.45, 109.41)
-    ], value => value, true, styles, true, 3, '#123456')
+    ], value => value, true, styles, true, 3, '#123456', 220)
     const ctx = createContext()
 
     view.draw(ctx)
@@ -203,6 +204,24 @@ describe('Gap1View', () => {
     expect(ctx.textCalls[1].y).toBeCloseTo(110.005)
     expect(ctx.textCalls[2].y).toBeCloseTo(105.41)
     expect(ctx.textCalls[3].y).toBeCloseTo(105.41)
+  })
+
+  it('shifts a value label left when its full width would exceed the widget right edge', () => {
+    const styles: GapStyle = {
+      up: { backgroundColor: '#ff000026', borderColor: '#ff0000', borderSize: 1 },
+      down: { backgroundColor: '#00ff0026', borderColor: '#00ff00', borderSize: 1 }
+    }
+    const { view } = createView([
+      gap1('up', 8, 106.005, 105.955)
+    ], value => value, true, styles, true, 3, '#123456', 220)
+    const ctx = createContext()
+
+    view.draw(ctx)
+
+    expect(ctx.textCalls.map(({ y, ...call }) => call)).toEqual([
+      { text: '105.955-106.005', x: 34, color: '#123456', baseline: 'top' },
+      { text: '+0.047%(+0.050)', x: 130, color: '#ff0000', baseline: 'top' }
+    ])
   })
 
   it('does not draw value text when showValue is false', () => {

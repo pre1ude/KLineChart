@@ -21,7 +21,7 @@ describe('CandleWidget', () => {
     vi.mocked(MainWidget).mockClear()
   })
 
-  it('places gap rendering above the grid and below candles, indicators, and overlays', () => {
+  it('places gap rendering above candles and below indicators and overlays', () => {
     const root = {} as HTMLElement
     const pane = {} as never
 
@@ -29,8 +29,8 @@ describe('CandleWidget', () => {
 
     expect(MainWidget).toHaveBeenCalledWith(root, pane, [
       GridLayer,
-      GapLayer,
       CandleLayer,
+      GapLayer,
       IndicatorLayer,
       OverlayLayer,
       CrosshairLayer,

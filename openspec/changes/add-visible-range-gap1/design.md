@@ -2,7 +2,7 @@
 
 The existing `gaps` feature derives TradingView-style records from the complete candle list, retains historical partial-fill segments, supports deviation/count/trail options, and emits data-lifecycle logs. Gap1 has a different meaning: its calculation horizon is exactly the current visible range, its right edge represents the viewport's effective "now", and its rendering keeps only the current remaining price region. A later fill outside the viewport must not affect a historical viewport, while an opening candle at the left edge may use the immediately preceding offscreen candle as detection context.
 
-The chart already recalculates `VisibleRange`, rebuilds `ChartStore._visibleDataList`, and redraws the main canvas for scrolling, zooming, resizing, data changes, alignment, and data-zoom changes. The existing gap layer already has the correct z-order and `Styles.gap` provides the required appearance.
+The chart already recalculates `VisibleRange`, rebuilds `ChartStore._visibleDataList`, and redraws the main canvas for scrolling, zooming, resizing, data changes, alignment, and data-zoom changes. The gap layer shares the candle pane's main canvas, and `Styles.gap` provides the required appearance.
 
 ## Goals / Non-Goals
 
@@ -16,7 +16,7 @@ The chart already recalculates `VisibleRange`, rebuilds `ChartStore._visibleData
 - Keep the newest retained gaps under a configurable count limit and optionally render precision-aware value labels.
 - Require a color for each gap direction and represent fill-only styles with zero border size rather than a transparent color.
 - Recalculate deterministically for every visible-range and data change.
-- Reuse the main price axis, bar pixel alignment, gap styles, and gap main-canvas z-order.
+- Reuse the main price axis, bar pixel alignment, and gap styles, while placing gap rendering above candles and below indicators and interactive layers.
 
 **Non-Goals:**
 
@@ -71,9 +71,9 @@ Gap1View converts each record into one rectangle:
 - right: the current main-widget right edge;
 - vertical bounds: the record's current remaining top/bottom converted with `pane.getMainAxisWidget()` and clipped vertically.
 
-It batches upward and downward records through `drawRect()` with `Styles.gap`. GapLayer draws the existing GapView first and Gap1View second, both above the grid and below candles. When both features overlap, normal alpha compositing may darken the shared region; this is an intentional consequence of independent simultaneous enablement.
+It batches upward and downward records through `drawRect()` with `Styles.gap`. CandleLayer draws first, then GapLayer draws the existing GapView followed by Gap1View, so both gap modes appear above candles and below IndicatorLayer and the interactive layers. When both features overlap, normal alpha compositing may darken the shared region; this is an intentional consequence of independent simultaneous enablement.
 
-When `showValue` is enabled, Gap1View draws two adjacent text runs at the rectangle's left side after the rectangle. Upward gaps display `lower-upper +percentage%(+width)` using the lower boundary as the percentage denominator. Downward gaps display `upper-lower -percentage%(-width)` using the upper boundary as the denominator, so the label expresses a fall rather than an unsigned range. Price values and signed width use chart price precision, while percentage uses three decimals. The price-range run reads `Styles.xAxis.tickText.color` on every draw so theme and runtime style updates apply without Gap1-specific configuration; the statistical suffix continues to reuse the direction's `borderColor`. Upward labels use a top baseline below the rectangle, while downward labels use a bottom baseline above it.
+When `showValue` is enabled, Gap1View draws two adjacent text runs at the rectangle's left side after the rectangle. Upward gaps display `lower-upper +percentage%(+width)` using the lower boundary as the percentage denominator. Downward gaps display `upper-lower -percentage%(-width)` using the upper boundary as the denominator, so the label expresses a fall rather than an unsigned range. Price values and signed width use chart price precision, while percentage uses three decimals. The price-range run reads `Styles.xAxis.tickText.color` on every draw so theme and runtime style updates apply without Gap1-specific configuration; the statistical suffix continues to reuse the direction's `borderColor`. After setting the label font, the view measures both runs plus their separator. If the preferred left-aligned origin would put the complete label past the widget's right edge, both runs shift left as one unit; the resulting origin is clamped to zero for exceptionally narrow widgets. Upward labels use a top baseline below the rectangle, while downward labels use a bottom baseline above it.
 
 ### Keep Gap1 isolated and silent
 
@@ -95,7 +95,7 @@ Keep one demo page so users can compare the two gap semantics against identical 
 
 1. Add the disabled-by-default configuration fields, explicit show switches, and internal Gap1 calculator/store.
 2. Integrate recalculation with visible-data adjustment and data clearing.
-3. Add Gap1View to the existing GapLayer after GapView.
+3. Add Gap1View to the existing GapLayer after GapView and place GapLayer after CandleLayer.
 4. Add focused behavior, coexistence, isolation, and regression tests.
 5. Rollback by disabling/removing `gap1`; existing `gaps` data and behavior require no migration.
 

@@ -21,7 +21,7 @@
 
 - [x] 4.1 Add Gap1View tests for one rectangle per active gap, original formation left boundary, widget-right extension, current remaining price range, clipping, direction batching, shared styles, pixel alignment, and main-axis use.
 - [x] 4.2 Implement Gap1View with the existing rectangle primitive and shared `Styles.gap` appearance.
-- [x] 4.3 Extend GapLayer to draw GapView followed by Gap1View and verify both remain above the grid and below candles.
+- [x] 4.3 Extend GapLayer to draw GapView followed by Gap1View on the candle pane's main canvas.
 
 ## 5. Isolation and Verification
 
@@ -68,3 +68,15 @@
 - [x] 12.1 Add `Options.gapShow` and `Options.gap1Show` tests covering hidden preconfiguration, show-on/show-off, retained configuration, and simultaneous enablement.
 - [x] 12.2 Split Gap/Gap1 store configuration updates from visibility updates and migrate ChartStore/Demo to explicit switches without legacy boolean forms.
 - [x] 12.3 Run focused/full tests, type check, ESLint, build, diff check, and final OpenSpec validation.
+
+## 13. Gap Layer Ordering
+
+- [x] 13.1 Add a regression test requiring candle rendering before Gap/Gap1 while indicators and interactive layers remain above them.
+- [x] 13.2 Move GapLayer after CandleLayer and update the proposal, design, and rendering specification.
+- [x] 13.3 Run focused/full tests, type check, ESLint, build, diff check, and final OpenSpec validation.
+
+## 14. Gap1 Value Label Right-Edge Visibility
+
+- [x] 14.1 Add a view regression test proving a right-overflowing two-color Gap1 label shifts left as one unit.
+- [x] 14.2 Measure the complete Gap1 label and clamp its horizontal origin to the widget bounds without changing normal positioning.
+- [x] 14.3 Run focused/full tests, type check, ESLint, build, diff check, and final OpenSpec validation.
