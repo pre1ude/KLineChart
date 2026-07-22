@@ -50,7 +50,7 @@
 
 ## 9. Theme-Aware Gap1 Price Text
 
-- [x] 9.1 Add a view regression test proving Gap1 price-range text uses the current X-axis tick text color while change text retains the direction border color.
+- [x] 9.1 Add a view regression test proving Gap1 price-range text uses the current X-axis tick text color while change text retains its direction color.
 - [x] 9.2 Replace the fixed Gap1 price color with `Styles.xAxis.tickText.color` and run focused/full verification plus final OpenSpec validation.
 
 ## 10. Gap1 Original-Change Threshold
@@ -80,3 +80,9 @@
 - [x] 14.1 Add a view regression test proving a right-overflowing two-color Gap1 label shifts left as one unit.
 - [x] 14.2 Measure the complete Gap1 label and clamp its horizontal origin to the widget bounds without changing normal positioning.
 - [x] 14.3 Run focused/full tests, type check, ESLint, build, diff check, and final OpenSpec validation.
+
+## 15. Gap1 Direction-Semantic Statistic Colors
+
+- [x] 15.1 Add view regression coverage proving Gap1 statistics use candle upward/downward colors independently from gap border colors.
+- [x] 15.2 Source Gap1 statistic colors from `Styles.candle.bar` and update the proposal, design, and rendering specification.
+- [x] 15.3 Run focused/full tests, type check, ESLint, build, diff check, and final OpenSpec validation.

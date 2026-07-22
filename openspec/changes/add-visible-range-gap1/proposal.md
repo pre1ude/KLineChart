@@ -11,7 +11,7 @@ Domestic-market chart users need an unfilled-gap view whose meaning is tied to t
 - Keep only gaps that remain at least partially unfilled at the viewport right boundary.
 - Limit retained Gap1 records to the newest opening timestamps, with a default maximum of 15 and a configurable range of 1-500.
 - Render one current-state rectangle per retained gap, spanning from its original formation boundary to the viewport right edge and using only its remaining unfilled price range.
-- Optionally render a precision-aware, direction-signed value label below upward gaps and above downward gaps, using the current X-axis text color for prices and direction-colored percentage/width text; shift the complete label left when needed to keep it within the widget's right edge.
+- Optionally render a precision-aware, direction-signed value label below upward gaps and above downward gaps, using the current X-axis text color for prices and the candle up/down colors for percentage/width text; shift the complete label left when needed to keep it within the widget's right edge.
 - Reuse `Styles.gap` for upward/downward appearance and allow `gapShow` and `gap1Show` to be enabled simultaneously.
 - Keep each gap direction's `borderColor` mandatory; the fill-only demo preset disables rectangle strokes with `borderSize: 0` instead of using a transparent border color.
 - Update the AAPL daily Gaps demo with independent Gap and Gap1 controls, coexistence, and visible-range recalculation guidance.

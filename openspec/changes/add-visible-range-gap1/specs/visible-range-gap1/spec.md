@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Independent Gap and Gap1 configuration
-The chart SHALL expose `Options.gaps?: GapOptions` and `Options.gap1?: Gap1Options` as configuration-only fields, plus independent `Options.gapShow?: boolean` and `Options.gap1Show?: boolean` switches that default to `false`. Updating either configuration SHALL merge and retain normalized values without changing visibility. Setting a show switch SHALL enable or disable only its corresponding feature; disabling SHALL clear records while retaining configuration. Gap and Gap1 SHALL be independently switchable and SHALL reuse upward/downward appearance from `Styles.gap` without adding Gap1-specific styles. Each `Styles.gap.up/down.borderColor` SHALL be mandatory; a fill-only presentation SHALL set `borderSize` to `0` while retaining a usable border color for Gap1 value text. The legacy boolean forms `gaps: true/false` and `gap1: true/false` SHALL NOT be part of the public API.
+The chart SHALL expose `Options.gaps?: GapOptions` and `Options.gap1?: Gap1Options` as configuration-only fields, plus independent `Options.gapShow?: boolean` and `Options.gap1Show?: boolean` switches that default to `false`. Updating either configuration SHALL merge and retain normalized values without changing visibility. Setting a show switch SHALL enable or disable only its corresponding feature; disabling SHALL clear records while retaining configuration. Gap and Gap1 SHALL be independently switchable and SHALL reuse upward/downward appearance from `Styles.gap` without adding Gap1-specific styles. Each `Styles.gap.up/down.borderColor` SHALL be mandatory; a fill-only presentation SHALL set `borderSize` to `0` without removing the required border color. The legacy boolean forms `gaps: true/false` and `gap1: true/false` SHALL NOT be part of the public API.
 
 #### Scenario: Configure Gap1 while hidden
 - **WHEN** a chart receives `setOptions({ gap1: { maxGapCount: 20, showValue: true } })` while `gap1Show` is false
@@ -113,7 +113,7 @@ The chart SHALL deterministically recalculate enabled Gap1 records whenever its 
 - **THEN** all Gap1 records are cleared
 
 ### Requirement: Single current-state rectangle rendering
-The chart SHALL render one non-interactive rectangle per retained Gap1 record on the candle pane's main canvas. Each rectangle SHALL start at the original gap formation boundary, extend to the current widget right edge, and use only the record's current remaining price range. Gap1 SHALL use the configured main price axis, shared bar pixel alignment, and `Styles.gap`, and SHALL render after existing Gap rectangles. Both Gap modes SHALL render above candles and below indicators and interactive layers. When `showValue` is enabled, it SHALL render a left-aligned label following the gap direction. Upward labels SHALL use `lower-upper +percentage%(+width)`, with percentage equal to `width / lower * 100`. Downward labels SHALL use `upper-lower -percentage%(-width)`, with the signed change equal to `(lower - upper) / upper * 100`. Price values and signed width SHALL use chart price precision, while percentage SHALL use three decimal places. The price range SHALL use the current `Styles.xAxis.tickText.color`; only the percentage and parenthesized width SHALL use the direction's `Styles.gap.*.borderColor`. Both text runs SHALL shift left together when their complete measured width would exceed the widget's right edge, with the shifted origin clamped to the widget's left edge. Upward labels SHALL appear below their rectangle and downward labels above it.
+The chart SHALL render one non-interactive rectangle per retained Gap1 record on the candle pane's main canvas. Each rectangle SHALL start at the original gap formation boundary, extend to the current widget right edge, and use only the record's current remaining price range. Gap1 SHALL use the configured main price axis, shared bar pixel alignment, and `Styles.gap`, and SHALL render after existing Gap rectangles. Both Gap modes SHALL render above candles and below indicators and interactive layers. When `showValue` is enabled, it SHALL render a left-aligned label following the gap direction. Upward labels SHALL use `lower-upper +percentage%(+width)`, with percentage equal to `width / lower * 100`. Downward labels SHALL use `upper-lower -percentage%(-width)`, with the signed change equal to `(lower - upper) / upper * 100`. Price values and signed width SHALL use chart price precision, while percentage SHALL use three decimal places. The price range SHALL use the current `Styles.xAxis.tickText.color`; the percentage and parenthesized width SHALL use `Styles.candle.bar.upColor` for upward gaps and `Styles.candle.bar.downColor` for downward gaps, independently from `Styles.gap.*.borderColor`. Both text runs SHALL shift left together when their complete measured width would exceed the widget's right edge, with the shifted origin clamped to the widget's left edge. Upward labels SHALL appear below their rectangle and downward labels above it.
 
 #### Scenario: Render gaps above candles
 - **WHEN** the candle pane draws candles, Gap, and Gap1
@@ -141,15 +141,19 @@ The chart SHALL render one non-interactive rectangle per retained Gap1 record on
 
 #### Scenario: Render an upward value label
 - **WHEN** an upward gap has lower 105.955, upper 106.005, price precision 3, and `showValue` enabled
-- **THEN** the label below the rectangle reads `105.955-106.005 +0.047%(+0.050)`, with only `+0.047%(+0.050)` using the upward border color
+- **THEN** the label below the rectangle reads `105.955-106.005 +0.047%(+0.050)`, with only `+0.047%(+0.050)` using the candle upward color
 
 #### Scenario: Render a downward value label
 - **WHEN** a downward gap has upper 109.450, lower 109.410, price precision 3, and `showValue` enabled
-- **THEN** the label above the rectangle reads `109.450-109.410 -0.037%(-0.040)`, with only `-0.037%(-0.040)` using the downward border color
+- **THEN** the label above the rectangle reads `109.450-109.410 -0.037%(-0.040)`, with only `-0.037%(-0.040)` using the candle downward color
 
 #### Scenario: Follow the X-axis text color
 - **WHEN** the active theme or a style update changes `Styles.xAxis.tickText.color`
-- **THEN** the Gap1 price-range text is redrawn with that color while the percentage and width retain the direction border color
+- **THEN** the Gap1 price-range text is redrawn with that color while the percentage and width retain the candle direction color
+
+#### Scenario: Keep statistics independent from gap border colors
+- **WHEN** `Styles.gap.up/down.borderColor` differs from the candle up/down colors
+- **THEN** upward statistics use the candle upward color and downward statistics use the candle downward color while the rectangles retain their configured gap border colors
 
 #### Scenario: Keep a value label inside the right edge
 - **WHEN** a Gap1 value label at its preferred origin would extend beyond the widget's right edge

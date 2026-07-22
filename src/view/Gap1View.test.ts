@@ -31,7 +31,8 @@ function createView(
   showValue: boolean = false,
   pricePrecision: number = 2,
   xAxisTextColor: string = getDefaultStyles().xAxis.tickText.color,
-  widgetWidth: number = 100
+  widgetWidth: number = 100,
+  changeColors: { upColor: string, downColor: string } = getDefaultStyles().candle.bar
 ) {
   const mainYAxis = { convertToPixel: vi.fn(convertY) }
   const leftYAxis = { convertToPixel: vi.fn(convertY) }
@@ -46,7 +47,8 @@ function createView(
       getGap1Store: () => gap1Store,
       getStyles: () => ({
         gap: gapStyles,
-        xAxis: { tickText: { color: xAxisTextColor } }
+        xAxis: { tickText: { color: xAxisTextColor } },
+        candle: { bar: changeColors }
       }),
       getPrecision: () => ({ price: pricePrecision, volume: 0 })
     }),
@@ -181,15 +183,16 @@ describe('Gap1View', () => {
     expect(drawRect).not.toHaveBeenCalled()
   })
 
-  it('draws precision-aware value labels with only the change text using border colors', () => {
+  it('draws precision-aware value labels with candle direction colors for the change text', () => {
     const styles: GapStyle = {
-      up: { backgroundColor: '#ff000026', borderColor: '#ff0000', borderSize: 1 },
-      down: { backgroundColor: '#00ff0026', borderColor: '#00ff00', borderSize: 1 }
+      up: { backgroundColor: '#0000ff26', borderColor: '#0000ff', borderSize: 1 },
+      down: { backgroundColor: '#ffff0026', borderColor: '#ffff00', borderSize: 1 }
     }
+    const changeColors = { upColor: '#ff0000', downColor: '#00ff00' }
     const { view } = createView([
       gap1('up', 1, 106.005, 105.955),
       gap1('down', 2, 109.45, 109.41)
-    ], value => value, true, styles, true, 3, '#123456', 220)
+    ], value => value, true, styles, true, 3, '#123456', 220, changeColors)
     const ctx = createContext()
 
     view.draw(ctx)
@@ -220,7 +223,7 @@ describe('Gap1View', () => {
 
     expect(ctx.textCalls.map(({ y, ...call }) => call)).toEqual([
       { text: '105.955-106.005', x: 34, color: '#123456', baseline: 'top' },
-      { text: '+0.047%(+0.050)', x: 130, color: '#ff0000', baseline: 'top' }
+      { text: '+0.047%(+0.050)', x: 130, color: getDefaultStyles().candle.bar.upColor, baseline: 'top' }
     ])
   })
 
@@ -244,6 +247,6 @@ describe('Gap1View', () => {
     view.draw(ctx)
 
     expect(vi.mocked(drawRect).mock.calls[0][2]).toMatchObject({ borderSize: 0 })
-    expect(ctx.textCalls[1].color).toBe('#ff0000')
+    expect(ctx.textCalls[1].color).toBe(getDefaultStyles().candle.bar.upColor)
   })
 })

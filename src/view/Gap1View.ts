@@ -34,6 +34,7 @@ export default class Gap1View extends View {
     const chartStyles = chartStore.getStyles()
     const styles = chartStyles.gap
     const priceTextColor = chartStyles.xAxis.tickText.color
+    const changeColors = chartStyles.candle.bar
     const options = gap1Store.getOptions()
     const pricePrecision = chartStore.getPrecision().price
     const upRects: RectAttrs[] = []
@@ -51,7 +52,6 @@ export default class Gap1View extends View {
       if (bottom <= y) return
 
       const rect = { x, y, width: bounding.width - x, height: bottom - y }
-      const directionStyles = gap.direction === 'up' ? styles.up : styles.down
       if (gap.direction === 'up') {
         upRects.push(rect)
       } else {
@@ -72,7 +72,7 @@ export default class Gap1View extends View {
           baseline: isUp ? 'top' : 'bottom',
           priceText: `${formatPrecision(start, pricePrecision)}-${formatPrecision(end, pricePrecision)}`,
           changeText: `${sign}${(change / start * 100).toFixed(3)}%(${sign}${formatPrecision(change, pricePrecision)})`,
-          changeColor: directionStyles.borderColor
+          changeColor: isUp ? changeColors.upColor : changeColors.downColor
         })
       }
     })
