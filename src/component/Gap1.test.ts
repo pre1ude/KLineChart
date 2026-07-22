@@ -13,7 +13,7 @@ function range(from: number, to: number): VisibleRange {
 }
 
 describe('calculateGap1', () => {
-  it('detects upward and downward full gaps without a minimum-size filter', () => {
+  it('detects upward and downward full gaps above the formation threshold', () => {
     const upward = calculateGap1([
       candle(0, 90, 100),
       candle(1, 100.1, 110)
@@ -41,6 +41,46 @@ describe('calculateGap1', () => {
       bottom: 99.9,
       top: 100
     }])
+  })
+
+  it('rejects original upward and downward changes at or below 0.02%', () => {
+    const upwardAtThreshold = calculateGap1([
+      candle(0, 90, 100),
+      candle(1, 100.02, 110)
+    ], range(0, 2))
+    const downwardAtThreshold = calculateGap1([
+      candle(0, 100, 110),
+      candle(1, 90, 99.98)
+    ], range(0, 2))
+    const upwardAboveThreshold = calculateGap1([
+      candle(0, 90, 100),
+      candle(1, 100.0201, 110)
+    ], range(0, 2))
+    const downwardAboveThreshold = calculateGap1([
+      candle(0, 100, 110),
+      candle(1, 90, 99.9799)
+    ], range(0, 2))
+
+    expect(upwardAtThreshold).toEqual([])
+    expect(downwardAtThreshold).toEqual([])
+    expect(upwardAboveThreshold).toMatchObject([{ direction: 'up' }])
+    expect(downwardAboveThreshold).toMatchObject([{ direction: 'down' }])
+  })
+
+  it('retains accepted gaps after partial fills shrink the remainder to 0.02% or less', () => {
+    const upward = calculateGap1([
+      candle(0, 90, 100),
+      candle(1, 100.03, 101),
+      candle(2, 100.01, 100.5)
+    ], range(0, 3))
+    const downward = calculateGap1([
+      candle(0, 100, 110),
+      candle(1, 99, 99.97),
+      candle(2, 99.5, 99.99)
+    ], range(0, 3))
+
+    expect(upward).toMatchObject([{ bottom: 100, top: 100.01 }])
+    expect(downward).toMatchObject([{ bottom: 99.99, top: 100 }])
   })
 
   it('ignores an open-close discontinuity when candle ranges overlap', () => {

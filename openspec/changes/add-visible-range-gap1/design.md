@@ -10,6 +10,7 @@ The chart already recalculates `VisibleRange`, rebuilds `ChartStore._visibleData
 
 - Add an independent `gap1` boolean/object option without changing `gaps` behavior.
 - Detect every positive-width full high/low gap whose opening candle is in the visible range.
+- Reject original formation changes at or below 0.02% without applying the threshold again after partial fills.
 - Use only candles through the visible right boundary to derive the remaining unfilled region.
 - Render exactly one current-state rectangle for each still-unfilled Gap1 record.
 - Keep the newest retained gaps under a configurable count limit and optionally render precision-aware value labels.
@@ -40,7 +41,7 @@ Alternatives considered:
 
 Add `Options.gap1?: boolean | Gap1Options`, disabled by default. The object contains `maxGapCount` (default 15, integer-clamped to 1-500) and `showValue` (default false); passing an object enables Gap1 and merges into the retained normalized configuration. Enabling recalculates from the current data and visible range; disabling clears Gap1 records without discarding configuration. `Options.gaps` and `Options.gap1` are evaluated independently, so both may be enabled. Appearance is always read from `Styles.gap`; style-only and `showValue`-only updates redraw without recalculating records.
 
-Gap1 intentionally has no minimum-deviation, trail-length, or close-mode option. Every positive-width full gap is eligible, remaining-region tracking always follows partial-fill semantics, and the final active records are sorted by `openTimestamp` descending before applying `maxGapCount` so newer gaps win deterministically.
+Gap1 intentionally has no configurable minimum-deviation, trail-length, or close-mode option. A fixed original-formation threshold rejects increases/decreases at or below 0.02%, using the prior boundary as the percentage denominator. The threshold is checked before record creation only; remaining-region tracking always follows partial-fill semantics and can retain a remainder below the threshold. Final active records are sorted by `openTimestamp` descending before applying `maxGapCount` so newer gaps win deterministically.
 
 ### Calculate strictly within the visible time horizon
 
@@ -50,6 +51,8 @@ For each subsequent visible candle, update active gaps before detecting a newly 
 
 - Upward remaining region `[bottom, top]`: remove it when `low <= bottom`; otherwise lower `top` when `low < top`.
 - Downward remaining region `[bottom, top]`: remove it when `high >= top`; otherwise raise `bottom` when `high > bottom`.
+
+Before adding a newly detected record, calculate its original directional change. Require the result to be strictly greater than 0.02%, treating equality as filtered. Do not reapply this test in `updateGap`; otherwise a valid gap would disappear merely because a partial fill reduced its remaining region below the formation threshold.
 
 Only active records at the exclusive right boundary are returned. Data at index `to` or later is never examined, even if it has already filled a returned gap in the complete loaded history. Identical data and visible ranges therefore produce identical Gap1 records.
 

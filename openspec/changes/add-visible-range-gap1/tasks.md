@@ -52,3 +52,8 @@
 
 - [x] 9.1 Add a view regression test proving Gap1 price-range text uses the current X-axis tick text color while change text retains the direction border color.
 - [x] 9.2 Replace the fixed Gap1 price color with `Styles.xAxis.tickText.color` and run focused/full verification plus final OpenSpec validation.
+
+## 10. Gap1 Original-Change Threshold
+
+- [x] 10.1 Add calculator regression tests for upward/downward rejection at or below 0.02%, acceptance above 0.02%, and retention after the remaining region shrinks below the threshold.
+- [x] 10.2 Implement the fixed original-formation threshold before Gap1 record creation and run focused/full verification plus final OpenSpec validation.

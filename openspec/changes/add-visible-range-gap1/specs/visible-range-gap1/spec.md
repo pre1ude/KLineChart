@@ -32,11 +32,19 @@ The chart SHALL expose `Options.gap1` as an optional `boolean | Gap1Options` set
 - **THEN** existing Gap1 records are retained and only label rendering changes
 
 ### Requirement: Visible-range full-gap detection
-Gap1 SHALL detect every positive-width full price gap whose opening candle index is within the current visible range. An upward gap SHALL require the opening candle low to exceed the preceding candle high. A downward gap SHALL require the opening candle high to be below the preceding candle low. Gap1 SHALL NOT apply minimum-deviation or trail-length filtering. After fill tracking, Gap1 SHALL sort retained gaps by opening timestamp descending and keep at most `maxGapCount`, so newer opening dates have priority.
+Gap1 SHALL detect full price gaps whose opening candle index is within the current visible range and whose original formation change is strictly greater than 0.02%. An upward gap SHALL require the opening candle low to exceed the preceding candle high and SHALL calculate its original increase as `(current.low - previous.high) / previous.high * 100`. A downward gap SHALL require the opening candle high to be below the preceding candle low and SHALL calculate its original decrease magnitude as `(previous.low - current.high) / previous.low * 100`. A formation change of exactly 0.02% SHALL be rejected. This threshold SHALL be evaluated only when the gap forms; later partial fills SHALL NOT remove an accepted gap merely because its remaining percentage becomes 0.02% or less. Gap1 SHALL NOT apply average-range deviation or trail-length filtering. After fill tracking, Gap1 SHALL sort retained gaps by opening timestamp descending and keep at most `maxGapCount`, so newer opening dates have priority.
 
 #### Scenario: Detect upward and downward gaps
-- **WHEN** visible adjacent candles form upward and downward full high/low gaps
-- **THEN** Gap1 registers both gaps without applying a size threshold
+- **WHEN** visible adjacent candles form upward and downward full high/low gaps with original changes greater than 0.02%
+- **THEN** Gap1 registers both gaps
+
+#### Scenario: Reject the inclusive minimum boundary
+- **WHEN** an upward or downward gap has an original formation change less than or equal to 0.02%
+- **THEN** Gap1 does not create a record for that gap
+
+#### Scenario: Retain a small partially filled remainder
+- **WHEN** a gap forms with an original change greater than 0.02% and later visible candles shrink its remaining change to 0.02% or less without fully filling it
+- **THEN** Gap1 retains the remaining region
 
 #### Scenario: Keep the newest gaps under the count limit
 - **WHEN** more unfilled gaps remain than `maxGapCount`

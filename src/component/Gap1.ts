@@ -3,6 +3,8 @@ import type VisibleRange from '../common/VisibleRange'
 import { clone, isBoolean, isNumber, merge } from '../common/utils/typeChecks'
 import type { Gap1Options } from '../Options'
 
+const GAP1_MIN_ORIGINAL_CHANGE_PERCENT = 0.02
+
 export interface RequiredGap1Options {
   maxGapCount: number
   showValue: boolean
@@ -93,6 +95,19 @@ function createGap(
   }
 }
 
+function exceedsOriginalChangeThreshold(
+  direction: Gap1Direction,
+  previous: KLineData,
+  current: KLineData
+): boolean {
+  const start = direction === 'up' ? previous.high : previous.low
+  const end = direction === 'up' ? current.low : current.high
+  const change = Math.abs(end - start)
+  if (start === 0) return change > 0
+  const changePercent = change / Math.abs(start) * 100
+  return changePercent > GAP1_MIN_ORIGINAL_CHANGE_PERCENT + Number.EPSILON
+}
+
 export function calculateGap1(
   dataList: KLineData[],
   visibleRange: VisibleRange,
@@ -128,10 +143,15 @@ export function calculateGap1(
       continue
     }
 
+    let direction: Gap1Direction | undefined
     if (current.low > previous.high) {
-      activeGaps.push(createGap('up', dataIndex, previous, current))
+      direction = 'up'
     } else if (current.high < previous.low) {
-      activeGaps.push(createGap('down', dataIndex, previous, current))
+      direction = 'down'
+    }
+
+    if (direction && exceedsOriginalChangeThreshold(direction, previous, current)) {
+      activeGaps.push(createGap(direction, dataIndex, previous, current))
     }
   }
 

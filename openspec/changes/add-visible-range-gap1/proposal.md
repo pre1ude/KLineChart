@@ -6,6 +6,7 @@ Domestic-market chart users need an unfilled-gap view whose meaning is tied to t
 
 - Add an independent, opt-in `gap1` chart option for domestic-style visible-range gaps, supporting both a boolean switch and object options.
 - Detect full high/low gaps whose opening candle is visible, including a gap on the first visible candle by reading one preceding context candle.
+- Ignore gaps whose original formation increase/decrease is at most 0.02%; once accepted, retain later partially filled remnants regardless of their remaining percentage.
 - Recalculate Gap1 whenever the visible range or candle data changes; determine fill state only through the current viewport right boundary, ignoring later offscreen fills.
 - Keep only gaps that remain at least partially unfilled at the viewport right boundary.
 - Limit retained Gap1 records to the newest opening timestamps, with a default maximum of 15 and a configurable range of 1-500.
