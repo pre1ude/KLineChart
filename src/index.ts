@@ -260,6 +260,56 @@ export type { LayoutChild } from './Options'
 
 // Indicator Types
 export type { Indicator, IndicatorCreate, IndicatorTemplate, IndicatorTooltipData } from './component/Indicator'
+export {
+  calculateTDSequential,
+  TDSequentialEngine,
+  PUBLIC_BASELINE_V0_2,
+  TRADINGVIEW_STYLE_PUBLIC_V0_2,
+  getTDSequentialConfigHash,
+  resolveTDSequentialConfig,
+  validateTDSequentialConfig
+} from './extension/indicator/tdSequential'
+export {
+  calculateTD9,
+  calculateTD9Outputs,
+  DEFAULT_TD9_CONFIG,
+  resolveTD9Config,
+  validateTD9Config
+} from './extension/indicator/td9'
+export type {
+  TD9BarOutput,
+  TD9Config,
+  TD9Direction,
+  TD9IndicatorExtendData,
+  TD9InputBar,
+  TD9Result,
+  TD9RenderOptions,
+  TD9SetupMark
+} from './extension/indicator/td9'
+export type {
+  TDSequentialBarOutput,
+  TDSequentialCapabilities,
+  TDSequentialCompletionLifecycle,
+  TDSequentialConfig,
+  TDSequentialCountdown,
+  TDSequentialCountdownCountRecord,
+  TDSequentialCountdownDeferredRecord,
+  TDSequentialCountdownMark,
+  TDSequentialDelta,
+  TDSequentialDirection,
+  TDSequentialEvent,
+  TDSequentialEventType,
+  TDSequentialIndicatorExtendData,
+  TDSequentialIndicatorRenderOptions,
+  TDSequentialInputBar,
+  TDSequentialProfile,
+  TDSequentialResult,
+  TDSequentialSetup,
+  TDSequentialSetupMark,
+  TDSequentialSetupScannerState,
+  TDSequentialStateSnapshot,
+  TDSequentialTDSTLevel
+} from './extension/indicator/tdSequential'
 
 // Overlay Types
 export type {

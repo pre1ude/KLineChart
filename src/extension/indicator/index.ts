@@ -23,6 +23,8 @@ import relativeStrengthIndex from './relativeStrengthIndex'
 import simpleMovingAverage from './simpleMovingAverage'
 import kdj from './kdj'
 import stopAndReverse from './stopAndReverse'
+import td9 from './td9'
+import tdSequential from './tdSequential'
 import tripleExponentiallySmoothedAverage from './tripleExponentiallySmoothedAverage'
 import volume from './volume'
 import volumeRatio from './volumeRatio'
@@ -39,7 +41,7 @@ const extensions = [
   directionalMovementIndex, easeOfMovementValue, exponentialMovingAverage, momentum,
   movingAverage, movingAverageConvergenceDivergence, onBalanceVolume, priceAndVolumeTrend,
   psychologicalLine, rateOfChange, relativeStrengthIndex, simpleMovingAverage,
-  kdj, stopAndReverse, tripleExponentiallySmoothedAverage, volume, volumeRatio, williamsR, waPrice, volumeMinute, openInterest
+  kdj, stopAndReverse, td9, tdSequential, tripleExponentiallySmoothedAverage, volume, volumeRatio, williamsR, waPrice, volumeMinute, openInterest
 ]
 
 const TM = new TemplateManager<IndicatorTemplate<any>>(extensions)

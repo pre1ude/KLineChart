@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="KLineChart TD9 and TD Sequential 0.2 indicator demo with AAPL and NVDA daily data" />
+    <link rel="icon" href="data:," />
+    <title>AAPL / NVDA Daily TD Sequential Demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        color: #1f2329;
+        background: #f5f6f8;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .header {
+        padding: 12px 16px 8px;
+        background: #ffffff;
+        border-bottom: 1px solid #e5e6eb;
+      }
+
+      .header h1 {
+        margin: 0 0 4px;
+        font-size: 20px;
+      }
+
+      .header p {
+        margin: 0;
+        color: #646a73;
+        font-size: 13px;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+        padding: 10px 16px;
+        background: #ffffff;
+        border-bottom: 1px solid #e5e6eb;
+        font-size: 13px;
+      }
+
+      .toolbar label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+
+      select,
+      button {
+        height: 30px;
+        padding: 0 10px;
+        color: #1f2329;
+        background: #ffffff;
+        border: 1px solid #c9cdd4;
+        border-radius: 5px;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:hover {
+        color: #1677ff;
+        border-color: #1677ff;
+      }
+
+      .content {
+        min-height: 0;
+        flex: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 290px;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .chart-panel,
+      .guide {
+        min-height: 0;
+        background: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(31, 35, 41, 0.08);
+      }
+
+      #chart {
+        width: 100%;
+        height: 100%;
+      }
+
+      .guide {
+        overflow: auto;
+        padding: 14px 16px;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .guide h2 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+
+      .guide ul {
+        margin: 8px 0 16px;
+        padding-left: 20px;
+      }
+
+      .legend {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-bottom: 14px;
+      }
+
+      .legend span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .swatch {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+      }
+
+      #stats,
+      #status {
+        padding: 9px;
+        border-radius: 5px;
+        color: #4e5969;
+        background: #f2f3f5;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        white-space: pre-line;
+      }
+
+      #status {
+        margin-top: 8px;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      @media (max-width: 900px) {
+        body {
+          height: auto;
+          min-height: 100vh;
+          overflow: auto;
+        }
+
+        .content {
+          grid-template-columns: 1fr;
+          grid-template-rows: 560px auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1 id="pageTitle">AAPL 日线 TD Sequential 0.2</h1>
+      <p id="dataMeta">正在加载 <code>tests/data/aapl-daily.json</code>…</p>
+    </div>
+
+    <div class="toolbar">
+      <label>
+        指标
+        <select id="indicator">
+          <option value="TDSEQ">TD Sequential</option>
+          <option value="TD9">TD9</option>
+        </select>
+      </label>
+      <label>
+        数据
+        <select id="symbol">
+          <option value="AAPL">AAPL</option>
+          <option value="NVDA">NVDA</option>
+        </select>
+      </label>
+      <label>
+        规则 Profile
+        <select id="profile">
+          <option value="PUBLIC_BASELINE_V0_2">Public Baseline（final 使用 Close）</option>
+          <option value="TRADINGVIEW_STYLE_PUBLIC_V0_2">TradingView-style Public（final 使用 Open/Close）</option>
+        </select>
+      </label>
+      <label><input id="showCancelled" type="checkbox" />显示已取消 Countdown 的历史数字</label>
+      <button id="fitAll">显示全部数据</button>
+      <button id="latest">回到最新</button>
+    </div>
+
+    <div class="content">
+      <div class="chart-panel"><div id="chart"></div></div>
+      <aside class="guide">
+        <h2>图例与观察要点</h2>
+        <div class="legend">
+          <span><i class="swatch" style="background:#d94a4a"></i>Buy Setup</span>
+          <span><i class="swatch" style="background:#16a085"></i>Sell Setup</span>
+          <span class="tdseq-only"><i class="swatch" style="background:#d94a4a"></i>Buy Countdown</span>
+          <span class="tdseq-only"><i class="swatch" style="background:#16a085"></i>Sell Countdown</span>
+          <span class="tdseq-only"><i class="swatch" style="background:#f05a67"></i>TDST Resistance</span>
+          <span class="tdseq-only"><i class="swatch" style="background:#1ea672"></i>TDST Support</span>
+        </div>
+        <ul>
+          <li class="tdseq-only">Setup 使用连续 9/4；Countdown 使用非连续 13/2。</li>
+          <li class="td9-only" hidden>TD9 只提供连续 9/4 Setup，不输出或展示 Countdown 和 TDST。</li>
+          <li>Setup 达到 6 后回填 1～6；若在完成 9 前中断，会撤掉整组数字。</li>
+          <li class="tdseq-only">Countdown 只显示完成位置的 13；普通计数 1～12 隐藏。</li>
+          <li class="tdseq-only"><strong>•</strong> 表示 Perfected Setup，<strong>+</strong> 表示 Deferred candidate，<strong>R</strong> 表示 Recycle。</li>
+          <li class="td9-only" hidden><strong>•</strong> 表示 Perfected Setup。</li>
+          <li class="tdseq-only">默认隐藏最终被取消 Countdown 的旧数字；上方开关可用于审计。</li>
+          <li class="tdseq-only">移动十字线可在 Tooltip 中查看当前 Setup、Countdown 和 TDST。</li>
+          <li class="td9-only" hidden>移动十字线可在 Tooltip 中查看当前 Setup。</li>
+        </ul>
+        <div id="stats">等待计算…</div>
+        <div id="status">正在初始化图表…</div>
+      </aside>
+    </div>
+
+    <script type="module">
+      import {
+        PaneIdConstants,
+        PUBLIC_BASELINE_V0_2,
+        TRADINGVIEW_STYLE_PUBLIC_V0_2,
+        calculateTD9,
+        calculateTDSequential,
+        init
+      } from '../../../dist/index.js'
+
+      const indicatorId = 'tdseq-daily-demo'
+      const dataSources = {
+        AAPL: '../../data/aapl-daily.json?range=20210720-20260720',
+        NVDA: '../../data/nvda-daily.json?range=20210720-20260720'
+      }
+      let demoData = []
+      let activeIndicatorName = 'TDSEQ'
+
+      const chart = init('chart', {
+        styles: {
+          yAxis: {
+            position: 'right',
+            mainPosition: 'right'
+          }
+        }
+      })
+
+      createActiveIndicator()
+
+      document.getElementById('indicator').addEventListener('change', switchIndicator)
+      document.getElementById('symbol').addEventListener('change', loadDemoData)
+      document.getElementById('profile').addEventListener('change', updateIndicator)
+      document.getElementById('showCancelled').addEventListener('change', updateIndicator)
+      document.getElementById('fitAll').addEventListener('click', () => chart.fitToWidth())
+      document.getElementById('latest').addEventListener('click', () => {
+        chart.setBarSpace(8)
+        chart.scrollToRealTime()
+      })
+
+      loadDemoData()
+
+      function getConfig () {
+        const profile = document.getElementById('profile').value === 'TRADINGVIEW_STYLE_PUBLIC_V0_2'
+          ? TRADINGVIEW_STYLE_PUBLIC_V0_2
+          : PUBLIC_BASELINE_V0_2
+        return { ...profile }
+      }
+
+      function getExtendData () {
+        const extendData = {
+          render: {
+            provisionalOpacity: 0.5
+          }
+        }
+        if (activeIndicatorName === 'TDSEQ') {
+          extendData.config = getConfig()
+          extendData.render.showCancelled = document.getElementById('showCancelled').checked
+        }
+        return extendData
+      }
+
+      function createActiveIndicator () {
+        chart.createIndicator({
+          id: indicatorId,
+          name: activeIndicatorName,
+          extendData: getExtendData()
+        }, false, { id: PaneIdConstants.CANDLE })
+      }
+
+      function switchIndicator () {
+        const nextIndicatorName = document.getElementById('indicator').value
+        if (nextIndicatorName === activeIndicatorName) return
+        chart.removeIndicator(PaneIdConstants.CANDLE, activeIndicatorName)
+        activeIndicatorName = nextIndicatorName
+        createActiveIndicator()
+        updateIndicatorControls()
+        updatePageTitle()
+        updateStats()
+        setStatus(`${getIndicatorLabel()} 已加载`)
+      }
+
+      function updateIndicatorControls () {
+        const isTDSequential = activeIndicatorName === 'TDSEQ'
+        document.getElementById('profile').disabled = !isTDSequential
+        document.getElementById('showCancelled').disabled = !isTDSequential
+        document.querySelectorAll('.tdseq-only').forEach(element => { element.hidden = !isTDSequential })
+        document.querySelectorAll('.td9-only').forEach(element => { element.hidden = isTDSequential })
+      }
+
+      function getIndicatorLabel () {
+        return activeIndicatorName === 'TD9' ? 'TD9' : 'TD Sequential 0.2'
+      }
+
+      function updatePageTitle () {
+        const symbol = document.getElementById('symbol').value
+        const indicatorLabel = getIndicatorLabel()
+        document.getElementById('pageTitle').textContent = `${symbol} 日线 ${indicatorLabel}`
+        document.title = `${symbol} Daily ${indicatorLabel} Demo`
+      }
+
+      function updateIndicator () {
+        chart.overrideIndicator({
+          id: indicatorId,
+          extendData: getExtendData()
+        }, PaneIdConstants.CANDLE, () => {
+          updateStats()
+          setStatus(`${getIndicatorLabel()} 配置已更新`)
+        })
+      }
+
+      async function loadDemoData () {
+        const symbolSelect = document.getElementById('symbol')
+        const symbol = symbolSelect.value
+        const dataUrl = dataSources[symbol]
+        symbolSelect.disabled = true
+        document.getElementById('dataMeta').textContent = `正在加载 tests/data/${symbol.toLowerCase()}-daily.json…`
+        setStatus(`${symbol} 日线快照加载中…`)
+        try {
+          const response = await fetch(dataUrl)
+          if (!response.ok) throw new Error(`HTTP ${response.status}`)
+          const snapshot = await response.json()
+          demoData = snapshot.data
+          updatePageTitle()
+          document.getElementById('dataMeta').textContent =
+            `${snapshot.symbol} · ${snapshot.interval} · ${snapshot.from} 至 ${snapshot.to} · ${demoData.length} 根 · ${snapshot.source}`
+          chart.applyNewData(demoData, false, () => {
+            chart.setBarSpace(8)
+            chart.scrollToRealTime()
+            updateStats()
+            setStatus(`${snapshot.symbol} 日线快照和 ${getIndicatorLabel()} 已加载`)
+          })
+        } catch (error) {
+          console.error(error)
+          document.getElementById('dataMeta').textContent = `${symbol} 日线快照加载失败`
+          setStatus(`${symbol} 数据加载失败：${error.message}`)
+        } finally {
+          symbolSelect.disabled = false
+        }
+      }
+
+      function updateStats () {
+        if (demoData.length === 0) return
+        if (activeIndicatorName === 'TD9') {
+          const result = calculateTD9(demoData)
+          const buySetups = result.setups.filter(setup => setup.direction === 'BUY').length
+          const sellSetups = result.setups.length - buySetups
+          const perfectedSetups = result.setups.filter(setup => setup.perfectionState === 'PERFECTED').length
+          document.getElementById('stats').textContent = [
+            'Indicator: TD9',
+            `Setup: ${result.setups.length}（Buy ${buySetups} / Sell ${sellSetups}）`,
+            `Perfected: ${perfectedSetups}`
+          ].join('\n')
+          return
+        }
+        const result = calculateTDSequential(demoData, getConfig())
+        const buySetups = result.setups.filter(setup => setup.direction === 'BUY').length
+        const sellSetups = result.setups.length - buySetups
+        const buyCountdowns = result.countdowns.filter(countdown => countdown.direction === 'BUY')
+        const sellCountdowns = result.countdowns.filter(countdown => countdown.direction === 'SELL')
+        const completed = result.countdowns.filter(countdown => countdown.phase === 'COMPLETED').length
+        const completedBuy = buyCountdowns.filter(countdown => countdown.phase === 'COMPLETED').length
+        const completedSell = sellCountdowns.filter(countdown => countdown.phase === 'COMPLETED').length
+        const cancelled = result.countdowns.filter(countdown => countdown.disposition === 'CANCELLED').length
+        const recycled = result.countdowns.filter(countdown => countdown.disposition === 'RECYCLED').length
+        document.getElementById('stats').textContent = [
+          `Profile: ${result.profile}`,
+          `Config hash: ${result.configHash}`,
+          `Setup: ${result.setups.length}（Buy ${buySetups} / Sell ${sellSetups}）`,
+          `Countdown: ${result.countdowns.length}（Buy ${buyCountdowns.length} / Sell ${sellCountdowns.length}）`,
+          `Completed: ${completed}（Buy ${completedBuy} / Sell ${completedSell}）`,
+          `Cancelled ${cancelled} / Recycled ${recycled}`,
+          `Events: ${result.events.length}`
+        ].join('\n')
+      }
+
+      function setStatus (message) {
+        document.getElementById('status').textContent = message
+      }
+    </script>
+  </body>
+</html>
