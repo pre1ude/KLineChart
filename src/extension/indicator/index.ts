@@ -3,6 +3,7 @@ import type { IndicatorTemplate } from '../../component/Indicator'
 import accumulativeSwingIndex from './accumulativeSwingIndex'
 import averagePrice from './averagePrice'
 import averageTrueRange from './averageTrueRange'
+import atrChannels from './atrChannels'
 import awesomeOscillator from './awesomeOscillator'
 import bias from './bias'
 import bollingerBands from './bollingerBands'
@@ -40,7 +41,7 @@ import volumeMinute from './timeshare/volumeMinute'
 import openInterest from './custom/openInterest'
 
 const extensions = [
-  accumulativeSwingIndex, averagePrice, averageTrueRange, awesomeOscillator, bias, bollingerBands, brar,
+  accumulativeSwingIndex, averagePrice, averageTrueRange, atrChannels, awesomeOscillator, bias, bollingerBands, brar,
   bullAndBearIndex, commodityChannelIndex, currentRatio, differentOfMovingAverage,
   directionalMovementIndex, easeOfMovementValue, exponentialMovingAverage, mike, momentum,
   movingAverage, movingAverageConvergenceDivergence, onBalanceVolume, pbx, priceAndVolumeTrend,
