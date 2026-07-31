@@ -18,6 +18,7 @@ import momentum from './momentum'
 import movingAverage from './movingAverage'
 import movingAverageConvergenceDivergence from './movingAverageConvergenceDivergence'
 import onBalanceVolume from './onBalanceVolume'
+import pbx from './pbx'
 import priceAndVolumeTrend from './priceAndVolumeTrend'
 import psychologicalLine from './psychologicalLine'
 import rateOfChange from './rateOfChange'
@@ -41,7 +42,7 @@ const extensions = [
   accumulativeSwingIndex, averagePrice, awesomeOscillator, bias, bollingerBands, brar,
   bullAndBearIndex, commodityChannelIndex, currentRatio, differentOfMovingAverage,
   directionalMovementIndex, easeOfMovementValue, exponentialMovingAverage, mike, momentum,
-  movingAverage, movingAverageConvergenceDivergence, onBalanceVolume, priceAndVolumeTrend,
+  movingAverage, movingAverageConvergenceDivergence, onBalanceVolume, pbx, priceAndVolumeTrend,
   psychologicalLine, rateOfChange, relativeStrengthIndex, simpleMovingAverage,
   kdj, stopAndReverse, td9, tdSequential, tripleExponentiallySmoothedAverage, volume, volumeRatio, williamsR, waPrice, volumeMinute, openInterest
 ]
