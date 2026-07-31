@@ -23,7 +23,8 @@ TD9 默认行为：
 - 在完成 9 前中断时撤掉整组数字；
 - Buy Setup 显示在蜡烛下方，默认使用 `#D94A4A`；
 - Sell Setup 显示在蜡烛上方，默认使用 `#16A085`；
-- Perfected Setup 在数字后追加 `•`，未在 Setup 8 或 9 完善时立即终结为未完善。
+- Setup 1～8 使用 60% 不透明度，Setup 9 保持完全不透明；
+- Perfected Setup 将数字 9 以 24px 字号显示，未在 Setup 8 或 9 完善时立即终结为未完善。
 
 TD9 不包含 Countdown、Deferral `+`、Recycle `R`、TDST 或相关 Tooltip 字段。
 
@@ -44,7 +45,7 @@ chart.createIndicator({
       sellSetupColor: '#16A085',
       fontSize: 10,
       fontWeight: 600,
-      provisionalOpacity: 0.55
+      provisionalOpacity: 0.8
     }
   }
 }, false, { id: PaneIdConstants.CANDLE })

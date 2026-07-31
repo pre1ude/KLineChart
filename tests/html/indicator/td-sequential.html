@@ -217,7 +217,8 @@
           <li>Setup 达到 6 后回填 1～6；若在完成 9 前中断，会撤掉整组数字。</li>
           <li class="tdseq-only">Countdown 只显示完成位置的 13；普通计数 1～12 隐藏。</li>
           <li class="tdseq-only"><strong>•</strong> 表示 Perfected Setup，<strong>+</strong> 表示 Deferred candidate，<strong>R</strong> 表示 Recycle。</li>
-          <li class="td9-only" hidden><strong>•</strong> 表示 Perfected Setup。</li>
+          <li class="td9-only" hidden>Setup 1～8 使用 60% 不透明度。</li>
+          <li class="td9-only" hidden>24px 字号的 <strong>9</strong> 表示 Perfected Setup。</li>
           <li class="tdseq-only">默认隐藏最终被取消 Countdown 的旧数字；上方开关可用于审计。</li>
           <li class="tdseq-only">移动十字线可在 Tooltip 中查看当前 Setup、Countdown 和 TDST。</li>
           <li class="td9-only" hidden>移动十字线可在 Tooltip 中查看当前 Setup。</li>
@@ -278,7 +279,12 @@
       function getExtendData () {
         const extendData = {
           render: {
-            provisionalOpacity: 0.5
+            provisionalOpacity: activeIndicatorName === 'TD9' ? 0.8 : 0.5
+          }
+        }
+        if (activeIndicatorName === 'TD9') {
+          extendData.config = {
+            afterCompleted: 'RESTART'
           }
         }
         if (activeIndicatorName === 'TDSEQ') {

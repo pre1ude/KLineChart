@@ -13,6 +13,8 @@ import type {
 } from './types'
 
 const TD9_DISPLAY_CONFIRMATION_COUNT = 6
+const TD9_PERFECTED_FONT_SIZE = 24
+const TD9_IN_PROGRESS_OPACITY = 0.6
 
 type ResolvedTD9RenderOptions = Required<Omit<
   TD9RenderOptions,
@@ -24,7 +26,7 @@ const DEFAULT_RENDER_OPTIONS: ResolvedTD9RenderOptions = {
   sellSetupColor: '#16A085',
   fontSize: 10,
   fontWeight: 600,
-  provisionalOpacity: 0.55
+  provisionalOpacity: 0.8
 }
 
 function resolveExtendData(value: unknown): TD9IndicatorExtendData {
@@ -73,16 +75,19 @@ function drawTextMark(
   attrs: TextAttrs,
   color: string,
   options: ResolvedTD9RenderOptions,
+  fontSize: number,
+  opacity: number,
   provisional: boolean
 ): void {
   ctx.save()
+  ctx.globalAlpha *= opacity
   if (provisional) ctx.globalAlpha *= options.provisionalOpacity
   try {
     drawStaticFigure<TextAttrs, Record<string, unknown>>(ctx, 'text', {
       attrs,
       styles: {
         color,
-        size: options.fontSize,
+        size: fontSize,
         weight: options.fontWeight,
         paddingLeft: 0,
         paddingTop: 0,
@@ -149,7 +154,7 @@ const td9: IndicatorTemplate<TD9BarOutput> = {
       if (setup === undefined || bar === undefined) continue
       const x = xAxis.convertToPixel(i)
       const perfected = setup.perfected === true
-      const text = `${setup.value}${perfected ? '•' : ''}`
+      const text = String(setup.value)
       const attrs: TextAttrs = setup.direction === 'BUY'
         ? { x, y: yAxis.convertToPixel(bar.low) + 3, text, align: 'center', baseline: 'top' }
         : { x, y: yAxis.convertToPixel(bar.high) - 3, text, align: 'center', baseline: 'bottom' }
@@ -158,6 +163,8 @@ const td9: IndicatorTemplate<TD9BarOutput> = {
         attrs,
         resolveSetupMarkColor(setup.direction, perfected, render),
         options,
+        perfected ? TD9_PERFECTED_FONT_SIZE : options.fontSize,
+        setup.value < TD9_SETUP_LENGTH ? TD9_IN_PROGRESS_OPACITY : 1,
         output.provisional
       )
     }
