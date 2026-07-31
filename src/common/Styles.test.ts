@@ -15,6 +15,21 @@ describe('getDefaultStyles', () => {
     expect(styles.indicator.lines.every(line => line.symbol?.show !== true)).toBe(true)
   })
 
+  it('指标 line 默认使用六种不同颜色', () => {
+    const styles = getDefaultStyles()
+    const colors = styles.indicator.lines.map(line => line.color)
+
+    expect(colors).toEqual([
+      '#FDD75D',
+      '#FF9379',
+      '#0BE6CE',
+      '#CF8FFF',
+      '#23B6FF',
+      '#A7E163'
+    ])
+    expect(new Set(colors).size).toBe(6)
+  })
+
   it('X 轴端点 label 默认显示', () => {
     const styles = getDefaultStyles()
 

@@ -631,7 +631,7 @@ function getDefaultCandleStyle(): CandleStyle {
  * Get default indicator style
  */
 function getDefaultIndicatorStyle(): IndicatorStyle {
-  const lines = ['#FDD75D', '#FF9379', '#0BE6CE', '#CF8FFF', '#23B6FF'].map(
+  const lines = ['#FDD75D', '#FF9379', '#0BE6CE', '#CF8FFF', '#23B6FF', '#A7E163'].map(
     color => ({
       style: LineType.Solid,
       smooth: false,
