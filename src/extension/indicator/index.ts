@@ -1,5 +1,6 @@
 import { TemplateManager } from '../../common/TemplateManager'
 import type { IndicatorTemplate } from '../../component/Indicator'
+import accumulativeSwingIndex from './accumulativeSwingIndex'
 import averagePrice from './averagePrice'
 import awesomeOscillator from './awesomeOscillator'
 import bias from './bias'
@@ -36,7 +37,7 @@ import volumeMinute from './timeshare/volumeMinute'
 import openInterest from './custom/openInterest'
 
 const extensions = [
-  averagePrice, awesomeOscillator, bias, bollingerBands, brar,
+  accumulativeSwingIndex, averagePrice, awesomeOscillator, bias, bollingerBands, brar,
   bullAndBearIndex, commodityChannelIndex, currentRatio, differentOfMovingAverage,
   directionalMovementIndex, easeOfMovementValue, exponentialMovingAverage, momentum,
   movingAverage, movingAverageConvergenceDivergence, onBalanceVolume, priceAndVolumeTrend,
