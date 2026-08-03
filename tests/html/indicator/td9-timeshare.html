@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TD9 Timeshare Demo</title>
+  <style>
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: #ffffff;
+      color: #20242b;
+      font-family: Arial, sans-serif;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      height: 100%;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      min-height: 44px;
+      padding: 0 16px;
+      border-bottom: 1px solid #e5e8ed;
+      font-size: 13px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 16px;
+      color: #5d6470;
+    }
+
+    .swatch {
+      display: inline-block;
+      width: 14px;
+      height: 3px;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    #chart {
+      min-height: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="toolbar">
+      <strong>TD9 Timeshare</strong>
+      <span>示例股份 2026-07-31</span>
+      <div class="legend">
+        <span><i class="swatch" style="background:#D94A4A"></i>Buy Setup</span>
+        <span><i class="swatch" style="background:#16A085"></i>Sell Setup</span>
+      </div>
+    </div>
+    <div id="chart"></div>
+  </div>
+
+  <script type="module">
+    import { CandleType, PaneIdConstants, init } from '../../../dist/index.js'
+
+    const referencePrice = 32.68
+    const ticks = [
+      ...createMinuteTicks(9, 30, 11, 30),
+      ...createMinuteTicks(13, 0, 15, 0)
+    ]
+    const chart = init('chart', {
+      isTimeShare: true,
+      timeShareTicks: ticks,
+      styles: {
+        candle: {
+          type: CandleType.Area,
+          area: {
+            lineColor: '#C5CBD4',
+            lineSize: 2,
+            lineOnly: true,
+            point: { show: false }
+          }
+        }
+      }
+    })
+
+    chart.setTimeShareBasisPrice(referencePrice)
+    chart.createIndicator('WA_PRICE', true, { id: PaneIdConstants.CANDLE })
+    chart.createIndicator({
+      name: 'td9_timeshare',
+      extendData: {
+        config: {
+          afterCompleted: 'RESTART'
+        }
+      }
+    }, false, { id: PaneIdConstants.CANDLE })
+    chart.createIndicator('VOL_MINUTE', false, { height: 120 })
+    chart.applyNewData(createData(ticks, referencePrice))
+
+    function createData (timeShareTicks, previousClose) {
+      const random = createSeededRandom(20260731)
+      const path = [
+        [0, 0.10],
+        [14, 0.29],
+        [38, 0.14],
+        [62, 0.40],
+        [86, 0.08],
+        [108, -0.17],
+        [120, -0.05],
+        [121, -0.09],
+        [146, 0.16],
+        [174, 0.39],
+        [199, 0.13],
+        [222, 0.32],
+        [241, 0.21]
+      ]
+      let lastClose = previousClose
+      let microNoise = 0
+      let cumulativeVolume = 0
+      let cumulativeTurnover = 0
+
+      return timeShareTicks.map((tick, index) => {
+        const target = previousClose + interpolatePath(path, index) +
+          Math.sin(index * 0.19) * 0.025 +
+          Math.sin(index * 0.047) * 0.035
+        microNoise = microNoise * 0.58 + (random() - 0.5) * 0.026
+        const open = index === 0 ? previousClose + 0.08 : lastClose
+        const close = roundPrice(target + microNoise)
+        const spread = 0.008 + random() * 0.018 + Math.abs(close - open) * 0.18
+        const high = roundPrice(Math.max(open, close) + spread * (0.65 + random() * 0.7))
+        const low = roundPrice(Math.min(open, close) - spread * (0.65 + random() * 0.7))
+        const volume = createMinuteVolume(index, timeShareTicks.length, random)
+        const averageTradePrice = (open + high + low + close * 2) / 5
+        const turnover = Math.round(averageTradePrice * volume * 100) / 100
+        cumulativeVolume += volume
+        cumulativeTurnover += turnover
+        const waPrice = roundPrice(cumulativeTurnover / cumulativeVolume)
+        const data = {
+          timestamp: tickTimestamp(tick),
+          open,
+          high,
+          low,
+          close,
+          volume,
+          turnover,
+          waPrice,
+          diffLastPrice: roundPrice(close - lastClose)
+        }
+        lastClose = close
+        return data
+      })
+    }
+
+    function interpolatePath (path, index) {
+      for (let i = 1; i < path.length; i++) {
+        const [nextIndex, nextValue] = path[i]
+        if (index <= nextIndex) {
+          const [previousIndex, previousValue] = path[i - 1]
+          const progress = (index - previousIndex) / (nextIndex - previousIndex)
+          const easedProgress = progress * progress * (3 - 2 * progress)
+          return previousValue + (nextValue - previousValue) * easedProgress
+        }
+      }
+      return path[path.length - 1][1]
+    }
+
+    function createMinuteVolume (index, total, random) {
+      const sessionStart = index <= 120 ? 0 : 121
+      const sessionEnd = index <= 120 ? 120 : total - 1
+      const sessionProgress = (index - sessionStart) / Math.max(1, sessionEnd - sessionStart)
+      const edgeActivity = Math.pow(Math.abs(sessionProgress - 0.5) * 2, 1.7)
+      const eventBurst = [14, 62, 108, 146, 174, 222].reduce((factor, eventIndex) => {
+        const distance = Math.abs(index - eventIndex)
+        return factor + Math.max(0, 1 - distance / 5) * 0.75
+      }, 1)
+      const baseVolume = 9000 * (0.58 + edgeActivity * 1.65) * eventBurst
+      return Math.max(100, Math.round(baseVolume * (0.78 + random() * 0.44) / 100) * 100)
+    }
+
+    function tickTimestamp (tick) {
+      const [hour, minute] = tick.split(':').map(Number)
+      return new Date(2026, 6, 31, hour, minute).getTime()
+    }
+
+    function createMinuteTicks (startHour, startMinute, endHour, endMinute) {
+      const result = []
+      const start = startHour * 60 + startMinute
+      const end = endHour * 60 + endMinute
+      for (let minute = start; minute <= end; minute++) {
+        const hourText = `${Math.floor(minute / 60)}`.padStart(2, '0')
+        const minuteText = `${minute % 60}`.padStart(2, '0')
+        result.push(`${hourText}:${minuteText}`)
+      }
+      return result
+    }
+
+    function createSeededRandom (seed) {
+      let state = seed >>> 0
+      return () => {
+        state += 0x6D2B79F5
+        let value = state
+        value = Math.imul(value ^ value >>> 15, value | 1)
+        value ^= value + Math.imul(value ^ value >>> 7, value | 61)
+        return ((value ^ value >>> 14) >>> 0) / 4294967296
+      }
+    }
+
+    function roundPrice (value) {
+      return Math.round(value * 1000) / 1000
+    }
+  </script>
+</body>
+</html>

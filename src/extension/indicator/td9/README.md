@@ -28,6 +28,21 @@ TD9 默认行为：
 
 TD9 不包含 Countdown、Deferral `+`、Recycle `R`、TDST 或相关 Tooltip 字段。
 
+## 分时指标
+
+`td9_timeshare` 复用 TD9 的计算、配置和 Tooltip，仅改变绘制方式。Setup 1～9 会统一用对应方向的完整颜色覆盖价格走势段，Setup 9 还会从价格点向 Buy 下方或 Sell 上方绘制 10px 虚线并显示数字 9。
+
+```ts
+chart.createIndicator({
+  name: 'td9_timeshare',
+  extendData: {
+    config: {
+      afterCompleted: 'RESTART'
+    }
+  }
+}, false, { id: PaneIdConstants.CANDLE })
+```
+
 ## 自定义
 
 ```ts

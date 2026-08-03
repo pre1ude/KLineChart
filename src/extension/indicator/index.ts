@@ -36,6 +36,7 @@ import volumeRatio from './volumeRatio'
 import williamsR from './williamsR'
 /** indicator for timeshare */
 import waPrice from './timeshare/waPrice'
+import td9Timeshare from './timeshare/td9Timeshare'
 import volumeMinute from './timeshare/volumeMinute'
 /** indicator customized */
 import openInterest from './custom/openInterest'
@@ -46,7 +47,7 @@ const extensions = [
   directionalMovementIndex, easeOfMovementValue, exponentialMovingAverage, mike, momentum,
   movingAverage, movingAverageConvergenceDivergence, onBalanceVolume, pbx, priceAndVolumeTrend,
   psychologicalLine, rateOfChange, relativeStrengthIndex, simpleMovingAverage,
-  kdj, stopAndReverse, td9, tdSequential, tripleExponentiallySmoothedAverage, volume, volumeRatio, williamsR, waPrice, volumeMinute, openInterest
+  kdj, stopAndReverse, td9, tdSequential, tripleExponentiallySmoothedAverage, volume, volumeRatio, williamsR, waPrice, td9Timeshare, volumeMinute, openInterest
 ]
 
 const TM = new TemplateManager<IndicatorTemplate<any>>(extensions)
