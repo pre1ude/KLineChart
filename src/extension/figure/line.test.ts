@@ -141,7 +141,7 @@ describe('drawLine pixel snap', () => {
     expect(ctx.lineTo).toHaveBeenCalledWith(10.25, 20)
   })
 
-  it('uses bevel joins by default to avoid dark joints on polylines', () => {
+  it('uses round joins by default for polylines', () => {
     const ctx = createLineContext()
 
     drawLine(ctx as unknown as CanvasRenderingContext2D, {
@@ -152,7 +152,7 @@ describe('drawLine pixel snap', () => {
       ]
     }, { size: 1, color: '#000000' })
 
-    expect(ctx.lineJoin).toBe('bevel')
+    expect(ctx.lineJoin).toBe('round')
   })
 
   it('keeps explicit lineJoin overrides', () => {

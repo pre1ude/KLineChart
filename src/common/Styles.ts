@@ -521,7 +521,7 @@ function getDefaultCandleStyle(): CandleStyle {
     area: {
       lineSize: 2,
       lineColor: '#4D97FF',
-      lineJoin: 'bevel',
+      lineJoin: 'round',
       smooth: false,
       value: 'close',
       lineOnly: false,

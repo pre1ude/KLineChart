@@ -413,7 +413,7 @@ export function drawLine(ctx: CanvasRenderingContext2D, attrs: LineAttrs | LineA
     color = 'currentColor',
     dashedValue = DEFAULT_LINE_DASH,
     pixelSnap,
-    lineJoin = 'bevel',
+    lineJoin = 'round',
     miterLimit
   } = styles
   if (!isLineStyleVisible(styles)) {

@@ -3,6 +3,15 @@ import { describe, expect, it } from 'vitest'
 import { getDefaultStyles, YAxisPosition } from './Styles'
 
 describe('getDefaultStyles', () => {
+  it('面积图默认使用圆角纯折线', () => {
+    const styles = getDefaultStyles()
+
+    expect(styles.candle.area).toMatchObject({
+      lineJoin: 'round',
+      smooth: false
+    })
+  })
+
   it('面积图 line symbol 默认关闭', () => {
     const styles = getDefaultStyles()
 
