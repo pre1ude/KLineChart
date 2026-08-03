@@ -108,7 +108,7 @@ describe('TD9 timeshare built-in indicator', () => {
       ctx,
       'line',
       {
-        attrs: { coordinates: [{ x: 30, y: 80 }, { x: 30, y: 90 }] },
+        attrs: { coordinates: [{ x: 30, y: 80 }, { x: 30, y: 104 }] },
         styles: { color: '#D94A4A', style: LineType.Dashed, dashedValue: [2, 2] }
       }
     ])
@@ -116,8 +116,8 @@ describe('TD9 timeshare built-in indicator', () => {
       ctx,
       'text',
       {
-        attrs: { x: 30, y: 92, text: '9', baseline: 'top' },
-        styles: { color: '#D94A4A', size: 24 }
+        attrs: { x: 30, y: 102, text: '9', baseline: 'top' },
+        styles: { color: '#D94A4A', size: 16 }
       }
     ])
     expect(opacities).toEqual([1, 1, 1, 1])
@@ -156,10 +156,10 @@ describe('TD9 timeshare built-in indicator', () => {
     } as never)
 
     expect(vi.mocked(drawStaticFigure).mock.calls[1][2]).toMatchObject({
-      attrs: { coordinates: [{ x: 10, y: 100 }, { x: 10, y: 90 }] }
+      attrs: { coordinates: [{ x: 10, y: 100 }, { x: 10, y: 76 }] }
     })
     expect(vi.mocked(drawStaticFigure).mock.calls[2][2]).toMatchObject({
-      attrs: { x: 10, y: 88, text: '9', baseline: 'bottom' }
+      attrs: { x: 10, y: 78, text: '9', baseline: 'bottom' }
     })
   })
 
@@ -167,14 +167,14 @@ describe('TD9 timeshare built-in indicator', () => {
     {
       direction: 'BUY' as const,
       y: 180,
-      line: [{ x: 10, y: 180 }, { x: 10, y: 170 }],
-      text: { x: 10, y: 168, text: '9', baseline: 'bottom' }
+      line: [{ x: 10, y: 180 }, { x: 10, y: 156 }],
+      text: { x: 10, y: 158, text: '9', baseline: 'bottom' }
     },
     {
       direction: 'SELL' as const,
       y: 20,
-      line: [{ x: 10, y: 20 }, { x: 10, y: 30 }],
-      text: { x: 10, y: 32, text: '9', baseline: 'top' }
+      line: [{ x: 10, y: 20 }, { x: 10, y: 44 }],
+      text: { x: 10, y: 42, text: '9', baseline: 'top' }
     }
   ])('reverses a $direction Setup 9 marker when its default side has insufficient space', ({
     direction,
