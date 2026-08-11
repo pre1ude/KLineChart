@@ -1,13 +1,14 @@
 import type KLineData from '../common/KLineData'
 import type VisibleRange from '../common/VisibleRange'
-import { clone, isBoolean, isNumber, merge } from '../common/utils/typeChecks'
-import type { Gap1Options } from '../Options'
+import { clone, isBoolean, isFunction, isNumber, merge } from '../common/utils/typeChecks'
+import type { Gap1Options, Gap1ValueFormatter } from '../Options'
 
 const GAP1_MIN_ORIGINAL_CHANGE_PERCENT = 0.02
 
 export interface RequiredGap1Options {
   maxGapCount: number
   showValue: boolean
+  valueFormatter?: Gap1ValueFormatter
 }
 
 export const defaultGap1Options: RequiredGap1Options = {
@@ -45,10 +46,23 @@ export function normalizeGap1Options(
     merge(next, value)
   }
 
-  return {
+  const normalized: RequiredGap1Options = {
     maxGapCount: normalizeMaxGapCount(next.maxGapCount, current.maxGapCount),
     showValue: isBoolean(next.showValue) ? next.showValue : current.showValue
   }
+  const hasValueFormatter = value !== true && Object.prototype.hasOwnProperty.call(value, 'valueFormatter')
+  let valueFormatter = current.valueFormatter
+  if (hasValueFormatter) {
+    if (value.valueFormatter === null) {
+      valueFormatter = undefined
+    } else if (isFunction(value.valueFormatter)) {
+      valueFormatter = value.valueFormatter
+    }
+  }
+  if (isFunction(valueFormatter)) {
+    normalized.valueFormatter = valueFormatter
+  }
+  return normalized
 }
 
 function normalizeVisibleIndex(value: number, fallback: number, dataLength: number): number {

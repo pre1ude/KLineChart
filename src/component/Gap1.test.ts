@@ -222,4 +222,17 @@ describe('normalizeGap1Options', () => {
       showValue: false
     })
   })
+
+  it('retains a value formatter for undefined updates and clears it with null', () => {
+    const valueFormatter = () => ({ widthText: '+5.0bp' })
+    const configured = normalizeGap1Options(defaultGap1Options, { valueFormatter })
+
+    expect(configured).toEqual({
+      maxGapCount: 15,
+      showValue: false,
+      valueFormatter
+    })
+    expect(normalizeGap1Options(configured, { valueFormatter: undefined })).toEqual(configured)
+    expect(normalizeGap1Options(configured, { valueFormatter: null })).toEqual(defaultGap1Options)
+  })
 })

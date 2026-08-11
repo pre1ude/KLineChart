@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getDefaultStyles, type GapStyle } from '../common/Styles'
 import type { Gap1Record } from '../component/Gap1'
 import { drawRect } from '../extension/figure/rect'
+import type { Gap1ValueFormatter } from '../Options'
 import Gap1View from './Gap1View'
 
 vi.mock('../extension/figure/rect', () => ({
@@ -32,7 +33,8 @@ function createView(
   pricePrecision: number = 2,
   xAxisTextColor: string = getDefaultStyles().xAxis.tickText.color,
   widgetWidth: number = 100,
-  changeColors: { upColor: string, downColor: string } = getDefaultStyles().candle.bar
+  changeColors: { upColor: string, downColor: string } = getDefaultStyles().candle.bar,
+  valueFormatter?: Gap1ValueFormatter
 ) {
   const mainYAxis = { convertToPixel: vi.fn(convertY) }
   const leftYAxis = { convertToPixel: vi.fn(convertY) }
@@ -40,7 +42,7 @@ function createView(
   const gap1Store = {
     isEnabled: () => enabled,
     getGaps: () => gaps,
-    getOptions: () => ({ maxGapCount: 15, showValue })
+    getOptions: () => ({ maxGapCount: 15, showValue, valueFormatter })
   }
   const chart = {
     getChartStore: () => ({
@@ -207,6 +209,40 @@ describe('Gap1View', () => {
     expect(ctx.textCalls[1].y).toBeCloseTo(110.005)
     expect(ctx.textCalls[2].y).toBeCloseTo(105.41)
     expect(ctx.textCalls[3].y).toBeCloseTo(105.41)
+  })
+
+  it('supports dynamically formatting the signed width as basis points', () => {
+    let useBasisPoints = true
+    const valueFormatter = vi.fn<Gap1ValueFormatter>((params) => ({
+      widthText: useBasisPoints
+        ? `${params.change > 0 ? '+' : ''}${(params.change * 100).toFixed(Math.max(params.pricePrecision - 2, 0))}bp`
+        : params.widthText
+    }))
+    const { view } = createView([
+      gap1('up', 1, 106.005, 105.955)
+    ], value => value, true, getDefaultStyles().gap, true, 3, '#123456', 220, getDefaultStyles().candle.bar, valueFormatter)
+    const firstContext = createContext()
+
+    view.draw(firstContext)
+
+    expect(firstContext.textCalls[1].text).toBe('+0.047%(+5.0bp)')
+    expect(valueFormatter).toHaveBeenLastCalledWith({
+      direction: 'up',
+      start: 105.955,
+      end: 106.005,
+      change: expect.closeTo(0.05),
+      percentage: expect.closeTo(0.0471898447),
+      pricePrecision: 3,
+      priceText: '105.955-106.005',
+      percentageText: '+0.047%',
+      widthText: '+0.050'
+    })
+
+    useBasisPoints = false
+    const secondContext = createContext()
+    view.draw(secondContext)
+
+    expect(secondContext.textCalls[1].text).toBe('+0.047%(+0.050)')
   })
 
   it('shifts a value label left when its full width would exceed the widget right edge', () => {

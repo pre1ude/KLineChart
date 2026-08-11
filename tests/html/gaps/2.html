@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="KLineChart Gap1 valueFormatter bond yield demo" />
+    <title>Gap1 valueFormatter / Bond Yield Demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        color: #1f2329;
+        background: #f3f5f7;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .header {
+        min-height: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 10px 16px;
+        border-bottom: 1px solid #dfe3e8;
+        background: #ffffff;
+      }
+
+      .title {
+        min-width: 0;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1.4;
+      }
+
+      .subtitle {
+        margin-top: 2px;
+        color: #646a73;
+        font-size: 12px;
+      }
+
+      .condition {
+        flex: none;
+        padding: 4px 8px;
+        border: 1px solid #c9cdd4;
+        border-radius: 4px;
+        color: #4e5969;
+        background: #f7f8fa;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .condition.active {
+        border-color: #00a870;
+        color: #007a55;
+        background: #e8f7f0;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px 18px;
+        min-height: 52px;
+        padding: 9px 16px;
+        border-bottom: 1px solid #dfe3e8;
+        background: #ffffff;
+        font-size: 13px;
+      }
+
+      .toolbar label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
+      }
+
+      select,
+      button {
+        height: 30px;
+        border: 1px solid #c9cdd4;
+        border-radius: 5px;
+        color: #1f2329;
+        background: #ffffff;
+        font: inherit;
+      }
+
+      select {
+        min-width: 104px;
+        padding: 0 26px 0 8px;
+      }
+
+      button {
+        padding: 0 12px;
+        cursor: pointer;
+      }
+
+      button:hover {
+        border-color: #1677ff;
+        color: #1677ff;
+      }
+
+      .workspace {
+        min-height: 0;
+        flex: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 260px;
+        background: #ffffff;
+      }
+
+      .chart-shell {
+        min-width: 0;
+        min-height: 0;
+        border-right: 1px solid #dfe3e8;
+      }
+
+      #chart {
+        width: 100%;
+        height: 100%;
+      }
+
+      .inspector {
+        min-height: 0;
+        overflow: auto;
+        padding: 14px 16px;
+        background: #fafbfc;
+      }
+
+      .inspector h2 {
+        margin: 0 0 12px;
+        font-size: 14px;
+      }
+
+      .metrics {
+        margin: 0;
+      }
+
+      .metric {
+        display: grid;
+        grid-template-columns: 88px minmax(0, 1fr);
+        gap: 10px;
+        padding: 9px 0;
+        border-bottom: 1px solid #e5e6eb;
+        font-size: 13px;
+      }
+
+      .metric dt {
+        color: #646a73;
+      }
+
+      .metric dd {
+        margin: 0;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-weight: 600;
+        text-align: right;
+      }
+
+      .metric .output {
+        color: #d4380d;
+      }
+
+      @media (max-width: 760px) {
+        body {
+          height: auto;
+          min-height: 100vh;
+          overflow: auto;
+        }
+
+        .header {
+          align-items: flex-start;
+        }
+
+        .workspace {
+          grid-template-columns: 1fr;
+          grid-template-rows: 520px auto;
+        }
+
+        .chart-shell {
+          border-right: 0;
+          border-bottom: 1px solid #dfe3e8;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="header">
+      <div class="title">
+        <h1>Gap1 valueFormatter</h1>
+        <div class="subtitle">收益率缺口 2.350-2.400，原始宽度 +0.050</div>
+      </div>
+      <div id="condition" class="condition">默认格式</div>
+    </header>
+
+    <div class="toolbar">
+      <label>
+        资产
+        <select id="assetType">
+          <option value="bond" selected>债券</option>
+          <option value="stock">股票</option>
+        </select>
+      </label>
+      <label>
+        价格轴
+        <select id="axisMode">
+          <option value="rate" selected>利率</option>
+          <option value="price">价格</option>
+        </select>
+      </label>
+      <label><input id="formatterEnabled" type="checkbox" checked />valueFormatter</label>
+      <label><input id="showValue" type="checkbox" checked />显示 Gap1 数值</label>
+      <button id="fit">定位缺口</button>
+    </div>
+
+    <main class="workspace">
+      <section class="chart-shell" aria-label="Gap1 chart"><div id="chart"></div></section>
+      <aside class="inspector">
+        <h2>当前输出</h2>
+        <dl class="metrics">
+          <div class="metric"><dt>资产</dt><dd id="assetValue">债券</dd></div>
+          <div class="metric"><dt>价格轴</dt><dd id="axisValue">利率</dd></div>
+          <div class="metric"><dt>默认差值</dt><dd>+0.050</dd></div>
+          <div class="metric"><dt>最终差值</dt><dd id="outputValue" class="output">+5.0bp</dd></div>
+          <div class="metric"><dt>Formatter</dt><dd id="formatterValue">enabled</dd></div>
+          <div class="metric"><dt>调用次数</dt><dd id="callCount">0</dd></div>
+        </dl>
+      </aside>
+    </main>
+
+    <script type="module">
+      import { init } from '../../../dist/index.js'
+
+      const assetTypeSelect = document.getElementById('assetType')
+      const axisModeSelect = document.getElementById('axisMode')
+      const formatterEnabledInput = document.getElementById('formatterEnabled')
+      const showValueInput = document.getElementById('showValue')
+      let formatterCallCount = 0
+      let lastWidthText = '+0.050'
+
+      const chart = init('chart', {
+        gap1: {
+          maxGapCount: 5,
+          showValue: true,
+          valueFormatter: formatGap1Value
+        },
+        gap1Show: true,
+        styles: {
+          candle: {
+            bar: {
+              upColor: '#d4380d',
+              downColor: '#00875a',
+              noChangeColor: '#697386'
+            }
+          },
+          gap: {
+            up: {
+              borderColor: '#d4380d',
+              backgroundColor: 'rgba(212, 56, 13, 0.12)',
+              borderSize: 1
+            },
+            down: {
+              borderColor: '#00875a',
+              backgroundColor: 'rgba(0, 135, 90, 0.12)',
+              borderSize: 1
+            }
+          },
+          yAxis: {
+            position: 'right',
+            mainPosition: 'right'
+          }
+        }
+      })
+
+      chart.setPriceVolumePrecision(3, 0)
+      chart.applyNewData(createBondYieldData(), false, () => {
+        chart.fitToWidth()
+        scheduleStatusUpdate()
+      })
+
+      for (const element of [assetTypeSelect, axisModeSelect, formatterEnabledInput, showValueInput]) {
+        element.addEventListener('change', applyGap1Options)
+      }
+      document.getElementById('fit').addEventListener('click', () => {
+        chart.fitToWidth()
+        scheduleStatusUpdate()
+      })
+
+      function formatGap1Value (params) {
+        formatterCallCount++
+        if (!shouldUseBasisPoints()) {
+          lastWidthText = params.widthText
+          return undefined
+        }
+
+        const sign = params.change > 0 ? '+' : ''
+        const bpPrecision = Math.max(params.pricePrecision - 2, 0)
+        lastWidthText = `${sign}${(params.change * 100).toFixed(bpPrecision)}bp`
+        return { widthText: lastWidthText }
+      }
+
+      function applyGap1Options () {
+        formatterCallCount = 0
+        lastWidthText = '+0.050'
+        chart.setOptions({
+          gap1: {
+            showValue: showValueInput.checked,
+            valueFormatter: formatterEnabledInput.checked ? formatGap1Value : null
+          }
+        })
+        scheduleStatusUpdate()
+      }
+
+      function shouldUseBasisPoints () {
+        return formatterEnabledInput.checked &&
+          assetTypeSelect.value === 'bond' &&
+          axisModeSelect.value === 'rate'
+      }
+
+      function scheduleStatusUpdate () {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(updateStatus)
+        })
+      }
+
+      function updateStatus () {
+        const useBasisPoints = shouldUseBasisPoints()
+        const formatterEnabled = formatterEnabledInput.checked
+        const condition = document.getElementById('condition')
+        condition.textContent = useBasisPoints ? '债券 · 利率 · bp' : '默认格式'
+        condition.classList.toggle('active', useBasisPoints)
+        document.getElementById('assetValue').textContent = assetTypeSelect.options[assetTypeSelect.selectedIndex].text
+        document.getElementById('axisValue').textContent = axisModeSelect.options[axisModeSelect.selectedIndex].text
+        document.getElementById('outputValue').textContent = formatterEnabled ? lastWidthText : '+0.050'
+        document.getElementById('formatterValue').textContent = formatterEnabled ? 'enabled' : 'null'
+        document.getElementById('callCount').textContent = String(formatterCallCount)
+        window.__gap1ValueFormatterDemo = {
+          assetType: assetTypeSelect.value,
+          axisMode: axisModeSelect.value,
+          formatterEnabled,
+          showValue: showValueInput.checked,
+          useBasisPoints,
+          output: formatterEnabled ? lastWidthText : '+0.050',
+          formatterCallCount
+        }
+      }
+
+      function createBondYieldData () {
+        const day = 24 * 60 * 60 * 1000
+        const start = Date.UTC(2026, 6, 20)
+        const values = [
+          [2.310, 2.350, 2.300, 2.340],
+          [2.420, 2.460, 2.400, 2.440],
+          [2.440, 2.470, 2.410, 2.430],
+          [2.430, 2.480, 2.405, 2.460],
+          [2.460, 2.500, 2.420, 2.490],
+          [2.490, 2.510, 2.430, 2.450],
+          [2.450, 2.490, 2.415, 2.470],
+          [2.470, 2.520, 2.425, 2.500],
+          [2.500, 2.530, 2.440, 2.460],
+          [2.460, 2.500, 2.410, 2.480],
+          [2.480, 2.540, 2.430, 2.520],
+          [2.520, 2.550, 2.450, 2.510]
+        ]
+        return values.map(([open, high, low, close], index) => ({
+          timestamp: start + index * day,
+          open,
+          high,
+          low,
+          close,
+          volume: 1000 + index * 80
+        }))
+      }
+    </script>
+  </body>
+</html>

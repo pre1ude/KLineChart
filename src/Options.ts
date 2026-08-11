@@ -80,9 +80,31 @@ export interface GapOptions {
   maxTrailLength?: number
 }
 
+export interface Gap1ValueText {
+  priceText: string
+  percentageText: string
+  widthText: string
+}
+
+export interface Gap1ValueFormatterParams extends Gap1ValueText {
+  direction: 'up' | 'down'
+  start: number
+  end: number
+  change: number
+  percentage: number
+  pricePrecision: number
+}
+
+export type Gap1ValueFormatter = (params: Gap1ValueFormatterParams) => Partial<Gap1ValueText> | undefined
+
 export interface Gap1Options {
   maxGapCount?: number
   showValue?: boolean
+  /**
+   * Synchronously formats Gap1 value text during drawing. Keep this callback lightweight.
+   * External state changes require a chart redraw. Set to `null` to restore default formatting.
+   */
+  valueFormatter?: Gap1ValueFormatter | null
 }
 
 export interface Options {

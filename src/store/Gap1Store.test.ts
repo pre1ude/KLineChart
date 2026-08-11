@@ -98,7 +98,7 @@ describe('Gap1Store', () => {
     expect(store.getGaps()).toEqual([])
   })
 
-  it('keeps the newest gaps and does not recalculate when only showValue changes', () => {
+  it('keeps the newest gaps and does not recalculate when only value rendering changes', () => {
     const data = [
       candle(0, 0, 10),
       candle(1, 20, 30),
@@ -115,6 +115,19 @@ describe('Gap1Store', () => {
     store.setOptions({ showValue: true })
 
     expect(store.getOptions().showValue).toBe(true)
+    expect(store.getGaps()).toBe(records)
+
+    const valueFormatter = () => ({ widthText: '+5.0bp' })
+    store.setOptions({ valueFormatter })
+
+    expect(store.getOptions().valueFormatter).toBe(valueFormatter)
+    expect(store.getGaps()).toBe(records)
+
+    store.setOptions({ valueFormatter: undefined })
+    expect(store.getOptions().valueFormatter).toBe(valueFormatter)
+
+    store.setOptions({ valueFormatter: null })
+    expect(store.getOptions().valueFormatter).toBeUndefined()
     expect(store.getGaps()).toBe(records)
   })
 })

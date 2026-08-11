@@ -64,14 +64,29 @@ export default class Gap1View extends View {
         const end = isUp ? gap.top : gap.bottom
         const change = end - start
         const sign = change > 0 ? '+' : ''
+        const percentage = change / start * 100
+        const defaultText = {
+          priceText: `${formatPrecision(start, pricePrecision)}-${formatPrecision(end, pricePrecision)}`,
+          percentageText: `${sign}${percentage.toFixed(3)}%`,
+          widthText: `${sign}${formatPrecision(change, pricePrecision)}`
+        }
+        const formattedText = options.valueFormatter?.({
+          direction: gap.direction,
+          start,
+          end,
+          change,
+          percentage,
+          pricePrecision,
+          ...defaultText
+        })
         labels.push({
           x: rect.x + GAP1_LABEL_OFFSET,
           y: isUp
             ? rect.y + rect.height + GAP1_LABEL_OFFSET
             : rect.y - GAP1_LABEL_OFFSET,
           baseline: isUp ? 'top' : 'bottom',
-          priceText: `${formatPrecision(start, pricePrecision)}-${formatPrecision(end, pricePrecision)}`,
-          changeText: `${sign}${(change / start * 100).toFixed(3)}%(${sign}${formatPrecision(change, pricePrecision)})`,
+          priceText: formattedText?.priceText ?? defaultText.priceText,
+          changeText: `${formattedText?.percentageText ?? defaultText.percentageText}(${formattedText?.widthText ?? defaultText.widthText})`,
           changeColor: isUp ? changeColors.upColor : changeColors.downColor
         })
       }
