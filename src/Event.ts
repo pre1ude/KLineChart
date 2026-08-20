@@ -10,6 +10,7 @@ import { WidgetNameConstants, REAL_SEPARATOR_HEIGHT } from './widget/types'
 import type DualYPane from './pane/DualYPane'
 import type YAxisWidget from './widget/YAxisWidget'
 import type XAxisWidget from './widget/XAxisWidget'
+import type MainWidget from './widget/MainWidget'
 import { isPointInBounding } from './common/Bounding'
 import type VisibleRange from './common/VisibleRange'
 import { createOverlayEventFromInfo } from './common/utils/overlayEvent'
@@ -725,7 +726,7 @@ export default class Event implements EventHandler {
       return 'pointer'
     }
 
-    if (chartStore.getTooltipStore().getActiveIcon()) {
+    if ((widget as MainWidget).isTooltipIconHovered()) {
       return 'pointer'
     }
 

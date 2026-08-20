@@ -18,7 +18,7 @@ import { isString, isArray, isValid, isNumber } from './common/utils/typeChecks'
 import { logWarn } from './common/utils/logger'
 import { cancelAnimationFrame, DEFAULT_REQUEST_ID, requestAnimationFrame } from './common/utils/compatible'
 import { LoadDataType } from './common/LoadDataCallback'
-import ChartStore from './store/ChartStore'
+import ChartStore, { StyleInvalidation } from './store/ChartStore'
 import CandlePane from './pane/CandlePane'
 import IndicatorPane from './pane/IndicatorPane'
 import XAxisPane from './pane/XAxisPane'
@@ -950,18 +950,22 @@ export default class ChartImp implements Chart {
   }
 
   setStyles(styles: string | DeepPartialStyles): void {
-    this._chartStore.setOptions({ styles })
-    /* let realStyles: Nullable<DeepPartialStyles>
-    if (isString(styles)) {
-      realStyles = getExtensionStyles(styles)
-    } else {
-      realStyles = styles
-    } */
-    // todo check
-    // if (isValid(realStyles?.yAxis?.type)) {
-    this._candlePane?.getYLeftAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
-    this._candlePane?.getYRightAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
-    // }
+    const invalidation = this._chartStore.updateOptions({ styles })
+    this._applyExplicitStyleInvalidation(invalidation, true)
+  }
+
+  private _applyExplicitStyleInvalidation(
+    invalidation: StyleInvalidation,
+    resetYAxisAutoCalc: boolean
+  ): void {
+    if (invalidation !== StyleInvalidation.Metric) {
+      this.updatePane(UpdateLevel.Overlay)
+      return
+    }
+    if (resetYAxisAutoCalc) {
+      this._candlePane?.getYLeftAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
+      this._candlePane?.getYRightAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
+    }
     this.refreshMetricLayout()
   }
 
@@ -970,8 +974,14 @@ export default class ChartImp implements Chart {
   }
 
   setOptions(options: Options): void {
-    this._chartStore.setOptions(options)
-    this.refreshMetricLayout()
+    const styleInvalidation = this._chartStore.updateOptions(options)
+    const optionKeys = Object.keys(options)
+    const isStyleOnly = optionKeys.length === 1 && optionKeys[0] === 'styles' && isValid(options.styles)
+    if (isStyleOnly) {
+      this._applyExplicitStyleInvalidation(styleInvalidation, false)
+    } else {
+      this.refreshMetricLayout()
+    }
   }
 
   setLocale(locale: string): void {

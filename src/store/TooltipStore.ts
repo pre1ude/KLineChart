@@ -4,21 +4,20 @@ import { UpdateLevel } from '../common/Updater'
 import { isNumber } from '../common/utils/typeChecks'
 import type ChartStore from './ChartStore'
 import { clamp } from '@/common/utils/number'
-
-export interface TooltipIcon {
-  paneId: string
-  indicatorId: string
-  indicatorName: string
-  iconId: string
-}
+import type { TooltipOptions, TooltipRenderType } from '../Options'
 
 export default class TooltipStore {
   private readonly _chartStore: ChartStore
   private _crosshair: Crosshair = {}
-  private _activeIcon: TooltipIcon | null = null
+  private readonly _renderType: TooltipRenderType
 
-  constructor(chartStore: ChartStore) {
+  constructor(chartStore: ChartStore, options?: TooltipOptions) {
     this._chartStore = chartStore
+    this._renderType = options?.renderType === 'dom' ? 'dom' : 'canvas'
+  }
+
+  getRenderType(): TooltipRenderType {
+    return this._renderType
   }
 
   /**
@@ -86,16 +85,7 @@ export default class TooltipStore {
     return this._crosshair
   }
 
-  setActiveIcon(icon: TooltipIcon | null): void {
-    this._activeIcon = icon
-  }
-
-  getActiveIcon() {
-    return this._activeIcon
-  }
-
   clear(): void {
     this.setCrosshair({}, { notInvalidate: true })
-    this.setActiveIcon(null)
   }
 }

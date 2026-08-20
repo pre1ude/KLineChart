@@ -4,7 +4,7 @@ import type VisibleData from '../common/VisibleData'
 import type { IPoint } from '../common/Point'
 import type { Point } from '../common/Point'
 import { type DeepPartialStyles, getDefaultStyles, type Styles, type TooltipLegend } from '../common/Styles'
-import { isArray, isBoolean, isNumber, isString, isValid, merge } from '../common/utils/typeChecks'
+import { clone, isArray, isBoolean, isNumber, isObject, isString, isValid, merge } from '../common/utils/typeChecks'
 import type LoadDataCallback from '../common/LoadDataCallback'
 import { type LoadDataParams, LoadDataType } from '../common/LoadDataCallback'
 import { ActionType } from '../common/Action'
@@ -31,6 +31,61 @@ import { setTimezone } from '../common/utils/dateTimeFormat'
 import { binarySearchNearest, lowerBound } from '../common/utils/number'
 import TaskScheduler from '@/common/TaskScheduler'
 import type { GapDataChangeContext } from '../component/Gap'
+
+export enum StyleInvalidation {
+  None,
+  Overlay,
+  Metric
+}
+
+function getChangedStyleInvalidation(
+  previous: unknown,
+  current: unknown,
+  path: string[] = []
+): StyleInvalidation {
+  if (Object.is(previous, current)) {
+    return StyleInvalidation.None
+  }
+
+  const previousIsObject = isObject(previous)
+  const currentIsObject = isObject(current)
+  const previousIsArray = isArray(previous)
+  const currentIsArray = isArray(current)
+  if (
+    !previousIsObject ||
+    !currentIsObject ||
+    previousIsArray !== currentIsArray ||
+    (previousIsArray && currentIsArray && previous.length !== current.length)
+  ) {
+    return getStylePathInvalidation(path)
+  }
+
+  const previousRecord = previous as Record<string, unknown>
+  const currentRecord = current as Record<string, unknown>
+  const keys = new Set([...Object.keys(previousRecord), ...Object.keys(currentRecord)])
+  let invalidation = StyleInvalidation.None
+  for (const key of keys) {
+    const childInvalidation = getChangedStyleInvalidation(
+      previousRecord[key],
+      currentRecord[key],
+      [...path, key]
+    )
+    if (childInvalidation === StyleInvalidation.Metric) {
+      return childInvalidation
+    }
+    if (childInvalidation > invalidation) {
+      invalidation = childInvalidation
+    }
+  }
+  return invalidation
+}
+
+function getStylePathInvalidation(path: string[]): StyleInvalidation {
+  const tooltipOnly =
+    (path[0] === 'candle' || path[0] === 'indicator') &&
+    path[1] === 'tooltip'
+  return tooltipOnly ? StyleInvalidation.Overlay : StyleInvalidation.Metric
+}
 
 export default class ChartStore {
   /**
@@ -145,7 +200,7 @@ export default class ChartStore {
   /**
    * Tooltip store
    */
-  private readonly _tooltipStore = new TooltipStore(this)
+  private readonly _tooltipStore: TooltipStore
 
   /**
    * Chart action store
@@ -181,6 +236,7 @@ export default class ChartStore {
 
   constructor(chart: Chart, options?: Options) {
     this._chart = chart
+    this._tooltipStore = new TooltipStore(this, options?.tooltip)
     this.setOptions(options)
 
     this._taskScheduler = new TaskScheduler(() => {
@@ -209,6 +265,12 @@ export default class ChartStore {
   }
 
   setOptions(options?: Options): this {
+    this.updateOptions(options)
+    return this
+  }
+
+  updateOptions(options?: Options): StyleInvalidation {
+    let styleInvalidation = StyleInvalidation.None
     if (isValid(options)) {
       const {
         locale,
@@ -237,6 +299,8 @@ export default class ChartStore {
         setTimezone(timezone)
       }
       if (isValid(styles)) {
+        const previousStyles = clone(this._styles)
+        const previousStyleTheme = this._styleTheme
         let ss: DeepPartialStyles | undefined
         if (isString(styles)) {
           this._styleTheme = resolveStyleTheme(styles)
@@ -249,6 +313,9 @@ export default class ChartStore {
         if (isArray(ss?.candle?.tooltip?.custom)) {
           this._styles.candle.tooltip.custom = ss?.candle?.tooltip?.custom as unknown as TooltipLegend[]
         }
+        styleInvalidation = previousStyleTheme === this._styleTheme
+          ? getChangedStyleInvalidation(previousStyles, this._styles)
+          : StyleInvalidation.Metric
       }
       if (isValid(customApi)) {
         merge(this._customApi, customApi)
@@ -311,7 +378,7 @@ export default class ChartStore {
         this._timeShareSessionGapForN = options.timeShareSessionGapForN
       }
     }
-    return this
+    return styleInvalidation
   }
 
   private getTimeScaleModeKind(): TimeScaleModeKind {

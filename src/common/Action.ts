@@ -1,7 +1,7 @@
-import { type TooltipIcon } from '../store/TooltipStore'
 import type Crosshair from './Crosshair'
 import type KLineData from './KLineData'
 import { type MouseTouchEvent } from './SyntheticEvent'
+import type { TooltipIconIdentity } from './Tooltip'
 import { isFunction } from './utils/typeChecks'
 
 export type ActionCallback<T = unknown> = (data: T) => void
@@ -43,7 +43,9 @@ export interface VisibleRangeChangeEventData {
 }
 
 /** Tooltip 图标点击事件数据 */
-export type TooltipIconClickEventData = TooltipIcon
+export interface TooltipIconClickEventData extends TooltipIconIdentity {
+  indicatorName: string
+}
 
 /** 十字光标变化事件数据 */
 export interface CrosshairChangeEventData extends Crosshair {

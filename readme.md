@@ -2,6 +2,20 @@ dm-refactor
 
 this is the branch used for dm Super Boss.
 
+## Tooltip 渲染模式
+
+Tooltip 默认使用 Canvas 渲染，可在创建图表时选择 DOM 渲染：
+
+```ts
+import '@dm/kchart/klinechart-tooltip.css'
+
+const chart = init('chart', { tooltip: { renderType: 'dom' } })
+```
+
+`tooltip.renderType` 支持 `'canvas' | 'dom'`，默认值为 `'canvas'`，并在图表生命周期内保持不变；`Chart.setOptions` 不会切换 tooltip renderer，如需更换必须重建图表。DOM 模式需要在应用入口全局导入一次 `@dm/kchart/klinechart-tooltip.css`，Canvas 模式不需要这份 CSS。DOM 模式会在每个主图 widget 内创建一个可复用的 `.klinechart-tooltip` 根节点；静态布局由公开 CSS 提供，运行时主题和定位值仍由图表样式配置驱动。可使用 `data-klinechart-tooltip-*` 属性定位 tooltip、block、section、legend 和 icon。由于 DOM 使用浏览器自身的字体度量和换行，布局允许与 Canvas 存在非像素级差异。
+
+DOM tooltip 不提供自定义 HTML renderer，文字内容始终通过 `textContent` 写入。`getConvertPictureUrl(true)` 会把最近一次提交的 tooltip model 通过非交互 Canvas 路径导出，`getConvertPictureUrl(false)` 仍然不包含 overlay。
+
 ## X 轴 tick 生成与绘制流程
 
 这里梳理的是当前 `XAxisImp` 的实现。X 轴 tick 的主分支只看 `chartStore.getIsTimeShare()`：

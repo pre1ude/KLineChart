@@ -235,13 +235,33 @@ export default tseslint.config(
 
   // 测试文件配置
   {
-    files: ['**/*.test.ts', '**/*.spec.ts'],
+    files: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
       parser: tseslint.parser,
       parserOptions: {
         project: './tsconfig.test.json',
+        tsconfigRootDir: import.meta.dirname
+      }
+    },
+    plugins: {
+      '@typescript-eslint': tseslint.plugin
+    },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'off'
+    }
+  },
+
+  // 浏览器测试配置
+  {
+    files: ['tests/browser/**/*.test.ts', 'vitest.browser.config.ts'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parser: tseslint.parser,
+      parserOptions: {
+        project: './tsconfig.browser.json',
         tsconfigRootDir: import.meta.dirname
       }
     },

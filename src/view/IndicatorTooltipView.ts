@@ -1,6 +1,7 @@
 import type Coordinate from '../common/Coordinate'
 import type Crosshair from '../common/Crosshair'
 import type KLineData from '../common/KLineData'
+import type { TooltipIconIdentity } from '../common/Tooltip'
 import {
   PolygonType,
   TooltipIconPosition,
@@ -20,8 +21,13 @@ import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorCalcParamVisibl
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import { type CustomApi } from '../Options'
 import type DualYPane from '../pane/DualYPane'
-import { type TooltipIcon } from '../store/TooltipStore'
 import type XAxisWidget from '../widget/XAxisWidget'
+import {
+  type StandardTooltipBlock,
+  type StandardTooltipContent,
+  type TooltipRenderModel
+} from './TooltipModel'
+import TooltipModelBuilder from './TooltipModelBuilder'
 import View from './View'
 
 type StandardTooltipIconLayout = {
@@ -57,14 +63,7 @@ type StandardTooltipLayout = {
   items: StandardTooltipLayoutItem[]
 }
 
-export type StandardTooltipContent = {
-  type: 'icons'
-  icons: TooltipIconStyle[]
-} | {
-  type: 'legends'
-  legends: TooltipLegend[]
-  styles: TooltipTextStyle
-}
+export type { StandardTooltipContent } from './TooltipModel'
 
 export default class IndicatorTooltipView extends View {
   private _hasHoverIcon = false
@@ -86,98 +85,113 @@ export default class IndicatorTooltipView extends View {
   }
 
   override drawImp(ctx: CanvasRenderingContext2D): void {
-    const widget = this.getWidget()
-    const pane = widget.getPane()
-    const chartStore = pane.getChart().getChartStore()
-    const crosshair = chartStore.getTooltipStore().getCrosshair()
-    if (isValid(crosshair.kLineData)) {
-      const bounding = widget.getBounding()
-      const customApi = chartStore.getCustomApi()
-      const thousandsSeparator = chartStore.getThousandsSeparator()
-      const decimalFoldThreshold = chartStore.getDecimalFoldThreshold()
-      const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
-      const activeIcon = chartStore.getTooltipStore().getActiveIcon()
-      const defaultStyles = chartStore.getStyles().indicator
-      const { offsetLeft, offsetTop, offsetRight } = defaultStyles.tooltip
-      // 如果设置了 startTop，使用它；否则使用默认的 offsetTop
-      const top = this._startTop ?? offsetTop
-      this.drawIndicatorTooltip(
-        ctx, pane.getId(), chartStore.getDataList(),
-        crosshair, activeIcon, indicators, customApi,
-        thousandsSeparator, decimalFoldThreshold,
-        offsetLeft, top,
-        bounding.width - offsetRight, defaultStyles
-      )
-    }
+    const model = this.buildRenderModel()
+    this.drawModel(ctx, model, true, null)
   }
 
-  protected drawIndicatorTooltip(
+  buildRenderModel(): TooltipRenderModel {
+    const model = TooltipModelBuilder.buildIndicator(this)
+    if (this._startTop != null && model.blocks.length > 0) {
+      model.blocks.forEach(block => { block.top = this._startTop! })
+    }
+    return model
+  }
+
+  drawModel(
     ctx: CanvasRenderingContext2D,
+    model: TooltipRenderModel,
+    interactive = true,
+    hoveredIcon: TooltipIconIdentity | null = null
+  ): void {
+    if (interactive) {
+      this.clear()
+    }
+    let top: number | undefined
+    model.blocks.forEach(block => {
+      if (block.type === 'standard') {
+        top = this.drawStandardTooltip(
+          ctx,
+          hoveredIcon,
+          block.contents,
+          block.paneId,
+          block.indicatorId,
+          block.indicatorName,
+          block.left,
+          top ?? block.top,
+          block.maxWidth,
+          block.styles,
+          interactive
+        )
+      }
+    })
+  }
+
+  buildIndicatorTooltipBlocks(
     paneId: string,
     dataList: KLineData[],
     crosshair: Crosshair,
-    activeTooltipIcon: TooltipIcon | null,
-    indicators: Indicator[],
-    customApi: CustomApi,
-    thousandsSeparator: string,
-    decimalFoldThreshold: number,
     left: number,
     top: number,
     maxWidth: number,
     styles: IndicatorStyle
-  ): number {
+  ): StandardTooltipBlock[] {
     const tooltipStyles = styles.tooltip
-    if (this.isDrawTooltip(crosshair, tooltipStyles)) {
-      const tooltipTextStyles = tooltipStyles.text
-      indicators.forEach(indicator => {
-        const { name, calcParamsText, values: legends, icons } = this.getIndicatorTooltipData(dataList, crosshair, indicator, customApi, thousandsSeparator, decimalFoldThreshold, styles)
-        const nameValid = name.length > 0
-        const legendValid = legends.length > 0
-        if (nameValid || legendValid) {
-          const [leftIcons, middleIcons, rightIcons] = this.classifyTooltipIcons(icons)
-          const contents: StandardTooltipContent[] = [
-            { type: 'icons', icons: leftIcons }
-          ]
-
-          if (nameValid) {
-            let text = name
-            if (calcParamsText.length > 0) {
-              text = `${text}${calcParamsText}`
-            }
-            contents.push({
-              type: 'legends',
-              legends: [
-                {
-                  title: { text: '', color: tooltipTextStyles.color },
-                  value: { text, color: tooltipTextStyles.color }
-                }
-              ],
-              styles: tooltipTextStyles
-            })
-          }
-
-          contents.push({ type: 'icons', icons: middleIcons })
-
-          if (legendValid) {
-            contents.push({ type: 'legends', legends, styles: tooltipStyles.text })
-          }
-
-          contents.push({ type: 'icons', icons: rightIcons })
-
-          top = this.drawStandardTooltip(
-            ctx, activeTooltipIcon, contents,
-            paneId, indicator.id, indicator.name,
-            left, top, maxWidth, tooltipStyles
-          )
-        }
-      })
+    if (!this.isDrawTooltip(crosshair, tooltipStyles)) {
+      return []
     }
-    return top
+    const chartStore = this.getWidget().getPane().getChart().getChartStore()
+    const customApi = chartStore.getCustomApi()
+    const thousandsSeparator = chartStore.getThousandsSeparator()
+    const decimalFoldThreshold = chartStore.getDecimalFoldThreshold()
+    const blocks: StandardTooltipBlock[] = []
+    const indicators = chartStore.getIndicatorStore().getInstances(paneId)
+    const tooltipTextStyles = tooltipStyles.text
+    indicators.forEach(indicator => {
+      const { name, calcParamsText, values: legends, icons } = this.getIndicatorTooltipData(
+        dataList, crosshair, indicator, customApi, thousandsSeparator, decimalFoldThreshold, styles
+      )
+      const nameValid = name.length > 0
+      const legendValid = legends.length > 0
+      if (nameValid || legendValid) {
+        const [leftIcons, middleIcons, rightIcons] = this.classifyTooltipIcons(icons)
+        const contents: StandardTooltipContent[] = [
+          { type: 'icons', icons: leftIcons }
+        ]
+        if (nameValid) {
+          let text = name
+          if (calcParamsText.length > 0) {
+            text = `${text}${calcParamsText}`
+          }
+          contents.push({
+            type: 'legends',
+            legends: [{ title: { text: '', color: tooltipTextStyles.color }, value: { text, color: tooltipTextStyles.color } }],
+            styles: tooltipTextStyles
+          })
+        }
+        contents.push({ type: 'icons', icons: middleIcons })
+        if (legendValid) {
+          contents.push({ type: 'legends', legends, styles: tooltipStyles.text })
+        }
+        contents.push({ type: 'icons', icons: rightIcons })
+        blocks.push({
+          type: 'standard',
+          paneId,
+          indicatorId: indicator.id,
+          indicatorName: indicator.name,
+          left,
+          top,
+          maxWidth,
+          styles: tooltipStyles,
+          contents
+        })
+      }
+    })
+    return blocks
   }
 
   protected drawStandardTooltip(
     ctx: CanvasRenderingContext2D,
-    activeIcon: TooltipIcon | null,
+    hoveredIcon: TooltipIconIdentity | null,
     contents: StandardTooltipContent[],
     paneId: string,
     indicatorId: string,
@@ -185,7 +199,8 @@ export default class IndicatorTooltipView extends View {
     left: number,
     top: number,
     maxWidth: number,
-    styles: TooltipStyle
+    styles: TooltipStyle,
+    interactive = true
   ): number {
     const layout = this.createStandardTooltipLayout(left, top)
     contents.forEach(content => {
@@ -201,7 +216,7 @@ export default class IndicatorTooltipView extends View {
       }
     })
     this.drawStandardTooltipLineBackgrounds(ctx, layout.lines, styles)
-    this.drawStandardTooltipItems(ctx, layout.items, activeIcon, paneId, indicatorId, indicatorName)
+    this.drawStandardTooltipItems(ctx, layout.items, hoveredIcon, paneId, indicatorId, indicatorName, interactive)
     return layout.coordinate.y + layout.prevRowHeight
   }
 
@@ -355,10 +370,11 @@ export default class IndicatorTooltipView extends View {
   private drawStandardTooltipItems(
     ctx: CanvasRenderingContext2D,
     items: StandardTooltipLayoutItem[],
-    activeIcon: TooltipIcon | null,
+    hoveredIcon: TooltipIconIdentity | null,
     paneId: string,
     indicatorId: string,
-    indicatorName: string
+    indicatorName: string,
+    interactive: boolean
   ): void {
     items.forEach(item => {
       if (item.type === 'icon') {
@@ -369,7 +385,7 @@ export default class IndicatorTooltipView extends View {
           color, activeColor, size, fontFamily, icon: text,
           backgroundColor, activeBackgroundColor
         } = icon
-        const active = activeIcon?.paneId === paneId && activeIcon?.indicatorId === indicatorId && activeIcon?.iconId === icon.id
+        const active = hoveredIcon?.paneId === paneId && hoveredIcon?.indicatorId === indicatorId && hoveredIcon?.iconId === icon.id
         const iconFigure = createFigure('text')
           .setAttrs({ text, x: item.x + marginLeft, y: item.y + marginTop })
           .setStyles({
@@ -386,7 +402,9 @@ export default class IndicatorTooltipView extends View {
 
         iconFigure.draw(ctx)
 
-        this.addChild(iconFigure)
+        if (interactive) {
+          this.addChild(iconFigure)
+        }
 
         return
       }
@@ -412,7 +430,7 @@ export default class IndicatorTooltipView extends View {
     return value
   }
 
-  protected isDrawTooltip(crosshair: Crosshair, styles: TooltipStyle): boolean {
+  isDrawTooltip(crosshair: Crosshair, styles: TooltipStyle): boolean {
     const showRule = styles.showRule
     return showRule === TooltipShowRule.Always ||
       (showRule === TooltipShowRule.FollowCross && isString(crosshair.paneId))
@@ -532,7 +550,7 @@ export default class IndicatorTooltipView extends View {
     return tooltipData
   }
 
-  protected classifyTooltipIcons(icons: TooltipIconStyle[]): TooltipIconStyle[][] {
+  classifyTooltipIcons(icons: TooltipIconStyle[]): TooltipIconStyle[][] {
     const leftIcons: TooltipIconStyle[] = []
     const middleIcons: TooltipIconStyle[] = []
     const rightIcons: TooltipIconStyle[] = []

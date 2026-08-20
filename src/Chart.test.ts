@@ -3,8 +3,9 @@ import ChartImp from './Chart'
 import type KLineData from './common/KLineData'
 import { LoadDataType } from './common/LoadDataCallback'
 import { YAxisPosition } from './common/Styles'
+import { UpdateLevel } from './common/Updater'
 import { PaneIdConstants } from './pane/types'
-import ChartStore from './store/ChartStore'
+import ChartStore, { StyleInvalidation } from './store/ChartStore'
 
 const enum TestLayoutStage {
   None = 0,
@@ -163,6 +164,115 @@ describe('ChartImp.removeOverlay', () => {
 
     expect(removeInstance).toHaveBeenCalledWith({ id: 'overlay_1' })
     expect(syncCursor).toHaveBeenCalledOnce()
+  })
+})
+
+describe('ChartImp.setStyles', () => {
+  function createFixture(invalidation: StyleInvalidation): {
+    chart: ChartImp
+    updateOptions: ReturnType<typeof vi.fn>
+    setAutoCalcTickFlag: ReturnType<typeof vi.fn>
+    refreshMetricLayout: ReturnType<typeof vi.fn>
+    updatePane: ReturnType<typeof vi.fn>
+  } {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const updateOptions = vi.fn(() => invalidation)
+    const setAutoCalcTickFlag = vi.fn()
+    const refreshMetricLayout = vi.fn()
+    const updatePane = vi.fn()
+    const axisWidget = {
+      getAxisComponent: () => ({ setAutoCalcTickFlag })
+    }
+
+    Reflect.set(chart, '_chartStore', { updateOptions })
+    Reflect.set(chart, '_candlePane', {
+      getYLeftAxisWidget: () => axisWidget,
+      getYRightAxisWidget: () => axisWidget
+    })
+    Reflect.set(chart, 'refreshMetricLayout', refreshMetricLayout)
+    Reflect.set(chart, 'updatePane', updatePane)
+
+    return { chart, updateOptions, setAutoCalcTickFlag, refreshMetricLayout, updatePane }
+  }
+
+  it('repaints only the overlay for overlay style invalidation', () => {
+    const { chart, updateOptions, setAutoCalcTickFlag, refreshMetricLayout, updatePane } =
+      createFixture(StyleInvalidation.Overlay)
+    const styles = {}
+
+    chart.setStyles(styles)
+
+    expect(updateOptions).toHaveBeenCalledWith({ styles })
+    expect(updatePane).toHaveBeenCalledWith(UpdateLevel.Overlay)
+    expect(setAutoCalcTickFlag).not.toHaveBeenCalled()
+    expect(refreshMetricLayout).not.toHaveBeenCalled()
+  })
+
+  it('repaints the overlay when a tooltip callback reference has no effective change', () => {
+    const { chart, setAutoCalcTickFlag, refreshMetricLayout, updatePane } =
+      createFixture(StyleInvalidation.None)
+    const custom = (): [] => []
+
+    chart.setStyles({ candle: { tooltip: { custom } } })
+
+    expect(updatePane).toHaveBeenCalledWith(UpdateLevel.Overlay)
+    expect(setAutoCalcTickFlag).not.toHaveBeenCalled()
+    expect(refreshMetricLayout).not.toHaveBeenCalled()
+  })
+
+  it('runs exact metric layout for metric style invalidation', () => {
+    const { chart, setAutoCalcTickFlag, refreshMetricLayout, updatePane } =
+      createFixture(StyleInvalidation.Metric)
+
+    chart.setStyles({})
+
+    expect(updatePane).not.toHaveBeenCalled()
+    expect(setAutoCalcTickFlag).toHaveBeenCalledTimes(2)
+    expect(refreshMetricLayout).toHaveBeenCalledOnce()
+  })
+
+  it('uses style invalidation for style-only setOptions calls', () => {
+    const { chart, setAutoCalcTickFlag, refreshMetricLayout, updatePane } =
+      createFixture(StyleInvalidation.Overlay)
+
+    chart.setOptions({ styles: {} })
+
+    expect(updatePane).toHaveBeenCalledWith(UpdateLevel.Overlay)
+    expect(setAutoCalcTickFlag).not.toHaveBeenCalled()
+    expect(refreshMetricLayout).not.toHaveBeenCalled()
+  })
+
+  it('repaints the overlay for repeated style-only setOptions calls', () => {
+    const { chart, setAutoCalcTickFlag, refreshMetricLayout, updatePane } =
+      createFixture(StyleInvalidation.None)
+
+    chart.setOptions({ styles: {} })
+
+    expect(updatePane).toHaveBeenCalledWith(UpdateLevel.Overlay)
+    expect(setAutoCalcTickFlag).not.toHaveBeenCalled()
+    expect(refreshMetricLayout).not.toHaveBeenCalled()
+  })
+
+  it('preserves manual y-axis ranges for metric style-only setOptions calls', () => {
+    const { chart, setAutoCalcTickFlag, refreshMetricLayout, updatePane } =
+      createFixture(StyleInvalidation.Metric)
+
+    chart.setOptions({ styles: {} })
+
+    expect(updatePane).not.toHaveBeenCalled()
+    expect(setAutoCalcTickFlag).not.toHaveBeenCalled()
+    expect(refreshMetricLayout).toHaveBeenCalledOnce()
+  })
+
+  it('keeps exact metric layout when setOptions also contains non-style options', () => {
+    const { chart, setAutoCalcTickFlag, refreshMetricLayout, updatePane } =
+      createFixture(StyleInvalidation.Overlay)
+
+    chart.setOptions({ styles: {}, locale: 'zh-CN' })
+
+    expect(updatePane).not.toHaveBeenCalled()
+    expect(setAutoCalcTickFlag).not.toHaveBeenCalled()
+    expect(refreshMetricLayout).toHaveBeenCalledOnce()
   })
 })
 

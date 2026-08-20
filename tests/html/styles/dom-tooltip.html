@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOM Tooltip Fixture</title>
+    <link rel="stylesheet" href="/klinechart-tooltip.css">
+    <style>
+      html, body {
+        margin: 0;
+        min-width: 1200px;
+        background: #ffffff;
+        color: #1c2738;
+        font-family: Arial, sans-serif;
+      }
+
+      #chart {
+        width: 1200px;
+        height: 700px;
+      }
+
+      #controls {
+        display: flex;
+        gap: 8px;
+        padding: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <button id="use-canvas" type="button">Recreate with Canvas</button>
+      <button id="use-dom" type="button">Recreate with DOM</button>
+      <button id="run-benchmark" type="button">Run benchmark</button>
+      <button id="inspect-frame" type="button">Inspect frame</button>
+      <button id="export-overlay" type="button">Export overlay</button>
+      <button id="export-base" type="button">Export base</button>
+      <output id="last-action"></output>
+    </div>
+    <pre id="benchmark-results"></pre>
+    <div id="chart"></div>
+    <script type="module">
+      import {
+        ActionType,
+        PaneIdConstants,
+        TooltipIconPosition,
+        TooltipShowRule,
+        TooltipShowType,
+        dispose,
+        init
+      } from '/src/index.ts'
+      import CandleTooltipView from '/src/view/CandleTooltipView.ts'
+      import IndicatorTooltipView from '/src/view/IndicatorTooltipView.ts'
+      import TooltipDomRenderer from '/src/view/TooltipDomRenderer.ts'
+      import TooltipModelBuilder from '/src/view/TooltipModelBuilder.ts'
+
+      let benchmarkMode = 'dom'
+      const benchmarkTimings = createEmptyTimings()
+      wrapTimed(TooltipModelBuilder, 'buildCandle', 'model')
+      wrapTimed(TooltipModelBuilder, 'buildIndicator', 'model')
+      wrapTimed(CandleTooltipView.prototype, 'drawModel', 'canvasRenderer', (args) => args[2] !== false)
+      wrapTimed(IndicatorTooltipView.prototype, 'drawModel', 'canvasRenderer', (args) => args[2] !== false)
+      wrapTimed(TooltipDomRenderer.prototype, 'render', 'domRenderer')
+
+      const data = Array.from({ length: 1000 }, (_, index) => {
+        const base = 100 + Math.sin(index / 18) * 8 + index * 0.015
+        const close = base + Math.sin(index / 5) * 1.2
+        return {
+          timestamp: Date.UTC(2024, 0, 1, 0, index),
+          open: base,
+          high: Math.max(base, close) + 1.5,
+          low: Math.min(base, close) - 1.5,
+          close,
+          volume: 1000 + (index % 50) * 80,
+          turnover: close * (1000 + (index % 50) * 80)
+        }
+      })
+
+      let chart
+      let chartReady
+      let candleTooltipIcon = '▾'
+      installChart('dom', true)
+
+      document.querySelector('#use-canvas').addEventListener('click', async () => {
+        await recreateChart('canvas')
+        document.querySelector('#last-action').textContent = 'recreated with Canvas renderer'
+      })
+      document.querySelector('#use-dom').addEventListener('click', async () => {
+        await recreateChart('dom')
+        document.querySelector('#last-action').textContent = 'recreated with DOM renderer'
+      })
+      document.querySelector('#run-benchmark').addEventListener('click', async () => {
+        const output = document.querySelector('#benchmark-results')
+        output.textContent = 'Running...'
+        output.textContent = JSON.stringify(await runBenchmark(), null, 2)
+      })
+      document.querySelector('#inspect-frame').addEventListener('click', async () => {
+        await chartReady
+        const additions = []
+        const observer = new MutationObserver(records => {
+          records.forEach(record => {
+            record.addedNodes.forEach(node => additions.push({
+              target: record.target.nodeName,
+              node: node.nodeName,
+              type: node.getAttribute?.('data-klinechart-tooltip-block') ?? null,
+              content: node.getAttribute?.('data-klinechart-tooltip-content') ?? null
+            }))
+          })
+        })
+        observer.observe(document.querySelector('#chart'), { childList: true, subtree: true })
+        const index = (chart.getChartStore().getTooltipStore().getCrosshair().dataIndex + 1) % data.length
+        chart.executeAction(ActionType.OnCrosshairChange, {
+          x: chart.getChartStore().getTimeScaleStore().dataIndexToCoordinate(index),
+          y: 160,
+          paneId: PaneIdConstants.CANDLE
+        })
+        await nextFrame()
+        observer.disconnect()
+        document.querySelector('#last-action').textContent = JSON.stringify(additions)
+      })
+      document.querySelector('#export-overlay').addEventListener('click', () => {
+        document.querySelector('#last-action').textContent = `overlay:${chart.getConvertPictureUrl(true).length}`
+      })
+      document.querySelector('#export-base').addEventListener('click', () => {
+        document.querySelector('#last-action').textContent = `base:${chart.getConvertPictureUrl(false).length}`
+      })
+
+      function installChart(renderType, markReady = false) {
+        candleTooltipIcon = '▾'
+        chart = init('chart', {
+          tooltip: { renderType },
+          styles: {
+            candle: {
+              tooltip: {
+                showType: TooltipShowType.Standard,
+                icons: [createCandleTooltipIcon(candleTooltipIcon)]
+              }
+            },
+            indicator: {
+              tooltip: {
+                showRule: TooltipShowRule.Always,
+                icons: []
+              }
+            }
+          }
+        })
+        chart.subscribeAction(ActionType.OnTooltipIconClick, (eventData) => {
+          if (
+            eventData.paneId === PaneIdConstants.CANDLE &&
+            eventData.indicatorId === '' &&
+            eventData.iconId === 'toggle-candle-tooltip'
+          ) {
+            candleTooltipIcon = candleTooltipIcon === '▾' ? '▸' : '▾'
+            chart.setStyles({
+              candle: {
+                tooltip: {
+                  icons: [createCandleTooltipIcon(candleTooltipIcon)]
+                }
+              },
+              indicator: {
+                tooltip: {
+                  showRule: candleTooltipIcon === '▸'
+                    ? TooltipShowRule.None
+                    : TooltipShowRule.Always
+                }
+              }
+            })
+            window.candleTooltipIcon = candleTooltipIcon
+            window.indicatorTooltipsVisible = candleTooltipIcon === '▾'
+          }
+          window.lastTooltipIcon = eventData
+          document.querySelector('#last-action').textContent = JSON.stringify({
+            ...eventData,
+            icon: candleTooltipIcon
+          })
+        })
+        chart.createIndicator('MA', true, { id: PaneIdConstants.CANDLE })
+        chart.createIndicator('BOLL', true, { id: PaneIdConstants.CANDLE })
+        chart.createIndicator('VOL')
+        chart.createIndicator('MACD')
+        chart.createIndicator('KDJ')
+        chartReady = new Promise(resolve => {
+          chart.applyNewData(data, true, () => {
+            chart.executeAction(ActionType.OnCrosshairChange, {
+              x: 600,
+              y: 160,
+              paneId: PaneIdConstants.CANDLE
+            })
+            requestAnimationFrame(() => {
+              if (markReady) {
+                window.domTooltipReady = true
+              }
+              resolve()
+            })
+          })
+        })
+        window.chart = chart
+        window.candleTooltipIcon = candleTooltipIcon
+        window.indicatorTooltipsVisible = true
+      }
+
+      function createCandleTooltipIcon(icon) {
+        return {
+          id: 'toggle-candle-tooltip',
+          position: TooltipIconPosition.Left,
+          color: '#40516b',
+          activeColor: '#ffffff',
+          size: 12,
+          fontFamily: 'Arial, sans-serif',
+          icon,
+          backgroundColor: '#d8e0eb',
+          activeBackgroundColor: '#40516b',
+          marginLeft: 2,
+          marginTop: 2,
+          marginRight: 4,
+          marginBottom: 2,
+          paddingLeft: 4,
+          paddingTop: 2,
+          paddingRight: 4,
+          paddingBottom: 2
+        }
+      }
+
+      async function recreateChart(renderType, markReady = false) {
+        await chartReady
+        dispose(chart)
+        installChart(renderType, markReady)
+        await chartReady
+      }
+
+      function createEmptyTimings() {
+        return {
+          canvas: { model: [], canvasRenderer: [], domRenderer: [], frame: [] },
+          dom: { model: [], canvasRenderer: [], domRenderer: [], frame: [] }
+        }
+      }
+
+      function wrapTimed(target, methodName, bucket, shouldRecord = () => true) {
+        const original = target[methodName]
+        target[methodName] = function (...args) {
+          const start = performance.now()
+          const result = original.apply(this, args)
+          if (shouldRecord(args)) {
+            benchmarkTimings[benchmarkMode][bucket].push(performance.now() - start)
+          }
+          return result
+        }
+      }
+
+      async function runBenchmark() {
+        await document.fonts.ready
+        await chartReady
+        const report = {}
+        for (const mode of ['canvas', 'dom']) {
+          benchmarkMode = mode
+          await recreateChart(mode)
+          await runFrames(chart, 120, 0, false)
+          Object.values(benchmarkTimings[mode]).forEach(values => { values.length = 0 })
+
+          let nodeCreations = 0
+          const observer = new MutationObserver(records => {
+            records.forEach(record => { nodeCreations += record.addedNodes.length })
+          })
+          observer.observe(document.querySelector('#chart'), { childList: true, subtree: true })
+          await runFrames(chart, 600, 120, true)
+          observer.disconnect()
+
+          report[mode] = {
+            fixture: { width: 1200, height: 700, dataPoints: data.length, indicators: ['MA', 'BOLL', 'VOL', 'MACD', 'KDJ'] },
+            warmupFrames: 120,
+            measuredFrames: 600,
+            modelBuildMs: summarize(benchmarkTimings[mode].model),
+            rendererCommitMs: summarize(mode === 'dom' ? benchmarkTimings[mode].domRenderer : benchmarkTimings[mode].canvasRenderer),
+            completeFrameMs: summarize(benchmarkTimings[mode].frame),
+            postWarmupNodeCreations: nodeCreations
+          }
+        }
+        benchmarkMode = 'dom'
+        await recreateChart('dom', true)
+        return report
+      }
+
+      async function runFrames(chartInstance, count, offset, measured) {
+        const timeScale = chartInstance.getChartStore().getTimeScaleStore()
+        for (let frame = 0; frame < count; frame++) {
+          const dataIndex = (offset + frame) % data.length
+          const start = performance.now()
+          chartInstance.executeAction(ActionType.OnCrosshairChange, {
+            x: timeScale.dataIndexToCoordinate(dataIndex),
+            y: 160,
+            paneId: PaneIdConstants.CANDLE
+          })
+          await nextPaintFrame()
+          if (measured) {
+            benchmarkTimings[benchmarkMode].frame.push(performance.now() - start)
+          }
+        }
+      }
+
+      function nextFrame() {
+        return new Promise(resolve => requestAnimationFrame(resolve))
+      }
+
+      // A nested rAF lets the browser complete the render boundary between
+      // callbacks, so this timing includes the update's layout/paint turn.
+      function nextPaintFrame() {
+        return new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+      }
+
+      function summarize(values) {
+        if (values.length === 0) return { samples: 0, average: 0, p95: 0 }
+        const sorted = [...values].sort((a, b) => a - b)
+        const average = values.reduce((sum, value) => sum + value, 0) / values.length
+        return {
+          samples: values.length,
+          average: Number(average.toFixed(3)),
+          p95: Number(sorted[Math.floor((sorted.length - 1) * 0.95)].toFixed(3))
+        }
+      }
+    </script>
+  </body>
+</html>

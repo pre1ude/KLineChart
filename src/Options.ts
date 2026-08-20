@@ -21,6 +21,13 @@ export interface CustomApi {
   formatBigNumber: FormatBigNumber
 }
 
+export type TooltipRenderType = 'canvas' | 'dom'
+
+export interface TooltipOptions {
+  /** Selected when the chart is created and ignored by later Chart.setOptions calls. */
+  renderType?: TooltipRenderType
+}
+
 export function getDefaultCustomApi(): CustomApi {
   return {
     formatDate,
@@ -108,6 +115,7 @@ export interface Gap1Options {
 }
 
 export interface Options {
+  tooltip?: TooltipOptions
   layout?: LayoutChild[]
   paneResizeMode?: PaneResizeMode
   indicatorPaneDefaultHeight?: number

@@ -240,7 +240,9 @@ export type {
   Gap1ValueFormatterParams,
   Gap1ValueText,
   GapOptions,
-  Options
+  Options,
+  TooltipOptions,
+  TooltipRenderType
 } from './Options'
 export type { PaneOptions, PaneResizeMode } from './pane/types'
 

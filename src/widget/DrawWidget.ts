@@ -91,9 +91,12 @@ export default abstract class DrawWidget<P extends Pane> extends Widget<P> {
 
     if (includeOverlay) {
       ctx.drawImage(this._overlayCanvas.getElement(), 0, 0, width, height)
+      this.drawOverlayForExport(ctx)
     }
     return canvas
   }
+
+  protected drawOverlayForExport(_ctx: CanvasRenderingContext2D): void {}
 
   protected abstract updateMain(ctx: CanvasRenderingContext2D): void
   protected abstract updateOverlay(ctx: CanvasRenderingContext2D): void

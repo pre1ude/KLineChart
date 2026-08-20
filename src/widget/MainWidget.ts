@@ -64,4 +64,19 @@ export default class MainWidget extends DrawWidget<DualYPane> {
       layer.drawOverlay?.(ctx)
     })
   }
+
+  protected override drawOverlayForExport(ctx: CanvasRenderingContext2D): void {
+    this._layers.forEach((layer) => {
+      layer.drawOverlayForExport?.(ctx)
+    })
+  }
+
+  isTooltipIconHovered(): boolean {
+    return this._layers.some(layer => layer.isTooltipIconHovered?.() === true)
+  }
+
+  override destroy(): void {
+    this._layers.forEach(layer => layer.destroy?.())
+    super.destroy()
+  }
 }

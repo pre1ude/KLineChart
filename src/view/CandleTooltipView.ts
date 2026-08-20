@@ -2,210 +2,132 @@ import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
 import type KLineData from '../common/KLineData'
 import type Precision from '../common/Precision'
+import type { TooltipIconIdentity } from '../common/Tooltip'
 import {
   type CandleStyle,
   type CandleTooltipCustomCallbackData,
   CandleTooltipRectPosition,
   PolygonType,
   type Styles,
-  type TooltipLegend, type TooltipLegendChild, TooltipShowType
+  type TooltipLegend, type TooltipLegendChild
 } from '../common/Styles'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { type DateTimeFormat, getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
-import { isFunction, isObject, isValid } from '../common/utils/typeChecks'
+import { isFunction, isObject } from '../common/utils/typeChecks'
 import type { Indicator } from '../component/Indicator'
 import { drawStaticFigure } from '../extension/figure'
 import { i18n } from '../extension/i18n/index'
 import { type CustomApi, FormatDateType } from '../Options'
 import type DualYPane from '../pane/DualYPane'
 import { PaneIdConstants } from '../pane/types'
-import { type TooltipIcon } from '../store/TooltipStore'
-import IndicatorTooltipView, { type StandardTooltipContent } from './IndicatorTooltipView'
+import IndicatorTooltipView from './IndicatorTooltipView'
+import {
+  type RectTooltipBlock,
+  type TooltipRenderModel
+} from './TooltipModel'
+import TooltipModelBuilder from './TooltipModelBuilder'
 
 export default class CandleTooltipView extends IndicatorTooltipView {
+  override buildRenderModel(): TooltipRenderModel {
+    return TooltipModelBuilder.buildCandle(this)
+  }
+
   override drawImp(ctx: CanvasRenderingContext2D): void {
-    const widget = this.getWidget()
-    const pane = widget.getPane()
-    const paneId = pane.getId()
-    const chartStore = pane.getChart().getChartStore()
-    const crosshair = chartStore.getTooltipStore().getCrosshair()
-    if (isValid(crosshair.kLineData)) {
-      const bounding = widget.getBounding()
-      // todo check
-      const yLeftAxisBounding = (pane as DualYPane).getYLeftAxisWidget().getBounding()
-      const yRightAxisBounding = (pane as DualYPane).getYRightAxisWidget().getBounding()
-      // const yAxisBounding = pane.getYAxisWidget()!.getBounding()
-      const dataList = chartStore.getDataList()
-      const precision = chartStore.getPrecision()
-      const locale = chartStore.getLocale()
-      const customApi = chartStore.getCustomApi()
-      const thousandsSeparator = chartStore.getThousandsSeparator()
-      const decimalFoldThreshold = chartStore.getDecimalFoldThreshold()
-      const activeIcon = chartStore.getTooltipStore().getActiveIcon()
-      const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
-      const dateTimeFormat = getDateTimeFormat()
-      const styles = chartStore.getStyles()
-      const candleStyles = styles.candle
-      const indicatorStyles = styles.indicator
-      if (
-        candleStyles.tooltip.showType === TooltipShowType.Rect &&
-        indicatorStyles.tooltip.showType === TooltipShowType.Rect
-      ) {
-        const isDrawCandleTooltip = this.isDrawTooltip(crosshair, candleStyles.tooltip)
-        const isDrawIndicatorTooltip = this.isDrawTooltip(crosshair, indicatorStyles.tooltip)
-        this._drawRectTooltip(
-          ctx, dataList, indicators,
-          bounding, yLeftAxisBounding, yRightAxisBounding,
-          crosshair, precision,
-          dateTimeFormat, locale, customApi, thousandsSeparator, decimalFoldThreshold,
-          isDrawCandleTooltip, isDrawIndicatorTooltip,
-          candleStyles.tooltip.offsetTop, styles
-        )
-      } else if (
-        candleStyles.tooltip.showType === TooltipShowType.Standard &&
-        indicatorStyles.tooltip.showType === TooltipShowType.Standard
-      ) {
-        const { offsetLeft, offsetTop, offsetRight } = candleStyles.tooltip
-        const maxWidth = bounding.width - offsetRight
-        const top = this._drawCandleStandardTooltip(
-          ctx, dataList, paneId, crosshair, activeIcon, precision,
-          dateTimeFormat, locale, customApi, thousandsSeparator, decimalFoldThreshold,
-          offsetLeft, offsetTop, maxWidth, candleStyles
-        )
-        this.drawIndicatorTooltip(
-          ctx, paneId, dataList, crosshair,
-          activeIcon, indicators, customApi,
-          thousandsSeparator, decimalFoldThreshold,
-          offsetLeft, top, maxWidth, indicatorStyles
-        )
-      } else if (
-        candleStyles.tooltip.showType === TooltipShowType.Rect &&
-        indicatorStyles.tooltip.showType === TooltipShowType.Standard
-      ) {
-        const { offsetLeft, offsetTop, offsetRight } = candleStyles.tooltip
-        const maxWidth = bounding.width - offsetRight
-        const top = this.drawIndicatorTooltip(
-          ctx, paneId, dataList, crosshair,
-          activeIcon, indicators, customApi,
-          thousandsSeparator, decimalFoldThreshold,
-          offsetLeft, offsetTop, maxWidth, indicatorStyles
-        )
-        const isDrawCandleTooltip = this.isDrawTooltip(crosshair, candleStyles.tooltip)
-        this._drawRectTooltip(
-          ctx, dataList, indicators,
-          bounding, yLeftAxisBounding, yRightAxisBounding,
-          crosshair, precision, dateTimeFormat,
-          locale, customApi, thousandsSeparator, decimalFoldThreshold,
-          isDrawCandleTooltip, false, top, styles
+    const model = this.buildRenderModel()
+    this.drawModel(ctx, model, true, null)
+  }
+
+  override drawModel(
+    ctx: CanvasRenderingContext2D,
+    model: TooltipRenderModel,
+    interactive = true,
+    hoveredIcon: TooltipIconIdentity | null = null
+  ): void {
+    if (interactive) {
+      this.clear()
+    }
+    let top: number | undefined
+    model.blocks.forEach(block => {
+      if (block.type === 'standard') {
+        top = this.drawStandardTooltip(
+          ctx,
+          hoveredIcon,
+          block.contents,
+          block.paneId,
+          block.indicatorId,
+          block.indicatorName,
+          block.left,
+          top ?? block.top,
+          block.maxWidth,
+          block.styles,
+          interactive
         )
       } else {
-        const { offsetLeft, offsetTop, offsetRight } = candleStyles.tooltip
-        const maxWidth = bounding.width - offsetRight
-        const top = this._drawCandleStandardTooltip(
-          ctx, dataList, paneId, crosshair, activeIcon, precision,
-          dateTimeFormat, locale, customApi, thousandsSeparator, decimalFoldThreshold,
-          offsetLeft, offsetTop, maxWidth, candleStyles
-        )
-        const isDrawIndicatorTooltip = this.isDrawTooltip(crosshair, indicatorStyles.tooltip)
-        this._drawRectTooltip(
-          ctx, dataList, indicators,
-          bounding, yLeftAxisBounding, yRightAxisBounding,
-          crosshair, precision, dateTimeFormat,
-          locale, customApi, thousandsSeparator, decimalFoldThreshold,
-          false, isDrawIndicatorTooltip, top, styles
-        )
+        this._drawRectTooltipBlock(ctx, block, top ?? block.top)
       }
-    }
+    })
   }
 
-  private _drawCandleStandardTooltip(
-    ctx: CanvasRenderingContext2D,
-    dataList: KLineData[],
-    paneId: string,
-    crosshair: Crosshair,
-    activeTooltipIcon: TooltipIcon | null,
-    precision: Precision,
-    dateTimeFormat: DateTimeFormat,
-    locale: string,
-    customApi: CustomApi,
-    thousandsSeparator: string,
-    decimalFoldThreshold: number,
-    left: number,
-    top: number,
-    maxWidth: number,
-    styles: CandleStyle
-  ): number {
-    const tooltipStyles = styles.tooltip
-    const tooltipTextStyles = tooltipStyles.text
-    if (this.isDrawTooltip(crosshair, tooltipStyles)) {
-      const dataIndex = crosshair.dataIndex ?? 0
-      const kLineData = crosshair.kLineData
-      if (!kLineData) {
-        return top
-      }
-      const legends = this._getCandleTooltipLegends(
-        { prev: dataList[dataIndex - 1] ?? null, current: kLineData, next: dataList[dataIndex + 1] ?? null },
-        precision, dateTimeFormat, locale, customApi, thousandsSeparator, decimalFoldThreshold, styles
-      )
-
-      const [leftIcons, middleIcons, rightIcons] = this.classifyTooltipIcons(tooltipStyles.icons)
-
-      const contents: StandardTooltipContent[] = [
-        { type: 'icons', icons: leftIcons },
-        { type: 'icons', icons: middleIcons }
-      ]
-      if (legends.length > 0) {
-        contents.push({ type: 'legends', legends, styles: tooltipTextStyles })
-      }
-      contents.push({ type: 'icons', icons: rightIcons })
-
-      return this.drawStandardTooltip(
-        ctx, activeTooltipIcon, contents,
-        paneId, '', '',
-        left, top, maxWidth, tooltipStyles
-      )
-    }
-    return top
-  }
-
-  private _drawRectTooltip(
-    ctx: CanvasRenderingContext2D,
+  buildRectTooltipBlock(
     dataList: KLineData[],
     indicators: Indicator[],
     bounding: Bounding,
-    // yAxisBounding: Bounding,
-    yLeftAxisBounding: Bounding, yRightAxisBounding: Bounding,
     crosshair: Crosshair,
-    precision: Precision,
-    dateTimeFormat: DateTimeFormat,
-    locale: string,
-    customApi: CustomApi,
-    thousandsSeparator: string,
-    decimalFoldThreshold: number,
-    isDrawCandleTooltip: boolean,
-    isDrawIndicatorTooltip: boolean,
+    drawCandle: boolean,
+    drawIndicator: boolean,
     top: number,
     styles: Styles
-  ): void {
+  ): RectTooltipBlock | null {
+    const dataIndex = crosshair.dataIndex ?? 0
+    const kLineData = crosshair.kLineData
+    if (!kLineData || (!drawCandle && !drawIndicator)) {
+      return null
+    }
+    const chartStore = this.getWidget().getPane().getChart().getChartStore()
+    const candleLegends = drawCandle
+      ? this.getCandleTooltipLegends(
+        { prev: dataList[dataIndex - 1] ?? null, current: kLineData, next: dataList[dataIndex + 1] ?? null },
+        chartStore.getPrecision(), getDateTimeFormat(), chartStore.getLocale(), chartStore.getCustomApi(),
+        chartStore.getThousandsSeparator(), chartStore.getDecimalFoldThreshold(), styles.candle
+      )
+      : []
+    const indicatorLegends = drawIndicator
+      ? indicators.map(indicator => this.getIndicatorTooltipData(
+        dataList, crosshair, indicator, chartStore.getCustomApi(),
+        chartStore.getThousandsSeparator(), chartStore.getDecimalFoldThreshold(), styles.indicator
+      ).values ?? [])
+      : []
+    if (candleLegends.length === 0 && indicatorLegends.every(legends => legends.length === 0)) {
+      return null
+    }
+    const pane = this.getWidget().getPane() as DualYPane
+    return {
+      type: 'rect',
+      top,
+      bounding,
+      yLeftAxisWidth: pane.getYLeftAxisWidget().getBounding().width,
+      yRightAxisWidth: pane.getYRightAxisWidget().getBounding().width,
+      crosshair,
+      styles,
+      drawCandle,
+      drawIndicator,
+      candleLegends,
+      indicatorLegends
+    }
+  }
+
+  private _drawRectTooltipBlock(ctx: CanvasRenderingContext2D, block: RectTooltipBlock, top: number): void {
+    const { bounding, crosshair, styles } = block
     const candleStyles = styles.candle
     const indicatorStyles = styles.indicator
     const candleTooltipStyles = candleStyles.tooltip
     const indicatorTooltipStyles = indicatorStyles.tooltip
-    if (isDrawCandleTooltip || isDrawIndicatorTooltip) {
-      const dataIndex = crosshair.dataIndex ?? 0
-      const kLineData = crosshair.kLineData
-      if (!kLineData) {
-        return
-      }
-      const candleLegends = this._getCandleTooltipLegends(
-        { prev: dataList[dataIndex - 1] ?? null, current: kLineData, next: dataList[dataIndex + 1] ?? null },
-        precision, dateTimeFormat, locale, customApi, thousandsSeparator, decimalFoldThreshold, candleStyles
-      )
-
-      const { offsetLeft, offsetTop, offsetRight, offsetBottom } = candleTooltipStyles
-
-      const {
+    const candleLegends = block.candleLegends
+    const indicatorLegendsArray = block.indicatorLegends
+    const {
+      offsetLeft, offsetTop, offsetRight, offsetBottom,
+      text: {
         marginLeft: baseTextMarginLeft,
         marginRight: baseTextMarginRight,
         marginTop: baseTextMarginTop,
@@ -213,9 +135,8 @@ export default class CandleTooltipView extends IndicatorTooltipView {
         size: baseTextSize,
         weight: baseTextWeight,
         fontFamily: baseFontFamily
-      } = candleTooltipStyles.text
-
-      const {
+      },
+      rect: {
         position: rectPosition,
         paddingLeft: rectPaddingLeft,
         paddingRight: rectPaddingRight,
@@ -229,185 +150,117 @@ export default class CandleTooltipView extends IndicatorTooltipView {
         borderRadius: rectBorderRadius,
         borderColor: rectBorderColor,
         color: rectBackgroundColor
-      } = candleTooltipStyles.rect
-
-      let maxTextWidth = 0
-      let rectWidth = 0
-      let rectHeight = 0
-      if (isDrawCandleTooltip) {
-        const font = createFont(baseTextSize, baseTextWeight, baseFontFamily)
-        candleLegends.forEach(data => {
-          const title = data.title as TooltipLegendChild
-          const value = data.value as TooltipLegendChild
-          const text = `${title.text}${value.text}`
-          const textWidth = calcTextWidth(text, font)
-          const labelWidth = textWidth + baseTextMarginLeft + baseTextMarginRight
-          maxTextWidth = Math.max(maxTextWidth, labelWidth)
-        })
-        rectHeight += ((baseTextMarginBottom + baseTextMarginTop + baseTextSize) * candleLegends.length)
       }
+    } = candleTooltipStyles
+    const {
+      marginLeft: indicatorTextMarginLeft,
+      marginRight: indicatorTextMarginRight,
+      marginTop: indicatorTextMarginTop,
+      marginBottom: indicatorTextMarginBottom,
+      size: indicatorTextSize,
+      weight: indicatorTextWeight,
+      fontFamily: indicatorFontFamily
+    } = indicatorTooltipStyles.text
 
-      const {
-        marginLeft: indicatorTextMarginLeft,
-        marginRight: indicatorTextMarginRight,
-        marginTop: indicatorTextMarginTop,
-        marginBottom: indicatorTextMarginBottom,
-        size: indicatorTextSize,
-        weight: indicatorTextWeight,
-        fontFamily: indicatorFontFamily
-      } = indicatorTooltipStyles.text
-      const indicatorLegendsArray: TooltipLegend[][] = []
-      if (isDrawIndicatorTooltip) {
-        const font = createFont(indicatorTextSize, indicatorTextWeight, indicatorFontFamily)
-        indicators.forEach(indicator => {
-          const tooltipDataValues = this.getIndicatorTooltipData(dataList, crosshair, indicator, customApi, thousandsSeparator, decimalFoldThreshold, indicatorStyles).values ?? []
-          indicatorLegendsArray.push(tooltipDataValues)
-          tooltipDataValues.forEach(data => {
-            const title = data.title as TooltipLegendChild
-            const value = data.value as TooltipLegendChild
-            const text = `${title.text}${value.text}`
-            const textWidth = calcTextWidth(text, font) + indicatorTextMarginLeft + indicatorTextMarginRight
-            maxTextWidth = Math.max(maxTextWidth, textWidth)
-            rectHeight += (indicatorTextMarginTop + indicatorTextMarginBottom + indicatorTextSize)
-          })
-        })
+    let maxTextWidth = 0
+    let rectHeight = 0
+    if (block.drawCandle) {
+      const font = createFont(baseTextSize, baseTextWeight, baseFontFamily)
+      candleLegends.forEach(data => {
+        const title = data.title as TooltipLegendChild
+        const value = data.value as TooltipLegendChild
+        maxTextWidth = Math.max(maxTextWidth, calcTextWidth(`${title.text}${value.text}`, font) + baseTextMarginLeft + baseTextMarginRight)
+        rectHeight += baseTextMarginBottom + baseTextMarginTop + baseTextSize
+      })
+    }
+    if (block.drawIndicator) {
+      const font = createFont(indicatorTextSize, indicatorTextWeight, indicatorFontFamily)
+      indicatorLegendsArray.forEach(legends => legends.forEach(data => {
+        const title = data.title as TooltipLegendChild
+        const value = data.value as TooltipLegendChild
+        maxTextWidth = Math.max(maxTextWidth, calcTextWidth(`${title.text}${value.text}`, font) + indicatorTextMarginLeft + indicatorTextMarginRight)
+        rectHeight += indicatorTextMarginTop + indicatorTextMarginBottom + indicatorTextSize
+      }))
+    }
+    if (maxTextWidth === 0 || rectHeight === 0) {
+      return
+    }
+
+    const rectWidth = maxTextWidth + rectBorderSize * 2 + rectPaddingLeft + rectPaddingRight
+    const rectTotalHeight = rectHeight + rectBorderSize * 2 + rectPaddingTop + rectPaddingBottom
+    const centerX = bounding.width / 2
+    const isPointer = rectPosition === CandleTooltipRectPosition.Pointer && crosshair.paneId === PaneIdConstants.CANDLE
+    const isLeft = (crosshair.realX ?? 0) > centerX
+    let rectX: number
+    if (isPointer) {
+      const realX = crosshair.realX ?? 0
+      rectX = isLeft ? realX - rectOffsetRight - rectWidth : realX + rectOffsetLeft
+    } else if (isLeft) {
+      rectX = rectOffsetLeft + offsetLeft + (styles.yAxis.inside ? block.yLeftAxisWidth : 0)
+    } else {
+      rectX = bounding.width - rectOffsetRight - rectWidth - offsetRight - (styles.yAxis.inside ? block.yRightAxisWidth : 0)
+    }
+
+    let rectY = top + rectOffsetTop
+    if (isPointer) {
+      rectY = (crosshair.y ?? 0) - rectTotalHeight / 2
+      if (rectY + rectTotalHeight > bounding.height - rectOffsetBottom - offsetBottom) {
+        rectY = bounding.height - rectOffsetBottom - rectTotalHeight - offsetBottom
       }
-      rectWidth += maxTextWidth
-      if (rectWidth !== 0 && rectHeight !== 0) {
-        rectWidth += (rectBorderSize * 2 + rectPaddingLeft + rectPaddingRight)
-        rectHeight += (rectBorderSize * 2 + rectPaddingTop + rectPaddingBottom)
-        const centerX = bounding.width / 2
-        const isPointer = rectPosition === CandleTooltipRectPosition.Pointer && crosshair.paneId === PaneIdConstants.CANDLE
-        const isLeft = (crosshair.realX ?? 0) > centerX
-        let rectX: number = 0
-        if (isPointer) {
-          const realX = crosshair.realX ?? 0
-          if (isLeft) {
-            rectX = realX - rectOffsetRight - rectWidth
-          } else {
-            rectX = realX + rectOffsetLeft
-          }
-        } else if (isLeft) {
-          rectX = rectOffsetLeft + offsetLeft
-          if (styles.yAxis.inside) {
-            rectX += yLeftAxisBounding.width
-          }
-        } else {
-          rectX = bounding.width - rectOffsetRight - rectWidth - offsetRight
-          if (styles.yAxis.inside) {
-            rectX -= yRightAxisBounding.width
-          }
-        }
-
-        let rectY = top + rectOffsetTop
-        if (isPointer) {
-          const y = crosshair.y ?? 0
-          rectY = y - rectHeight / 2
-          if (rectY + rectHeight > bounding.height - rectOffsetBottom - offsetBottom) {
-            rectY = bounding.height - rectOffsetBottom - rectHeight - offsetBottom
-          }
-          if (rectY < top + rectOffsetTop) {
-            rectY = top + rectOffsetTop + offsetTop
-          }
-        }
-        drawStaticFigure(ctx, 'rect', {
-          attrs: {
-            x: rectX,
-            y: rectY,
-            width: rectWidth,
-            height: rectHeight
-          },
-          styles: {
-            style: PolygonType.StrokeFill,
-            color: rectBackgroundColor,
-            borderColor: rectBorderColor,
-            borderSize: rectBorderSize,
-            borderRadius: rectBorderRadius
-          }
-        })
-        const candleTextX = rectX + rectBorderSize + rectPaddingLeft + baseTextMarginLeft
-        let textY = rectY + rectBorderSize + rectPaddingTop
-        if (isDrawCandleTooltip) {
-          // render candle texts
-          candleLegends.forEach(data => {
-            textY += baseTextMarginTop
-            const title = data.title as TooltipLegendChild
-            drawStaticFigure(ctx, 'text', {
-              attrs: {
-                x: candleTextX,
-                y: textY,
-                text: title.text
-              },
-              styles: {
-                color: title.color,
-                size: baseTextSize,
-                fontFamily: baseFontFamily,
-                weight: baseTextWeight
-              }
-            })
-            const value = data.value as TooltipLegendChild
-            drawStaticFigure(ctx, 'text', {
-              attrs: {
-                x: rectX + rectWidth - rectBorderSize - baseTextMarginRight - rectPaddingRight,
-                y: textY,
-                text: value.text,
-                align: 'right'
-              },
-              styles: {
-                color: value.color,
-                size: baseTextSize,
-                fontFamily: baseFontFamily,
-                weight: baseTextWeight
-              }
-            })
-            textY += (baseTextSize + baseTextMarginBottom)
-          })
-        }
-        if (isDrawIndicatorTooltip) {
-          // render indicator texts
-          const indicatorTextX = rectX + rectBorderSize + rectPaddingLeft + indicatorTextMarginLeft
-          indicatorLegendsArray.forEach(legends => {
-            legends.forEach(data => {
-              textY += indicatorTextMarginTop
-              const title = data.title as TooltipLegendChild
-              const value = data.value as TooltipLegendChild
-              drawStaticFigure(ctx, 'text', {
-                attrs: {
-                  x: indicatorTextX,
-                  y: textY,
-                  text: title.text
-                },
-                styles: {
-                  color: title.color,
-                  size: indicatorTextSize,
-                  fontFamily: indicatorFontFamily,
-                  weight: indicatorTextWeight
-                }
-              })
-
-              drawStaticFigure(ctx, 'text', {
-                attrs: {
-                  x: rectX + rectWidth - rectBorderSize - indicatorTextMarginRight - rectPaddingRight,
-                  y: textY,
-                  text: value.text,
-                  align: 'right'
-                },
-                styles: {
-                  color: value.color,
-                  size: indicatorTextSize,
-                  fontFamily: indicatorFontFamily,
-                  weight: indicatorTextWeight
-                }
-              })
-              textY += (indicatorTextSize + indicatorTextMarginBottom)
-            })
-          })
-        }
+      if (rectY < top + rectOffsetTop) {
+        rectY = top + rectOffsetTop + offsetTop
       }
+    }
+
+    drawStaticFigure(ctx, 'rect', {
+      attrs: { x: rectX, y: rectY, width: rectWidth, height: rectTotalHeight },
+      styles: {
+        style: PolygonType.StrokeFill,
+        color: rectBackgroundColor,
+        borderColor: rectBorderColor,
+        borderSize: rectBorderSize,
+        borderRadius: rectBorderRadius
+      }
+    })
+
+    let textY = rectY + rectBorderSize + rectPaddingTop
+    if (block.drawCandle) {
+      const candleTextX = rectX + rectBorderSize + rectPaddingLeft + baseTextMarginLeft
+      candleLegends.forEach(data => {
+        textY += baseTextMarginTop
+        const title = data.title as TooltipLegendChild
+        drawStaticFigure(ctx, 'text', {
+          attrs: { x: candleTextX, y: textY, text: title.text },
+          styles: { color: title.color, size: baseTextSize, fontFamily: baseFontFamily, weight: baseTextWeight }
+        })
+        const value = data.value as TooltipLegendChild
+        drawStaticFigure(ctx, 'text', {
+          attrs: { x: rectX + rectWidth - rectBorderSize - baseTextMarginRight - rectPaddingRight, y: textY, text: value.text, align: 'right' },
+          styles: { color: value.color, size: baseTextSize, fontFamily: baseFontFamily, weight: baseTextWeight }
+        })
+        textY += baseTextSize + baseTextMarginBottom
+      })
+    }
+    if (block.drawIndicator) {
+      const indicatorTextX = rectX + rectBorderSize + rectPaddingLeft + indicatorTextMarginLeft
+      indicatorLegendsArray.forEach(legends => legends.forEach(data => {
+        textY += indicatorTextMarginTop
+        const title = data.title as TooltipLegendChild
+        drawStaticFigure(ctx, 'text', {
+          attrs: { x: indicatorTextX, y: textY, text: title.text },
+          styles: { color: title.color, size: indicatorTextSize, fontFamily: indicatorFontFamily, weight: indicatorTextWeight }
+        })
+        const value = data.value as TooltipLegendChild
+        drawStaticFigure(ctx, 'text', {
+          attrs: { x: rectX + rectWidth - rectBorderSize - indicatorTextMarginRight - rectPaddingRight, y: textY, text: value.text, align: 'right' },
+          styles: { color: value.color, size: indicatorTextSize, fontFamily: indicatorFontFamily, weight: indicatorTextWeight }
+        })
+        textY += indicatorTextSize + indicatorTextMarginBottom
+      }))
     }
   }
 
-  private _getCandleTooltipLegends(
+  getCandleTooltipLegends(
     data: CandleTooltipCustomCallbackData,
     precision: Precision,
     dateTimeFormat: DateTimeFormat,

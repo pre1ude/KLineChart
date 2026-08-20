@@ -14,6 +14,15 @@ export interface Layer {
    * 绘制覆盖层内容（在 overlay canvas 上）
    */
   drawOverlay?: (ctx: CanvasRenderingContext2D) => void
+
+  /**
+   * Draw overlay content that is not present in the live Canvas composition.
+   */
+  drawOverlayForExport?: (ctx: CanvasRenderingContext2D) => void
+
+  isTooltipIconHovered?: () => boolean
+
+  destroy?: () => void
 }
 
 export interface LayerClass {

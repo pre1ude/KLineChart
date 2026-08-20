@@ -1,12 +1,79 @@
 import { describe, expect, it, vi } from 'vitest'
 import type KLineData from '../common/KLineData'
 import { LoadDataType } from '../common/LoadDataCallback'
+import { TooltipShowRule } from '../common/Styles'
 import type Chart from '../Chart'
-import ChartStore from './ChartStore'
+import ChartStore, { StyleInvalidation } from './ChartStore'
 import { PANE_DEFAULT_HEIGHT } from '../pane/types'
 import * as logger from '../common/utils/logger'
 
 describe('ChartStore', () => {
+  it('classifies style invalidation from effective changes', () => {
+    const chart = {
+      refreshViewportLayout: vi.fn()
+    } as unknown as Chart
+    const store = new ChartStore(chart)
+    const tooltipStyles = {
+      candle: {
+        tooltip: {
+          showRule: TooltipShowRule.None
+        }
+      },
+      indicator: {
+        tooltip: {
+          showRule: TooltipShowRule.None
+        }
+      }
+    }
+
+    expect(store.updateOptions({ styles: tooltipStyles })).toBe(StyleInvalidation.Overlay)
+    expect(store.updateOptions({ styles: tooltipStyles })).toBe(StyleInvalidation.None)
+    expect(store.updateOptions({
+      styles: {
+        indicator: {
+          lastValueMark: { show: true }
+        }
+      }
+    })).toBe(StyleInvalidation.Metric)
+  })
+
+  it('uses the strongest invalidation when tooltip and metric styles change together', () => {
+    const chart = {
+      refreshViewportLayout: vi.fn()
+    } as unknown as Chart
+    const store = new ChartStore(chart)
+
+    expect(store.updateOptions({
+      styles: {
+        indicator: {
+          tooltip: { showRule: TooltipShowRule.None }
+        },
+        yAxis: {
+          tickText: { size: 14 }
+        }
+      }
+    })).toBe(StyleInvalidation.Metric)
+  })
+
+  it('includes the resolved theme in effective style invalidation', () => {
+    const chart = {
+      refreshViewportLayout: vi.fn()
+    } as unknown as Chart
+    const store = new ChartStore(chart)
+
+    expect(store.updateOptions({ styles: 'dark' })).toBe(StyleInvalidation.Metric)
+    expect(store.updateOptions({ styles: 'dark' })).toBe(StyleInvalidation.None)
+  })
+
+  it('preserves the setOptions chaining contract', () => {
+    const chart = {
+      refreshViewportLayout: vi.fn()
+    } as unknown as Chart
+    const store = new ChartStore(chart)
+
+    expect(store.setOptions({ locale: 'zh-CN' })).toBe(store)
+  })
+
   it('uses main-flex pane resizing by default and accepts adjacent mode', () => {
     const chart = {
       refreshViewportLayout: vi.fn()

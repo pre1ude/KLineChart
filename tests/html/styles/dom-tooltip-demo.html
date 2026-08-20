@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOM Tooltip Showcase</title>
+    <link rel="stylesheet" href="/klinechart-tooltip.css">
+    <style>
+      :root {
+        color: #1f2937;
+        background: #f3f6fa;
+        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0 36px;
+      }
+
+      .intro {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        align-items: end;
+        margin-bottom: 18px;
+      }
+
+      h1 {
+        margin: 0;
+        color: #172033;
+        font-size: 24px;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      .intro p {
+        max-width: 620px;
+        margin: 8px 0 0;
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      .mode-badge {
+        flex: 0 0 auto;
+        padding: 7px 10px;
+        border: 1px solid #b9ead9;
+        border-radius: 999px;
+        background: #ecfbf5;
+        color: #147d60;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 48px;
+        margin-bottom: 10px;
+        padding: 8px 10px;
+        border: 1px solid #d8e1ec;
+        border-radius: 8px;
+        background: #ffffff;
+      }
+
+      .toolbar-label {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .toolbar-action {
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        color: #526174;
+        cursor: pointer;
+        font: inherit;
+        font-size: 13px;
+      }
+
+      .toolbar-action {
+        margin-left: auto;
+        padding: 6px 10px;
+        border: 1px solid #d8e1ec;
+        background: #ffffff;
+      }
+
+      .toolbar-action:hover {
+        color: #0f766e;
+      }
+
+      .status {
+        min-width: 180px;
+        color: #64748b;
+        font-size: 12px;
+      }
+
+      .chart-shell {
+        position: relative;
+        height: 560px;
+        overflow: hidden;
+        border: 1px solid #d8e1ec;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 8px 24px rgba(43, 60, 80, 0.08);
+      }
+
+      #chart {
+        width: 100%;
+        height: 100%;
+      }
+
+      /* These selectors are only for the showcase. The renderer keeps the
+         tooltip nodes stable and exposes these attributes for CSS overrides. */
+      .klinechart-tooltip [data-klinechart-tooltip-block="standard"] {
+        border: 1px solid rgba(124, 156, 184, 0.42) !important;
+        border-radius: 6px;
+        box-shadow: 0 8px 18px rgba(35, 58, 82, 0.16);
+        backdrop-filter: blur(5px);
+      }
+
+      .klinechart-tooltip [data-klinechart-tooltip-role="legend"] {
+        min-height: 22px;
+      }
+
+      .klinechart-tooltip [data-klinechart-tooltip-role="title"] {
+        letter-spacing: 0.02em;
+        margin-right: 5px;
+      }
+
+      .details {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .detail {
+        padding: 11px 12px;
+        border-left: 3px solid #b9ead9;
+        background: #eaf8f3;
+        color: #356256;
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 700px) {
+        main {
+          width: calc(100% - 20px);
+          padding-top: 18px;
+        }
+
+        .intro {
+          display: block;
+        }
+
+        .mode-badge {
+          display: inline-block;
+          margin-top: 12px;
+        }
+
+        .toolbar {
+          flex-wrap: wrap;
+        }
+
+        .toolbar-action {
+          margin-left: 0;
+        }
+
+        .status {
+          width: 100%;
+        }
+
+        .chart-shell {
+          height: 500px;
+        }
+
+        .details {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="intro">
+        <div>
+          <h1>DOM tooltip showcase</h1>
+          <p>Hover the chart to inspect the browser-rendered tooltip. The sample uses custom typography, per-value colors, CSS shadows, and an interactive indicator icon.</p>
+        </div>
+        <div class="mode-badge" id="modeBadge">renderType: dom</div>
+      </section>
+
+      <div class="toolbar" aria-label="Tooltip controls">
+        <span class="toolbar-label">Renderer: DOM (selected at initialization)</span>
+        <button type="button" class="toolbar-action" id="jumpButton">Jump to latest</button>
+        <output class="status" id="status">DOM nodes are ready</output>
+      </div>
+
+      <div class="chart-shell">
+        <div id="chart"></div>
+      </div>
+
+      <div class="details">
+        <div class="detail">DOM mode uses the browser's font metrics, so labels stay crisp at any device pixel ratio.</div>
+        <div class="detail">Tooltip fields and colors come from the same style API used by Canvas rendering.</div>
+        <div class="detail">Click the small <strong>i</strong> indicator icon in a tooltip to verify DOM event handling.</div>
+      </div>
+    </main>
+
+    <script type="module">
+      import { ActionType, PaneIdConstants, init } from '/src/index.ts'
+
+      const status = document.querySelector('#status')
+      const chart = init('chart', {
+        tooltip: { renderType: 'dom' },
+        styles: 'light'
+      })
+      chart.setStyles({
+          candle: {
+            tooltip: {
+              showType: 'standard',
+              backgroundColor: 'rgba(255, 255, 255, 0.94)',
+              text: {
+                size: 13,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+                weight: 600,
+                color: '#334155',
+                marginLeft: 8,
+                marginTop: 5,
+                marginRight: 8,
+                marginBottom: 5
+              },
+              custom: [
+                { title: { text: 'TIME', color: '#64748b' }, value: { text: '{time}', color: '#0f766e' } },
+                { title: { text: 'OPEN', color: '#64748b' }, value: { text: '{open}', color: '#334155' } },
+                { title: { text: 'HIGH', color: '#64748b' }, value: { text: '{high}', color: '#d97706' } },
+                { title: { text: 'LOW', color: '#64748b' }, value: { text: '{low}', color: '#2563eb' } },
+                { title: { text: 'CLOSE', color: '#64748b' }, value: { text: '{close}', color: '#be123c' } },
+                { title: { text: 'CHANGE', color: '#64748b' }, value: { text: '{change}', color: '#0f766e' } }
+              ]
+            }
+          },
+          indicator: {
+            tooltip: {
+              showType: 'standard',
+              showName: true,
+              showParams: true,
+              backgroundColor: 'rgba(248, 250, 252, 0.94)',
+              text: {
+                size: 12,
+                fontFamily: 'Inter, ui-sans-serif, sans-serif',
+                weight: 600,
+                color: '#475569',
+                marginLeft: 7,
+                marginTop: 4,
+                marginRight: 7,
+                marginBottom: 4
+              },
+              icons: [{
+                id: 'inspect',
+                position: 'right',
+                color: '#0f766e',
+                activeColor: '#ffffff',
+                size: 12,
+                fontFamily: 'ui-monospace, monospace',
+                icon: 'i',
+                backgroundColor: '#d8f3ea',
+                activeBackgroundColor: '#0f766e',
+                marginLeft: 4,
+                marginTop: 3,
+                marginRight: 3,
+                marginBottom: 3,
+                paddingLeft: 5,
+                paddingTop: 2,
+                paddingRight: 5,
+                paddingBottom: 2
+              }]
+            }
+          }
+        }
+      )
+
+      const data = Array.from({ length: 240 }, (_, index) => {
+        const trend = 112 + index * 0.055 + Math.sin(index / 16) * 5
+        const open = trend + Math.sin(index / 3) * 0.75
+        const close = trend + Math.cos(index / 4.5) * 1.15
+        const high = Math.max(open, close) + 1.2 + (index % 4) * 0.12
+        const low = Math.min(open, close) - 1.1 - (index % 3) * 0.1
+        const volume = 900 + Math.round((Math.sin(index / 6) + 1) * 450) + (index % 9) * 45
+        return {
+          timestamp: Date.UTC(2025, 0, 6, 9, 30 + index * 5),
+          open,
+          high,
+          low,
+          close,
+          volume,
+          turnover: close * volume
+        }
+      })
+
+      chart.createIndicator('MA', false, { id: PaneIdConstants.CANDLE })
+      chart.createIndicator('VOL')
+      chart.createIndicator('MACD')
+      chart.subscribeAction(ActionType.OnTooltipIconClick, data => {
+        status.textContent = `Icon action: ${data.iconId} on ${data.indicatorName || 'candle'}`
+      })
+
+      document.querySelector('#jumpButton').addEventListener('click', () => {
+        moveToIndex(data.length - 1)
+        status.textContent = 'Crosshair moved to latest data point'
+      })
+
+      chart.applyNewData(data, true, () => {
+        requestAnimationFrame(() => {
+          moveToIndex(168)
+          window.domTooltipReady = true
+        })
+      })
+
+      function moveToIndex (index) {
+        const timeScale = chart.getChartStore().getTimeScaleStore()
+        chart.executeAction(ActionType.OnCrosshairChange, {
+          x: timeScale.dataIndexToCoordinate(index),
+          y: 150,
+          paneId: PaneIdConstants.CANDLE
+        })
+      }
+
+      window.demoChart = chart
+    </script>
+  </body>
+</html>
