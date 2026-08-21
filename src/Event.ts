@@ -198,14 +198,24 @@ export default class Event implements EventHandler {
   }
 
   pressedMouseMoveEvent(e: MouseTouchEvent): boolean {
-    if (this._mouseDownWidget?.getName() === WidgetNameConstants.SEPARATOR) {
-      return this._mouseDownWidget.dispatchEvent('pressedMouseMoveEvent', e)
+    const mouseDownWidget = this._mouseDownWidget
+    if (mouseDownWidget?.getName() === WidgetNameConstants.SEPARATOR) {
+      return mouseDownWidget.dispatchEvent('pressedMouseMoveEvent', e)
     }
-    const { pane, widget } = this._findWidgetByEvent(e)
+
+    const { pane: eventPane, widget: eventWidget } = this._findWidgetByEvent(e)
+    // Axis drag is tracked on the document, so keep the original axis as the target
+    // after the pointer leaves its bounds (or the chart entirely).
+    const isAxisDrag = mouseDownWidget?.getName() === WidgetNameConstants.X_AXIS ||
+      mouseDownWidget?.getName() === WidgetNameConstants.Y_AXIS
+    const pane = isAxisDrag ? mouseDownWidget?.getPane() : eventPane
+    const widget = isAxisDrag ? mouseDownWidget : eventWidget
     if (
       widget &&
-      this._mouseDownWidget?.getPane().getId() === pane?.getId() &&
-      this._mouseDownWidget?.getName() === widget.getName()
+      (isAxisDrag || (
+        mouseDownWidget?.getPane().getId() === pane?.getId() &&
+        mouseDownWidget?.getName() === widget.getName()
+      ))
     ) {
       const event = this._makeWidgetEvent(e, widget)
       const name = widget.getName()
