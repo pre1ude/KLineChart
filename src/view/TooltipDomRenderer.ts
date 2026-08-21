@@ -7,6 +7,7 @@ import {
 } from '../common/Styles'
 import type { TooltipIconClickEventData } from '../common/Action'
 import type { TooltipIconIdentity } from '../common/Tooltip'
+import { getTooltipDirectionVisual, type TooltipDirectionStyle } from '../common/TooltipDirection'
 import type DrawWidget from '../widget/DrawWidget'
 import { PaneIdConstants } from '../pane/types'
 import type {
@@ -96,9 +97,9 @@ export default class TooltipDomRenderer {
       state.root.hidden = false
       state.root.style.marginTop = index === 0 ? px(block.top) : '0'
       if (block.type === 'standard') {
-        this._renderStandardBlock(state, block)
+        this._renderStandardBlock(state, block, block.indicatorId.length > 0 ? model.directionStyle : undefined)
       } else {
-        this._renderRectBlock(state, block)
+        this._renderRectBlock(state, block, model.directionStyle)
       }
       visibleStates.push(state)
     })
@@ -157,7 +158,11 @@ export default class TooltipDomRenderer {
     return state
   }
 
-  private _renderStandardBlock(state: BlockState, block: StandardTooltipBlock): void {
+  private _renderStandardBlock(
+    state: BlockState,
+    block: StandardTooltipBlock,
+    directionStyle?: TooltipDirectionStyle
+  ): void {
     const { root } = state
     root.style.maxWidth = px(Math.max(0, block.maxWidth - block.left))
     root.style.marginLeft = px(block.left)
@@ -177,7 +182,7 @@ export default class TooltipDomRenderer {
       if (content.type === 'icons') {
         this._renderIconGroup(contentNode, content.icons, block)
       } else {
-        this._renderLegendGroup(contentNode, content.legends, content.styles)
+        this._renderLegendGroup(contentNode, content.legends, content.styles, directionStyle)
       }
     })
     state.contentNodes.slice(block.contents.length).forEach(node => {
@@ -303,7 +308,12 @@ export default class TooltipDomRenderer {
     node.style.backgroundColor = active ? icon.activeBackgroundColor : icon.backgroundColor
   }
 
-  private _renderLegendGroup(node: HTMLSpanElement, legends: TooltipLegend[], styles: TooltipTextStyle): void {
+  private _renderLegendGroup(
+    node: HTMLSpanElement,
+    legends: TooltipLegend[],
+    styles: TooltipTextStyle,
+    directionStyle?: TooltipDirectionStyle
+  ): void {
     const existing = Array.from(node.children).filter((child): child is HTMLSpanElement => child instanceof HTMLSpanElement)
     legends.forEach((legend, index) => {
       const row = existing[index] ?? document.createElement('span')
@@ -325,30 +335,43 @@ export default class TooltipDomRenderer {
       const value = this._ensureSpan(row, 1)
       const titleData = this._getLegendChild(legend.title, styles.color)
       const valueData = this._getLegendChild(legend.value, styles.color)
+      const directionData = getTooltipDirectionVisual(legend.direction, directionStyle)
+      const valueText = this._ensureSpan(value, 0)
+      const direction = this._ensureSpan(value, 1)
       title.dataset.klinechartTooltipRole = 'title'
       value.dataset.klinechartTooltipRole = 'value'
+      valueText.dataset.klinechartTooltipRole = 'value-text'
+      direction.dataset.klinechartTooltipRole = 'direction'
       title.style.color = titleData.color
       value.style.color = valueData.color
+      valueText.style.color = valueData.color
+      direction.style.color = directionData?.color ?? ''
+      direction.hidden = directionData == null
       setText(title, titleData.text)
-      setText(value, valueData.text)
+      setText(valueText, valueData.text)
+      setText(direction, directionData?.text ?? '')
     })
     existing.slice(legends.length).forEach(row => {
       row.hidden = true
     })
   }
 
-  private _renderRectBlock(state: BlockState, block: RectTooltipBlock): void {
+  private _renderRectBlock(
+    state: BlockState,
+    block: RectTooltipBlock,
+    directionStyle?: TooltipDirectionStyle
+  ): void {
     const { root } = state
     const candleTooltip = block.styles.candle.tooltip
     const indicatorTooltip = block.styles.indicator.tooltip
     root.dataset.klinechartTooltipBlock = 'rect'
 
-    const rows: Array<{ legend: TooltipLegend, styles: TooltipTextStyle }> = []
+    const rows: Array<{ legend: TooltipLegend, styles: TooltipTextStyle, showDirection: boolean }> = []
     if (block.drawCandle) {
-      block.candleLegends.forEach(legend => rows.push({ legend, styles: candleTooltip.text }))
+      block.candleLegends.forEach(legend => rows.push({ legend, styles: candleTooltip.text, showDirection: false }))
     }
     if (block.drawIndicator) {
-      block.indicatorLegends.forEach(legends => legends.forEach(legend => rows.push({ legend, styles: indicatorTooltip.text })))
+      block.indicatorLegends.forEach(legends => legends.forEach(legend => rows.push({ legend, styles: indicatorTooltip.text, showDirection: true })))
     }
 
     const rectStyle = candleTooltip.rect
@@ -382,12 +405,23 @@ export default class TooltipDomRenderer {
       const value = this._ensureSpan(row, 1)
       const titleData = this._getLegendChild(rowData.legend.title, rowData.styles.color)
       const valueData = this._getLegendChild(rowData.legend.value, rowData.styles.color)
+      const directionData = rowData.showDirection
+        ? getTooltipDirectionVisual(rowData.legend.direction, directionStyle)
+        : undefined
+      const valueText = this._ensureSpan(value, 0)
+      const direction = this._ensureSpan(value, 1)
       title.dataset.klinechartTooltipRole = 'title'
       value.dataset.klinechartTooltipRole = 'value'
+      valueText.dataset.klinechartTooltipRole = 'value-text'
+      direction.dataset.klinechartTooltipRole = 'direction'
       title.style.color = titleData.color
       value.style.color = valueData.color
+      valueText.style.color = valueData.color
+      direction.style.color = directionData?.color ?? ''
+      direction.hidden = directionData == null
       setText(title, titleData.text)
-      setText(value, valueData.text)
+      setText(valueText, valueData.text)
+      setText(direction, directionData?.text ?? '')
     })
     state.rowNodes.slice(rows.length).forEach(row => {
       row.hidden = true

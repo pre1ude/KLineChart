@@ -2,7 +2,10 @@ import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
 import type KLineData from '../common/KLineData'
 import type Precision from '../common/Precision'
-import type { TooltipIconIdentity } from '../common/Tooltip'
+import {
+  type TooltipIconIdentity
+} from '../common/Tooltip'
+import { getTooltipDirectionVisual, type TooltipDirectionStyle } from '../common/TooltipDirection'
 import {
   type CandleStyle,
   type CandleTooltipCustomCallbackData,
@@ -61,10 +64,11 @@ export default class CandleTooltipView extends IndicatorTooltipView {
           top ?? block.top,
           block.maxWidth,
           block.styles,
-          interactive
+          interactive,
+          block.indicatorId.length > 0 ? model.directionStyle : undefined
         )
       } else {
-        this._drawRectTooltipBlock(ctx, block, top ?? block.top)
+        this._drawRectTooltipBlock(ctx, block, top ?? block.top, model.directionStyle)
       }
     })
   }
@@ -117,7 +121,12 @@ export default class CandleTooltipView extends IndicatorTooltipView {
     }
   }
 
-  private _drawRectTooltipBlock(ctx: CanvasRenderingContext2D, block: RectTooltipBlock, top: number): void {
+  private _drawRectTooltipBlock(
+    ctx: CanvasRenderingContext2D,
+    block: RectTooltipBlock,
+    top: number,
+    directionStyle?: TooltipDirectionStyle
+  ): void {
     const { bounding, crosshair, styles } = block
     const candleStyles = styles.candle
     const indicatorStyles = styles.indicator
@@ -178,7 +187,8 @@ export default class CandleTooltipView extends IndicatorTooltipView {
       indicatorLegendsArray.forEach(legends => legends.forEach(data => {
         const title = data.title as TooltipLegendChild
         const value = data.value as TooltipLegendChild
-        maxTextWidth = Math.max(maxTextWidth, calcTextWidth(`${title.text}${value.text}`, font) + indicatorTextMarginLeft + indicatorTextMarginRight)
+        const direction = getTooltipDirectionVisual(data.direction, directionStyle)
+        maxTextWidth = Math.max(maxTextWidth, calcTextWidth(`${title.text}${value.text}${direction?.text ?? ''}`, font) + indicatorTextMarginLeft + indicatorTextMarginRight)
         rectHeight += indicatorTextMarginTop + indicatorTextMarginBottom + indicatorTextSize
       }))
     }
@@ -251,10 +261,24 @@ export default class CandleTooltipView extends IndicatorTooltipView {
           styles: { color: title.color, size: indicatorTextSize, fontFamily: indicatorFontFamily, weight: indicatorTextWeight }
         })
         const value = data.value as TooltipLegendChild
+        const direction = getTooltipDirectionVisual(data.direction, directionStyle)
+        const directionWidth = direction == null ? 0 : calcTextWidth(direction.text, createFont(indicatorTextSize, indicatorTextWeight, indicatorFontFamily))
+        const valueRight = rectX + rectWidth - rectBorderSize - indicatorTextMarginRight - rectPaddingRight
         drawStaticFigure(ctx, 'text', {
-          attrs: { x: rectX + rectWidth - rectBorderSize - indicatorTextMarginRight - rectPaddingRight, y: textY, text: value.text, align: 'right' },
+          attrs: { x: valueRight - directionWidth, y: textY, text: value.text, align: 'right' },
           styles: { color: value.color, size: indicatorTextSize, fontFamily: indicatorFontFamily, weight: indicatorTextWeight }
         })
+        if (direction != null) {
+          drawStaticFigure(ctx, 'text', {
+            attrs: { x: valueRight, y: textY, text: direction.text, align: 'right' },
+            styles: {
+              color: direction.color,
+              size: indicatorTextSize,
+              fontFamily: indicatorFontFamily,
+              weight: indicatorTextWeight
+            }
+          })
+        }
         textY += indicatorTextSize + indicatorTextMarginBottom
       }))
     }

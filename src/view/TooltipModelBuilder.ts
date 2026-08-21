@@ -1,6 +1,8 @@
 import { TooltipShowType } from '../common/Styles'
+import type { TooltipDirectionStyle } from '../common/TooltipDirection'
 import { getDateTimeFormat } from '../common/utils/dateTimeFormat'
 import type DualYPane from '../pane/DualYPane'
+import type ChartStore from '../store/ChartStore'
 import type CandleTooltipView from './CandleTooltipView'
 import type IndicatorTooltipView from './IndicatorTooltipView'
 import type { RectTooltipBlock, StandardTooltipBlock, StandardTooltipContent, TooltipRenderModel } from './TooltipModel'
@@ -16,8 +18,9 @@ export default class TooltipModelBuilder {
     const chartStore = pane.getChart().getChartStore()
     const crosshair = chartStore.getTooltipStore().getCrosshair()
     const bounding = widget.getBounding()
+    const directionStyle = getTooltipDirectionStyle(chartStore)
     if (!crosshair.kLineData) {
-      return { visible: false, paneId: pane.getId(), bounding, blocks: [] }
+      return { visible: false, paneId: pane.getId(), bounding, blocks: [], directionStyle }
     }
 
     const styles = chartStore.getStyles().indicator
@@ -26,7 +29,7 @@ export default class TooltipModelBuilder {
       pane.getId(), chartStore.getDataList(), crosshair,
       offsetLeft, offsetTop, bounding.width - offsetRight, styles
     )
-    return { visible: blocks.length > 0, paneId: pane.getId(), bounding, blocks }
+    return { visible: blocks.length > 0, paneId: pane.getId(), bounding, blocks, directionStyle }
   }
 
   static buildCandle(view: CandleTooltipView): TooltipRenderModel {
@@ -35,8 +38,9 @@ export default class TooltipModelBuilder {
     const chartStore = pane.getChart().getChartStore()
     const crosshair = chartStore.getTooltipStore().getCrosshair()
     const bounding = widget.getBounding()
+    const directionStyle = getTooltipDirectionStyle(chartStore)
     if (!crosshair.kLineData) {
-      return { visible: false, paneId: pane.getId(), bounding, blocks: [] }
+      return { visible: false, paneId: pane.getId(), bounding, blocks: [], directionStyle }
     }
 
     const dataList = chartStore.getDataList()
@@ -102,6 +106,15 @@ export default class TooltipModelBuilder {
         }
       }
     }
-    return { visible: blocks.length > 0, paneId: pane.getId(), bounding, blocks }
+    return { visible: blocks.length > 0, paneId: pane.getId(), bounding, blocks, directionStyle }
+  }
+}
+
+function getTooltipDirectionStyle(chartStore: ChartStore): TooltipDirectionStyle {
+  const { upColor, downColor } = chartStore.getStyles().candle.bar
+  return {
+    show: chartStore.getTooltipStore().getShowValueDirection(),
+    upColor,
+    downColor
   }
 }

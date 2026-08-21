@@ -320,6 +320,9 @@ export default class ChartStore {
       if (isValid(customApi)) {
         merge(this._customApi, customApi)
       }
+      if (isValid(options.tooltip)) {
+        this._tooltipStore.setOptions(options.tooltip)
+      }
       if (isString(thousandsSeparator)) {
         this._thousandsSeparator = thousandsSeparator
       }

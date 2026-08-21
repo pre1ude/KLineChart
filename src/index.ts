@@ -257,6 +257,7 @@ export type {
   DeepPartialStyles,
   Styles,
   TooltipIconStyle,
+  TooltipLegend,
   GradientColor,
   CandleTooltipCustomCallback,
   CandleTooltipCustomCallbackData,
@@ -266,6 +267,7 @@ export type {
   GapStyle,
   FigureStyleConfig,
 } from './common/Styles'
+export type { TooltipValueDirection } from './common/TooltipDirection'
 
 // Layout Types
 export type { LayoutChild } from './Options'

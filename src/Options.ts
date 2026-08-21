@@ -26,6 +26,8 @@ export type TooltipRenderType = 'canvas' | 'dom'
 export interface TooltipOptions {
   /** Selected when the chart is created and ignored by later Chart.setOptions calls. */
   renderType?: TooltipRenderType
+  /** Whether indicator tooltip values show their direction arrows. */
+  showValueDirection?: boolean
 }
 
 export function getDefaultCustomApi(): CustomApi {

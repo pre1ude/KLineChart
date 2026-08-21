@@ -1,6 +1,12 @@
 import type Coordinate from '../common/Coordinate'
 import type Crosshair from '../common/Crosshair'
 import type KLineData from '../common/KLineData'
+import {
+  getTooltipValueDirection,
+  getTooltipDirectionVisual,
+  type TooltipDirectionStyle,
+  type TooltipDirectionVisual
+} from '../common/TooltipDirection'
 import type { TooltipIconIdentity } from '../common/Tooltip'
 import {
   PolygonType,
@@ -41,9 +47,11 @@ type StandardTooltipLegendLayout = {
   type: 'legend'
   title: TooltipLegendChild
   value: TooltipLegendChild
+  direction?: TooltipDirectionVisual
   x: number
   y: number
   titleTextWidth: number
+  valueTextWidth: number
   styles: TooltipTextStyle
 }
 
@@ -120,7 +128,8 @@ export default class IndicatorTooltipView extends View {
           top ?? block.top,
           block.maxWidth,
           block.styles,
-          interactive
+          interactive,
+          model.directionStyle
         )
       }
     })
@@ -200,7 +209,8 @@ export default class IndicatorTooltipView extends View {
     top: number,
     maxWidth: number,
     styles: TooltipStyle,
-    interactive = true
+    interactive = true,
+    directionStyle?: TooltipDirectionStyle
   ): number {
     const layout = this.createStandardTooltipLayout(left, top)
     contents.forEach(content => {
@@ -210,7 +220,7 @@ export default class IndicatorTooltipView extends View {
           break
         }
         case 'legends': {
-          this.layoutStandardTooltipLegends(layout, content.legends, left, maxWidth, content.styles)
+          this.layoutStandardTooltipLegends(layout, content.legends, left, maxWidth, content.styles, directionStyle)
           break
         }
       }
@@ -270,7 +280,8 @@ export default class IndicatorTooltipView extends View {
     legends: TooltipLegend[],
     left: number,
     maxWidth: number,
-    styles: TooltipTextStyle
+    styles: TooltipTextStyle,
+    directionStyle?: TooltipDirectionStyle
   ): void {
     if (legends.length > 0) {
       const { marginLeft, marginTop, marginRight, marginBottom, size, fontFamily, weight } = styles
@@ -278,9 +289,11 @@ export default class IndicatorTooltipView extends View {
       legends.forEach(data => {
         const title = this.getTooltipLegendChild(data.title, styles.color)
         const value = this.getTooltipLegendChild(data.value, styles.color)
+        const direction = getTooltipDirectionVisual(data.direction, directionStyle)
         const titleTextWidth = calcTextWidth(title.text, font)
         const valueTextWidth = calcTextWidth(value.text, font)
-        const totalTextWidth = titleTextWidth + valueTextWidth
+        const directionTextWidth = direction == null ? 0 : calcTextWidth(direction.text, font)
+        const totalTextWidth = titleTextWidth + valueTextWidth + directionTextWidth
         const width = marginLeft + totalTextWidth + marginRight
         const height = marginTop + size + marginBottom
         this.prepareStandardTooltipLine(layout, width, height, left, maxWidth)
@@ -288,9 +301,11 @@ export default class IndicatorTooltipView extends View {
           type: 'legend',
           title,
           value,
+          direction,
           x: layout.coordinate.x,
           y: layout.coordinate.y,
           titleTextWidth,
+          valueTextWidth,
           styles
         })
         this.extendStandardTooltipLine(layout.lines, layout.coordinate.x, layout.coordinate.y, width, layout.prevRowHeight)
@@ -408,7 +423,7 @@ export default class IndicatorTooltipView extends View {
 
         return
       }
-      const { title, value, titleTextWidth, styles } = item
+      const { title, value, direction, titleTextWidth, valueTextWidth, styles } = item
       const { marginLeft, marginTop, size, fontFamily, weight } = styles
       if (title.text.length > 0) {
         drawStaticFigure(ctx, 'text', {
@@ -420,6 +435,16 @@ export default class IndicatorTooltipView extends View {
         attrs: { x: item.x + marginLeft + titleTextWidth, y: item.y + marginTop, text: value.text },
         styles: { color: value.color, size, fontFamily, weight }
       })
+      if (direction != null) {
+        drawStaticFigure(ctx, 'text', {
+          attrs: {
+            x: item.x + marginLeft + titleTextWidth + valueTextWidth,
+            y: item.y + marginTop,
+            text: direction.text
+          },
+          styles: { color: direction.color, size, fontFamily, weight }
+        })
+      }
     })
   }
 
@@ -479,7 +504,8 @@ export default class IndicatorTooltipView extends View {
           const figureColor = figureStyles.color
           const color = (typeof figureColor === 'string' ? figureColor : null) ?? mergedDefaultStyles.tooltip.text.color
 
-          let value = (indicatorData as Record<string, unknown>)[figure.key] ?? tooltipStyles.defaultValue
+          const rawValue = (indicatorData as Record<string, unknown>)[figure.key]
+          let value = rawValue ?? tooltipStyles.defaultValue
           if (isNumber(value)) {
             value = formatPrecision(value, indicator.precision)
             if (indicator.shouldFormatBigNumber) {
@@ -487,7 +513,14 @@ export default class IndicatorTooltipView extends View {
             }
             value = formatFoldDecimal(formatThousands(value as string, thousandsSeparator), decimalFoldThreshold)
           }
-          legends.push({ title: { text: figure.title, color }, value: { text: value as string, color } })
+          legends.push({
+            title: { text: figure.title, color },
+            value: { text: value as string, color },
+            direction: getTooltipValueDirection(
+              rawValue,
+              (result[dataIndex - 1] as Record<string, unknown> | undefined)?.[figure.key]
+            )
+          })
         }
       })
       tooltipData.values = legends
@@ -542,7 +575,7 @@ export default class IndicatorTooltipView extends View {
             text = formatFoldDecimal(formatThousands(text, thousandsSeparator), decimalFoldThreshold)
             value.text = text
           }
-          optimizedLegends.push({ title, value })
+          optimizedLegends.push({ title, value, direction: data.direction })
         })
         tooltipData.values = optimizedLegends
       }

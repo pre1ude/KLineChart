@@ -1,7 +1,7 @@
 import type KLineData from '../common/KLineData'
 import type Crosshair from '../common/Crosshair'
 import { UpdateLevel } from '../common/Updater'
-import { isNumber } from '../common/utils/typeChecks'
+import { isBoolean, isNumber } from '../common/utils/typeChecks'
 import type ChartStore from './ChartStore'
 import { clamp } from '@/common/utils/number'
 import type { TooltipOptions, TooltipRenderType } from '../Options'
@@ -10,14 +10,26 @@ export default class TooltipStore {
   private readonly _chartStore: ChartStore
   private _crosshair: Crosshair = {}
   private readonly _renderType: TooltipRenderType
+  private _showValueDirection = true
 
   constructor(chartStore: ChartStore, options?: TooltipOptions) {
     this._chartStore = chartStore
     this._renderType = options?.renderType === 'dom' ? 'dom' : 'canvas'
+    this.setOptions(options)
   }
 
   getRenderType(): TooltipRenderType {
     return this._renderType
+  }
+
+  setOptions(options?: TooltipOptions): void {
+    if (isBoolean(options?.showValueDirection)) {
+      this._showValueDirection = options.showValueDirection
+    }
+  }
+
+  getShowValueDirection(): boolean {
+    return this._showValueDirection
   }
 
   /**

@@ -5,9 +5,10 @@ import type KLineData from '../common/KLineData'
 import { TooltipShowRule, TooltipShowType, type TooltipLegend } from '../common/Styles'
 import { PaneIdConstants } from '../pane/types'
 import ChartStore from '../store/ChartStore'
+import { drawStaticFigure } from '../extension/figure'
 import CandleTooltipView from './CandleTooltipView'
 import IndicatorTooltipView from './IndicatorTooltipView'
-import type { IndicatorTooltipData } from '../component/Indicator'
+import type { Indicator, IndicatorTooltipData } from '../component/Indicator'
 
 vi.mock('../common/utils/canvas', () => ({
   calcTextWidth: vi.fn((text: string) => text.length * 8),
@@ -117,6 +118,127 @@ describe('tooltip render model', () => {
     expect(getTooltipData).toHaveBeenCalledTimes(1)
     view.drawModel({} as CanvasRenderingContext2D, model, false)
     expect(getTooltipData).toHaveBeenCalledTimes(1)
+  })
+
+  it('derives direction from adjacent raw indicator values with an epsilon', () => {
+    const { chartStore, widget } = createFixture()
+    const data = createData()
+    const indicator = {
+      id: 'custom',
+      name: 'Custom',
+      shortName: 'Custom',
+      calcParams: [],
+      figures: [{ key: 'value', title: 'Value' }],
+      result: [{ value: 1 }, { value: 2 }, { value: 2 + 1e-12 }, { value: 1 }],
+      visible: true,
+      precision: 2,
+      shouldFormatBigNumber: false,
+      styles: undefined
+    } as unknown as Indicator
+    const view = new IndicatorTooltipView(widget)
+    const viewInternals = view as unknown as {
+      getIndicatorTooltipData: (...args: never[]) => IndicatorTooltipData
+    }
+    const styles = chartStore.getStyles().indicator
+    const getData = (dataIndex: number): IndicatorTooltipData => viewInternals.getIndicatorTooltipData(
+      [data, data, data, data],
+      { dataIndex, kLineData: data },
+      indicator,
+      chartStore.getCustomApi(),
+      chartStore.getThousandsSeparator(),
+      chartStore.getDecimalFoldThreshold(),
+      styles
+    )
+
+    expect(getData(0).values[0].direction).toBeUndefined()
+    expect(getData(1).values[0].direction).toBe(1)
+    expect(getData(2).values[0].direction).toBe(0)
+    expect(getData(3).values[0].direction).toBe(-1)
+  })
+
+  it('draws indicator direction arrows in candle colors and honors the toggle', () => {
+    const { chartStore, widget } = createFixture()
+    const styles = chartStore.getStyles()
+    const view = new IndicatorTooltipView(widget)
+    const model = {
+      visible: true,
+      paneId: 'indicator',
+      bounding: { width: 600, height: 400, left: 0, top: 0 },
+      directionStyle: {
+        show: true,
+        upColor: styles.candle.bar.upColor,
+        downColor: styles.candle.bar.downColor
+      },
+      blocks: [{
+        type: 'standard' as const,
+        paneId: 'indicator',
+        indicatorId: 'ma',
+        indicatorName: 'MA',
+        left: 0,
+        top: 0,
+        maxWidth: 600,
+        styles: styles.indicator.tooltip,
+        contents: [{
+          type: 'legends' as const,
+          legends: [{ title: 'MA', value: '12.3', direction: 1 as const }],
+          styles: styles.indicator.tooltip.text
+        }]
+      }]
+    }
+
+    view.drawModel({} as CanvasRenderingContext2D, model, false)
+    const arrowCall = vi.mocked(drawStaticFigure).mock.calls.find(([, name, data]) => (
+      name === 'text' && (data.attrs as { text?: string }).text === '↑'
+    ))
+    expect(arrowCall?.[2].styles).toEqual(expect.objectContaining({ color: styles.candle.bar.upColor }))
+
+    vi.mocked(drawStaticFigure).mockClear()
+    model.directionStyle.show = false
+    view.drawModel({} as CanvasRenderingContext2D, model, false)
+    expect(vi.mocked(drawStaticFigure).mock.calls.some(([, name, data]) => (
+      name === 'text' && (data.attrs as { text?: string }).text === '↑'
+    ))).toBe(false)
+  })
+
+  it('preserves an explicit custom indicator direction', () => {
+    const { chartStore, widget } = createFixture()
+    vi.spyOn(widget.getPane().getChart(), 'getXAxisPane').mockReturnValue({
+      getMainWidget: () => ({ getAxisComponent: () => ({}) })
+    } as never)
+    Object.assign(widget.getPane(), {
+      getYLeftAxisWidget: () => ({ getAxisComponent: () => ({}) })
+    })
+    const data = createData()
+    const indicator = {
+      id: 'custom',
+      name: 'Custom',
+      shortName: 'Custom',
+      calcParams: [],
+      figures: [],
+      result: [],
+      visible: true,
+      precision: 2,
+      shouldFormatBigNumber: false,
+      styles: undefined,
+      createTooltipDataSource: () => ({
+        values: [{ title: 'Value', value: '1.2', direction: -1 as const }]
+      })
+    } as unknown as Indicator
+    const view = new IndicatorTooltipView(widget)
+    const viewInternals = view as unknown as {
+      getIndicatorTooltipData: (...args: never[]) => IndicatorTooltipData
+    }
+    const tooltipData = viewInternals.getIndicatorTooltipData(
+      [data],
+      { dataIndex: 0, kLineData: data },
+      indicator,
+      chartStore.getCustomApi(),
+      chartStore.getThousandsSeparator(),
+      chartStore.getDecimalFoldThreshold(),
+      chartStore.getStyles().indicator
+    )
+
+    expect(tooltipData.values[0].direction).toBe(-1)
   })
 })
 

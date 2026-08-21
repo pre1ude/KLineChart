@@ -233,6 +233,11 @@ describe('TooltipDomRenderer', () => {
       visible: true,
       paneId: 'candle',
       bounding: { width: 600, height: 400, left: 0, top: 0 },
+      directionStyle: {
+        show: true,
+        upColor: styles.candle.bar.upColor,
+        downColor: styles.candle.bar.downColor
+      },
       blocks: [{
         type: 'rect',
         top: 10,
@@ -262,6 +267,50 @@ describe('TooltipDomRenderer', () => {
     expect(rect.style.backgroundColor).not.toBe('')
     expect(row.style.marginLeft).toBe(`${styles.candle.tooltip.text.marginLeft}px`)
     expect(row.style.marginRight).toBe(`${styles.candle.tooltip.text.marginRight}px`)
+  })
+
+  it('renders indicator direction arrows independently from value text', () => {
+    const fixture = createFixture()
+    const renderer = new TooltipDomRenderer(fixture.widget, fixture.interactions)
+    const styles = getDefaultStyles()
+    const model: TooltipRenderModel = {
+      visible: true,
+      paneId: 'candle',
+      bounding: { width: 600, height: 400, left: 0, top: 0 },
+      directionStyle: {
+        show: true,
+        upColor: styles.candle.bar.upColor,
+        downColor: styles.candle.bar.downColor
+      },
+      blocks: [{
+        type: 'rect',
+        top: 10,
+        bounding: { width: 600, height: 400, left: 0, top: 0 },
+        yLeftAxisWidth: 20,
+        yRightAxisWidth: 20,
+        crosshair: { paneId: 'candle', realX: 300, y: 100 },
+        styles,
+        drawCandle: false,
+        drawIndicator: true,
+        candleLegends: [],
+        indicatorLegends: [[{ title: 'DIF', value: '1.2', direction: 1 }]]
+      }]
+    }
+
+    renderer.render(model)
+    const value = renderer.getElement().querySelector('[data-klinechart-tooltip-role="value"]') as HTMLElement
+    const direction = renderer.getElement().querySelector('[data-klinechart-tooltip-role="direction"]') as HTMLElement
+    expect(value.textContent).toContain('1.2')
+    expect(direction.textContent).toBe('↑')
+    const expectedColor = document.createElement('span')
+    expectedColor.style.color = styles.candle.bar.upColor
+    expect(direction.style.color).toBe(expectedColor.style.color)
+
+    model.directionStyle.show = false
+    renderer.render(model)
+    expect(direction.hidden).toBe(true)
+    expect(direction.textContent).toBe('')
+    renderer.destroy()
   })
 
   it('centers a mixed pointer rect in pane-local coordinates', async () => {
@@ -477,6 +526,11 @@ function createStandardModel(styles: ReturnType<typeof getDefaultStyles>): Stand
     visible: true,
     paneId: 'candle',
     bounding: { width: 600, height: 400, left: 0, top: 0 },
+    directionStyle: {
+      show: true,
+      upColor: styles.candle.bar.upColor,
+      downColor: styles.candle.bar.downColor
+    },
     blocks: [{
       type: 'standard',
       paneId: 'candle',

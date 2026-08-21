@@ -1,5 +1,6 @@
 import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
+import type { TooltipDirectionStyle } from '../common/TooltipDirection'
 import type {
   Styles,
   TooltipIconStyle,
@@ -50,4 +51,5 @@ export interface TooltipRenderModel {
   paneId: string
   bounding: Bounding
   blocks: TooltipBlock[]
+  directionStyle: TooltipDirectionStyle
 }

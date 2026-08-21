@@ -25,4 +25,21 @@ describe('TooltipStore render type', () => {
     expect(chartStore.getTooltipStore().getRenderType()).toBe('dom')
     expect(refreshMetricLayout).toHaveBeenCalledTimes(1)
   })
+
+  it('defaults direction arrows to enabled and supports runtime updates', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const chartStore = new ChartStore(chart)
+    const refreshMetricLayout = vi.fn()
+    Reflect.set(chart, '_chartStore', chartStore)
+    Reflect.set(chart, 'refreshMetricLayout', refreshMetricLayout)
+
+    expect(chartStore.getTooltipStore().getShowValueDirection()).toBe(true)
+
+    chart.setOptions({ tooltip: { showValueDirection: false } })
+    expect(chartStore.getTooltipStore().getShowValueDirection()).toBe(false)
+
+    chart.setOptions({ tooltip: { showValueDirection: true } })
+    expect(chartStore.getTooltipStore().getShowValueDirection()).toBe(true)
+    expect(refreshMetricLayout).toHaveBeenCalledTimes(2)
+  })
 })

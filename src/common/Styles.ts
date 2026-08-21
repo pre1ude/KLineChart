@@ -1,6 +1,9 @@
 import type DeepPartial from './DeepPartial'
 import type KLineData from './KLineData'
+import type { TooltipValueDirection } from './TooltipDirection'
 import { getDefaultFontFamily } from './utils/font'
+
+export type { TooltipValueDirection } from './TooltipDirection'
 
 export interface Margin {
   marginLeft: number
@@ -162,6 +165,8 @@ export interface TooltipLegendChild {
 export interface TooltipLegend {
   title: string | TooltipLegendChild
   value: string | TooltipLegendChild
+  /** Slope sign of the raw indicator value, when available. */
+  direction?: TooltipValueDirection
 }
 
 export enum TooltipIconPosition {
