@@ -197,9 +197,27 @@ export class OverlayLayer implements Layer {
     // 鼠标按下事件
     let hasMoved = false
     let pressedInfo: EventOverlayInfo | undefined
+    let progressPressedOverlayId: string | undefined
+    let progressPressedPoint: IPoint | undefined
+    let progressPressedEvent: MouseTouchEvent | undefined
     this._overlayView.addEventListener('mouseDownEvent', (event: MouseTouchEvent) => {
-      // 绘制中不允许拖动已绘制的 overlay
-      if (overlayStore.getProgressOverlay()) return
+      const progressOverlay = overlayStore.getProgressOverlay()
+      if (progressOverlay) {
+        overlayStore.updateProgressOverlayPane(paneId)
+        const progressPaneId = overlayStore.getProgressOverlayPaneId()
+        const isProgressPaneMatched = progressPaneId.length === 0 || progressPaneId === paneId
+        if (!progressOverlay.isCompleted() && isProgressPaneMatched) {
+          progressPressedOverlayId = progressOverlay.id
+          progressPressedEvent = event
+          progressPressedPoint = progressOverlay.isCreated()
+            ? this._overlayView.coordinateToPoint(progressOverlay, event) as IPoint
+            : undefined
+          overlayStore.setPressed(true)
+          overlayStore.setDragging(false)
+        }
+        // 绘制中的 overlay 不允许拖动已绘制的 overlay
+        return
+      }
 
       const nextPressedInfo = this._extractEventOverlayInfo(event.target, paneId)
       if (nextPressedInfo?.overlay != null) {
@@ -274,6 +292,15 @@ export class OverlayLayer implements Layer {
 
     // 鼠标抬起事件
     this._overlayView.addEventListener('mouseUpEvent', (event: MouseTouchEvent) => {
+      if (progressPressedOverlayId != null) {
+        progressPressedOverlayId = undefined
+        progressPressedPoint = undefined
+        progressPressedEvent = undefined
+        overlayStore.setPressed(false)
+        overlayStore.setDragging(false)
+        return
+      }
+
       if (pressedInfo?.overlay != null && hasMoved) {
         pressedInfo.overlay.onPressedMoveEnd?.(createOverlayEventFromInfo(event, pressedInfo, chartStore))
       }
@@ -285,6 +312,52 @@ export class OverlayLayer implements Layer {
 
     // 按住拖动事件 - 处理 onPressedMoving
     this._overlayView.addEventListener('pressedMouseMoveEvent', (event: MouseTouchEvent) => {
+      const progressOverlay = overlayStore.getProgressOverlay()
+      if (progressOverlay && progressOverlay.id === progressPressedOverlayId) {
+        const progressPaneId = overlayStore.getProgressOverlayPaneId()
+        const isProgressPaneMatched = progressPaneId.length === 0 || progressPaneId === paneId
+        if (!progressOverlay.isCompleted() && isProgressPaneMatched) {
+          // 鼠标按住时 SyntheticEvent 不会派发普通 mouseMoveEvent，第一次拖动到阈值后才在这里提交起点并更新预览终点。
+          if (progressOverlay.isCreated() && progressPressedPoint != null) {
+            progressOverlay.updateDrawPoint(progressPressedPoint)
+            const startEvent = progressPressedEvent ?? event
+            const startPointIndex = progressOverlay.currentStep
+            const startOverlayEvent = createOverlayEvent(startEvent, progressOverlay, paneId, chartStore, {
+              figureKey: `${OVERLAY_FIGURE_KEY_PREFIX}point_${startPointIndex}`,
+              pointIndex: startPointIndex
+            })
+            progressOverlay.onDrawStart?.(startOverlayEvent)
+            const overlayInfo: EventOverlayInfo = {
+              overlay: progressOverlay,
+              interactType: 'body',
+              figureKey: '',
+              figureIndex: 0,
+              attrsIndex: 0,
+              paneId
+            }
+            overlayStore.setSelectedInfo(overlayInfo)
+            progressOverlay.nextStep()
+
+            if (progressOverlay.isCompleted()) {
+              overlayStore.progressOverlayComplete()
+              progressOverlay.onDrawEnd?.(startOverlayEvent)
+              chart.updatePane(UpdateLevel.Overlay, paneId)
+              return
+            }
+          }
+
+          const pointIndex = progressOverlay.currentStep
+          progressOverlay.updateDrawPoint(this._overlayView.coordinateToPoint(progressOverlay, event) as IPoint)
+          progressOverlay.onDrawing?.(createOverlayEvent(event, progressOverlay, paneId, chartStore, {
+            figureKey: `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`,
+            pointIndex
+          }))
+          overlayStore.setDragging(true)
+          chart.updatePane(UpdateLevel.Overlay, paneId)
+        }
+        return
+      }
+
       if (pressedInfo?.overlay != null) {
         const overlay = pressedInfo.overlay
         const overlayEvent = createOverlayEventFromInfo(event, pressedInfo, chartStore)
