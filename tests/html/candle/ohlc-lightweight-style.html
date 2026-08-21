@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1220" />
+    <meta name="description" content="Lightweight Charts style OHLC bar rendering demo" />
+    <title>OHLC 美国线像素几何 Demo</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #07101d;
+        color: #d9e4f2;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background:
+          radial-gradient(circle at 15% 0%, rgba(56, 189, 248, 0.13), transparent 32rem),
+          #07101d;
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 32px 0 40px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(26px, 4vw, 42px);
+        line-height: 1.1;
+        letter-spacing: -0.035em;
+        color: #f6f9fc;
+      }
+
+      .lead {
+        max-width: 760px;
+        margin: 12px 0 24px;
+        color: #93a4b8;
+        line-height: 1.7;
+      }
+
+      .panel {
+        overflow: hidden;
+        border: 1px solid #1c2b3e;
+        border-radius: 16px;
+        background: rgba(10, 20, 35, 0.92);
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 16px;
+        border-bottom: 1px solid #1c2b3e;
+      }
+
+      button {
+        padding: 9px 13px;
+        border: 1px solid #2c4058;
+        border-radius: 9px;
+        background: #111f31;
+        color: #bed0e5;
+        font: inherit;
+        cursor: pointer;
+        transition: 140ms ease;
+      }
+
+      button:hover {
+        border-color: #38bdf8;
+        color: #f4fbff;
+        transform: translateY(-1px);
+      }
+
+      button.active {
+        border-color: #38bdf8;
+        background: #0c4a6e;
+        color: #fff;
+        box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.25);
+      }
+
+      .readout {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1px;
+        background: #1c2b3e;
+        border-bottom: 1px solid #1c2b3e;
+      }
+
+      .metric {
+        padding: 13px 16px;
+        background: #0c1727;
+      }
+
+      .metric span {
+        display: block;
+        margin-bottom: 4px;
+        color: #6f8299;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .metric strong {
+        font-size: 18px;
+        color: #eaf2fb;
+      }
+
+      #chart {
+        height: min(620px, 66vh);
+        min-height: 420px;
+      }
+
+      .notes {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+      }
+
+      .note {
+        padding: 16px;
+        border: 1px solid #1c2b3e;
+        border-radius: 12px;
+        background: rgba(12, 23, 39, 0.76);
+        color: #8fa2b8;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .note strong {
+        display: block;
+        margin-bottom: 5px;
+        color: #dce8f5;
+      }
+
+      code {
+        color: #7dd3fc;
+      }
+
+      @media (max-width: 720px) {
+        main {
+          width: min(100% - 20px, 1180px);
+          padding-top: 22px;
+        }
+
+        .readout,
+        .notes {
+          grid-template-columns: 1fr;
+        }
+
+        #chart {
+          min-height: 360px;
+          height: 58vh;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>OHLC 美国线像素几何</h1>
+      <p class="lead">
+        切换不同的 K 线中心间距，观察中心竖线与开盘/收盘短线始终保持 1 CSS px。
+        短线长度采用 Lightweight Charts 的阶梯公式；拖动和滚轮缩放仍可正常使用。
+      </p>
+
+      <section class="panel">
+        <div class="controls" id="spacing-controls" aria-label="Bar spacing presets"></div>
+        <div class="readout" aria-live="polite">
+          <div class="metric">
+            <span>Bar spacing</span>
+            <strong id="bar-spacing">17px</strong>
+          </div>
+          <div class="metric">
+            <span>Entity width</span>
+            <strong id="entity-width">13px</strong>
+          </div>
+          <div class="metric">
+            <span>Open / close tick</span>
+            <strong id="tick-length">8px</strong>
+          </div>
+        </div>
+        <div id="chart"></div>
+      </section>
+
+      <section class="notes">
+        <div class="note">
+          <strong>固定 1px 笔画</strong>
+          无论 bar spacing 是 4px 还是 30px，竖线宽度和横线高度都不会变粗。
+        </div>
+        <div class="note">
+          <strong>窄实体降级</strong>
+          选择 <code>1px</code> 时 entity width 为 1px，只绘制中心竖线；选择 <code>4px</code> 时左右短线各保留 2px。
+        </div>
+        <div class="note">
+          <strong>平价 bar</strong>
+          最后一根数据的 OHLC 完全相等，中心仍会留下可见的 1×1px 点。
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { CandleType, init } from '../../../dist/index.js'
+
+      const presets = [
+        { barSpace: 1, entityWidth: 1, tickLength: 0, label: '1px · 仅中心线' },
+        { barSpace: 4, entityWidth: 3, tickLength: 2, label: '4px · 窄 bar' },
+        { barSpace: 8, entityWidth: 7, tickLength: 2, label: '8px · 默认级' },
+        { barSpace: 10, entityWidth: 7, tickLength: 5, label: '10px · 5px 短线' },
+        { barSpace: 17, entityWidth: 13, tickLength: 8, label: '17px · 8px 短线' },
+        { barSpace: 30, entityWidth: 25, tickLength: 14, label: '30px · 宽 bar' }
+      ]
+
+      function createData() {
+        const day = 24 * 60 * 60 * 1000
+        const start = Date.UTC(2026, 0, 1)
+        const data = []
+        let previousClose = 100
+
+        for (let i = 0; i < 72; i++) {
+          const wave = Math.sin(i * 0.52) * 3.8
+          const drift = i * 0.11
+          const open = previousClose + Math.cos(i * 0.73) * 1.15
+          const close = 100 + wave + drift
+          const high = Math.max(open, close) + 1.4 + (i % 4) * 0.34
+          const low = Math.min(open, close) - 1.25 - (i % 3) * 0.28
+          data.push({
+            timestamp: start + i * day,
+            open,
+            high,
+            low,
+            close,
+            volume: 1000 + i * 17
+          })
+          previousClose = close
+        }
+
+        const flatPrice = data[data.length - 1].close
+        data.push({
+          timestamp: start + data.length * day,
+          open: flatPrice,
+          high: flatPrice,
+          low: flatPrice,
+          close: flatPrice,
+          volume: 1000
+        })
+        return data
+      }
+
+      const chart = init('chart')
+      chart.setStyles({
+        candle: {
+          type: CandleType.Ohlc,
+          bar: {
+            upColor: '#22c55e',
+            downColor: '#f43f5e',
+            noChangeColor: '#fbbf24'
+          },
+          priceMark: {
+            high: { show: false },
+            low: { show: false }
+          }
+        },
+        grid: {
+          horizontal: { color: '#17263a' },
+          vertical: { color: '#17263a' }
+        },
+        xAxis: {
+          axisLine: { color: '#26374d' },
+          tickLine: { color: '#26374d' },
+          tickText: { color: '#7f93aa' }
+        },
+        yAxis: {
+          axisLine: { color: '#26374d' },
+          tickLine: { color: '#26374d' },
+          tickText: { color: '#7f93aa' }
+        }
+      })
+      chart.applyNewData(createData())
+
+      const controls = document.getElementById('spacing-controls')
+      const spacingValue = document.getElementById('bar-spacing')
+      const entityValue = document.getElementById('entity-width')
+      const tickValue = document.getElementById('tick-length')
+
+      function selectPreset(preset, button) {
+        chart.setBarSpace(preset.barSpace)
+        spacingValue.textContent = `${preset.barSpace}px`
+        entityValue.textContent = `${preset.entityWidth}px`
+        tickValue.textContent = preset.tickLength === 0 ? '隐藏' : `${preset.tickLength}px`
+        controls.querySelectorAll('button').forEach(item => item.classList.remove('active'))
+        button.classList.add('active')
+      }
+
+      presets.forEach(preset => {
+        const button = document.createElement('button')
+        button.type = 'button'
+        button.textContent = preset.label
+        button.addEventListener('click', () => selectPreset(preset, button))
+        controls.appendChild(button)
+        if (preset.barSpace === 17) {
+          selectPreset(preset, button)
+        }
+      })
+    </script>
+  </body>
+</html>

@@ -50,6 +50,14 @@ function createPixelSnappedBodyRect(x: number, y: number, barSpace: BarSpace, he
   }
 }
 
+function getOhlcTickLength(barSpacing: number): number {
+  let barWidth = Math.max(1, Math.floor(barSpacing * 0.3))
+  if (barWidth >= 2 && barWidth % 2 === 0) {
+    barWidth--
+  }
+  return Math.ceil(barWidth * 1.5)
+}
+
 export default class CandleBarView extends View {
   // 响应点击和右键事件，仅蜡烛图类型走命中测试
   override checkEventOn(event: MouseTouchEvent, name: EventName): boolean {
@@ -132,16 +140,6 @@ export default class CandleBarView extends View {
     const chartStore = pane.getChart().getChartStore()
     const candleBarOptions = this.getCandleBarOptions(chartStore)
     if (candleBarOptions != null) {
-      let ohlcSize = 0
-      let halfOhlcSize = 0
-      if (candleBarOptions.type === CandleType.Ohlc) {
-        const gapBar = chartStore.getTimeScaleStore().getBarSpace().gapBar
-        ohlcSize = Math.min(Math.max(Math.round(gapBar * 0.2), 1), 8)
-        if (ohlcSize > 2 && ohlcSize % 2 === 1) {
-          ohlcSize--
-        }
-        halfOhlcSize = Math.floor(ohlcSize / 2)
-      }
       const yAxis = getCandleBarYAxis(pane as DualYPane, candleBarOptions)
       const visibleDataList = chartStore.getVisibleDataList()
       const barSpace = chartStore.getTimeScaleStore().getBarSpace()
@@ -202,29 +200,40 @@ export default class CandleBarView extends View {
             }
             case CandleType.Ohlc: {
               const ohlcX = pixelSnapBarCenter(x)
+              const top = priceY[0]
+              const height = Math.max(1, priceY[3] - top)
+              const bottom = top + height - 1
+              const tickLength = getOhlcTickLength(barSpace.bar)
+              const openTickY = Math.min(Math.max(openY, top), bottom)
+              const closeTickY = Math.min(Math.max(closeY, top), bottom)
+              const attrs: RectAttrs[] = [
+                {
+                  x: ohlcX,
+                  y: top,
+                  width: 1,
+                  height
+                }
+              ]
+              if (barSpace.gapBar > 1) {
+                attrs.push(
+                  {
+                    x: ohlcX - tickLength,
+                    y: openTickY,
+                    width: tickLength,
+                    height: 1
+                  },
+                  {
+                    x: ohlcX + 1,
+                    y: closeTickY,
+                    width: tickLength,
+                    height: 1
+                  }
+                )
+              }
               rects = [
                 {
                   name: 'rect',
-                  attrs: [
-                    {
-                      x: ohlcX - halfOhlcSize,
-                      y: priceY[0],
-                      width: ohlcSize,
-                      height: priceY[3] - priceY[0]
-                    },
-                    {
-                      x: ohlcX - barSpace.halfGapBar,
-                      y: openY + ohlcSize > priceY[3] ? priceY[3] - ohlcSize : openY,
-                      width: barSpace.halfGapBar - halfOhlcSize,
-                      height: ohlcSize
-                    },
-                    {
-                      x: ohlcX + halfOhlcSize,
-                      y: closeY + ohlcSize > priceY[3] ? priceY[3] - ohlcSize : closeY,
-                      width: barSpace.halfGapBar - halfOhlcSize,
-                      height: ohlcSize
-                    }
-                  ],
+                  attrs,
                   styles: { color: colors[0] }
                 }
               ]

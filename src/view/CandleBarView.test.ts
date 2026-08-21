@@ -27,6 +27,58 @@ beforeEach(() => {
   figureMock.draw.mockClear()
 })
 
+function drawOhlcRects(options: {
+  bar: number
+  gapBar: number
+  data?: { open: number, high: number, low: number, close: number }
+  paneId?: string
+}): RectAttrs[] {
+  const styles = getDefaultStyles()
+  styles.candle.type = CandleType.Ohlc
+  const yAxis = {
+    convertToPixel: vi.fn((value: number) => value)
+  }
+  const yAxisWidget = {
+    getAxisType: () => YAxisType.Normal,
+    getAxisComponent: () => yAxis
+  }
+  const isIndicatorPane = options.paneId != null && options.paneId !== PaneIdConstants.CANDLE
+  const chartStore = {
+    getIsTimeShare: () => false,
+    getStyles: () => styles,
+    getVisibleDataList: () => [{
+      dataIndex: 0,
+      x: 20.5,
+      data: options.data ?? { open: 100, high: 120, low: 90, close: 110 }
+    }],
+    getTimeScaleStore: () => ({
+      getBarSpace: () => ({
+        bar: options.bar,
+        halfBar: options.bar / 2,
+        gapBar: options.gapBar,
+        halfGapBar: Math.floor(options.gapBar / 2)
+      })
+    }),
+    getIndicatorStore: () => ({
+      getInstances: () => isIndicatorPane
+        ? [{ shouldOhlc: true, visible: true }]
+        : []
+    })
+  }
+  const pane = {
+    getId: () => options.paneId ?? PaneIdConstants.CANDLE,
+    getChart: () => ({ getChartStore: () => chartStore }),
+    getYLeftAxisWidget: () => yAxisWidget,
+    getYRightAxisWidget: () => yAxisWidget,
+    getMainAxisWidget: () => yAxisWidget
+  }
+  const view = new CandleBarView({ getPane: () => pane } as never)
+
+  view.draw({} as never)
+
+  return figureMock.setAttrs.mock.calls[0][0] as RectAttrs[]
+}
+
 describe('resolveIndicatorOhlcYAxisPosition', () => {
   it('uses global right y-axis as the default for indicators without explicit binding', () => {
     expect(resolveIndicatorOhlcYAxisPosition({}, YAxisPosition.Right)).toBe('right')
@@ -300,5 +352,84 @@ describe('CandleBarView', () => {
 
     const [wickAttrs] = figureMock.setAttrs.mock.calls[0][0] as RectAttrs[]
     expect(wickAttrs.x).toBe(20)
+  })
+
+  it.each([
+    { bar: 8, gapBar: 7, tickLength: 2 },
+    { bar: 10, gapBar: 7, tickLength: 5 },
+    { bar: 17, gapBar: 13, tickLength: 8 }
+  ])('keeps 1px strokes and uses a $tickLength px tick at $bar px bar spacing', ({ bar, gapBar, tickLength }) => {
+    const [center, open, close] = drawOhlcRects({ bar, gapBar })
+
+    expect(center).toMatchObject({ x: 20, width: 1 })
+    expect(open).toMatchObject({
+      x: 20 - tickLength,
+      width: tickLength,
+      height: 1
+    })
+    expect(close).toMatchObject({
+      x: 21,
+      width: tickLength,
+      height: 1
+    })
+    expect(open.x + open.width).toBe(center.x)
+    expect(center.x + center.width).toBe(close.x)
+  })
+
+  it('omits open and close ticks for a one-pixel candle entity', () => {
+    const rects = drawOhlcRects({ bar: 3, gapBar: 1 })
+
+    expect(rects).toEqual([{
+      x: 20,
+      y: 90,
+      width: 1,
+      height: 30
+    }])
+  })
+
+  it('keeps two-pixel ticks when they extend beyond a three-pixel candle entity', () => {
+    const [center, open, close] = drawOhlcRects({ bar: 4, gapBar: 3 })
+
+    expect(center).toMatchObject({ x: 20, width: 1 })
+    expect(open).toMatchObject({ x: 18, width: 2, height: 1 })
+    expect(close).toMatchObject({ x: 21, width: 2, height: 1 })
+  })
+
+  it('keeps a flat OHLC bar visible as a one-pixel center mark', () => {
+    const [center, open, close] = drawOhlcRects({
+      bar: 8,
+      gapBar: 7,
+      data: { open: 100, high: 100, low: 100, close: 100 }
+    })
+
+    expect(center).toMatchObject({ x: 20, y: 100, width: 1, height: 1 })
+    expect(open).toMatchObject({ y: 100, height: 1 })
+    expect(close).toMatchObject({ y: 100, height: 1 })
+  })
+
+  it('keeps extreme-price ticks within the pixels occupied by the center line', () => {
+    const [center, open, close] = drawOhlcRects({
+      bar: 8,
+      gapBar: 7,
+      data: { open: 120, high: 120, low: 90, close: 90 }
+    })
+
+    expect(center).toMatchObject({ y: 90, height: 30 })
+    expect(open).toMatchObject({ y: 119, height: 1 })
+    expect(close).toMatchObject({ y: 90, height: 1 })
+  })
+
+  it('uses the same OHLC geometry in indicator panes', () => {
+    const rects = drawOhlcRects({
+      bar: 10,
+      gapBar: 7,
+      paneId: `${PaneIdConstants.INDICATOR}test`
+    })
+
+    expect(rects).toEqual([
+      { x: 20, y: 90, width: 1, height: 30 },
+      { x: 15, y: 100, width: 5, height: 1 },
+      { x: 21, y: 110, width: 5, height: 1 }
+    ])
   })
 })
