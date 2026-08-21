@@ -111,3 +111,28 @@ describe('Event axis drag', () => {
     expect(otherAxis.setRange).toHaveBeenCalled()
   })
 })
+
+describe('Event axis double click', () => {
+  it('resets the time scale when the x-axis is double-clicked', () => {
+    const event = Object.create(Event.prototype) as Event
+    const resetTimeScale = vi.fn()
+    const xAxisWidget = {
+      getName: () => WidgetNameConstants.X_AXIS,
+      getPane: () => ({ getId: () => 'x_axis' }),
+      dispatchEvent: vi.fn()
+    }
+    Reflect.set(event, '_findWidgetByEvent', vi.fn(() => ({ widget: xAxisWidget })))
+    Reflect.set(event, '_makeWidgetEvent', vi.fn((mouseEvent: MouseTouchEvent) => mouseEvent))
+    Reflect.set(event, '_syncCursor', vi.fn())
+    Reflect.set(event, '_chart', {
+      getChartStore: () => ({
+        getTimeScaleStore: () => ({ resetTimeScale }),
+        getActionStore: () => ({ execute: vi.fn() })
+      })
+    })
+
+    event.mouseDoubleClickEvent(createMouseEvent(20, 10))
+
+    expect(resetTimeScale).toHaveBeenCalledOnce()
+  })
+})

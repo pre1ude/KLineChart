@@ -662,6 +662,7 @@ export default class ChartStore {
           this._timeScaleStore.resetDataZoomRange()
           this._afterNextDataLayout = () => {
             this._timeScaleStore.autoInitialAlignment()
+            this._timeScaleStore.captureInitialView()
           }
           adjustFlag = true
           gapContext = { kind: 'init', fromIndex: 0 }

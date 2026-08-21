@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type KLineData from '../common/KLineData'
 import { CandleType, getDefaultStyles } from '../common/Styles'
 import TimeScaleStore, { calcTimeScaleHorizontalInset } from './TimeScaleStore'
+import { TimeScaleModeKind } from './time-scale'
 
 describe('calcTimeScaleHorizontalInset', () => {
   it('keeps the time scale range unchanged outside area symbol and point drawing', () => {
@@ -89,13 +90,68 @@ describe('TimeScaleStore offsetRight resize bounds', () => {
   })
 })
 
-function createTimeScaleHarness(mainWidth: number): {
+describe('TimeScaleStore initial view reset', () => {
+  it('restores the initial K-line bar width and right position after zooming', () => {
+    const { timeScaleStore } = createTimeScaleHarness(600)
+    timeScaleStore.adjustVisibleRange()
+    timeScaleStore.captureInitialView()
+
+    timeScaleStore.zoom(1, 300)
+    expect(timeScaleStore.getBarSpace().bar).toBe(16)
+
+    timeScaleStore.resetTimeScale()
+
+    expect(timeScaleStore.getBarSpace().bar).toBe(8)
+    expect(timeScaleStore.getOffsetRightDistance()).toBe(10)
+  })
+
+  it('restores the initial left alignment when the data fits the chart', () => {
+    const { timeScaleStore } = createTimeScaleHarness(100, 5)
+    timeScaleStore.autoInitialAlignment()
+    timeScaleStore.adjustVisibleRange()
+    timeScaleStore.captureInitialView()
+
+    timeScaleStore.scroll(20)
+    timeScaleStore.resetTimeScale()
+
+    expect(timeScaleStore.getOffsetRightDistance()).toBe(60)
+    expect(timeScaleStore.getVisibleRange()).toMatchObject({ from: 0, domainFrom: 0 })
+  })
+
+  it('restores the configured initial DataZoom range', () => {
+    const { timeScaleStore } = createTimeScaleHarness(600)
+    timeScaleStore.setMode(TimeScaleModeKind.DataZoom)
+    timeScaleStore.setDataZoomOptions({ start: 80, end: 100 })
+    timeScaleStore.adjustVisibleRange()
+    timeScaleStore.captureInitialView()
+
+    timeScaleStore.setDataZoomRange(20, 40)
+    timeScaleStore.resetTimeScale()
+
+    expect(timeScaleStore.getDataZoomRange()).toEqual({ start: 80, end: 100 })
+    expect(timeScaleStore.getVisibleRange()).toMatchObject({ domainFrom: 80, domainTo: 100 })
+  })
+
+  it('respects the current bar space limit when restoring the initial view', () => {
+    const { timeScaleStore } = createTimeScaleHarness(600)
+    timeScaleStore.adjustVisibleRange()
+    timeScaleStore.captureInitialView()
+
+    timeScaleStore.setBarSpaceLimit({ max: 4 })
+    timeScaleStore.resetTimeScale()
+
+    expect(timeScaleStore.getBarSpace().bar).toBe(4)
+  })
+
+})
+
+function createTimeScaleHarness(mainWidth: number, dataCount: number = 100): {
   chartStore: { mainWidth: number }
   timeScaleStore: TimeScaleStore
 } {
   const chartStore = {
     mainWidth,
-    getDataList: () => createDataList(100),
+    getDataList: () => createDataList(dataCount),
     getMinRemainWidth: () => ({ left: 0, right: 0 }),
     getTimeShareTicks: () => [],
     getTimeShareDays: () => 1,
@@ -105,6 +161,10 @@ function createTimeScaleHarness(mainWidth: number): {
     }),
     getActionStore: () => ({
       execute: vi.fn()
+    }),
+    getChart: () => ({
+      refreshViewportLayout: vi.fn(),
+      requestViewportLayout: vi.fn()
     }),
     adjustVisibleDataList: vi.fn(),
     executeLoadDataCallback: vi.fn(),

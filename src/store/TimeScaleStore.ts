@@ -17,6 +17,14 @@ import { resolveLineSymbolStyle } from '../extension/figure/line'
 const DEFAULT_BAR_WIDTH = 8
 const DEFAULT_OFFSET_RIGHT = 10
 
+interface InitialTimeScaleView {
+  mode: TimeScaleModeKind
+  barWidth: number
+  offsetRight: number
+  kLineAlignment?: 'left' | 'right'
+  dataZoomRange?: { start: number, end: number }
+}
+
 export default class TimeScaleStore {
   private readonly _chartStore: ChartStore
   private _zoomEnabled: boolean = true
@@ -38,6 +46,8 @@ export default class TimeScaleStore {
   private _autoInitialAlignment: boolean = true
 
   private _visibleRange: VisibleRange = getDefaultVisibleRange()
+
+  private _initialView?: InitialTimeScaleView
 
   private _xScale: LinearScale
   private _mode: TimeScaleMode
@@ -288,6 +298,51 @@ export default class TimeScaleStore {
     }
   }
 
+  resetTimeScale(): void {
+    const initialView = this._initialView
+    if (initialView?.mode !== this.getModeKind()) {
+      return
+    }
+
+    let changed = false
+    if (this._mode instanceof DataZoomTimeScaleMode && initialView.dataZoomRange != null) {
+      changed = this._mode.setRange(initialView.dataZoomRange.start, initialView.dataZoomRange.end)
+    } else if (this._mode instanceof KLineTimeScaleMode) {
+      const nextBarWidth = clamp(initialView.barWidth, this._barSpaceLimit.min, this._barSpaceLimit.max)
+      const nextOffsetRight = initialView.kLineAlignment === 'left'
+        ? this._chartStore.mainWidth - this._chartStore.getDataList().length * nextBarWidth
+        : initialView.offsetRight
+      changed = this._barWidth !== nextBarWidth || this._offsetRight !== nextOffsetRight
+      this._barWidth = nextBarWidth
+      this._offsetRight = nextOffsetRight
+    } else {
+      changed = this._barWidth !== initialView.barWidth || this._offsetRight !== initialView.offsetRight
+      this._barWidth = initialView.barWidth
+      this._offsetRight = initialView.offsetRight
+    }
+    if (changed) {
+      this._refreshTimeScale()
+    }
+  }
+
+  captureInitialView(): void {
+    const mode = this.getModeKind()
+    const initialView: InitialTimeScaleView = {
+      mode,
+      barWidth: this._barWidth,
+      offsetRight: this._offsetRight
+    }
+    if (this._mode instanceof KLineTimeScaleMode) {
+      const leftOffsetRight = this._chartStore.mainWidth - this._barWidth * this._chartStore.getDataList().length
+      initialView.kLineAlignment = this._offsetRight === leftOffsetRight
+        ? 'left'
+        : 'right'
+    } else if (this._mode instanceof DataZoomTimeScaleMode) {
+      initialView.dataZoomRange = this._mode.getRange()
+    }
+    this._initialView = initialView
+  }
+
   getVisibleRange(): VisibleRange {
     return this._visibleRange
   }
@@ -349,6 +404,7 @@ export default class TimeScaleStore {
 
   clear(): void {
     this._visibleRange = getDefaultVisibleRange()
+    this._initialView = undefined
   }
 
   /**
@@ -404,6 +460,16 @@ export default class TimeScaleStore {
    */
   getAutoInitialAlignment(): boolean {
     return this._autoInitialAlignment
+  }
+
+  private getModeKind(): TimeScaleModeKind {
+    if (this._mode instanceof DataZoomTimeScaleMode) {
+      return TimeScaleModeKind.DataZoom
+    }
+    if (this._mode instanceof TimeShareTimeScaleMode) {
+      return TimeScaleModeKind.TimeShare
+    }
+    return TimeScaleModeKind.KLine
   }
 
 }

@@ -464,6 +464,11 @@ export default class Event implements EventHandler {
           consumed = widget.dispatchEvent('mouseDoubleClickEvent', event)
           break
         }
+        case WidgetNameConstants.X_AXIS: {
+          this._chart.getChartStore().getTimeScaleStore().resetTimeScale()
+          consumed = true
+          break
+        }
         case WidgetNameConstants.Y_AXIS: {
           const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
           const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()

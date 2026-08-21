@@ -132,6 +132,24 @@ describe('ChartStore', () => {
     }
   })
 
+  it('restores the initial time-scale view after it is zoomed', () => {
+    const chart = {
+      refreshViewportLayout: vi.fn((afterLayoutSettled?: () => void) => {
+        afterLayoutSettled?.()
+      })
+    } as unknown as Chart
+    const store = new ChartStore(chart)
+    store.mainWidth = 600
+
+    store.addData(createDataList(100), LoadDataType.Init)
+    const timeScaleStore = store.getTimeScaleStore()
+    timeScaleStore.zoom(1, 300)
+    timeScaleStore.resetTimeScale()
+
+    expect(timeScaleStore.getBarSpace().bar).toBe(8)
+    expect(timeScaleStore.getOffsetRightDistance()).toBe(10)
+  })
+
   it('configures and recalculates chart gaps without creating an indicator', () => {
     const chart = {
       refreshViewportLayout: vi.fn()
