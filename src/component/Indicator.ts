@@ -199,7 +199,7 @@ export interface IndicatorApi<D = unknown> {
   /**
    * Create custom tooltip text
    */
-  createTooltipDataSource?: IndicatorCreateTooltipDataSourceCallback
+  createTooltipDataSource?: IndicatorCreateTooltipDataSourceCallback<D>
 
   /**
    * Custom draw
