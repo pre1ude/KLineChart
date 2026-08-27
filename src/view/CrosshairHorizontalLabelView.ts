@@ -4,6 +4,7 @@ import { YAxisType, type CrosshairDirectionStyle, type CrosshairStyle, type Stat
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { type TextAttrs } from '../extension/figure/text'
 import type ChartStore from '../store/ChartStore'
+import type DualYPane from '../pane/DualYPane'
 import type YAxisWidget from '../widget/YAxisWidget'
 import CrosshairLabelView from './CrosshairLabelView'
 import { calculateYAxisLabelLayout, calcYAxisLabelHeight, clampYAxisLabelY } from './utils/labelPosition'
@@ -53,7 +54,10 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
         }
       }
     } else {
-      const indicators = chartStore.getIndicatorStore().getInstances(crosshair.paneId ?? '')
+      const pane: DualYPane = widget.getPane()
+      const indicators = chartStore.getIndicatorStore().getInstances(crosshair.paneId ?? '').filter(indicator => (
+        pane.resolveIndicatorYAxisId(indicator) === widget.getOptions().id
+      ))
       let precision = 0
       let shouldFormatBigNumber = false
       if (yAxis.isInCandle()) {

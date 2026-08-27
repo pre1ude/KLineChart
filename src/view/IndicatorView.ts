@@ -35,13 +35,10 @@ export default class IndicatorView extends View {
   override drawImp(ctx: CanvasRenderingContext2D): void {
     const widget = this.getWidget()
     const pane = widget.getPane()
-    const isMain = pane.getId() === PaneIdConstants.CANDLE
     const chart = pane.getChart()
-    const yAxisStyles = chart.getStyles().yAxis
     const bounding = widget.getBounding()
     const xAxis = (chart.getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
-    const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
-    const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
+    const dualYPane = pane as DualYPane
     const chartStore = chart.getChartStore()
     const dataList = chartStore.getDataList()
     const timeScaleStore = chartStore.getTimeScaleStore()
@@ -53,16 +50,6 @@ export default class IndicatorView extends View {
     const timeShareTicks = chartStore.getTimeShareTicks()
     const ticksPerDay = timeShareTicks.length
     const breakOnCrossDays = chartStore.getTimeShareBreakOnCrossDays()
-
-    function filterIndicatorsByAxisPosition(
-      indicators: Indicator[],
-      position: 'left' | 'right',
-      yAxisPosition: YAxisPosition,
-      mainYAxisPosition: 'left' | 'right'
-    ): Indicator[] {
-      const defaultPosition = resolveDefaultYAxisPosition(yAxisPosition, mainYAxisPosition)
-      return indicators.filter(indicator => getIndicatorYAxisPosition(indicator, defaultPosition) === position)
-    }
 
     function tryCustomDraw(indicator: Indicator, yAxis: YAxisImp, defaultStyles: IndicatorStyle): boolean {
       if (indicator.draw == null) return false
@@ -295,14 +282,20 @@ export default class IndicatorView extends View {
 
     // 执行绘制
     ctx.save()
-    if (isMain) {
-      // 在主图
-      drawForAxis(paneIndicators, (pane as DualYPane).getMainAxisWidget().getAxisComponent())
-    } else {
-      // 在副图
-      drawForAxis(filterIndicatorsByAxisPosition(paneIndicators, YAxisPosition.Left, yAxisStyles.position, yAxisStyles.mainPosition), yLeftAxis)
-      drawForAxis(filterIndicatorsByAxisPosition(paneIndicators, YAxisPosition.Right, yAxisStyles.position, yAxisStyles.mainPosition), yRightAxis)
-    }
+    paneIndicators.forEach(indicator => {
+      let yAxisWidget
+      if (typeof dualYPane.resolveIndicatorYAxisId === 'function' && typeof dualYPane.getYAxisWidgetById === 'function') {
+        yAxisWidget = dualYPane.getYAxisWidgetById(dualYPane.resolveIndicatorYAxisId(indicator))
+      } else if (pane.getId() === PaneIdConstants.CANDLE && typeof dualYPane.getMainAxisWidget === 'function') {
+        yAxisWidget = dualYPane.getMainAxisWidget()
+      } else {
+        const styles = chart.getStyles().yAxis
+        const defaultPosition = resolveDefaultYAxisPosition(styles.position, styles.mainPosition)
+        const position = getIndicatorYAxisPosition(indicator, defaultPosition)
+        yAxisWidget = position === YAxisPosition.Left ? dualYPane.getYLeftAxisWidget() : dualYPane.getYRightAxisWidget()
+      }
+      if (yAxisWidget) drawForAxis([indicator], yAxisWidget.getAxisComponent())
+    })
     ctx.restore()
   }
 }

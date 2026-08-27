@@ -134,7 +134,7 @@ export default class OverlayView extends View {
     const widgetName = widget.getName()
     let yAxis: YAxis | undefined
     if (widgetName === WidgetNameConstants.MAIN) {
-      yAxis = pane.getYLeftAxisWidget().getAxisComponent()
+      yAxis = pane.getMainAxisWidget().getAxisComponent()
     } else if (widgetName === WidgetNameConstants.Y_AXIS) {
       yAxis = widget.getAxisComponent()
     }

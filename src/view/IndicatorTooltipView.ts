@@ -531,7 +531,10 @@ export default class IndicatorTooltipView extends View {
       const pane = widget.getPane()
       const chartStore = pane.getChart().getChartStore()
       const xAxis = (pane.getChart().getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
-      const yAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+      const dualYPane = pane as DualYPane
+      const yAxis = typeof dualYPane.resolveIndicatorYAxisId === 'function' && typeof dualYPane.getYAxisWidgetById === 'function'
+        ? (dualYPane.getYAxisWidgetById(dualYPane.resolveIndicatorYAxisId(indicator))?.getAxisComponent() ?? dualYPane.getMainAxisWidget().getAxisComponent())
+        : dualYPane.getYLeftAxisWidget().getAxisComponent()
       const { name: customName, calcParamsText: customCalcParamsText, values: customLegends, icons: customIcons } = indicator.createTooltipDataSource({
         kLineDataList: dataList,
         indicator,

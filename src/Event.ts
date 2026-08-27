@@ -102,6 +102,23 @@ export default class Event implements EventHandler {
       this._chart.getChartStore().getTimeScaleStore().zoom(scale, event.x, true)
       return true
     }
+    if (name === WidgetNameConstants.Y_AXIS && widget) {
+      const yAxis = (widget as YAxisWidget).getAxisComponent()
+      if (!yAxis.getScrollZoomEnabled()) return false
+      const { from, to } = yAxis.getRange()
+      const center = (from + to) / 2
+      const halfRange = Math.abs(to - from) / 2 * Math.max(0.1, 1 + normDeltaY * 0.1)
+      const nextFrom = center - halfRange
+      const nextTo = center + halfRange
+      yAxis.setRange({
+        from: nextFrom,
+        to: nextTo,
+        domainFrom: yAxis.convertToRealValue(nextFrom),
+        domainTo: yAxis.convertToRealValue(nextTo)
+      })
+      this._chart.requestViewportLayout()
+      return true
+    }
     return false
   }
 
@@ -143,12 +160,12 @@ export default class Event implements EventHandler {
           const range = currentYAxis.getRange()
           this._prevYAxisRange = range ? { ...range } : undefined
 
-          // 保存另一个Y轴的初始范围
-          const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
-          const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
-          const otherYAxis = currentYAxis === yLeftAxis ? yRightAxis : yLeftAxis
-          const otherRange = otherYAxis.getRange()
-          this._prevOtherYAxisRange = otherRange ? { ...otherRange } : undefined
+          if (typeof (pane as DualYPane).getVisibleYAxisWidgets !== 'function') {
+            const leftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
+            const rightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
+            const otherAxis = currentYAxis === leftAxis ? rightAxis : leftAxis
+            this._prevOtherYAxisRange = { ...otherAxis.getRange() }
+          }
 
           this._yAxisStartScaleDistance = event.pageY
           this._syncCursor(widget)
@@ -165,7 +182,7 @@ export default class Event implements EventHandler {
     const event = this._makeWidgetEvent(e, widget)
     if (
       this._mouseMoveTriggerWidgetInfo.pane?.getId() !== pane?.getId() ||
-      this._mouseMoveTriggerWidgetInfo.widget?.getName() !== widget?.getName()
+      this._mouseMoveTriggerWidgetInfo.widget !== widget
     ) {
       widget?.dispatchEvent('mouseEnterEvent', event)
       this._mouseMoveTriggerWidgetInfo.widget?.dispatchEvent('mouseLeaveEvent', event)
@@ -225,12 +242,14 @@ export default class Event implements EventHandler {
           const height = bounding.height
           const consumed = widget.dispatchEvent('pressedMouseMoveEvent', event)
           if (!consumed && this._startScrollCoordinate) {
-            const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
-            const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
+            const dualYPane = pane as DualYPane
+            const axes = typeof dualYPane.getVisibleYAxisWidgets === 'function'
+              ? dualYPane.getVisibleYAxisWidgets().map(widget => widget.getAxisComponent())
+              : [dualYPane.getYLeftAxisWidget().getAxisComponent(), dualYPane.getYRightAxisWidget().getAxisComponent()]
 
             // 计算像素移动距离
             let pixelDistance: number
-            const isReverse = yLeftAxis?.isReverse() ?? false
+            const isReverse = (pane as DualYPane).getMainAxisWidget().getAxisComponent().isReverse()
             if (isReverse) {
               pixelDistance = this._startScrollCoordinate.y - event.y
             } else {
@@ -239,8 +258,7 @@ export default class Event implements EventHandler {
 
             // 使用像素偏移量直接更新每个轴的范围
             // 这样每个轴都会根据自己的内部范围进行等比例偏移
-            yLeftAxis.offsetByPixel(pixelDistance, height)
-            yRightAxis.offsetByPixel(pixelDistance, height)
+            axes.forEach(axis => axis.offsetByPixel(pixelDistance, height))
 
             const distance = event.x - this._startScrollCoordinate.x
             this._startScrollCoordinate = { x: event.x, y: event.y }
@@ -291,25 +309,21 @@ export default class Event implements EventHandler {
                 domainTo: newRealTo
               })
 
-              // 同步其他Y轴 - 使用保存的初始范围和相同的缩放比例
-              const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
-              const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
-              const otherYAxis = currentYAxis === yLeftAxis ? yRightAxis : yLeftAxis
-
-              if (otherYAxis.getScrollZoomEnabled() && this._prevOtherYAxisRange) {
-                const otherRange = this._prevOtherYAxisRange
-                const otherRangeSize = otherRange.to - otherRange.from
+              const dualYPane = pane as DualYPane
+              if (typeof dualYPane.getVisibleYAxisWidgets !== 'function' && this._prevOtherYAxisRange) {
+                const leftAxis = dualYPane.getYLeftAxisWidget().getAxisComponent()
+                const rightAxis = dualYPane.getYRightAxisWidget().getAxisComponent()
+                const otherAxis = currentYAxis === leftAxis ? rightAxis : leftAxis
+                const otherRangeSize = this._prevOtherYAxisRange.to - this._prevOtherYAxisRange.from
                 const otherNewRange = otherRangeSize * scale
-                const otherDifRange = (otherNewRange - otherRangeSize) / 2
-                const otherNewFrom = otherRange.from - otherDifRange
-                const otherNewTo = otherRange.to + otherDifRange
-                const otherNewRealFrom = otherYAxis.convertToRealValue(otherNewFrom)
-                const otherNewRealTo = otherYAxis.convertToRealValue(otherNewTo)
-                otherYAxis.setRange({
-                  from: otherNewFrom,
-                  to: otherNewTo,
-                  domainFrom: otherNewRealFrom,
-                  domainTo: otherNewRealTo
+                const otherDifference = (otherNewRange - otherRangeSize) / 2
+                const otherFrom = this._prevOtherYAxisRange.from - otherDifference
+                const otherTo = this._prevOtherYAxisRange.to + otherDifference
+                otherAxis.setRange({
+                  from: otherFrom,
+                  to: otherTo,
+                  domainFrom: otherAxis.convertToRealValue(otherFrom),
+                  domainTo: otherAxis.convertToRealValue(otherTo)
                 })
               }
 
@@ -454,7 +468,7 @@ export default class Event implements EventHandler {
   }
 
   mouseDoubleClickEvent(e: MouseTouchEvent): boolean {
-    const { pane, widget } = this._findWidgetByEvent(e)
+    const { widget } = this._findWidgetByEvent(e)
     let consumed = false
     if (widget) {
       const name = widget.getName()
@@ -470,11 +484,7 @@ export default class Event implements EventHandler {
           break
         }
         case WidgetNameConstants.Y_AXIS: {
-          const yLeftAxis = (pane as DualYPane).getYLeftAxisWidget().getAxisComponent()
-          const yRightAxis = (pane as DualYPane).getYRightAxisWidget().getAxisComponent()
-
-          yLeftAxis.setAutoCalcTickFlag(true)
-          yRightAxis.setAutoCalcTickFlag(true)
+          ;(widget as YAxisWidget).getAxisComponent().setAutoCalcTickFlag(true)
           this._chart.requestViewportLayout()
           consumed = true
           break
@@ -783,15 +793,10 @@ export default class Event implements EventHandler {
 
     if (targetPane.getId() !== PaneIdConstants.X_AXIS) {
       const dualPane = targetPane as DualYPane
-
-      const yLeftAxisWidget = dualPane.getYLeftAxisWidget()
-      if (yLeftAxisWidget && isPointInBounding(yLeftAxisWidget.getBounding(), coord)) {
-        return { pane: targetPane, widget: yLeftAxisWidget }
-      }
-
-      const yRightAxisWidget = dualPane.getYRightAxisWidget()
-      if (yRightAxisWidget && isPointInBounding(yRightAxisWidget.getBounding(), coord)) {
-        return { pane: targetPane, widget: yRightAxisWidget }
+      for (const yAxisWidget of dualPane.getVisibleYAxisWidgets()) {
+        if (isPointInBounding(yAxisWidget.getBounding(), coord)) {
+          return { pane: targetPane, widget: yAxisWidget }
+        }
       }
     }
 

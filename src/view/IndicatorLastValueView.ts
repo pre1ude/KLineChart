@@ -3,6 +3,7 @@ import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/u
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorFigureVisible } from '../component/Indicator'
 import { drawStaticFigure } from '../extension/figure'
+import type DualYPane from '../pane/DualYPane'
 import type YAxisWidget from '../widget/YAxisWidget'
 import { calculateYAxisLabelLayout, calcYAxisLabelHeight, clampYAxisLabelY } from './utils/labelPosition'
 import View from './View'
@@ -21,7 +22,10 @@ export default class IndicatorLastValueView extends View {
       const yAxis = widget.getAxisComponent()
       const dataList = chartStore.getDataList()
       const dataIndex = dataList.length - 1
-      const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
+      const dualYPane: DualYPane = pane
+      const indicators = chartStore.getIndicatorStore().getInstances(pane.getId()).filter(indicator => (
+        dualYPane.resolveIndicatorYAxisId(indicator) === widget.getOptions().id
+      ))
       const thousandsSeparator = chartStore.getThousandsSeparator()
       const decimalFoldThreshold = chartStore.getDecimalFoldThreshold()
 

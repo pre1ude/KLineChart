@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Multi Y-Axis External Assets</title>
+    <link rel="stylesheet" type="text/css" href="../../css/chart.css" />
+    <style>
+      body { margin: 0; padding: 20px; color: #263238; background: #f4f6f8; font-family: Arial, sans-serif; }
+      .page { max-width: 1400px; margin: 0 auto; }
+      .panel { margin-bottom: 12px; padding: 16px; border-radius: 8px; background: #fff; box-shadow: 0 1px 4px rgb(0 0 0 / 10%); }
+      h1 { margin: 0 0 8px; font-size: 22px; }
+      p { margin: 4px 0; color: #607d8b; }
+      #chart { width: 100%; height: 640px; }
+      .controls { display: flex; flex-wrap: wrap; gap: 12px 24px; }
+      .asset { display: flex; align-items: center; gap: 8px; }
+      .symbol { min-width: 44px; font-weight: 700; }
+      button { padding: 7px 12px; border: 0; border-radius: 4px; color: #fff; background: #455a64; cursor: pointer; }
+      button:hover { background: #263238; }
+      button:disabled { cursor: not-allowed; opacity: 0.4; }
+      #status { margin-top: 10px; min-height: 20px; color: #37474f; font-family: monospace; }
+      code { color: #37474f; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="panel">
+        <h1>AAPL + NVDA + MSFT：多 Y 轴指标数据演示</h1>
+        <p>AAPL 是唯一主数据源并使用左轴；NVDA（蓝）和 MSFT（紫）由业务层维护数组，通过 <code>extendData</code> 传给同一个指标模板。</p>
+        <p>添加两个资产后应看到两个独立右轴。拖动/滚轮缩放任一右轴后，实时更新不应重置范围；双击该轴恢复自动范围。</p>
+      </div>
+
+      <div class="panel controls">
+        <div class="asset" data-symbol="NVDA">
+          <span class="symbol" style="color:#1677ff">NVDA</span>
+          <button data-action="add">添加</button>
+          <button data-action="toggle" disabled>隐藏</button>
+          <button data-action="remove" disabled>删除</button>
+        </div>
+        <div class="asset" data-symbol="MSFT">
+          <span class="symbol" style="color:#8e44ad">MSFT</span>
+          <button data-action="add">添加</button>
+          <button data-action="toggle" disabled>隐藏</button>
+          <button data-action="remove" disabled>删除</button>
+        </div>
+        <div id="status">仅显示 AAPL，等待添加对比资产。</div>
+      </div>
+
+      <div class="panel"><div id="chart"></div></div>
+    </div>
+
+    <script type="module">
+      import { dispose, init, registerIndicator } from '../../../dist/index.js'
+
+      const PANE_ID = 'candle_pane'
+      const BAR_COUNT = 180
+      const DAY = 24 * 60 * 60 * 1000
+
+      function createAlignedSeries (basePrice, seed) {
+        let price = basePrice
+        let randomState = seed >>> 0
+        const start = Date.UTC(2025, 0, 2)
+        const nextRandom = () => {
+          randomState = (randomState * 1664525 + 1013904223) >>> 0
+          return randomState / 0x100000000
+        }
+        return Array.from({ length: BAR_COUNT }, (_, index) => {
+          const open = price
+          const close = Math.max(1, open * (1 + (nextRandom() - 0.49) * 0.035))
+          const high = Math.max(open, close) * (1 + nextRandom() * 0.012)
+          const low = Math.min(open, close) * (1 - nextRandom() * 0.012)
+          price = close
+          return {
+            timestamp: start + index * DAY,
+            open,
+            high,
+            low,
+            close,
+            volume: Math.round(2_000_000 + nextRandom() * 8_000_000)
+          }
+        })
+      }
+
+      const aaplData = createAlignedSeries(185, 11)
+      const initialExternalData = {
+        NVDA: createAlignedSeries(480, 29),
+        MSFT: createAlignedSeries(405, 47)
+      }
+
+      function assertAligned (dataList) {
+        if (dataList.length !== aaplData.length) {
+          throw new Error(`External data length ${dataList.length} does not match AAPL length ${aaplData.length}.`)
+        }
+        for (let index = 0; index < aaplData.length; index++) {
+          if (dataList[index].timestamp !== aaplData[index].timestamp) {
+            throw new Error(`External timestamp mismatch at index ${index}.`)
+          }
+        }
+      }
+
+      Object.values(initialExternalData).forEach(assertAligned)
+
+      registerIndicator({
+        name: 'EXTERNAL_PRICE_LINE',
+        shortName: 'External price',
+        series: 'price',
+        precision: 2,
+        figures: [{ key: 'close', title: 'Close: ', type: 'line' }],
+        calc: (_mainDataList, indicator) => {
+          const source = indicator.extendData
+          return source.getDataList().map(item => ({ close: item.close }))
+        }
+      })
+
+      const chart = init('chart', {
+        styles: {
+          yAxis: { position: 'left', inside: false, size: 'auto' },
+          indicator: {
+            lastValueMark: {
+              show: true,
+              text: { show: true }
+            }
+          }
+        }
+      })
+      chart.applyNewData(aaplData, true)
+
+      const assets = {
+        NVDA: createAssetState('NVDA', '#1677ff', 900),
+        MSFT: createAssetState('MSFT', '#8e44ad', 1200)
+      }
+      let aaplTimer
+
+      function createAssetState (symbol, color, interval) {
+        const state = {
+          symbol,
+          color,
+          interval,
+          axisId: `${symbol.toLowerCase()}_axis`,
+          indicatorId: `${symbol.toLowerCase()}_indicator`,
+          data: initialExternalData[symbol].map(item => ({ ...item })),
+          revision: 0,
+          added: false,
+          visible: false,
+          timer: undefined,
+          getDataList: undefined
+        }
+        state.getDataList = () => state.data
+        return state
+      }
+
+      function extendDataFor (state) {
+        return {
+          symbol: state.symbol,
+          revision: state.revision,
+          getDataList: state.getDataList
+        }
+      }
+
+      function replaceExternalData (state, nextData, submitToChart = true) {
+        assertAligned(nextData)
+        state.data = nextData
+        state.revision += 1
+        if (submitToChart && state.added && state.visible) {
+          chart.overrideIndicator({ id: state.indicatorId, extendData: extendDataFor(state) }, PANE_ID)
+        }
+      }
+
+      function nextLastBar (dataList, volatility) {
+        const next = dataList.slice()
+        const last = next[next.length - 1]
+        const candidate = Math.max(1, last.close * (1 + (Math.random() - 0.5) * volatility))
+        const close = Math.min(last.high, Math.max(last.low, candidate))
+        next[next.length - 1] = {
+          ...last,
+          close
+        }
+        return next
+      }
+
+      function startAssetTimer (state) {
+        clearInterval(state.timer)
+        state.timer = setInterval(() => {
+          replaceExternalData(state, nextLastBar(state.data, 0.008), state.visible)
+          renderStatus(`${state.symbol} last=${state.data[state.data.length - 1].close.toFixed(2)}, revision=${state.revision}${state.visible ? '' : '（隐藏缓存仍在更新）'}`)
+        }, state.interval)
+      }
+
+      function addAsset (state) {
+        if (state.added) return
+        if (state.data.length === 0) {
+          state.data = initialExternalData[state.symbol].map(item => ({ ...item }))
+        }
+        assertAligned(state.data)
+        state.revision += 1
+        const paneId = chart.createIndicator({
+          id: state.indicatorId,
+          name: 'EXTERNAL_PRICE_LINE',
+          shortName: state.symbol,
+          yAxisId: state.axisId,
+          yAxisPosition: 'right',
+          extendData: extendDataFor(state),
+          styles: { lines: [{ color: state.color, size: 2 }] }
+        }, true, { id: PANE_ID })
+        if (!paneId) throw new Error(`Failed to create ${state.symbol} indicator and Y axis.`)
+        state.added = true
+        state.visible = true
+        startAssetTimer(state)
+        updateControls(state)
+        renderStatus(`${state.symbol} 已添加到独立右轴。`)
+      }
+
+      function toggleAsset (state) {
+        if (!state.added) return
+        if (state.visible) {
+          state.visible = false
+          chart.overrideIndicator({ id: state.indicatorId, visible: false }, PANE_ID)
+          chart.overrideYAxis({ id: state.axisId, paneId: PANE_ID, needWidget: false })
+          updateControls(state)
+          renderStatus(`${state.symbol} 的线和轴已一起隐藏；缓存定时器继续运行。`)
+        } else {
+          assertAligned(state.data)
+          state.revision += 1
+          state.visible = true
+          chart.overrideIndicator({
+            id: state.indicatorId,
+            visible: true,
+            extendData: extendDataFor(state)
+          }, PANE_ID, () => {
+            chart.overrideYAxis({ id: state.axisId, paneId: PANE_ID, needWidget: true })
+          })
+          updateControls(state)
+          renderStatus(`${state.symbol} 已用最新 revision 恢复。`)
+        }
+      }
+
+      function removeAsset (state) {
+        if (!state.added) return
+        clearInterval(state.timer)
+        state.timer = undefined
+        chart.removeIndicator({ paneId: PANE_ID, id: state.indicatorId })
+        state.data = []
+        state.added = false
+        state.visible = false
+        updateControls(state)
+        renderStatus(`${state.symbol} 指标、孤立轴、缓存和定时器已删除。`)
+      }
+
+      function updateControls (state) {
+        const row = document.querySelector(`[data-symbol="${state.symbol}"]`)
+        row.querySelector('[data-action="add"]').disabled = state.added
+        row.querySelector('[data-action="toggle"]').disabled = !state.added
+        row.querySelector('[data-action="toggle"]').textContent = state.visible ? '隐藏' : '显示'
+        row.querySelector('[data-action="remove"]').disabled = !state.added
+      }
+
+      function renderStatus (message) {
+        const axes = chart.getYAxes({ paneId: PANE_ID })
+          .filter(axis => axis.needWidget && axis.id !== 'y_axis_right')
+          .map(axis => `${axis.id}:${axis.position}`)
+          .join(', ')
+        document.getElementById('status').textContent = `${new Date().toLocaleTimeString()} ${message} | visible axes: ${axes}`
+      }
+
+      document.querySelectorAll('.asset').forEach(row => {
+        const state = assets[row.dataset.symbol]
+        row.querySelector('[data-action="add"]').addEventListener('click', () => addAsset(state))
+        row.querySelector('[data-action="toggle"]').addEventListener('click', () => toggleAsset(state))
+        row.querySelector('[data-action="remove"]').addEventListener('click', () => removeAsset(state))
+      })
+
+      aaplTimer = setInterval(() => {
+        const next = nextLastBar(aaplData, 0.004)
+        Object.assign(aaplData[aaplData.length - 1], next[next.length - 1])
+        chart.updateData({ ...aaplData[aaplData.length - 1] })
+      }, 1000)
+
+      window.multiYAxisDemo = {
+        chart,
+        updateAssetData: (symbol, nextData) => replaceExternalData(assets[symbol], nextData),
+        getAssetData: symbol => assets[symbol].data
+      }
+
+      window.addEventListener('beforeunload', () => {
+        clearInterval(aaplTimer)
+        Object.values(assets).forEach(state => clearInterval(state.timer))
+        dispose(chart)
+      }, { once: true })
+    </script>
+  </body>
+</html>

@@ -79,6 +79,25 @@ export default class IndicatorStore {
     return removed
   }
 
+  removeInstances(filter: IndicatorFilter): Indicator[] {
+    const removed: Indicator[] = []
+    const paneIds = isString(filter.paneId) ? [filter.paneId] : Array.from(this._instances.keys())
+    paneIds.forEach(paneId => {
+      const instances = this._instances.get(paneId)
+      if (!instances) return
+      for (let index = instances.length - 1; index >= 0; index--) {
+        const indicator = instances[index]
+        const matchesId = !isString(filter.id) || indicator.id === filter.id
+        const matchesName = !isString(filter.name) || indicator.name === filter.name
+        if (matchesId && matchesName) {
+          removed.unshift(...instances.splice(index, 1))
+        }
+      }
+      if (instances.length === 0) this._instances.delete(paneId)
+    })
+    return removed
+  }
+
   hasInstances(paneId: string): boolean {
     return this._instances.has(paneId)
   }

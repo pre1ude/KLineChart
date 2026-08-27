@@ -49,16 +49,6 @@ export function resolveDefaultYAxisPosition(
   return YAxisPosition.Left
 }
 
-function filterIndicatorsByYAxisPosition(
-  indicators: Indicator[],
-  position: 'left' | 'right',
-  globalYAxisPosition: YAxisPosition,
-  mainYAxisPosition: 'left' | 'right' = YAxisPosition.Left
-): Indicator[] {
-  const defaultPosition = resolveDefaultYAxisPosition(globalYAxisPosition, mainYAxisPosition)
-  return indicators.filter(indicator => getIndicatorYAxisPosition(indicator, defaultPosition) === position)
-}
-
 export interface YAxisTickSequence {
   from: number
   to: number
@@ -643,6 +633,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   private _autoTickSequence?: YAxisTickSequence
   private _hasValidData = true
 
+  override getScrollZoomEnabled(): boolean {
+    return (this.getParent() as YAxisWidget).getOptions().scrollZoomEnabled ?? true
+  }
+
   isMainAxis(): boolean {
     const parent = this.getParent()
     const pane = parent.getPane() as DualYPane
@@ -676,7 +670,9 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
           // 如果主轴和当前轴类型相同，则使用主轴的刻度
           defaultTicks = mainAxis.getTicks()
         } else {
-          const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
+          const indicators = chartStore.getIndicatorStore().getInstances(pane.getId()).filter(indicator => (
+            (pane as DualYPane).resolveIndicatorYAxisId(indicator) === (this.getParent() as YAxisWidget).getOptions().id
+          ))
           const type = this.getType()
           const paneAxisOptions = pane.getMainWidget().getPane().getOptions().axisOptions
           const position = (this.getParent().getOptions() as YAxisOptions).position
@@ -776,16 +772,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const paneIndicators = chartStore.getIndicatorStore().getInstances(pane.getId())
     const inCandle = this.isInCandle()
     const yAxisWidget = this.getParent() as YAxisWidget
-    const yAxisStyles = chart.getStyles().yAxis
-
-    const indicators = inCandle
-      ? paneIndicators
-      : filterIndicatorsByYAxisPosition(
-        paneIndicators,
-        yAxisWidget.getOptions().position,
-        yAxisStyles.position,
-        yAxisStyles.mainPosition
-      )
+    const yAxisId = yAxisWidget.getOptions().id
+    const indicators = paneIndicators.filter(indicator => (
+      indicator.visible && (pane as DualYPane).resolveIndicatorYAxisId(indicator) === yAxisId
+    ))
 
     indicators.forEach(indicator => {
       if (!shouldOhlc) {
@@ -814,10 +804,11 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const candleStyles = chart.getStyles().candle
     const isArea = candleStyles.type === CandleType.Area
     const areaValueKey = candleStyles.area.value
+    const shouldUseCandleData = inCandle && (pane as DualYPane).isCompatibilityYAxis(yAxisId)
     // 用于蜡烛图数据
-    const shouldCompareHighLow = (inCandle && !isArea) || (!inCandle && shouldOhlc)
-    const scaleMode = resolveYAxisScaleMode(inCandle, chartStore.getIsTimeShare())
-    const extent = collectYAxisExtent(visibleDataList, figuresResultList, shouldCompareHighLow, inCandle && isArea, areaValueKey)
+    const shouldCompareHighLow = (shouldUseCandleData && !isArea) || (!inCandle && shouldOhlc)
+    const scaleMode = resolveYAxisScaleMode(shouldUseCandleData, chartStore.getIsTimeShare())
+    const extent = collectYAxisExtent(visibleDataList, figuresResultList, shouldCompareHighLow, shouldUseCandleData && isArea, areaValueKey)
     this._hasValidData = extent.hasValidData
 
     const type = this.getType()
@@ -923,7 +914,9 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const customApi = chartStore.getCustomApi()
     const type = this.getType()
     const isInCandle = this.isInCandle()
-    const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
+    const indicators = chartStore.getIndicatorStore().getInstances(pane.getId()).filter(indicator => (
+      (pane as DualYPane).resolveIndicatorYAxisId(indicator) === yAxisWidget.getOptions().id
+    ))
     const thousandsSeparator = chartStore.getThousandsSeparator()
     const decimalFoldThreshold = chartStore.getDecimalFoldThreshold()
     const { precision, shouldFormatBigNumber } = resolveYAxisTickTextOptions(isInCandle, chartStore.getPrecision().price, indicators)
@@ -989,7 +982,9 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       crosshairStyles.horizontal.show &&
       crosshairStyles.horizontal.text.show
     ) {
-      const indicators = chartStore.getIndicatorStore().getInstances(pane.getId())
+      const indicators = chartStore.getIndicatorStore().getInstances(pane.getId()).filter(indicator => (
+        (pane as DualYPane).resolveIndicatorYAxisId(indicator) === (this.getParent() as YAxisWidget).getOptions().id
+      ))
       let techPrecision = 0
       let shouldFormatBigNumber = false
       indicators.forEach(tech => {

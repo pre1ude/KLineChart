@@ -122,6 +122,11 @@ export interface IndicatorApi<D = unknown> {
   paneId: string
 
   /**
+   * Bound y-axis id.
+   */
+  yAxisId?: string
+
+  /**
    * Bound y-axis position in indicator panes.
    */
   yAxisPosition?: 'left' | 'right'
@@ -228,9 +233,14 @@ export interface IndicatorFilter {
   paneId?: string
 }
 
+export type IndicatorRemoveFilter =
+  | { paneId: string, id: string, name?: never }
+  | { paneId: string, name: string, id?: never }
+
 export class Indicator<D = unknown> implements IndicatorApi<D> {
   id: string
   paneId: string
+  yAxisId?: string
   yAxisPosition?: 'left' | 'right'
   name: string
   shortName: string
@@ -261,6 +271,7 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
   constructor(template: IndicatorTemplate<D>, initOptions?: Partial<Pick<IndicatorApi<D>, 'id' | 'paneId'>>) {
     this.id = initOptions?.id ?? ''
     this.paneId = initOptions?.paneId ?? ''
+    this.yAxisId = template.yAxisId
     this.yAxisPosition = template.yAxisPosition
 
     this.name = template.name
@@ -299,6 +310,8 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
       this._prevIndicator.figures !== this.figures
 
     const draw = sort || calc ||
+      this._prevIndicator.yAxisId !== this.yAxisId ||
+      this._prevIndicator.yAxisPosition !== this.yAxisPosition ||
       this._prevIndicator.styles !== this.styles ||
       this._prevIndicator.shortName !== this.shortName ||
       this._prevIndicator.series !== this.series ||

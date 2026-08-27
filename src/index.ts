@@ -245,6 +245,7 @@ export type {
   TooltipRenderType
 } from './Options'
 export type { PaneOptions, PaneResizeMode } from './pane/types'
+export type { YAxisCreate, YAxisFilter, YAxisOptions, YAxisOverride } from './widget/YAxisWidget'
 
 // Data Types
 export type { default as KLineData } from './common/KLineData'
@@ -273,7 +274,7 @@ export type { TooltipValueDirection } from './common/TooltipDirection'
 export type { LayoutChild } from './Options'
 
 // Indicator Types
-export type { Indicator, IndicatorCreate, IndicatorTemplate, IndicatorTooltipData } from './component/Indicator'
+export type { Indicator, IndicatorCreate, IndicatorFilter, IndicatorOverride, IndicatorRemoveFilter, IndicatorTemplate, IndicatorTooltipData } from './component/Indicator'
 export {
   calculateTDSequential,
   TDSequentialEngine,

@@ -14,19 +14,34 @@ import { getYAxisClass } from '../extension/y-axis'
 import { setCursor } from '../common/utils/cursor'
 
 export interface YAxisOptions {
+  id: string
+  paneId: string
   name?: string
   scrollZoomEnabled?: boolean
-  position: Exclude<YAxisPosition, 'both'>
+  needWidget: boolean
+  position: 'left' | 'right'
   type: YAxisType
   nice: boolean
   axisTitle: string
 }
 
+export type YAxisCreate = Partial<Omit<YAxisOptions, 'id' | 'paneId'>> & { id?: string, paneId: string }
+export type YAxisOverride = Partial<Omit<YAxisOptions, 'id' | 'paneId'>> & { id: string, paneId?: string }
+
+export interface YAxisFilter {
+  id?: string
+  paneId?: string
+  name?: string
+}
+
 export default class YAxisWidget extends DrawWidget<DualYPane> {
   private _axis!: YAxis
   private _axisOptions: YAxisOptions = {
+    id: '',
+    paneId: '',
     name: 'default',
     scrollZoomEnabled: true,
+    needWidget: true,
     position: YAxisPosition.Left,
     type: YAxisType.Normal,
     nice: true,
@@ -39,20 +54,19 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
   private readonly _overlayYAxisView = new OverlayView(this, 'yAxis')
   private readonly _crosshairHorizontalLabelView = new CrosshairHorizontalLabelView(this)
 
-  constructor(rootContainer: HTMLElement, pane: DualYPane, options: PaneOptions, position: Exclude<YAxisPosition, 'both'>) {
+  constructor(rootContainer: HTMLElement, pane: DualYPane, options: PaneOptions, yAxisOptions: YAxisOptions) {
     super(rootContainer, pane)
     setCursor(this.getContainer(), 'ns-resize')
 
+    const position = yAxisOptions.position
     const axisType = options.axisOptions?.YAxis?.[position]?.type ?? YAxisType.Normal
     const nice = options.axisOptions?.YAxis?.[position]?.nice ?? true
     const axisTitle = options.axisOptions?.YAxis?.[position]?.axisTitle ?? ''
     this.setOptions({
-      name: options.axisOptions?.name,
-      scrollZoomEnabled: options.axisOptions?.scrollZoomEnabled,
-      position,
-      type: axisType,
-      nice,
-      axisTitle
+      ...yAxisOptions,
+      type: yAxisOptions.type ?? axisType,
+      nice: yAxisOptions.nice ?? nice,
+      axisTitle: yAxisOptions.axisTitle ?? axisTitle
     })
   }
 
@@ -60,7 +74,7 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     return this._axisOptions
   }
 
-  setOptions(options: YAxisOptions): void {
+  setOptions(options: Partial<YAxisOptions>): void {
     const name = options?.name
     if (
       (this._axisOptions.name !== name && isString(name)) ||
@@ -68,7 +82,7 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     ) {
       this._axis = this.createAxisComponent(name ?? 'default')
     }
-    this._axisOptions = options
+    this._axisOptions = { ...this._axisOptions, ...options }
   }
 
   createAxisComponent(name: string): YAxis {
@@ -106,7 +120,7 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     const chart = this.getPane().getChart()
     const chartStore = chart.getChartStore()
     this._yAxisView.draw(ctx)
-    if (this.getAxisComponent().isInCandle()) {
+    if (this.getAxisComponent().isInCandle() && this.getPane().isDefaultYAxis(this._axisOptions.id)) {
       if (!chartStore.getIsTimeShare()) {
         // 非分时图才展示最新价标签
         this._candleLastPriceLabelView.draw(ctx)
@@ -116,7 +130,9 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
   }
 
   override updateOverlay(ctx: CanvasRenderingContext2D): void {
-    this._overlayYAxisView.draw(ctx)
+    if (this.getPane().isDefaultYAxis(this._axisOptions.id)) {
+      this._overlayYAxisView.draw(ctx)
+    }
     this._crosshairHorizontalLabelView.draw(ctx)
   }
 }
