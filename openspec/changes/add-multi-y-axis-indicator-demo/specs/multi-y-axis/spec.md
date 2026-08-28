@@ -78,6 +78,10 @@ Axis-dependent views and interactions SHALL operate on the exact Y-axis widget o
 - **WHEN** a user drags, zooms, or double-clicks a non-default axis
 - **THEN** only that targeted axis is scaled or reset and live indicator updates do not reset its manual range
 
+#### Scenario: Resize with manual ranges
+- **WHEN** the chart is resized after one or more Y axes have been manually manipulated
+- **THEN** every manual axis retains its numeric range while automatic axes continue recalculating for the new bounds
+
 ### Requirement: Orphan-axis cleanup
 The chart SHALL remove a non-default axis that it created implicitly for an indicator after that axis loses its last binding, while preserving axes explicitly created by callers.
 

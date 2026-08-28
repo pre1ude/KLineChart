@@ -1813,13 +1813,6 @@ export default class ChartImp implements Chart {
       logWarn('resize', 'anchor', 'anchor only supports `domainFrom`, `domainTo`!!!')
       return
     }
-    this._drawPanes.forEach(pane => {
-      if (pane.getId() !== PaneIdConstants.X_AXIS) {
-        const dualYPane = pane as DualYPane
-        dualYPane.getYLeftAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
-        dualYPane.getYRightAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
-      }
-    })
     this.refreshResizeLayout(anchor)
   }
 

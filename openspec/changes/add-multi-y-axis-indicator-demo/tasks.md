@@ -18,6 +18,7 @@
 - [x] 3.3 Support removing an indicator instance by ID and clean up its unused implicitly created axis without affecting other axes
 - [x] 3.4 Preserve caller ownership of explicitly created axes and auto-remove only implicitly created orphan axes
 - [x] 3.5 Require `paneId` for object-form indicator removal, with exact-ID and pane-local same-name semantics
+- [x] 3.6 Preserve every Y axis's manual range across chart resize
 
 ## 4. External Asset Demo
 
@@ -32,3 +33,4 @@
 - [x] 5.1 Run type checking and the narrowest relevant existing automated checks without adding new test cases
 - [x] 5.2 Build the library/demo assets and document the agreed manual acceptance checklist
 - [x] 5.3 Re-run type checking, unit tests, lint, build, and diff validation after the ownership/API review fixes
+- [x] 5.4 Verify resize range preservation and re-run the focused submission checks

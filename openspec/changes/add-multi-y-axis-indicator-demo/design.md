@@ -62,6 +62,8 @@ Deletion followed by recreation intentionally appends the new axis at the outer 
 
 Indicator drawing, custom tooltip callbacks, last-value labels, crosshair formatting, and range calculation resolve the indicator's axis ID. Candle price labels and overlay-axis figures remain on the pane's main/default axis. Event hit testing iterates visible axis widgets; dragging/zooming an axis changes only that axis, main-area vertical panning updates all visible axes, and double-click resets the targeted axis.
 
+Chart resize preserves every axis's current automatic/manual range mode. Automatic axes recalculate against the new bounds during layout, while manually manipulated axes retain their numeric range until the user resets the targeted axis.
+
 ### Keep external arrays behind lightweight `extendData`
 
 The demo registers one custom `EXTERNAL_PRICE_LINE` indicator. Its `extendData` contains `{ symbol, revision, getDataList }`; `getDataList` closes over a business-owned array so the chart's recursive clone/merge does not copy historical bars. Changing `revision` makes the current indicator change detector run `calc`, which maps external closes into the normal indicator result array used by rendering and autoscale.
