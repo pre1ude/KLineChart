@@ -74,9 +74,13 @@ Axis-dependent views and interactions SHALL operate on the exact Y-axis widget o
 - **WHEN** a caller converts a value with a `paneId` and `yAxisId`
 - **THEN** the chart uses that axis range for pixel conversion while continuing to accept `yAxisPosition` for compatibility
 
-#### Scenario: Manipulate one axis
-- **WHEN** a user drags, zooms, or double-clicks a non-default axis
+#### Scenario: Manipulate one ID-addressed axis
+- **WHEN** a user drags, zooms, or double-clicks an additional non-compatibility axis
 - **THEN** only that targeted axis is scaled or reset and live indicator updates do not reset its manual range
+
+#### Scenario: Manipulate either compatibility axis
+- **WHEN** both built-in compatibility axes are visible and the user drags, wheel-zooms, or double-clicks either side
+- **THEN** both compatibility ranges stay synchronized and the main series responds as if its configured main axis had been manipulated
 
 #### Scenario: Resize with manual ranges
 - **WHEN** the chart is resized after one or more Y axes have been manually manipulated

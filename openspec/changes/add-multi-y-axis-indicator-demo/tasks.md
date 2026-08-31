@@ -19,6 +19,7 @@
 - [x] 3.4 Preserve caller ownership of explicitly created axes and auto-remove only implicitly created orphan axes
 - [x] 3.5 Require `paneId` for object-form indicator removal, with exact-ID and pane-local same-name semantics
 - [x] 3.6 Preserve every Y axis's manual range across chart resize
+- [x] 3.7 Synchronize built-in compatibility-axis drag, wheel zoom, and reset while keeping ID-addressed axes independent
 
 ## 4. External Asset Demo
 
@@ -34,3 +35,4 @@
 - [x] 5.2 Build the library/demo assets and document the agreed manual acceptance checklist
 - [x] 5.3 Re-run type checking, unit tests, lint, build, and diff validation after the ownership/API review fixes
 - [x] 5.4 Verify resize range preservation and re-run the focused submission checks
+- [x] 5.5 Add focused compatibility-axis interaction coverage and manually verify a right-main dual-price-axis chart

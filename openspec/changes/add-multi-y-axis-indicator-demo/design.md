@@ -60,7 +60,7 @@ Deletion followed by recreation intentionally appends the new axis at the outer 
 
 ### Route views and interaction through the owning widget ID
 
-Indicator drawing, custom tooltip callbacks, last-value labels, crosshair formatting, and range calculation resolve the indicator's axis ID. Candle price labels and overlay-axis figures remain on the pane's main/default axis. Event hit testing iterates visible axis widgets; dragging/zooming an axis changes only that axis, main-area vertical panning updates all visible axes, and double-click resets the targeted axis.
+Indicator drawing, custom tooltip callbacks, last-value labels, crosshair formatting, and range calculation resolve the indicator's axis ID. Candle price labels and overlay-axis figures remain on the pane's main/default axis. Event hit testing iterates visible axis widgets. The built-in left/right compatibility axes are two projections of the same default data scale, so dragging, wheel-zooming, or resetting either projection synchronizes both compatibility axes and therefore manipulates the configured main axis. ID-addressed additional axes remain independent and only the targeted axis changes. Main-area vertical panning updates all visible axes.
 
 Chart resize preserves every axis's current automatic/manual range mode. Automatic axes recalculate against the new bounds during layout, while manually manipulated axes retain their numeric range until the user resets the targeted axis.
 
