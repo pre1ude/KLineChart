@@ -46,6 +46,7 @@ function createView(
   }
   const pane = {
     getChart: () => chart,
+    getDefaultYScale: () => ({ getComponent: () => mainYAxis }),
     getMainAxisWidget: () => ({ getAxisComponent: () => mainYAxis }),
     getYLeftAxisWidget: () => ({ getAxisComponent: () => leftYAxis })
   }

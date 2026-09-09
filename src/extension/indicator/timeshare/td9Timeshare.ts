@@ -147,7 +147,7 @@ const td9Timeshare: IndicatorTemplate<TD9BarOutput> = {
   ...td9,
   name: 'td9_timeshare',
   shortName: 'TD9 Timeshare',
-  draw: ({ ctx, kLineDataList, indicator, visibleRange, bounding, xAxis, yAxis }) => {
+  draw: ({ ctx, kLineDataList, indicator, visibleRange, bounding, xAxis, yScale }) => {
     const result = indicator.result
     if (result.length === 0) return true
     const render = resolveExtendData(indicator.extendData).render
@@ -164,7 +164,7 @@ const td9Timeshare: IndicatorTemplate<TD9BarOutput> = {
       if (setup === undefined || previousBar === undefined || bar === undefined) continue
 
       const x = xAxis.convertToPixel(i)
-      const y = yAxis.convertToPixel(bar.close)
+      const y = yScale.convertToPixel(bar.close)
       const perfected = setup.perfected === true
       const color = resolveSetupColor(setup.direction, render)
       if (setup.value > 1 && previousSetup?.setupId === setup.setupId) {
@@ -172,7 +172,7 @@ const td9Timeshare: IndicatorTemplate<TD9BarOutput> = {
           ctx,
           {
             coordinates: [
-              { x: xAxis.convertToPixel(i - 1), y: yAxis.convertToPixel(previousBar.close) },
+              { x: xAxis.convertToPixel(i - 1), y: yScale.convertToPixel(previousBar.close) },
               { x, y }
             ]
           },

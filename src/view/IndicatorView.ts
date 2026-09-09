@@ -1,15 +1,13 @@
 import { type IndicatorFigureData } from '@/widget/layer/IndicatorLayer'
 import type Coordinate from '../common/Coordinate'
-import { type IndicatorStyle, YAxisPosition } from '../common/Styles'
+import { type IndicatorStyle } from '../common/Styles'
 import type { EventName, MouseTouchEvent } from '../common/SyntheticEvent'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import { getFigureBaseStyles, getMergedDefaultStyles, isIndicatorFigureVisible, type Indicator, type IndicatorFigure, type IndicatorFigureAttrs, type IndicatorFigureStyle } from '../component/Indicator'
-import { getIndicatorYAxisPosition, resolveDefaultYAxisPosition } from '../component/YAxis'
-import type YAxisImp from '../component/YAxis'
+import type { YScale } from '../component/YScale'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import { getLineSymbolStepBySpacing, resolveLineSymbolStyle } from '../extension/figure/line'
 import type DualYPane from '../pane/DualYPane'
-import { PaneIdConstants } from '../pane/types'
 import type XAxisWidget from '../widget/XAxisWidget'
 import { pixelSnapBarStart } from './utils/barPixel'
 import View from './View'
@@ -51,7 +49,7 @@ export default class IndicatorView extends View {
     const ticksPerDay = timeShareTicks.length
     const breakOnCrossDays = chartStore.getTimeShareBreakOnCrossDays()
 
-    function tryCustomDraw(indicator: Indicator, yAxis: YAxisImp, defaultStyles: IndicatorStyle): boolean {
+    function tryCustomDraw(indicator: Indicator, yScale: YScale, defaultStyles: IndicatorStyle): boolean {
       if (indicator.draw == null) return false
 
       ctx.save()
@@ -64,20 +62,20 @@ export default class IndicatorView extends View {
         barSpace: timeScaleStore.getBarSpace(),
         defaultStyles,
         xAxis,
-        yAxis
+        yScale
       }) ?? false
       ctx.restore()
 
       return isCover
     }
 
-    const drawForAxis = (indicators: Indicator[], yAxis: YAxisImp): void => {
+    const drawForScale = (indicators: Indicator[], yScale: YScale): void => {
       indicators.forEach(indicator => {
         if (!indicator.visible) return
 
         const mergedDefaultStyles = getMergedDefaultStyles(indicator, chartStore.getStyles().indicator)
 
-        const customDrawCovered = tryCustomDraw(indicator, yAxis, mergedDefaultStyles)
+        const customDrawCovered = tryCustomDraw(indicator, yScale, mergedDefaultStyles)
         if (customDrawCovered) return
 
         indicator.figures
@@ -88,7 +86,7 @@ export default class IndicatorView extends View {
           }))
           .sort((a, b) => a.drawOrder - b.drawOrder || a.figureIndex - b.figureIndex)
           .forEach(({ figure, figureIndex }) => {
-            drawSingleFigure(figure, figureIndex, indicator, mergedDefaultStyles, yAxis)
+            drawSingleFigure(figure, figureIndex, indicator, mergedDefaultStyles, yScale)
           })
       })
     }
@@ -98,7 +96,7 @@ export default class IndicatorView extends View {
       figureIndex: number,
       indicator: Indicator,
       mergedDefaultStyles: IndicatorStyle,
-      yAxis: YAxisImp
+      yScale: YScale
     ): void => {
       const figureStaticStyles = indicator.styles?.figures?.[figure.key] ?? {}
       if (figure.visible === false || figureStaticStyles.visible === false) {
@@ -119,7 +117,7 @@ export default class IndicatorView extends View {
 
       if (type === 'line') {
         // 线段类型：流式绘制
-        drawLineStreaming(figure, createFigureStyles, indicator, yAxis)
+        drawLineStreaming(figure, createFigureStyles, indicator, yScale)
       } else {
         // 其他类型：逐个绘制，创建 Figure 实例以支持交互
         for (const data of visibleDataList) {
@@ -129,8 +127,8 @@ export default class IndicatorView extends View {
 
           const figureStyles = createFigureStyles(dataIndex)
 
-          const attrs = figure.attrs?.(dataIndex, indicator, dataList, x, bounding, barSpace, xAxis, yAxis) ??
-            computeDefaultAttrs(figure, dataIndex, indicator.result, x, yAxis)
+          const attrs = figure.attrs?.(dataIndex, indicator, dataList, x, bounding, barSpace, xAxis, yScale) ??
+            computeDefaultAttrs(figure, dataIndex, indicator.result, x, yScale)
 
           if (isValid<IndicatorFigureAttrs>(attrs)) {
             const figureType = type === 'bar' ? 'rect' : type
@@ -157,7 +155,7 @@ export default class IndicatorView extends View {
       figure: IndicatorFigure,
       createFigureStyles: (dataIndex: number) => IndicatorFigureStyle,
       indicator: Indicator,
-      yAxis: YAxisImp
+      yScale: YScale
     ): void {
       const key = figure.key
       const result = indicator.result
@@ -223,9 +221,9 @@ export default class IndicatorView extends View {
         }
 
         const x = xAxis.convertToPixel(dataIndex)
-        const y1 = yAxis.convertToPixel(currentValue)
+        const y1 = yScale.convertToPixel(currentValue)
         const x2 = xAxis.convertToPixel(dataIndex + 1)
-        const y2 = yAxis.convertToPixel(nextValue)
+        const y2 = yScale.convertToPixel(nextValue)
 
         if (currentPath.length === 0) {
           currentPath.push({ x, y: y1 }, { x: x2, y: y2 })
@@ -247,7 +245,7 @@ export default class IndicatorView extends View {
       dataIndex: number,
       result: unknown[],
       x: number,
-      yAxis: YAxisImp
+      yScale: YScale
     ): IndicatorFigureAttrs | undefined {
       const type = figure.type ?? 'line'
       const resultData = result[dataIndex] as IndicatorResultData | undefined
@@ -255,15 +253,15 @@ export default class IndicatorView extends View {
       if (!isNumber(value)) return
 
       const { halfGapBar } = barSpace
-      const valueY = yAxis.convertToPixel(value)
+      const valueY = yScale.convertToPixel(value)
 
       if (type === 'circle') {
         return { x, y: valueY, r: Math.max(1, halfGapBar) }
       }
 
       if (type === 'rect' || type === 'bar') {
-        const baseValue = figure.baseValue ?? yAxis.getRange().from
-        const baseValueY = yAxis.convertToPixel(baseValue)
+        const baseValue = figure.baseValue ?? yScale.getRange().from
+        const baseValueY = yScale.convertToPixel(baseValue)
         let height = Math.abs(baseValueY - valueY)
         if (baseValue !== value) {
           height = Math.max(1, height)
@@ -283,18 +281,8 @@ export default class IndicatorView extends View {
     // 执行绘制
     ctx.save()
     paneIndicators.forEach(indicator => {
-      let yAxisWidget
-      if (typeof dualYPane.resolveIndicatorYAxisId === 'function' && typeof dualYPane.getYAxisWidgetById === 'function') {
-        yAxisWidget = dualYPane.getYAxisWidgetById(dualYPane.resolveIndicatorYAxisId(indicator))
-      } else if (pane.getId() === PaneIdConstants.CANDLE && typeof dualYPane.getMainAxisWidget === 'function') {
-        yAxisWidget = dualYPane.getMainAxisWidget()
-      } else {
-        const styles = chart.getStyles().yAxis
-        const defaultPosition = resolveDefaultYAxisPosition(styles.position, styles.mainPosition)
-        const position = getIndicatorYAxisPosition(indicator, defaultPosition)
-        yAxisWidget = position === YAxisPosition.Left ? dualYPane.getYLeftAxisWidget() : dualYPane.getYRightAxisWidget()
-      }
-      if (yAxisWidget) drawForAxis([indicator], yAxisWidget.getAxisComponent())
+      const yScale = dualYPane.getYScaleById(dualYPane.resolveIndicatorYScaleId(indicator))
+      if (yScale) drawForScale([indicator], yScale.getComponent())
     })
     ctx.restore()
   }

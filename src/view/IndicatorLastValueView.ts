@@ -19,15 +19,16 @@ export default class IndicatorLastValueView extends View {
     const lastValueMarkStyles = defaultStyles.lastValueMark
     const lastValueMarkTextStyles = { ...lastValueMarkStyles.text }
     if (lastValueMarkStyles.show) {
-      const yAxis = widget.getAxisComponent()
+      const yAxis = widget.getScaleComponent()
       const dataList = chartStore.getDataList()
       const dataIndex = dataList.length - 1
       const dualYPane: DualYPane = pane
       const indicators = chartStore.getIndicatorStore().getInstances(pane.getId()).filter(indicator => (
-        dualYPane.resolveIndicatorYAxisId(indicator) === widget.getOptions().id
+        dualYPane.resolveIndicatorYScaleId(indicator) === widget.getOptions().yScaleId
       ))
       const thousandsSeparator = chartStore.getThousandsSeparator()
       const decimalFoldThreshold = chartStore.getDecimalFoldThreshold()
+      const formatter = widget.getScale().getOptions().formatter
 
       const isAlignLeft = widget.isAlignLeft()
       const yAxisStyles = chartStore.getStyles().yAxis
@@ -56,11 +57,14 @@ export default class IndicatorLastValueView extends View {
               const y0 = yAxis.convertToPixel(value)
               const y = clampYAxisLabelY(y0, bounding.height, calcYAxisLabelHeight(lastValueMarkTextStyles))
 
-              let text = formatPrecision(value, precision)
-              if (indicator.shouldFormatBigNumber) {
-                text = customApi.formatBigNumber(text)
+              let text = formatter?.(value) ?? formatPrecision(value, precision)
+              if (!formatter) {
+                if (indicator.shouldFormatBigNumber) {
+                  text = customApi.formatBigNumber(text)
+                }
+                text = formatFoldDecimal(formatThousands(text, thousandsSeparator), decimalFoldThreshold)
               }
-              text = formatFoldDecimal(formatThousands(text, thousandsSeparator), decimalFoldThreshold)
+              text = widget.formatLabel(value, text)
 
               drawStaticFigure(ctx, 'text', {
                 attrs: {

@@ -369,23 +369,11 @@ export interface XAxisStyle extends AxisStyle {
 
 export enum YAxisPosition {
   Left = 'left',
-  Right = 'right',
-  Both = 'both'
-}
-
-export enum YAxisType {
-  Normal = 'normal',
-  Percentage = 'percentage',
-  MinutePercentage = 'minute-percentage',
-  Log = 'log'
+  Right = 'right'
 }
 
 export interface YAxisStyle extends AxisStyle {
-  // type: YAxisType
-  position: YAxisPosition
-  mainPosition: Exclude<YAxisPosition, YAxisPosition.Both>
   inside: boolean
-  reverse: boolean
   showMinLabel: boolean
   showMaxLabel: boolean
 }
@@ -750,10 +738,7 @@ function getDefaultXAxisStyle(): XAxisStyle {
 
 function getDefaultYAxisStyle(): YAxisStyle {
   const style = getDefaultXAxisStyle() as YAxisStyle
-  style.position = YAxisPosition.Left
-  style.mainPosition = YAxisPosition.Left
   style.inside = false
-  style.reverse = false
   style.showMinLabel = true
   style.showMaxLabel = true
   return style

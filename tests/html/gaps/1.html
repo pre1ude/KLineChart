@@ -235,14 +235,9 @@
         gaps: getGapOptions(),
         gapShow: document.getElementById('enabled').checked,
         gap1: getGap1Options(),
-        gap1Show: document.getElementById('gap1Enabled').checked,
-        styles: {
-          yAxis: {
-            position: 'right',
-            mainPosition: 'right'
-          }
-        }
+        gap1Show: document.getElementById('gap1Enabled').checked
       })
+      chart.overrideYAxis({ id: 'default', paneId: 'candle_pane', position: 'right' })
 
       for (const id of ['enabled', 'partial', 'deviation', 'maxCount', 'limitTrail', 'trailLength']) {
         document.getElementById(id).addEventListener('change', applyGapOptions)

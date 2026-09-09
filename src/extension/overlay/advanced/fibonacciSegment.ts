@@ -10,10 +10,10 @@ const fibonacciSegment: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  createFigures: ({ coordinates, overlay, precision, thousandsSeparator, decimalFoldThreshold, yAxis }) => {
+  createFigures: ({ coordinates, overlay, precision, thousandsSeparator, decimalFoldThreshold, yScale }) => {
     const points = overlay.points
     if (coordinates.length > 1 && isNumber(points[0].value) && isNumber(points[1].value)) {
-      const currentPrecision = (yAxis?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax
+      const currentPrecision = (yScale?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax
       const figures: OverlayFigure[] = []
       const textX = coordinates[1].x > coordinates[0].x ? coordinates[0].x : coordinates[1].x
       const percents = [1, 0.786, 0.618, 0.5, 0.382, 0.236, 0]

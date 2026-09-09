@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import ChartImp from './Chart'
 import type KLineData from './common/KLineData'
 import { LoadDataType } from './common/LoadDataCallback'
-import { YAxisPosition } from './common/Styles'
 import { UpdateLevel } from './common/Updater'
 import { PaneIdConstants } from './pane/types'
 import ChartStore, { StyleInvalidation } from './store/ChartStore'
@@ -73,7 +72,8 @@ function createPendingIndicatorChart(ready = true): {
   const chart = Object.create(ChartImp.prototype) as ChartImp
   const pane = {
     setHeightSpec: vi.fn(),
-    setBounding: vi.fn()
+    setBounding: vi.fn(),
+    getDefaultYScaleId: () => 'default'
   }
   const addInstance = vi.fn(() => new Promise<boolean>(() => {}))
   const refreshPaneLayout = vi.fn()
@@ -114,6 +114,7 @@ describe('ChartImp.createIndicator', () => {
     expect(pane.setHeightSpec).toHaveBeenCalledWith({ unit: 'percent', value: 0.25 })
     expect(pane.setBounding).toHaveBeenCalledWith({ height: 0 })
     expect(addInstance).toHaveBeenCalledOnce()
+    expect(addInstance.mock.calls[0][0]).toEqual(expect.objectContaining({ yScaleId: 'default' }))
     expect(refreshPaneLayout).toHaveBeenCalledOnce()
   })
 
@@ -147,6 +148,177 @@ describe('ChartImp.createIndicator', () => {
       minHeight: 60
     })
     expect(pane.setHeightSpec).toHaveBeenCalledWith({ unit: 'pixel', value: 120 })
+  })
+
+  it('rejects a non-default scale when creating a new pane', () => {
+    const { chart, createPane, addInstance } = createPendingIndicatorChart()
+
+    expect(chart.createIndicator({ name: 'VOL', yScaleId: 'missing' })).toBeUndefined()
+    expect(createPane).not.toHaveBeenCalled()
+    expect(addInstance).not.toHaveBeenCalled()
+  })
+
+  it('rejects an explicitly empty scale when creating a new pane', () => {
+    const { chart, createPane, addInstance } = createPendingIndicatorChart()
+
+    expect(chart.createIndicator({ name: 'VOL', yScaleId: '' })).toBeUndefined()
+    expect(createPane).not.toHaveBeenCalled()
+    expect(addInstance).not.toHaveBeenCalled()
+  })
+})
+
+describe('ChartImp Y-scale and visual-axis lifecycle', () => {
+  it('creates a pane-scoped scale before any visual axis references it', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const createOrOverrideYScale = vi.fn()
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      getYScaleById: () => undefined,
+      createOrOverrideYScale
+    }
+    Reflect.set(chart, 'getDrawPaneById', vi.fn(() => pane))
+    Reflect.set(chart, '_refreshExactLayout', vi.fn())
+
+    expect(chart.createYScale({ id: 'volume', paneId: PaneIdConstants.CANDLE, type: 'normal' })).toBe('volume')
+    expect(createOrOverrideYScale).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'volume',
+      paneId: PaneIdConstants.CANDLE,
+      type: 'normal'
+    }))
+  })
+
+  it('rejects empty resource IDs', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const createOrOverrideYScale = vi.fn()
+    const createOrOverrideYAxis = vi.fn()
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      getYScaleById: () => ({}),
+      getYAxisWidgetById: () => undefined,
+      createOrOverrideYScale,
+      createOrOverrideYAxis
+    }
+    Reflect.set(chart, 'getDrawPaneById', vi.fn(() => pane))
+    Reflect.set(chart, '_refreshExactLayout', vi.fn())
+
+    expect(chart.createYScale({ id: '', paneId: PaneIdConstants.CANDLE })).toBeUndefined()
+    expect(chart.createYAxis({ id: '', paneId: PaneIdConstants.CANDLE, yScaleId: 'default' })).toBeUndefined()
+    expect(createOrOverrideYScale).not.toHaveBeenCalled()
+    expect(createOrOverrideYAxis).not.toHaveBeenCalled()
+  })
+
+  it('requires an existing scale before creating a visual axis', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const createOrOverrideYAxis = vi.fn()
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      getYScaleById: () => undefined,
+      getYAxisWidgetById: () => undefined,
+      createOrOverrideYAxis
+    }
+    Reflect.set(chart, 'getDrawPaneById', vi.fn(() => pane))
+
+    expect(chart.createYAxis({ paneId: PaneIdConstants.CANDLE, yScaleId: 'missing' })).toBeUndefined()
+    expect(createOrOverrideYAxis).not.toHaveBeenCalled()
+  })
+
+  it('creates a visual axis only as a reference to its existing scale', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const createOrOverrideYAxis = vi.fn()
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      getYScaleById: (id: string) => id === 'price' ? {} : undefined,
+      getYAxisWidgetById: () => undefined,
+      createOrOverrideYAxis
+    }
+    Reflect.set(chart, 'getDrawPaneById', vi.fn(() => pane))
+    Reflect.set(chart, '_refreshExactLayout', vi.fn())
+
+    expect(chart.createYAxis({ id: 'price-right', paneId: PaneIdConstants.CANDLE, yScaleId: 'price', position: 'right' })).toBe('price-right')
+    expect(createOrOverrideYAxis).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'price-right',
+      yScaleId: 'price',
+      position: 'right'
+    }))
+  })
+
+  it('delegates scale dependency protection to the owning pane', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const removeYScale = vi.fn(() => false)
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      removeYScale
+    }
+    Reflect.set(chart, '_drawPanes', [pane])
+    Reflect.set(chart, 'getDrawPaneById', vi.fn(() => pane))
+    Reflect.set(chart, 'getYScales', vi.fn(() => [{
+      id: 'volume', paneId: PaneIdConstants.CANDLE, name: 'default', scrollZoomEnabled: true,
+      type: 'normal', reverse: false, nice: true, axisTitle: '', formatter: undefined
+    }]))
+    Reflect.set(chart, '_refreshExactLayout', vi.fn())
+
+    expect(chart.removeYScale({ paneId: PaneIdConstants.CANDLE, id: 'volume' })).toBe(false)
+    expect(removeYScale).toHaveBeenCalledWith('volume')
+
+    removeYScale.mockReturnValue(true)
+    expect(chart.removeYScale({ paneId: PaneIdConstants.CANDLE, id: 'volume' })).toBe(true)
+  })
+
+  it('removes a visual axis without removing its scale', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const removeYAxis = vi.fn(() => true)
+    const removeYScale = vi.fn()
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      getYAxisWidgets: () => [{
+        getOptions: () => ({ id: 'price-right', paneId: PaneIdConstants.CANDLE, yScaleId: 'price', needWidget: true, position: 'right', order: 1 })
+      }],
+      removeYAxis,
+      removeYScale
+    }
+    Reflect.set(chart, '_drawPanes', [pane])
+    Reflect.set(chart, 'getDrawPaneById', vi.fn(() => pane))
+    Reflect.set(chart, '_refreshExactLayout', vi.fn())
+
+    expect(chart.removeYAxis({ paneId: PaneIdConstants.CANDLE, id: 'price-right' })).toBe(true)
+    expect(removeYAxis).toHaveBeenCalledWith('price-right')
+    expect(removeYScale).not.toHaveBeenCalled()
+  })
+
+  it('rejects an empty scale reference when overriding a visual axis', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const createOrOverrideYAxis = vi.fn()
+    const pane = {
+      getId: () => PaneIdConstants.CANDLE,
+      getYScaleById: () => ({}),
+      getYAxisWidgets: () => [{ getOptions: () => ({ id: 'axis', paneId: PaneIdConstants.CANDLE, yScaleId: 'default' }) }],
+      createOrOverrideYAxis
+    }
+    Reflect.set(chart, 'getDrawPaneById', vi.fn(() => pane))
+    Reflect.set(chart, 'getYAxes', vi.fn(() => [{ id: 'axis', paneId: PaneIdConstants.CANDLE, yScaleId: 'default' }]))
+    Reflect.set(chart, '_refreshExactLayout', vi.fn())
+
+    chart.overrideYAxis({ id: 'axis', paneId: PaneIdConstants.CANDLE, yScaleId: '' })
+
+    expect(createOrOverrideYAxis).not.toHaveBeenCalled()
+  })
+
+  it('rejects an empty scale reference when overriding an indicator', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const override = vi.fn()
+    const indicator = { id: 'indicator', paneId: PaneIdConstants.CANDLE, yScaleId: 'default' }
+    const pane = { getId: () => PaneIdConstants.CANDLE, getYScaleById: () => ({}) }
+    Reflect.set(chart, 'getDrawPaneById', vi.fn(() => pane))
+    Reflect.set(chart, '_chartStore', {
+      getIndicatorStore: () => ({
+        getIndicatorsByFilter: () => [indicator],
+        override
+      })
+    })
+
+    chart.overrideIndicator({ id: 'indicator', yScaleId: '' })
+
+    expect(override).not.toHaveBeenCalled()
   })
 })
 
@@ -186,8 +358,7 @@ describe('ChartImp.setStyles', () => {
 
     Reflect.set(chart, '_chartStore', { updateOptions })
     Reflect.set(chart, '_candlePane', {
-      getYLeftAxisWidget: () => axisWidget,
-      getYRightAxisWidget: () => axisWidget
+      getYScales: () => [{ getComponent: () => axisWidget.getAxisComponent() }]
     })
     Reflect.set(chart, 'refreshMetricLayout', refreshMetricLayout)
     Reflect.set(chart, 'updatePane', updatePane)
@@ -227,7 +398,7 @@ describe('ChartImp.setStyles', () => {
     chart.setStyles({})
 
     expect(updatePane).not.toHaveBeenCalled()
-    expect(setAutoCalcTickFlag).toHaveBeenCalledTimes(2)
+    expect(setAutoCalcTickFlag).toHaveBeenCalledOnce()
     expect(refreshMetricLayout).toHaveBeenCalledOnce()
   })
 
@@ -628,18 +799,26 @@ describe('ChartImp layout refresh methods', () => {
     const setDataZoomLayout = vi.fn()
     const renderLayoutNow = vi.fn()
     const leftAxisWidget = {
-      getAxisComponent: () => ({ buildTicks, getAutoSize: () => 20 }),
-      getBounding: () => ({ width: 10 })
+      getScaleComponent: () => ({ buildTicks }),
+      getAutoSize: () => 20,
+      getBounding: () => ({ width: 10 }),
+      getOptions: () => ({ id: 'left', position: 'left' })
     }
     const rightAxisWidget = {
-      getAxisComponent: () => ({ buildTicks, getAutoSize: () => 30 }),
-      getBounding: () => ({ width: 10 })
+      getScaleComponent: () => ({ buildTicks }),
+      getAutoSize: () => 30,
+      getBounding: () => ({ width: 10 }),
+      getOptions: () => ({ id: 'right', position: 'right' })
     }
     const pane = {
       getId: () => PaneIdConstants.CANDLE,
-      getYLeftAxisWidget: () => leftAxisWidget,
-      getYRightAxisWidget: () => rightAxisWidget,
-      getMainAxisWidget: () => leftAxisWidget,
+      getYAxisWidgetsByPosition: (position: string) => position === 'left' ? [leftAxisWidget] : [rightAxisWidget],
+      getYAxisWidgets: () => [leftAxisWidget, rightAxisWidget],
+      setYAxesBounding: vi.fn(),
+      getYScales: () => [
+        { getComponent: () => leftAxisWidget.getScaleComponent() },
+        { getComponent: () => rightAxisWidget.getScaleComponent() }
+      ],
       setBounding: vi.fn()
     }
     const xAxisPane = {
@@ -654,8 +833,7 @@ describe('ChartImp layout refresh methods', () => {
       getStyles: () => ({
         yAxis: {
           size: 'auto',
-          inside: false,
-          position: YAxisPosition.Both
+          inside: false
         },
         separator: { fill: true }
       }),
@@ -681,15 +859,13 @@ describe('ChartImp layout refresh methods', () => {
     expect(setDataZoomLayout).toHaveBeenLastCalledWith({ width: 70, left: 20 })
     expect(pane.setBounding).toHaveBeenLastCalledWith(
       { width: 120 },
-      { width: 70, left: 20 },
-      { width: 20, left: 0 },
-      { width: 30, left: 90 }
+      { width: 70, left: 20 }
     )
     expect(renderLayoutNow).toHaveBeenCalledOnce()
     expect(renderLayoutNow.mock.invocationCallOrder[0]).toBeGreaterThan(pane.setBounding.mock.invocationCallOrder[1])
   })
 
-  it('builds the configured main y-axis before the secondary y-axis', () => {
+  it('builds each pane Y scale once in registry order', () => {
     const chart = Object.create(ChartImp.prototype) as ChartImp
     const calls: string[] = []
     const leftBuildTicks = vi.fn((force: boolean) => {
@@ -708,9 +884,10 @@ describe('ChartImp layout refresh methods', () => {
     }
     const pane = {
       getId: () => PaneIdConstants.CANDLE,
-      getYLeftAxisWidget: () => leftAxisWidget,
-      getYRightAxisWidget: () => rightAxisWidget,
-      getMainAxisWidget: () => rightAxisWidget
+      getYScales: () => [
+        { getComponent: () => rightAxisWidget.getAxisComponent() },
+        { getComponent: () => leftAxisWidget.getAxisComponent() }
+      ]
     }
 
     Reflect.set(chart, '_drawPanes', [pane])
@@ -746,16 +923,24 @@ describe('ChartImp layout refresh methods', () => {
 
   it('preserves current auto y-axis width when shrink is not allowed', () => {
     const chart = Object.create(ChartImp.prototype) as ChartImp
+    const leftAxisWidget = {
+      getAutoSize: () => 10,
+      getBounding: () => ({ width: 30 }),
+      getOptions: () => ({ id: 'left' })
+    }
+    const rightAxisWidget = {
+      getAutoSize: () => 20,
+      getBounding: () => ({ width: 40 }),
+      getOptions: () => ({ id: 'right' })
+    }
     const pane = {
       getId: () => PaneIdConstants.CANDLE,
-      getYLeftAxisWidget: () => ({
-        getAxisComponent: () => ({ getAutoSize: () => 10 }),
-        getBounding: () => ({ width: 30 })
-      }),
-      getYRightAxisWidget: () => ({
-        getAxisComponent: () => ({ getAutoSize: () => 20 }),
-        getBounding: () => ({ width: 40 })
-      }),
+      getYAxisWidgetsByPosition: (position: string) => position === 'left'
+        ? [leftAxisWidget]
+        : [rightAxisWidget],
+      getYAxisWidgets: () => [leftAxisWidget, rightAxisWidget],
+      setYAxesBounding: vi.fn(),
+      getYScales: () => [],
       setBounding: vi.fn()
     }
     const chartStore = {
@@ -763,8 +948,7 @@ describe('ChartImp layout refresh methods', () => {
       getStyles: () => ({
         yAxis: {
           size: 'auto',
-          inside: false,
-          position: YAxisPosition.Both
+          inside: false
         },
         separator: { fill: true }
       }),
@@ -787,9 +971,7 @@ describe('ChartImp layout refresh methods', () => {
     expect(applyHorizontalLayout.call(chart, undefined, false)).toBe(true)
     expect(pane.setBounding).toHaveBeenLastCalledWith(
       { width: 100 },
-      { width: 30, left: 30 },
-      { width: 30, left: 0 },
-      { width: 40, left: 60 }
+      { width: 30, left: 30 }
     )
 
     pane.setBounding.mockClear()
@@ -797,9 +979,7 @@ describe('ChartImp layout refresh methods', () => {
     expect(applyHorizontalLayout.call(chart, undefined, true)).toBe(true)
     expect(pane.setBounding).toHaveBeenLastCalledWith(
       { width: 100 },
-      { width: 70, left: 10 },
-      { width: 10, left: 0 },
-      { width: 20, left: 80 }
+      { width: 70, left: 10 }
     )
   })
 

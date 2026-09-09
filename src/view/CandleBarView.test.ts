@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { CandleType, getDefaultStyles, YAxisPosition, YAxisType } from '../common/Styles'
+import { CandleType, getDefaultStyles } from '../common/Styles'
+import { YScaleType } from '../component/YScale'
 import { createFigure } from '../extension/figure'
 import { type RectAttrs } from '../extension/figure/rect'
 import { PaneIdConstants } from '../pane/types'
-import CandleBarView, { resolveIndicatorOhlcYAxisPosition } from './CandleBarView'
+import CandleBarView from './CandleBarView'
 
 const figureMock = vi.hoisted(() => {
   const instance = {
@@ -39,7 +40,7 @@ function drawOhlcRects(options: {
     convertToPixel: vi.fn((value: number) => value)
   }
   const yAxisWidget = {
-    getAxisType: () => YAxisType.Normal,
+    getScaleType: () => YScaleType.Normal,
     getAxisComponent: () => yAxis
   }
   const isIndicatorPane = options.paneId != null && options.paneId !== PaneIdConstants.CANDLE
@@ -70,7 +71,9 @@ function drawOhlcRects(options: {
     getChart: () => ({ getChartStore: () => chartStore }),
     getYLeftAxisWidget: () => yAxisWidget,
     getYRightAxisWidget: () => yAxisWidget,
-    getMainAxisWidget: () => yAxisWidget
+    getMainAxisWidget: () => yAxisWidget,
+    getYScaleById: () => ({ getComponent: () => yAxis }),
+    getDefaultYScale: () => ({ getComponent: () => yAxis })
   }
   const view = new CandleBarView({ getPane: () => pane } as never)
 
@@ -78,25 +81,6 @@ function drawOhlcRects(options: {
 
   return figureMock.setAttrs.mock.calls[0][0] as RectAttrs[]
 }
-
-describe('resolveIndicatorOhlcYAxisPosition', () => {
-  it('uses global right y-axis as the default for indicators without explicit binding', () => {
-    expect(resolveIndicatorOhlcYAxisPosition({}, YAxisPosition.Right)).toBe('right')
-  })
-
-  it('keeps explicit indicator y-axis binding', () => {
-    expect(resolveIndicatorOhlcYAxisPosition({ yAxisPosition: 'right' }, YAxisPosition.Left)).toBe('right')
-    expect(resolveIndicatorOhlcYAxisPosition({ yAxisPosition: 'left' }, YAxisPosition.Right)).toBe('left')
-  })
-
-  it('uses the main y-axis as the default when both y-axes are visible', () => {
-    expect(resolveIndicatorOhlcYAxisPosition({}, YAxisPosition.Left)).toBe('left')
-    expect(resolveIndicatorOhlcYAxisPosition({}, YAxisPosition.Both)).toBe('left')
-    expect(resolveIndicatorOhlcYAxisPosition({}, YAxisPosition.Both, 'right')).toBe('right')
-    expect(resolveIndicatorOhlcYAxisPosition({}, YAxisPosition.Left, 'right')).toBe('left')
-    expect(resolveIndicatorOhlcYAxisPosition({}, YAxisPosition.Right, 'left')).toBe('right')
-  })
-})
 
 describe('CandleBarView', () => {
   it('draws main candles with the main candle coordinate axis', () => {
@@ -109,12 +93,12 @@ describe('CandleBarView', () => {
       convertToPixel: vi.fn(() => 1)
     }
     const leftPercentageWidget = {
-      getAxisType: () => YAxisType.Percentage,
-      getAxisComponent: () => leftPercentageAxis
+      getScaleType: () => YScaleType.Normal,
+      getScaleComponent: () => leftPercentageAxis
     }
     const rightPriceWidget = {
-      getAxisType: () => YAxisType.Normal,
-      getAxisComponent: () => rightPriceAxis
+      getScaleType: () => YScaleType.Normal,
+      getScaleComponent: () => rightPriceAxis
     }
     const chartStore = {
       getIsTimeShare: () => false,
@@ -141,7 +125,9 @@ describe('CandleBarView', () => {
       getChart: () => ({ getChartStore: () => chartStore }),
       getYLeftAxisWidget: () => leftPercentageWidget,
       getYRightAxisWidget: () => rightPriceWidget,
-      getMainAxisWidget: () => leftPercentageWidget
+      getMainAxisWidget: () => leftPercentageWidget,
+      getYScaleById: () => ({ getComponent: () => leftPercentageAxis }),
+      getDefaultYScale: () => ({ getComponent: () => leftPercentageAxis })
     }
     const widget = {
       getPane: () => pane
@@ -165,7 +151,7 @@ describe('CandleBarView', () => {
       convertToPixel: vi.fn((value: number) => value)
     }
     const yAxisWidget = {
-      getAxisType: () => YAxisType.Normal,
+      getScaleType: () => YScaleType.Normal,
       getAxisComponent: () => yAxis
     }
     const chartStore = {
@@ -193,7 +179,9 @@ describe('CandleBarView', () => {
       getChart: () => ({ getChartStore: () => chartStore }),
       getYLeftAxisWidget: () => yAxisWidget,
       getYRightAxisWidget: () => yAxisWidget,
-      getMainAxisWidget: () => yAxisWidget
+      getMainAxisWidget: () => yAxisWidget,
+      getYScaleById: () => ({ getComponent: () => yAxis }),
+      getDefaultYScale: () => ({ getComponent: () => yAxis })
     }
     const widget = {
       getPane: () => pane
@@ -216,7 +204,7 @@ describe('CandleBarView', () => {
       convertToPixel: vi.fn((value: number) => value)
     }
     const yAxisWidget = {
-      getAxisType: () => YAxisType.Normal,
+      getScaleType: () => YScaleType.Normal,
       getAxisComponent: () => yAxis
     }
     const chartStore = {
@@ -244,7 +232,9 @@ describe('CandleBarView', () => {
       getChart: () => ({ getChartStore: () => chartStore }),
       getYLeftAxisWidget: () => yAxisWidget,
       getYRightAxisWidget: () => yAxisWidget,
-      getMainAxisWidget: () => yAxisWidget
+      getMainAxisWidget: () => yAxisWidget,
+      getYScaleById: () => ({ getComponent: () => yAxis }),
+      getDefaultYScale: () => ({ getComponent: () => yAxis })
     }
     const widget = {
       getPane: () => pane
@@ -267,7 +257,7 @@ describe('CandleBarView', () => {
       convertToPixel: vi.fn((value: number) => value)
     }
     const yAxisWidget = {
-      getAxisType: () => YAxisType.Normal,
+      getScaleType: () => YScaleType.Normal,
       getAxisComponent: () => yAxis
     }
     const chartStore = {
@@ -296,7 +286,9 @@ describe('CandleBarView', () => {
       getChart: () => ({ getChartStore: () => chartStore }),
       getYLeftAxisWidget: () => yAxisWidget,
       getYRightAxisWidget: () => yAxisWidget,
-      getMainAxisWidget: () => yAxisWidget
+      getMainAxisWidget: () => yAxisWidget,
+      getYScaleById: () => ({ getComponent: () => yAxis }),
+      getDefaultYScale: () => ({ getComponent: () => yAxis })
     }
     const widget = {
       getPane: () => pane
@@ -313,7 +305,7 @@ describe('CandleBarView', () => {
       convertToPixel: vi.fn((value: number) => value)
     }
     const yAxisWidget = {
-      getAxisType: () => YAxisType.Normal,
+      getScaleType: () => YScaleType.Normal,
       getAxisComponent: () => yAxis
     }
     const chartStore = {
@@ -341,7 +333,9 @@ describe('CandleBarView', () => {
       getChart: () => ({ getChartStore: () => chartStore }),
       getYLeftAxisWidget: () => yAxisWidget,
       getYRightAxisWidget: () => yAxisWidget,
-      getMainAxisWidget: () => yAxisWidget
+      getMainAxisWidget: () => yAxisWidget,
+      getYScaleById: () => ({ getComponent: () => yAxis }),
+      getDefaultYScale: () => ({ getComponent: () => yAxis })
     }
     const widget = {
       getPane: () => pane

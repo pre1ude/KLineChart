@@ -31,6 +31,7 @@ describe('CandleHighLowPriceView', () => {
     }
     const pane = {
       getChart: () => ({ getChartStore: () => chartStore }),
+      getDefaultYScale: () => ({ getComponent: () => yAxis }),
       getMainAxisWidget: () => ({ getAxisComponent: () => yAxis })
     }
     const widget = {

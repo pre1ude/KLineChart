@@ -21,7 +21,7 @@ export default class CandleTimeShareZeroLineView extends View {
     const primaryGridStyles = getPrimaryGridLineStyle(gridStyles.horizontal)
 
     if (gridStyles.show && gridStyles.horizontal.show && primaryGridStyles.show) {
-      const yAxis = (pane as DualYPane).getMainAxisWidget().getAxisComponent()
+      const yAxis = (pane as DualYPane).getDefaultYScale().getComponent()
 
       // 使用 getTimeShareBasisPrice 获取基准价格
       const basisPrice = chartStore.getTimeShareBasisPrice()

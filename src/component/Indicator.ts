@@ -11,7 +11,7 @@ import { type ArcAttrs } from '../extension/figure/arc'
 import { type RectAttrs } from '../extension/figure/rect'
 import { type TextAttrs } from '../extension/figure/text'
 import { type XAxis } from './XAxis'
-import { type YAxis } from './YAxis'
+import { type YScale } from './YScale'
 
 // 用于区分使用什么精度
 export enum IndicatorSeries {
@@ -32,7 +32,7 @@ export type IndicatorFigureAttrsCallback<D> = (
   bounding: Bounding,
   barSpace: BarSpace,
   xAxis: XAxis,
-  yAxis: YAxis
+  yScale: YScale
 ) => IndicatorFigureAttrs
 
 export type IndicatorFigureStylesCallback<D> = (
@@ -90,7 +90,7 @@ export interface IndicatorCreateTooltipDataSourceParams<D = any> {
   crosshair: Crosshair
   defaultStyles: IndicatorStyle
   xAxis: XAxis
-  yAxis: YAxis
+  yScale: YScale
 }
 
 export type IndicatorCreateTooltipDataSourceCallback<D = any> = (params: IndicatorCreateTooltipDataSourceParams<D>) => Partial<IndicatorTooltipData>
@@ -104,7 +104,7 @@ export interface IndicatorDrawParams<D = unknown> {
   barSpace: BarSpace
   defaultStyles: IndicatorStyle
   xAxis: XAxis
-  yAxis: YAxis
+  yScale: YScale
 }
 
 export type IndicatorDrawCallback<D = unknown> = (params: IndicatorDrawParams<D>) => boolean
@@ -122,14 +122,9 @@ export interface IndicatorApi<D = unknown> {
   paneId: string
 
   /**
-   * Bound y-axis id.
+   * Bound pane-scoped Y-scale id.
    */
-  yAxisId?: string
-
-  /**
-   * Bound y-axis position in indicator panes.
-   */
-  yAxisPosition?: 'left' | 'right'
+  yScaleId: string
 
   /**
    * Indicator name
@@ -240,8 +235,7 @@ export type IndicatorRemoveFilter =
 export class Indicator<D = unknown> implements IndicatorApi<D> {
   id: string
   paneId: string
-  yAxisId?: string
-  yAxisPosition?: 'left' | 'right'
+  yScaleId: string
   name: string
   shortName: string
   precision: number
@@ -271,8 +265,7 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
   constructor(template: IndicatorTemplate<D>, initOptions?: Partial<Pick<IndicatorApi<D>, 'id' | 'paneId'>>) {
     this.id = initOptions?.id ?? ''
     this.paneId = initOptions?.paneId ?? ''
-    this.yAxisId = template.yAxisId
-    this.yAxisPosition = template.yAxisPosition
+    this.yScaleId = template.yScaleId ?? ''
 
     this.name = template.name
     this.shortName = template.shortName ?? template.name
@@ -310,8 +303,7 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
       this._prevIndicator.figures !== this.figures
 
     const draw = sort || calc ||
-      this._prevIndicator.yAxisId !== this.yAxisId ||
-      this._prevIndicator.yAxisPosition !== this.yAxisPosition ||
+      this._prevIndicator.yScaleId !== this.yScaleId ||
       this._prevIndicator.styles !== this.styles ||
       this._prevIndicator.shortName !== this.shortName ||
       this._prevIndicator.series !== this.series ||

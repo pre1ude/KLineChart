@@ -1,51 +1,53 @@
 import type DualYPane from '../pane/DualYPane'
 import { WidgetNameConstants } from './types'
 import DrawWidget from './DrawWidget'
-import type YAxis from '../component/YAxis'
+import type { YScale, YScaleType } from '../component/YScale'
+import { type AxisTick } from '../component/Axis'
 import YAxisView from '../view/YAxisView'
 import CandleLastPriceLabelView from '../view/CandleLastPriceLabelView'
 import IndicatorLastValueView from '../view/IndicatorLastValueView'
 import OverlayView from '../view/OverlayView'
 import CrosshairHorizontalLabelView from '../view/CrosshairHorizontalLabelView'
-import { YAxisPosition, YAxisType } from '../common/Styles'
-import { PaneIdConstants, type PaneOptions } from '../pane/types'
-import { isString, isValid } from '../common/utils/typeChecks'
-import { getYAxisClass } from '../extension/y-axis'
+import { YAxisPosition } from '../common/Styles'
+import { PaneIdConstants } from '../pane/types'
 import { setCursor } from '../common/utils/cursor'
+import type YScaleHost from '../component/YScaleHost'
+import { formatFoldDecimal, formatThousands } from '../common/utils/format'
+
+export enum YAxisLabelDisplay {
+  Value = 'value',
+  Percentage = 'percentage',
+  MinutePercentage = 'minute-percentage'
+}
 
 export interface YAxisOptions {
   id: string
   paneId: string
-  name?: string
-  scrollZoomEnabled?: boolean
+  yScaleId: string
   needWidget: boolean
   position: 'left' | 'right'
-  type: YAxisType
-  nice: boolean
-  axisTitle: string
+  order: number
+  labelDisplay: YAxisLabelDisplay
 }
 
-export type YAxisCreate = Partial<Omit<YAxisOptions, 'id' | 'paneId'>> & { id?: string, paneId: string }
+export type YAxisCreate = Partial<Omit<YAxisOptions, 'id' | 'paneId' | 'yScaleId'>> & { id?: string, paneId: string, yScaleId: string }
 export type YAxisOverride = Partial<Omit<YAxisOptions, 'id' | 'paneId'>> & { id: string, paneId?: string }
 
 export interface YAxisFilter {
   id?: string
   paneId?: string
-  name?: string
+  yScaleId?: string
 }
 
 export default class YAxisWidget extends DrawWidget<DualYPane> {
-  private _axis!: YAxis
   private _axisOptions: YAxisOptions = {
     id: '',
     paneId: '',
-    name: 'default',
-    scrollZoomEnabled: true,
+    yScaleId: '',
     needWidget: true,
     position: YAxisPosition.Left,
-    type: YAxisType.Normal,
-    nice: true,
-    axisTitle: ''
+    order: 0,
+    labelDisplay: YAxisLabelDisplay.Value
   }
 
   private readonly _yAxisView = new YAxisView(this)
@@ -54,20 +56,10 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
   private readonly _overlayYAxisView = new OverlayView(this, 'yAxis')
   private readonly _crosshairHorizontalLabelView = new CrosshairHorizontalLabelView(this)
 
-  constructor(rootContainer: HTMLElement, pane: DualYPane, options: PaneOptions, yAxisOptions: YAxisOptions) {
+  constructor(rootContainer: HTMLElement, pane: DualYPane, yAxisOptions: YAxisOptions) {
     super(rootContainer, pane)
     setCursor(this.getContainer(), 'ns-resize')
-
-    const position = yAxisOptions.position
-    const axisType = options.axisOptions?.YAxis?.[position]?.type ?? YAxisType.Normal
-    const nice = options.axisOptions?.YAxis?.[position]?.nice ?? true
-    const axisTitle = options.axisOptions?.YAxis?.[position]?.axisTitle ?? ''
-    this.setOptions({
-      ...yAxisOptions,
-      type: yAxisOptions.type ?? axisType,
-      nice: yAxisOptions.nice ?? nice,
-      axisTitle: yAxisOptions.axisTitle ?? axisTitle
-    })
+    this.setOptions(yAxisOptions)
   }
 
   getOptions(): YAxisOptions {
@@ -75,20 +67,10 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
   }
 
   setOptions(options: Partial<YAxisOptions>): void {
-    const name = options?.name
-    if (
-      (this._axisOptions.name !== name && isString(name)) ||
-      !isValid(this._axis)
-    ) {
-      this._axis = this.createAxisComponent(name ?? 'default')
-    }
     this._axisOptions = { ...this._axisOptions, ...options }
   }
 
-  createAxisComponent(name: string): YAxis {
-    const YAxisClass = getYAxisClass(name)
-    return new YAxisClass(this)
-  }
+  getScale(): YScaleHost { return this.getPane().getYScaleById(this._axisOptions.yScaleId)! }
 
   isInCandle(): boolean {
     return this.getPane().getId() === PaneIdConstants.CANDLE
@@ -104,12 +86,49 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     )
   }
 
-  getAxisType(): YAxisType {
-    return this._axisOptions.type
+  getScaleType(): YScaleType {
+    return this.getScale().getOptions().type
   }
 
-  getAxisComponent(): YAxis {
-    return this._axis
+  getScaleComponent(): YScale {
+    return this.getScale().getComponent()
+  }
+
+  getTicks(): AxisTick[] {
+    const scale = this.getScaleComponent()
+    return scale.getTicks().map(tick => ({
+      ...tick,
+      text: this.formatLabel(scale.convertToRealValue(+tick.value), tick.text)
+    }))
+  }
+
+  getAutoSize(): number {
+    return this.getScaleComponent().getAutoSize(this.getTicks(), (value, text) => this.formatLabel(value, text))
+  }
+
+  formatLabel(value: number, fallback: string): string {
+    const chartStore = this.getPane().getChart().getChartStore()
+    const display = this._axisOptions.labelDisplay ?? YAxisLabelDisplay.Value
+    let basis: number | undefined
+    if (display === YAxisLabelDisplay.Percentage) {
+      if (!this.isInCandle() || !this.getPane().isDefaultYScale(this._axisOptions.yScaleId)) {
+        return '--'
+      }
+      basis = chartStore.getVisibleFirstData()?.close
+    } else if (display === YAxisLabelDisplay.MinutePercentage) {
+      basis = chartStore.getMinutePercentageBasis()
+    } else {
+      return fallback
+    }
+
+    if (basis == null || basis <= 0) {
+      return '--'
+    }
+    const text = `${((value - basis) / basis * 100).toFixed(2)}%`
+    return formatFoldDecimal(
+      formatThousands(text, chartStore.getThousandsSeparator()),
+      chartStore.getDecimalFoldThreshold()
+    )
   }
 
   override getName(): string {
@@ -120,7 +139,7 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     const chart = this.getPane().getChart()
     const chartStore = chart.getChartStore()
     this._yAxisView.draw(ctx)
-    if (this.getAxisComponent().isInCandle() && this.getPane().isDefaultYAxis(this._axisOptions.id)) {
+    if (this.getScaleComponent().isInCandle() && this.getPane().isDefaultYScale(this._axisOptions.yScaleId)) {
       if (!chartStore.getIsTimeShare()) {
         // 非分时图才展示最新价标签
         this._candleLastPriceLabelView.draw(ctx)
@@ -130,7 +149,7 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
   }
 
   override updateOverlay(ctx: CanvasRenderingContext2D): void {
-    if (this.getPane().isDefaultYAxis(this._axisOptions.id)) {
+    if (this.getPane().isDefaultYScale(this._axisOptions.yScaleId)) {
       this._overlayYAxisView.draw(ctx)
     }
     this._crosshairHorizontalLabelView.draw(ctx)

@@ -1,9 +1,9 @@
 
 import { type AxisTemplate } from '../../component/Axis'
 
-const defaultYAxis: AxisTemplate = {
+const defaultYScale: AxisTemplate = {
   name: 'default',
   createTicks: ({ defaultTicks }) => defaultTicks
 }
 
-export default defaultYAxis
+export default defaultYScale

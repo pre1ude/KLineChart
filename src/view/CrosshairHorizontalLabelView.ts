@@ -1,6 +1,6 @@
 import type Bounding from '../common/Bounding'
 import type Crosshair from '../common/Crosshair'
-import { YAxisType, type CrosshairDirectionStyle, type CrosshairStyle, type StateTextStyle } from '../common/Styles'
+import { type CrosshairDirectionStyle, type CrosshairStyle, type StateTextStyle } from '../common/Styles'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { type TextAttrs } from '../extension/figure/text'
 import type ChartStore from '../store/ChartStore'
@@ -24,58 +24,40 @@ export default class CrosshairHorizontalLabelView extends CrosshairLabelView {
 
   protected getText(crosshair: Crosshair, chartStore: ChartStore): string {
     const widget = this.getWidget() as unknown as YAxisWidget
-    const axisType = widget.getAxisType()
-    const yAxis = widget.getAxisComponent()
-    if (!yAxis.hasValidData()) {
+    const yScale = widget.getScaleComponent()
+    if (!yScale.hasValidData()) {
       return ''
     }
     if (crosshair.y == null) {
       return ''
     }
-    const value = yAxis.convertFromPixel(crosshair.y)
-    let text: string
-
-    if (axisType === YAxisType.Percentage || axisType === YAxisType.MinutePercentage) {
-      if (axisType === YAxisType.MinutePercentage) {
-        // 分钟百分比模式：使用统一的基准价格方法
-        const basisPrice = chartStore.getMinutePercentageBasis()
-        if (basisPrice > 0) {
-          text = `${((value - basisPrice) / basisPrice * 100).toFixed(2)}%`
-        } else {
-          text = '0.00%'
-        }
-      } else {
-        // 普通百分比模式：使用第一个数据的 close
-        const fromData = chartStore.getVisibleFirstData()
-        if (fromData && fromData.close > 0) {
-          text = `${((value - fromData.close) / fromData.close * 100).toFixed(2)}%`
-        } else {
-          text = '0.00%'
-        }
-      }
-    } else {
-      const pane: DualYPane = widget.getPane()
-      const indicators = chartStore.getIndicatorStore().getInstances(crosshair.paneId ?? '').filter(indicator => (
-        pane.resolveIndicatorYAxisId(indicator) === widget.getOptions().id
-      ))
-      let precision = 0
-      let shouldFormatBigNumber = false
-      if (yAxis.isInCandle()) {
-        precision = chartStore.getPrecision().price
-      } else {
-        indicators.forEach(indicator => {
-          precision = Math.max(indicator.precision, precision)
-          if (!shouldFormatBigNumber) {
-            shouldFormatBigNumber = indicator.shouldFormatBigNumber
-          }
-        })
-      }
-      text = formatPrecision(value, precision)
-      if (shouldFormatBigNumber) {
-        text = chartStore.getCustomApi().formatBigNumber(text)
-      }
+    const value = yScale.convertFromPixel(crosshair.y)
+    const formatter = widget.getScale().getOptions().formatter
+    if (formatter) {
+      return widget.formatLabel(value, formatter(value))
     }
-    return formatFoldDecimal(formatThousands(text, chartStore.getThousandsSeparator()), chartStore.getDecimalFoldThreshold())
+    const pane: DualYPane = widget.getPane()
+    const indicators = chartStore.getIndicatorStore().getInstances(crosshair.paneId ?? '').filter(indicator => (
+      pane.resolveIndicatorYScaleId(indicator) === widget.getOptions().yScaleId
+    ))
+    let precision = 0
+    let shouldFormatBigNumber = false
+    if (yScale.isInCandle()) {
+      precision = chartStore.getPrecision().price
+    } else {
+      indicators.forEach(indicator => {
+        precision = Math.max(indicator.precision, precision)
+        if (!shouldFormatBigNumber) {
+          shouldFormatBigNumber = indicator.shouldFormatBigNumber
+        }
+      })
+    }
+    let text = formatPrecision(value, precision)
+    if (shouldFormatBigNumber) {
+      text = chartStore.getCustomApi().formatBigNumber(text)
+    }
+    text = formatFoldDecimal(formatThousands(text, chartStore.getThousandsSeparator()), chartStore.getDecimalFoldThreshold())
+    return widget.formatLabel(value, text)
   }
 
   protected getTextAttrs(text: string, _textWidth: number, crosshair: Crosshair, bounding: Bounding, styles: StateTextStyle): TextAttrs {

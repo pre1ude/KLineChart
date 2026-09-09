@@ -10,7 +10,7 @@ const fibonacciExtension: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  createFigures: ({ coordinates, overlay, precision, thousandsSeparator, decimalFoldThreshold, yAxis }) => {
+  createFigures: ({ coordinates, overlay, precision, thousandsSeparator, decimalFoldThreshold, yScale }) => {
     const figures: OverlayFigure[] = []
 
     // 连接线（虚线）
@@ -25,7 +25,7 @@ const fibonacciExtension: OverlayTemplate = {
         return figures
       }
 
-      const currentPrecision = (yAxis?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax
+      const currentPrecision = (yScale?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax
       const valueDif = points[1].value - points[0].value
       const yDif = coordinates[1].y - coordinates[0].y
       const percents = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]

@@ -30,7 +30,7 @@ export default class CandleHighLowPriceView extends View {
       const thousandsSeparator = chartStore.getThousandsSeparator()
       const decimalFoldThreshold = chartStore.getDecimalFoldThreshold()
       const precision = chartStore.getPrecision()
-      const yAxis = (pane as DualYPane).getMainAxisWidget().getAxisComponent()
+      const yAxis = (pane as DualYPane).getDefaultYScale().getComponent()
       let high = Number.MIN_SAFE_INTEGER
       let highX = 0
       let low = Number.MAX_SAFE_INTEGER

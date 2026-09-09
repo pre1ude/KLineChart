@@ -532,9 +532,8 @@ export default class IndicatorTooltipView extends View {
       const chartStore = pane.getChart().getChartStore()
       const xAxis = (pane.getChart().getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
       const dualYPane = pane as DualYPane
-      const yAxis = typeof dualYPane.resolveIndicatorYAxisId === 'function' && typeof dualYPane.getYAxisWidgetById === 'function'
-        ? (dualYPane.getYAxisWidgetById(dualYPane.resolveIndicatorYAxisId(indicator))?.getAxisComponent() ?? dualYPane.getMainAxisWidget().getAxisComponent())
-        : dualYPane.getYLeftAxisWidget().getAxisComponent()
+      const yScale = dualYPane.getYScaleById(dualYPane.resolveIndicatorYScaleId(indicator))?.getComponent() ??
+        dualYPane.getDefaultYScale().getComponent()
       const { name: customName, calcParamsText: customCalcParamsText, values: customLegends, icons: customIcons } = indicator.createTooltipDataSource({
         kLineDataList: dataList,
         indicator,
@@ -543,7 +542,7 @@ export default class IndicatorTooltipView extends View {
         crosshair,
         defaultStyles: mergedDefaultStyles,
         xAxis,
-        yAxis
+        yScale
       })
       if (isString(customName) && tooltipStyles.showName) {
         tooltipData.name = customName

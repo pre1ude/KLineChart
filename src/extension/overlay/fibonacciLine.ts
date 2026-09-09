@@ -10,10 +10,10 @@ const fibonacciLine: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  createFigures: ({ coordinates, bounding, overlay, precision, thousandsSeparator, decimalFoldThreshold, yAxis }) => {
+  createFigures: ({ coordinates, bounding, overlay, precision, thousandsSeparator, decimalFoldThreshold, yScale }) => {
     const points = overlay.points
     if (coordinates.length > 0) {
-      const currentPrecision = (yAxis?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax
+      const currentPrecision = (yScale?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax
       const figures: OverlayFigure[] = []
       const startX = 0
       const endX = bounding.width

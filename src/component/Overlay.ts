@@ -10,7 +10,7 @@ import { type MouseTouchEvent } from '../common/SyntheticEvent'
 import type { DateTimeFormat } from '../common/utils/dateTimeFormat'
 import { clone, isNumber, isValid, merge } from '../common/utils/typeChecks'
 import { type XAxis } from './XAxis'
-import { type YAxis } from './YAxis'
+import { type YScale } from './YScale'
 
 // 默认的 extendData 类型，允许任意属性
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -111,7 +111,9 @@ export interface OverlayCreateFiguresCallbackParams<E = DefaultExtendData> {
   dateTimeFormat: DateTimeFormat
   defaultStyles: OverlayStyle
   xAxis?: XAxis
-  yAxis?: YAxis
+  yScale?: YScale
+  /** Format a canonical Y value for the current visual axis. */
+  formatLabel?: (value: number, fallback: string) => string
   isAlignLeft?: boolean
 }
 

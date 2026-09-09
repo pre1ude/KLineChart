@@ -1,7 +1,7 @@
 import type Bounding from '../common/Bounding'
 import type KLineData from '../common/KLineData'
 import type VisibleData from '../common/VisibleData'
-import { CandleType, YAxisPosition, YAxisType } from '../common/Styles'
+import { CandleType } from '../common/Styles'
 import { calcTextWidth, createFont } from '../common/utils/canvas'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { getPrecision, index10, log10, round } from '../common/utils/number'
@@ -9,16 +9,20 @@ import { isNumber, isValid } from '../common/utils/typeChecks'
 import type VisibleRange from '../common/VisibleRange'
 import type DualYPane from '../pane/DualYPane'
 import { PaneIdConstants } from '../pane/types'
-import type YAxisWidget from '../widget/YAxisWidget'
-import { type YAxisOptions } from '../widget/YAxisWidget'
 import AxisImp, { type Axis, type AxisCreateTicksParams, type AxisTemplate, type AxisTick } from './Axis'
 import { isIndicatorFigureVisible, type Indicator, type IndicatorFigure } from './Indicator'
+import type YScaleHost from './YScaleHost'
 
-const DEFAULT_Y_AXIS_SPLIT_NUMBER = 5
-const MIN_Y_AXIS_TICK_TEXT_SPACING = 2
-const Y_AXIS_TICK_TEXT_VERTICAL_PADDING = 2
+const DEFAULT_Y_SCALE_SPLIT_NUMBER = 5
+const MIN_Y_SCALE_TICK_TEXT_SPACING = 2
+const Y_SCALE_TICK_TEXT_VERTICAL_PADDING = 2
 
-export enum YAxisScaleMode {
+export enum YScaleType {
+  Normal = 'normal',
+  Log = 'log'
+}
+
+export enum YScaleMode {
   TimeShareMain = 'timeShareMain',
   Standard = 'standard'
 }
@@ -29,27 +33,7 @@ interface FiguresResult {
   result: unknown[]
 }
 
-export function getIndicatorYAxisPosition(
-  indicator: Pick<Indicator, 'yAxisPosition'>,
-  defaultPosition: 'left' | 'right' = YAxisPosition.Left
-): 'left' | 'right' {
-  return indicator.yAxisPosition ?? defaultPosition
-}
-
-export function resolveDefaultYAxisPosition(
-  position: YAxisPosition,
-  mainPosition: 'left' | 'right' = YAxisPosition.Left
-): 'left' | 'right' {
-  if (position === YAxisPosition.Right) {
-    return YAxisPosition.Right
-  }
-  if (position === YAxisPosition.Both) {
-    return mainPosition
-  }
-  return YAxisPosition.Left
-}
-
-export interface YAxisTickSequence {
+export interface YScaleTickSequence {
   from: number
   to: number
   interval: number
@@ -144,20 +128,20 @@ function increaseEChartsNiceTickInterval(interval: number): number {
   return round(nf * exp10, Math.max(getPrecision(interval), 0))
 }
 
-export function calcYAxisTickTextHeight(textHeight: number): number {
-  return textHeight > 0 ? textHeight + Y_AXIS_TICK_TEXT_VERTICAL_PADDING * 2 : textHeight
+export function calcYScaleTickTextHeight(textHeight: number): number {
+  return textHeight > 0 ? textHeight + Y_SCALE_TICK_TEXT_VERTICAL_PADDING * 2 : textHeight
 }
 
-export function calcYAxisTickInterval(range: number, height: number, textHeight: number): [number, number] {
+export function calcYScaleTickInterval(range: number, height: number, textHeight: number): [number, number] {
   if (!Number.isFinite(range) || range <= 0) {
     return [0, 0]
   }
 
-  const tickTextHeight = calcYAxisTickTextHeight(textHeight)
+  const tickTextHeight = calcYScaleTickTextHeight(textHeight)
   const minSpacing = height > 0 && tickTextHeight > 0
-    ? range * tickTextHeight * MIN_Y_AXIS_TICK_TEXT_SPACING / height
+    ? range * tickTextHeight * MIN_Y_SCALE_TICK_TEXT_SPACING / height
     : 0
-  const rawInterval = Math.max(range / DEFAULT_Y_AXIS_SPLIT_NUMBER, minSpacing)
+  const rawInterval = Math.max(range / DEFAULT_Y_SCALE_SPLIT_NUMBER, minSpacing)
   let interval = calcEChartsNiceTickInterval(rawInterval)
   let guard = 0
 
@@ -175,7 +159,7 @@ export function calcYAxisTickInterval(range: number, height: number, textHeight:
   return [interval, precision]
 }
 
-export function calcYAxisTickBounds(from: number, to: number, interval: number, precision: number): [number, number] {
+export function calcYScaleTickBounds(from: number, to: number, interval: number, precision: number): [number, number] {
   const min = Math.min(from, to)
   const max = Math.max(from, to)
   if (!Number.isFinite(interval) || interval <= 0) {
@@ -188,11 +172,11 @@ export function calcYAxisTickBounds(from: number, to: number, interval: number, 
   ]
 }
 
-export function resolveYAxisScaleMode(inCandle: boolean, isTimeShare: boolean): YAxisScaleMode {
-  return inCandle && isTimeShare ? YAxisScaleMode.TimeShareMain : YAxisScaleMode.Standard
+export function resolveYScaleMode(inCandle: boolean, isTimeShare: boolean): YScaleMode {
+  return inCandle && isTimeShare ? YScaleMode.TimeShareMain : YScaleMode.Standard
 }
 
-function collectYAxisExtent(
+function collectYScaleExtent(
   visibleDataList: VisibleData[],
   figuresResultList: FiguresResult[],
   shouldCompareHighLow: boolean,
@@ -241,34 +225,13 @@ function collectYAxisExtent(
   return { min: 0, max: 10, hasValidData: false }
 }
 
-export function resolveYAxisTypeExtent(
+export function resolveYScaleTypeExtent(
   min: number,
   max: number,
-  type: YAxisType,
-  firstClose: number | undefined,
-  minutePercentageBasis: number
+  type: YScaleType
 ): [number, number] {
   switch (type) {
-    case YAxisType.Percentage: {
-      if (isNumber(firstClose)) {
-        return [
-          (min - firstClose) / firstClose * 100,
-          (max - firstClose) / firstClose * 100
-        ]
-      }
-      return [min, max]
-    }
-    case YAxisType.MinutePercentage: {
-      if (minutePercentageBasis > 0) {
-        const maxPercent = Math.max(
-          Math.abs((max - minutePercentageBasis) / minutePercentageBasis * 100),
-          Math.abs((min - minutePercentageBasis) / minutePercentageBasis * 100)
-        )
-        return [-maxPercent, maxPercent]
-      }
-      return [min, max]
-    }
-    case YAxisType.Log: {
+    case YScaleType.Log: {
       return [log10(min), log10(max)]
     }
     default: {
@@ -277,13 +240,9 @@ export function resolveYAxisTypeExtent(
   }
 }
 
-export function calcYAxisMinExtentDiff(type: YAxisType, precision: number): number {
+export function calcYScaleMinExtentDiff(type: YScaleType, precision: number): number {
   switch (type) {
-    case YAxisType.Percentage:
-    case YAxisType.MinutePercentage: {
-      return index10(-2)
-    }
-    case YAxisType.Log: {
+    case YScaleType.Log: {
       return 0.05 * index10(-precision)
     }
     default: {
@@ -292,40 +251,20 @@ export function calcYAxisMinExtentDiff(type: YAxisType, precision: number): numb
   }
 }
 
-export function ensureNonDegenerateYAxisExtent(min: number, max: number, diff: number): [number, number] {
+export function ensureNonDegenerateYScaleExtent(min: number, max: number, diff: number): [number, number] {
   if (min === max || Math.abs(min - max) < diff) {
     return [min - 4 * diff, max + 4 * diff]
   }
   return [min, max]
 }
 
-export function resolveYAxisDomain(
+export function resolveYScaleDomain(
   min: number,
   max: number,
-  type: YAxisType,
-  firstClose: number | undefined,
-  minutePercentageBasis: number
+  type: YScaleType
 ): [number, number] {
   switch (type) {
-    case YAxisType.Percentage: {
-      if (isNumber(firstClose)) {
-        return [
-          firstClose * (min / 100 + 1),
-          firstClose * (max / 100 + 1)
-        ]
-      }
-      return [min, max]
-    }
-    case YAxisType.MinutePercentage: {
-      if (minutePercentageBasis > 0) {
-        return [
-          minutePercentageBasis * (min / 100 + 1),
-          minutePercentageBasis * (max / 100 + 1)
-        ]
-      }
-      return [min, max]
-    }
-    case YAxisType.Log: {
+    case YScaleType.Log: {
       return [index10(min), index10(max)]
     }
     default: {
@@ -337,23 +276,19 @@ export function resolveYAxisDomain(
 export function resolveStandardTypedExtent(
   min: number,
   max: number,
-  type: YAxisType,
-  precision: number,
-  firstClose: number | undefined,
-  minutePercentageBasis: number
+  type: YScaleType,
+  precision: number
 ): [number, number] {
-  const typedExtent = resolveYAxisTypeExtent(min, max, type, firstClose, minutePercentageBasis)
-  return ensureNonDegenerateYAxisExtent(typedExtent[0], typedExtent[1], calcYAxisMinExtentDiff(type, precision))
+  const typedExtent = resolveYScaleTypeExtent(min, max, type)
+  return ensureNonDegenerateYScaleExtent(typedExtent[0], typedExtent[1], calcYScaleMinExtentDiff(type, precision))
 }
 
 export function resolveTimeShareMainScale(
   min: number,
   max: number,
-  type: YAxisType,
+  type: YScaleType,
   precision: number,
   basisPrice: number,
-  firstClose: number | undefined,
-  minutePercentageBasis: number,
   topRate = 0,
   bottomRate = 0
 ): VisibleRange {
@@ -363,13 +298,13 @@ export function resolveTimeShareMainScale(
   )
   let from = basisPrice - maxDiff
   let to = basisPrice + maxDiff
-  const typedExtent = resolveYAxisTypeExtent(from, to, type, firstClose, minutePercentageBasis)
+  const typedExtent = resolveYScaleTypeExtent(from, to, type)
   from = typedExtent[0]
   to = typedExtent[1]
-  const expandedExtent = ensureNonDegenerateYAxisExtent(from, to, calcYAxisMinExtentDiff(type, precision))
+  const expandedExtent = ensureNonDegenerateYScaleExtent(from, to, calcYScaleMinExtentDiff(type, precision))
   from = expandedExtent[0]
   to = expandedExtent[1]
-  const domain = resolveYAxisDomain(from, to, type, firstClose, minutePercentageBasis)
+  const domain = resolveYScaleDomain(from, to, type)
   const gapRate = Math.max(topRate, bottomRate)
   if (gapRate > 0) {
     const range = Math.abs(to - from)
@@ -387,13 +322,11 @@ export function resolveTimeShareMainScale(
 export function resolveStandardScale(
   from: number,
   to: number,
-  type: YAxisType,
-  firstClose: number | undefined,
-  minutePercentageBasis: number,
+  type: YScaleType,
   topRate: number,
   bottomRate: number
 ): VisibleRange {
-  const domain = resolveYAxisDomain(from, to, type, firstClose, minutePercentageBasis)
+  const domain = resolveYScaleDomain(from, to, type)
   const range = Math.abs(to - from)
   return {
     from: from - range * bottomRate,
@@ -406,20 +339,18 @@ export function resolveStandardScale(
 export function resolveStandardAutoScale(
   from: number,
   to: number,
-  type: YAxisType,
-  firstClose: number | undefined,
-  minutePercentageBasis: number,
+  type: YScaleType,
   topRate: number,
   bottomRate: number,
   height: number,
   textHeight: number,
   nice = true
-): { range: VisibleRange, tickSequence: YAxisTickSequence } {
+): { range: VisibleRange, tickSequence: YScaleTickSequence } {
   const contentHeight = height > 0 ? height / (1 + topRate + bottomRate) : height
-  const [interval, precision] = calcYAxisTickInterval(Math.abs(to - from), contentHeight, textHeight)
+  const [interval, precision] = calcYScaleTickInterval(Math.abs(to - from), contentHeight, textHeight)
   if (!nice) {
     return {
-      range: resolveStandardScale(from, to, type, firstClose, minutePercentageBasis, topRate, bottomRate),
+      range: resolveStandardScale(from, to, type, topRate, bottomRate),
       tickSequence: {
         from,
         to,
@@ -430,9 +361,9 @@ export function resolveStandardAutoScale(
     }
   }
 
-  const [tickFrom, tickTo] = calcYAxisTickBounds(from, to, interval, precision)
+  const [tickFrom, tickTo] = calcYScaleTickBounds(from, to, interval, precision)
   return {
-    range: resolveStandardScale(tickFrom, tickTo, type, firstClose, minutePercentageBasis, topRate, bottomRate),
+    range: resolveStandardScale(tickFrom, tickTo, type, topRate, bottomRate),
     tickSequence: {
       from: tickFrom,
       to: tickTo,
@@ -443,10 +374,10 @@ export function resolveStandardAutoScale(
   }
 }
 
-export function formatYAxisTickText(
+export function formatYScaleTickText(
   value: number | string,
   text: string,
-  type: YAxisType,
+  type: YScaleType,
   precision: number,
   shouldFormatBigNumber: boolean,
   formatBigNumber: (value: string | number) => string,
@@ -455,12 +386,7 @@ export function formatYAxisTickText(
 ): string {
   let formattedText: string
   switch (type) {
-    case YAxisType.MinutePercentage:
-    case YAxisType.Percentage: {
-      formattedText = `${formatPrecision(value, 2)}%`
-      break
-    }
-    case YAxisType.Log: {
+    case YScaleType.Log: {
       formattedText = formatPrecision(index10(+value), precision)
       break
     }
@@ -475,7 +401,7 @@ export function formatYAxisTickText(
   return formatFoldDecimal(formatThousands(formattedText, thousandsSeparator), decimalFoldThreshold)
 }
 
-export function layoutYAxisTicks(
+export function layoutYScaleTicks(
   ticks: AxisTick[],
   showMinLabel = true,
   showMaxLabel = true
@@ -499,7 +425,7 @@ export function layoutYAxisTicks(
   })
 }
 
-export function createTimeShareYAxisTickValues(from: number, to: number, height: number, textHeight: number): number[] {
+export function createTimeShareYScaleTickValues(from: number, to: number, height: number, textHeight: number): number[] {
   if (to - from < 0) {
     return []
   }
@@ -508,9 +434,9 @@ export function createTimeShareYAxisTickValues(from: number, to: number, height:
   }
 
   const range = to - from
-  const tickTextHeight = calcYAxisTickTextHeight(textHeight)
+  const tickTextHeight = calcYScaleTickTextHeight(textHeight)
   const maxTickCount = height > 0 && textHeight > 0
-    ? Math.max(2, Math.floor(height / (tickTextHeight * MIN_Y_AXIS_TICK_TEXT_SPACING)))
+    ? Math.max(2, Math.floor(height / (tickTextHeight * MIN_Y_SCALE_TICK_TEXT_SPACING)))
     : 2
   let splitCount = Math.min(8, Math.max(1, maxTickCount - 1))
   if (splitCount > 1 && splitCount % 2 !== 0) {
@@ -528,9 +454,9 @@ export function createTimeShareYAxisTickValues(from: number, to: number, height:
   })
 }
 
-export function mapYAxisTicksToPixels(
+export function mapYScaleTicksToPixels(
   ticks: AxisTick[],
-  type: YAxisType,
+  type: YScaleType,
   precision: number,
   shouldFormatBigNumber: boolean,
   formatBigNumber: (value: string | number) => string,
@@ -539,7 +465,7 @@ export function mapYAxisTicksToPixels(
   convertToPixel: (value: number) => number
 ): AxisTick[] {
   return ticks.map(({ text, value, colorHint }) => ({
-    text: formatYAxisTickText(
+    text: formatYScaleTickText(
       value,
       text,
       type,
@@ -555,7 +481,7 @@ export function mapYAxisTicksToPixels(
   }))
 }
 
-export function resolveYAxisTickTextOptions(
+export function resolveYScaleTickTextOptions(
   inCandle: boolean,
   pricePrecision: number,
   indicators: Array<{ precision: number, shouldFormatBigNumber: boolean }>
@@ -573,7 +499,7 @@ export function resolveYAxisTickTextOptions(
   return { precision, shouldFormatBigNumber }
 }
 
-export function resolveYAxisShowMinLabel(
+export function resolveYScaleShowMinLabel(
   showMinLabel: boolean,
   isTimeShare: boolean,
   isInCandle: boolean,
@@ -585,63 +511,40 @@ export function resolveYAxisShowMinLabel(
   return showMinLabel
 }
 
-export function createSyncedYAxisTick(
-  tick: AxisTick,
-  type: YAxisType,
-  precision: number,
-  formatter: ((value: number) => string) | undefined,
-  convertFromPixel: (coord: number) => number,
-  minutePercentageBasis: number,
-  firstClose: number | undefined
-): AxisTick {
-  let value = convertFromPixel(tick.coord)
-  let text = formatter ? formatter(value) : formatPrecision(value, precision)
-
-  if (type === YAxisType.MinutePercentage) {
-    if (minutePercentageBasis > 0) {
-      value = (value - minutePercentageBasis) / minutePercentageBasis * 100
-      text = `${formatPrecision(value, 2)}%`
-    }
-  } else if (type === YAxisType.Percentage) {
-    if (isNumber(firstClose)) {
-      value = (value - firstClose) / firstClose * 100
-      text = `${formatPrecision(value, 2)}%`
-    }
-  } else if (type === YAxisType.Log) {
-    text = formatPrecision(value, precision)
-  }
-
-  return {
-    text,
-    coord: tick.coord,
-    value
-  }
-}
-
-export interface YAxis extends Axis {
+export interface YScale extends Axis {
+  buildTicks: (force: boolean) => boolean
+  getTicks: () => AxisTick[]
+  getAutoSize: (ticks?: AxisTick[], formatLabel?: (value: number, text: string) => string) => number
+  getScrollZoomEnabled: () => boolean
+  getRange: () => VisibleRange
+  setRange: (range: VisibleRange) => void
+  offsetByPixel: (pixelOffset: number, height: number) => void
+  setAutoCalcTickFlag: (flag: boolean) => void
+  getAutoCalcTickFlag: () => boolean
+  convertToRealValue: (value: number) => number
+  getType: () => YScaleType
+  isReverse: () => boolean
   isInCandle: () => boolean
   hasValidData: () => boolean
 }
 
-export type YAxisConstructor = new (parent: YAxisWidget) => YAxisImp
+export type YScaleConstructor = new (parent: YScaleHost) => YScaleImp
 
-export default abstract class YAxisImp extends AxisImp implements YAxis {
+export default abstract class YScaleImp extends AxisImp implements YScale {
   private _autoCalcTickFlag = true
   private _range: VisibleRange = { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
   private _prevRange: VisibleRange = { from: 0, to: 0, domainFrom: 0, domainTo: 0 }
   private _ticks: AxisTick[] = []
-  private _autoTickSequence?: YAxisTickSequence
+  private _autoTickSequence?: YScaleTickSequence
   private _hasValidData = true
 
   override getScrollZoomEnabled(): boolean {
-    return (this.getParent() as YAxisWidget).getOptions().scrollZoomEnabled ?? true
+    return (this.getParent() as YScaleHost).getOptions().scrollZoomEnabled
   }
 
   isMainAxis(): boolean {
-    const parent = this.getParent()
-    const pane = parent.getPane() as DualYPane
-    const mainAxisWidget = pane.getMainAxisWidget()
-    return parent === mainAxisWidget
+    const scale = this.getParent() as YScaleHost
+    return scale.getPane().isDefaultYScale(scale.getOptions().id)
   }
 
   buildTicks(force: boolean): boolean {
@@ -659,39 +562,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       const chart = pane.getChart()
       const chartStore = chart.getChartStore()
       const inCandle = this.isInCandle()
-      const shouldCalcTimeShareTicks = inCandle && chartStore.getIsTimeShare()
+      const shouldCalcTimeShareTicks = inCandle && this.isMainAxis() && chartStore.getIsTimeShare()
 
       const cTicks = shouldCalcTimeShareTicks ? this._calcTimeShareTicks() : this._calcTicks()
-      let defaultTicks: AxisTick[] = []
-      if (!this.isMainAxis() && !shouldCalcTimeShareTicks) {
-        const mainAxisWidget = (pane as DualYPane).getMainAxisWidget()
-        const mainAxis = mainAxisWidget.getAxisComponent()
-        if (mainAxis.getType() === this.getType() && this._range.from === mainAxis.getRange().from && this._range.to === mainAxis.getRange().to) {
-          // 如果主轴和当前轴类型相同，则使用主轴的刻度
-          defaultTicks = mainAxis.getTicks()
-        } else {
-          const indicators = chartStore.getIndicatorStore().getInstances(pane.getId()).filter(indicator => (
-            (pane as DualYPane).resolveIndicatorYAxisId(indicator) === (this.getParent() as YAxisWidget).getOptions().id
-          ))
-          const type = this.getType()
-          const paneAxisOptions = pane.getMainWidget().getPane().getOptions().axisOptions
-          const position = (this.getParent().getOptions() as YAxisOptions).position
-          const formatterFn = paneAxisOptions?.YAxis?.[position]?.formatter
-
-          const { precision } = resolveYAxisTickTextOptions(inCandle, chartStore.getPrecision().price, indicators)
-          defaultTicks = mainAxis.getTicks().map(tick => createSyncedYAxisTick(
-            tick,
-            type,
-            precision,
-            formatterFn,
-            coord => this.convertFromPixel(coord),
-            chartStore.getMinutePercentageBasis(),
-            chartStore.getVisibleFirstData()?.close
-          ))
-        }
-      } else {
-        defaultTicks = this.optimalTicks(cTicks)
-      }
+      const defaultTicks = this.optimalTicks(cTicks)
       this._ticks = this.createTicks({
         range: this._range,
         bounding: this.getSelfBounding(),
@@ -771,10 +645,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     let indicatorPrecision = Number.MAX_SAFE_INTEGER
     const paneIndicators = chartStore.getIndicatorStore().getInstances(pane.getId())
     const inCandle = this.isInCandle()
-    const yAxisWidget = this.getParent() as YAxisWidget
-    const yAxisId = yAxisWidget.getOptions().id
+    const yScale = this.getParent() as YScaleHost
+    const yScaleId = yScale.getOptions().id
     const indicators = paneIndicators.filter(indicator => (
-      indicator.visible && (pane as DualYPane).resolveIndicatorYAxisId(indicator) === yAxisId
+      indicator.visible && (pane as DualYPane).resolveIndicatorYScaleId(indicator) === yScaleId
     ))
 
     indicators.forEach(indicator => {
@@ -804,18 +678,16 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const candleStyles = chart.getStyles().candle
     const isArea = candleStyles.type === CandleType.Area
     const areaValueKey = candleStyles.area.value
-    const shouldUseCandleData = inCandle && (pane as DualYPane).isCompatibilityYAxis(yAxisId)
+    const shouldUseCandleData = inCandle && (pane as DualYPane).isDefaultYScale(yScaleId)
     // 用于蜡烛图数据
     const shouldCompareHighLow = (shouldUseCandleData && !isArea) || (!inCandle && shouldOhlc)
-    const scaleMode = resolveYAxisScaleMode(shouldUseCandleData, chartStore.getIsTimeShare())
-    const extent = collectYAxisExtent(visibleDataList, figuresResultList, shouldCompareHighLow, shouldUseCandleData && isArea, areaValueKey)
+    const scaleMode = resolveYScaleMode(shouldUseCandleData, chartStore.getIsTimeShare())
+    const extent = collectYScaleExtent(visibleDataList, figuresResultList, shouldCompareHighLow, shouldUseCandleData && isArea, areaValueKey)
     this._hasValidData = extent.hasValidData
 
     const type = this.getType()
-    const firstClose = chartStore.getVisibleFirstData()?.close
-    const minutePercentageBasis = chartStore.getMinutePercentageBasis()
     const height = this.getParent()?.getBounding().height ?? 0
-    const { gap: paneGap, reservedSpace } = pane.getOptions()
+    const { gap: paneGap, reservedSpace } = (pane as DualYPane).getOptions()
     let topRate = normalizePaneGapRate(paneGap?.top, height)
     let bottomRate = normalizePaneGapRate(paneGap?.bottom, height)
     const [nextTopRate, nextBottomRate] = applyReservedSpace(
@@ -828,33 +700,29 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     topRate = nextTopRate
     bottomRate = nextBottomRate
     this._autoTickSequence = undefined
-    if (scaleMode === YAxisScaleMode.TimeShareMain) {
+    if (scaleMode === YScaleMode.TimeShareMain) {
       return resolveTimeShareMainScale(
         extent.min,
         extent.max,
         type,
         precision,
         chartStore.getTimeShareBasisPrice(),
-        firstClose,
-        minutePercentageBasis,
         topRate,
         bottomRate
       )
     }
 
     const textHeight = chart.getStyles().yAxis.tickText.size
-    const dataExtent = resolveStandardTypedExtent(extent.min, extent.max, type, precision, firstClose, minutePercentageBasis)
+    const dataExtent = resolveStandardTypedExtent(extent.min, extent.max, type, precision)
     const scale = resolveStandardAutoScale(
       dataExtent[0],
       dataExtent[1],
       type,
-      firstClose,
-      minutePercentageBasis,
       topRate,
       bottomRate,
       height,
       textHeight,
-      yAxisWidget.getOptions().nice
+      yScale.getOptions().nice
     )
     if (this._hasValidData) {
       this._autoTickSequence = scale.tickSequence
@@ -887,11 +755,10 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
   /**
    * y轴类型
-   * @return {YAxisType}
+   * @return {YScaleType}
    */
-  getType(): YAxisType {
-    const yAxisWidget = this.getParent() as YAxisWidget
-    return yAxisWidget.getOptions().type
+  getType(): YScaleType {
+    return (this.getParent() as YScaleHost).getOptions().type
   }
 
   /**
@@ -899,29 +766,25 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
    * @return {boolean}
    */
   isReverse(): boolean {
-    if (this.isInCandle()) {
-      const chart = this.getParent().getPane().getChart()
-      return chart.getStyles().yAxis.reverse
-    }
-    return false
+    return (this.getParent() as YScaleHost).getOptions().reverse
   }
 
   protected optimalTicks(ticks: AxisTick[]): AxisTick[] {
     const widget = this.getParent()
-    const yAxisWidget = widget as YAxisWidget
+    const yScale = widget as YScaleHost
     const pane = widget.getPane()
     const chartStore = pane.getChart().getChartStore()
     const customApi = chartStore.getCustomApi()
     const type = this.getType()
     const isInCandle = this.isInCandle()
     const indicators = chartStore.getIndicatorStore().getInstances(pane.getId()).filter(indicator => (
-      (pane as DualYPane).resolveIndicatorYAxisId(indicator) === yAxisWidget.getOptions().id
+      (pane as DualYPane).resolveIndicatorYScaleId(indicator) === yScale.getOptions().id
     ))
     const thousandsSeparator = chartStore.getThousandsSeparator()
     const decimalFoldThreshold = chartStore.getDecimalFoldThreshold()
-    const { precision, shouldFormatBigNumber } = resolveYAxisTickTextOptions(isInCandle, chartStore.getPrecision().price, indicators)
+    const { precision, shouldFormatBigNumber } = resolveYScaleTickTextOptions(isInCandle, chartStore.getPrecision().price, indicators)
     const yAxisStyles = chartStore.getStyles().yAxis
-    const tempTicks = mapYAxisTicksToPixels(
+    const tempTicks = mapYScaleTicksToPixels(
       ticks,
       type,
       precision,
@@ -931,14 +794,20 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       decimalFoldThreshold,
       value => this._innerConvertToPixel(value)
     )
+    const formatter = yScale.getOptions().formatter
+    if (formatter) {
+      tempTicks.forEach(tick => {
+        tick.text = formatter(this.convertToRealValue(+tick.value))
+      })
+    }
     const isTimeShare = chartStore.getIsTimeShare()
-    const showMinLabel = resolveYAxisShowMinLabel(
+    const showMinLabel = resolveYScaleShowMinLabel(
       yAxisStyles.showMinLabel,
       isTimeShare,
       isInCandle,
-      yAxisWidget.getOptions().axisTitle
+      yScale.getOptions().axisTitle
     )
-    const optimalTicks = layoutYAxisTicks(
+    const optimalTicks = layoutYScaleTicks(
       tempTicks,
       showMinLabel,
       yAxisStyles.showMaxLabel
@@ -946,7 +815,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     return optimalTicks
   }
 
-  override getAutoSize(): number {
+  override getAutoSize(ticks: AxisTick[] = this.getTicks(), formatLabel?: (value: number, text: string) => string): number {
     const pane = this.getParent().getPane()
     const chart = pane.getChart()
     const styles = chart.getStyles()
@@ -967,7 +836,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       if (yAxisStyles.tickText.show) {
         let textWidth = 0
         // todo check
-        this.getTicks().forEach(tick => {
+        ticks.forEach(tick => {
           textWidth = Math.max(textWidth, calcTextWidth(tick.text, createFont(yAxisStyles.tickText.size, yAxisStyles.tickText.weight, yAxisStyles.tickText.fontFamily)))
         })
         yAxisWidth += (yAxisStyles.tickText.marginStart + yAxisStyles.tickText.marginEnd + textWidth)
@@ -983,7 +852,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
       crosshairStyles.horizontal.text.show
     ) {
       const indicators = chartStore.getIndicatorStore().getInstances(pane.getId()).filter(indicator => (
-        (pane as DualYPane).resolveIndicatorYAxisId(indicator) === (this.getParent() as YAxisWidget).getOptions().id
+        (pane as DualYPane).resolveIndicatorYScaleId(indicator) === (this.getParent() as YScaleHost).getOptions().id
       ))
       let techPrecision = 0
       let shouldFormatBigNumber = false
@@ -994,25 +863,24 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
         }
       })
       let precision = 2
-      if (this.getType() !== YAxisType.Percentage) {
-        if (this.isInCandle()) {
-          const { price: pricePrecision } = chartStore.getPrecision()
-          const lastValueMarkStyles = styles.indicator.lastValueMark
-          if (lastValueMarkStyles.show && lastValueMarkStyles.text.show) {
-            precision = Math.max(techPrecision, pricePrecision)
-          } else {
-            precision = pricePrecision
-          }
+      if (this.isInCandle()) {
+        const { price: pricePrecision } = chartStore.getPrecision()
+        const lastValueMarkStyles = styles.indicator.lastValueMark
+        if (lastValueMarkStyles.show && lastValueMarkStyles.text.show) {
+          precision = Math.max(techPrecision, pricePrecision)
         } else {
-          precision = techPrecision
+          precision = pricePrecision
         }
+      } else {
+        precision = techPrecision
       }
-      // TODO should we consider this.getRange().from?
-      let valueText = formatPrecision(this.getRange().to, precision)
+      const realValue = this.convertToRealValue(this.getRange().to)
+      let valueText = formatPrecision(realValue, precision)
       if (shouldFormatBigNumber) {
         valueText = customApi.formatBigNumber(valueText)
       }
       valueText = formatFoldDecimal(valueText, chartStore.getDecimalFoldThreshold())
+      valueText = formatLabel?.(realValue, valueText) ?? valueText
       crosshairVerticalTextWidth += (
         crosshairStyles.horizontal.text.paddingLeft +
         crosshairStyles.horizontal.text.paddingRight +
@@ -1041,7 +909,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
       const height = widget?.getBounding().height ?? 0
       const textHeight = chartStore.getStyles().yAxis.tickText.size
-      const arrV = createTimeShareYAxisTickValues(from, to, height, textHeight)
+      const arrV = createTimeShareYScaleTickValues(from, to, height, textHeight)
       return arrV.map(e => ({ text: `${e  }`, coord: 0, value: e, colorHint: e > mid ? 1 : e < mid ? -1 : 0 }))
     }
     return []
@@ -1078,7 +946,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
     const height = this.getParent()?.getBounding().height ?? 0
     const textHeight = this.getParent().getPane().getChart().getStyles().yAxis.tickText.size
-    const [interval, precision] = calcYAxisTickInterval(to - from, height, textHeight)
+    const [interval, precision] = calcYScaleTickInterval(to - from, height, textHeight)
     if (interval <= 0) {
       return [0, precision, from, to, true]
     }
@@ -1137,22 +1005,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     const rate = this.isReverse() ? pixel / height : 1 - pixel / height
     const value = rate * (to - from) + from
     switch (this.getType()) {
-      case YAxisType.MinutePercentage: {
-        const chartStore = this.getParent().getPane().getChart().getChartStore()
-        const basisPrice = chartStore.getMinutePercentageBasis()
-        if (basisPrice > 0) {
-          return basisPrice * (value / 100 + 1)
-        }
-        return 0
-      }
-      case YAxisType.Percentage: {
-        const fromData = this.getParent().getPane().getChart().getChartStore().getVisibleFirstData()
-        if (isValid(fromData) && isNumber(fromData.close)) {
-          return fromData.close * (value / 100 + 1)
-        }
-        return 0
-      }
-      case YAxisType.Log: {
+      case YScaleType.Log: {
         return index10(value)
       }
       default: {
@@ -1163,7 +1016,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
 
   convertToRealValue(value: number): number {
     let v = value
-    if (this.getType() === YAxisType.Log) {
+    if (this.getType() === YScaleType.Log) {
       v = index10(value)
     }
     return v
@@ -1172,22 +1025,7 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
   convertToPixel(value: number): number {
     let v = value
     switch (this.getType()) {
-      case YAxisType.MinutePercentage: {
-        const chartStore = this.getParent().getPane().getChart().getChartStore()
-        const basisPrice = chartStore.getMinutePercentageBasis()
-        if (basisPrice > 0) {
-          v = (value - basisPrice) / basisPrice * 100
-        }
-        break
-      }
-      case YAxisType.Percentage: {
-        const fromData = this.getParent().getPane().getChart().getChartStore().getVisibleFirstData()
-        if (isValid(fromData) && isNumber(fromData.close)) {
-          v = (value - fromData.close) / fromData.close * 100
-        }
-        break
-      }
-      case YAxisType.Log: {
+      case YScaleType.Log: {
         v = log10(value)
         break
       }
@@ -1198,8 +1036,8 @@ export default abstract class YAxisImp extends AxisImp implements YAxis {
     return this._innerConvertToPixel(v)
   }
 
-  static extend(template: AxisTemplate): YAxisConstructor {
-    class Custom extends YAxisImp {
+  static extend(template: AxisTemplate): YScaleConstructor {
+    class Custom extends YScaleImp {
       createTicks(params: AxisCreateTicksParams): AxisTick[] {
         return template.createTicks(params)
       }

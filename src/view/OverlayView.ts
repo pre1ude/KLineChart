@@ -13,7 +13,7 @@ import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/u
 import { isNumber, isString } from '../common/utils/typeChecks'
 import type { EventOverlayInfo, FigureEventType, Overlay, OverlayFigure, OverlayFigureData, OverlayPrecision } from '../component/Overlay'
 import type XAxis from '../component/XAxis'
-import type YAxis from '../component/YAxis'
+import type { YScale } from '../component/YScale'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import type DualYPane from '../pane/DualYPane'
 import { PaneIdConstants } from '../pane/types'
@@ -35,7 +35,7 @@ interface GetFiguresParams {
   dateTimeFormat: DateTimeFormat
   defaultStyles: OverlayStyle
   xAxis?: XAxis
-  yAxis?: YAxis
+  yScale?: YScale
 }
 
 const PROGRESS_OVERLAY_IGNORE_EVENTS: FigureEventType[] = ['contextMenuEvent']
@@ -85,9 +85,8 @@ export default class OverlayView extends View {
     }
 
     if (this._type !== 'xAxis') {
-      const mainAxisWidget = (pane as DualYPane).getMainAxisWidget()
-      const yAxis = mainAxisWidget.getAxisComponent()
-      let value = yAxis.convertFromPixel(coordinate.y)
+      const yScale = (pane as DualYPane).getDefaultYScale().getComponent()
+      let value = yScale.convertFromPixel(coordinate.y)
       const dataList = chartStore.getDataList()
       const dataIndex = point.dataIndex ?? -1
       if (overlay.mode !== 'normal' && paneId === PaneIdConstants.CANDLE && dataIndex >= 0 && dataIndex < dataList.length) {
@@ -96,14 +95,14 @@ export default class OverlayView extends View {
           const modeSensitivity = overlay.modeSensitivity
           if (value > kLineData.high) {
             if (overlay.mode === 'weak_magnet') {
-              const highY = yAxis.convertToPixel(kLineData.high)
+              const highY = yScale.convertToPixel(kLineData.high)
               if (Math.abs(coordinate.y - highY) <= modeSensitivity) value = kLineData.high
             } else {
               value = kLineData.high
             }
           } else if (value < kLineData.low) {
             if (overlay.mode === 'weak_magnet') {
-              const lowY = yAxis.convertToPixel(kLineData.low)
+              const lowY = yScale.convertToPixel(kLineData.low)
               if (Math.abs(coordinate.y - lowY) <= modeSensitivity) value = kLineData.low
             } else {
               value = kLineData.low
@@ -132,11 +131,11 @@ export default class OverlayView extends View {
     const paneId = pane.getId()
     const chart = pane.getChart()
     const widgetName = widget.getName()
-    let yAxis: YAxis | undefined
+    let yScale: YScale | undefined
     if (widgetName === WidgetNameConstants.MAIN) {
-      yAxis = pane.getMainAxisWidget().getAxisComponent()
+      yScale = pane.getDefaultYScale().getComponent()
     } else if (widgetName === WidgetNameConstants.Y_AXIS) {
-      yAxis = widget.getAxisComponent()
+      yScale = widget.getScaleComponent()
     }
     const xAxisWidget = chart.getXAxisPane().getMainWidget() as XAxisWidget
     const xAxis = xAxisWidget.getAxisComponent()
@@ -178,7 +177,7 @@ export default class OverlayView extends View {
         this._drawOverlay(
           ctx, overlay, bounding, barSpace, overlayPrecision,
           dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
-          defaultStyles, hoverInfo, clickInfo, xAxis, yAxis,
+          defaultStyles, hoverInfo, clickInfo, xAxis, yScale,
           true // bindEvent = true
         )
       }
@@ -194,7 +193,7 @@ export default class OverlayView extends View {
         this._drawOverlay(
           ctx, hoveredOverlay, bounding, barSpace, overlayPrecision,
           dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold,
-          defaultStyles, hoverInfo, clickInfo, xAxis, yAxis,
+          defaultStyles, hoverInfo, clickInfo, xAxis, yScale,
           false // bindEvent = false，不添加到事件树
         )
       }
@@ -214,7 +213,7 @@ export default class OverlayView extends View {
         )
         this._drawOverlay(
           ctx, progressOverlay, bounding, barSpace,
-          overlayPrecision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis,
+          overlayPrecision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yScale,
           true, // bindEvent = true
           shouldDrawProgressDefaultFigures,
           PROGRESS_OVERLAY_IGNORE_EVENTS
@@ -226,11 +225,11 @@ export default class OverlayView extends View {
   private pointToCoordinate(
     point: IPoint,
     xAxis?: XAxis,
-    yAxis?: YAxis
+    yScale?: YScale
   ): Coordinate {
     return {
       x: xAxis?.convertToPixel(point.dataIndex) ?? 0,
-      y: yAxis?.convertToPixel(point.value) ?? 0
+      y: yScale?.convertToPixel(point.value) ?? 0
     }
   }
 
@@ -248,7 +247,7 @@ export default class OverlayView extends View {
     hoverInfo?: EventOverlayInfo,
     clickInfo?: EventOverlayInfo,
     xAxis?: XAxis,
-    yAxis?: YAxis,
+    yScale?: YScale,
     bindEvent: boolean = true,
     drawDefaultFigures: boolean = true,
     ignoreEvents?: FigureEventType[]
@@ -257,16 +256,16 @@ export default class OverlayView extends View {
 
     const { points } = overlay
     const coordinates = points.map(point =>
-      this.pointToCoordinate(point, xAxis, yAxis)
+      this.pointToCoordinate(point, xAxis, yScale)
     )
 
     if (coordinates.length > 0) {
-      const _figures = this.getFigures({ overlay, coordinates, bounding, barSpace, precision, thousandsSeparator, decimalFoldThreshold, dateTimeFormat, defaultStyles, xAxis, yAxis })
+      const _figures = this.getFigures({ overlay, coordinates, bounding, barSpace, precision, thousandsSeparator, decimalFoldThreshold, dateTimeFormat, defaultStyles, xAxis, yScale })
       const figures = Array.isArray(_figures) ? _figures : [_figures]
       this.drawFigures(ctx, overlay, figures, defaultStyles, bindEvent, ignoreEvents)
     }
     if (drawDefaultFigures) {
-      this.drawDefaultFigures(ctx, overlay, coordinates, bounding, precision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yAxis, ignoreEvents, bindEvent)
+      this.drawDefaultFigures(ctx, overlay, coordinates, bounding, precision, dateTimeFormat, customApi, thousandsSeparator, decimalFoldThreshold, defaultStyles, hoverInfo, clickInfo, xAxis, yScale, ignoreEvents, bindEvent)
     }
   }
 
@@ -334,7 +333,9 @@ export default class OverlayView extends View {
       case 'yAxis': {
         const widget = this.getWidget() as YAxisWidget
         return params.overlay.createYAxisFigures?.({
-          ...params, isAlignLeft: widget.isAlignLeft()
+          ...params,
+          formatLabel: (value, fallback) => widget.formatLabel(value, fallback),
+          isAlignLeft: widget.isAlignLeft()
         }) ?? []
       }
       default:
@@ -342,7 +343,7 @@ export default class OverlayView extends View {
     }
   }
 
-  protected drawDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, dateTimeFormat: DateTimeFormat, customApi: CustomApi, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, _xAxis?: XAxis, _yAxis?: YAxis, ignoreEvents?: FigureEventType[], bindEvent: boolean = true): void {
+  protected drawDefaultFigures(ctx: CanvasRenderingContext2D, overlay: Overlay, coordinates: Coordinate[], bounding: Bounding, precision: OverlayPrecision, dateTimeFormat: DateTimeFormat, customApi: CustomApi, thousandsSeparator: string, decimalFoldThreshold: number, defaultStyles: OverlayStyle, hoverInfo?: EventOverlayInfo, clickInfo?: EventOverlayInfo, _xAxis?: XAxis, _yScale?: YScale, ignoreEvents?: FigureEventType[], bindEvent: boolean = true): void {
     switch (this._type) {
       case 'xAxis':
         this._drawXAxisDefaultFigures(ctx, overlay, coordinates, bounding, dateTimeFormat, customApi, defaultStyles, clickInfo)
@@ -533,6 +534,7 @@ export default class OverlayView extends View {
         let text = formatPrecision(point.value, precision.price)
         text = formatThousands(text, thousandsSeparator)
         text = formatFoldDecimal(text, decimalFoldThreshold)
+        text = yAxisWidget.formatLabel(point.value, text)
 
         figures.push({
           type: 'text',

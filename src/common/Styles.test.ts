@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getDefaultStyles, YAxisPosition } from './Styles'
+import { getDefaultStyles } from './Styles'
 
 describe('getDefaultStyles', () => {
   it('面积图默认使用圆角纯折线', () => {
@@ -46,10 +46,12 @@ describe('getDefaultStyles', () => {
     expect(styles.xAxis.showMaxLabel).toBe(true)
   })
 
-  it('Y 轴默认以左轴作为主轴', () => {
+  it('Y 轴样式不携带轴拓扑', () => {
     const styles = getDefaultStyles()
 
-    expect(styles.yAxis.mainPosition).toBe(YAxisPosition.Left)
+    expect(styles.yAxis).not.toHaveProperty('position')
+    expect(styles.yAxis).not.toHaveProperty('mainPosition')
+    expect(styles.yAxis).not.toHaveProperty('reverse')
   })
 
   it('缺口默认使用上涨红色和下跌绿色', () => {

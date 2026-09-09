@@ -12,12 +12,14 @@ import {
   TooltipIconPosition,
   CandleType,
   YAxisPosition,
-  YAxisType,
   CandleTooltipRectPosition,
   GridLineLevel
 } from './common/Styles'
 import { IndicatorSeries } from './component/Indicator'
 import { OverlayState } from './component/Overlay'
+import { YScaleType } from './component/YScale'
+import { DEFAULT_Y_AXIS_ID, DEFAULT_Y_SCALE_ID } from './component/YScaleHost'
+import { YAxisLabelDisplay } from './widget/YAxisWidget'
 import { PanePosition, PaneIdConstants } from './pane/types'
 
 // Utils
@@ -64,7 +66,7 @@ import { registerLocale, getSupportedLocales } from './extension/i18n/index'
 import { registerOverlay, getOverlayTemplate, getSupportedOverlays } from './extension/overlay/index'
 import { registerStyles } from './extension/styles/index'
 import { registerXAxis } from './extension/x-axis'
-import { registerYAxis } from './extension/y-axis'
+import { registerYScale } from './extension/y-scale'
 
 const instances = new Map<string, ChartImp>()
 let chartBaseId = 1
@@ -186,7 +188,7 @@ export {
   registerStyles,
   // Axis
   registerXAxis,
-  registerYAxis
+  registerYScale
 }
 
 // ==================== Utility Functions ====================
@@ -210,7 +212,8 @@ export {
   CandleType,
   GridLineLevel,
   YAxisPosition,
-  YAxisType,
+  YAxisLabelDisplay,
+  YScaleType,
   // Format
   FormatDateType,
   // Chart
@@ -222,6 +225,8 @@ export {
   // Pane
   PanePosition,
   PaneIdConstants,
+  DEFAULT_Y_SCALE_ID,
+  DEFAULT_Y_AXIS_ID,
   // Overlay
   OverlayState
 }
@@ -246,6 +251,8 @@ export type {
 } from './Options'
 export type { PaneOptions, PaneResizeMode } from './pane/types'
 export type { YAxisCreate, YAxisFilter, YAxisOptions, YAxisOverride } from './widget/YAxisWidget'
+export type { YScaleCreate, YScaleFilter, YScaleOptions, YScaleOverride } from './component/YScaleHost'
+export type { YScale } from './component/YScale'
 
 // Data Types
 export type { default as KLineData } from './common/KLineData'

@@ -23,7 +23,7 @@ export default class GridView extends View {
       const horizontalShow = horizontalStyles.show
       if (horizontalShow) {
         const dualYPane = pane as DualYPane
-        const yAxis = dualYPane.getMainAxisWidget().getAxisComponent()
+        const yAxis = dualYPane.getDefaultYScale().getComponent()
         const attrs: LineAttrs[] = yAxis.getTicks().map(tick => ({
           coordinates: [
             { x: 0, y: tick.coord },

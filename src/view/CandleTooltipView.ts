@@ -110,8 +110,10 @@ export default class CandleTooltipView extends IndicatorTooltipView {
       type: 'rect',
       top,
       bounding,
-      yLeftAxisWidth: pane.getYLeftAxisWidget().getBounding().width,
-      yRightAxisWidth: pane.getYRightAxisWidget().getBounding().width,
+      yLeftAxisWidth: pane.getYAxisWidgetsByPosition('left', true)
+        .reduce((width, widget) => width + widget.getBounding().width, 0),
+      yRightAxisWidth: pane.getYAxisWidgetsByPosition('right', true)
+        .reduce((width, widget) => width + widget.getBounding().width, 0),
       crosshair,
       styles,
       drawCandle,

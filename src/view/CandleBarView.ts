@@ -1,11 +1,9 @@
 import { isPointInBounding } from '@/common/Bounding'
 import { type EventName, type MouseTouchEvent } from '@/common/SyntheticEvent'
 import type BarSpace from '../common/BarSpace'
-import { CandleType, PolygonType, type CandleBarColor, type RectStyle, YAxisPosition } from '../common/Styles'
+import { CandleType, PolygonType, type CandleBarColor, type RectStyle } from '../common/Styles'
 import { isValid } from '../common/utils/typeChecks'
 import { type FigureCreate } from '../component/Figure'
-import { type Indicator } from '../component/Indicator'
-import { getIndicatorYAxisPosition, resolveDefaultYAxisPosition } from '../component/YAxis'
 import { createFigure } from '../extension/figure'
 import { type RectAttrs } from '../extension/figure/rect'
 import type DualYPane from '../pane/DualYPane'
@@ -17,28 +15,13 @@ import View from './View'
 export interface CandleBarOptions {
   type: Exclude<CandleType, CandleType.Area>
   styles: CandleBarColor
-  yAxisPosition?: 'left' | 'right'
+  yScaleId?: string
 }
 
 export type CandleHitTestMode = 'body' | 'full'
 
-export function resolveIndicatorOhlcYAxisPosition(
-  indicator: Pick<Indicator, 'yAxisPosition'>,
-  globalYAxisPosition: YAxisPosition,
-  mainYAxisPosition: 'left' | 'right' = YAxisPosition.Left
-): 'left' | 'right' {
-  const defaultPosition = resolveDefaultYAxisPosition(globalYAxisPosition, mainYAxisPosition)
-  return getIndicatorYAxisPosition(indicator, defaultPosition)
-}
-
 function getCandleBarYAxis(pane: DualYPane, options: CandleBarOptions) {
-  if (options.yAxisPosition === YAxisPosition.Right) {
-    return pane.getYRightAxisWidget().getAxisComponent()
-  }
-  if (options.yAxisPosition === YAxisPosition.Left) {
-    return pane.getYLeftAxisWidget().getAxisComponent()
-  }
-  return pane.getMainAxisWidget().getAxisComponent()
+  return pane.getYScaleById(options.yScaleId)?.getComponent() ?? pane.getDefaultYScale().getComponent()
 }
 
 function createPixelSnappedBodyRect(x: number, y: number, barSpace: BarSpace, height: number): RectAttrs {
@@ -272,7 +255,6 @@ export default class CandleBarView extends View {
       if (indicator.shouldOhlc && indicator.visible) {
         const styles = chartStore.getStyles()
         const defaultOhlcStyles = styles.indicator.ohlc
-        const yAxisPosition = resolveIndicatorOhlcYAxisPosition(indicator, styles.yAxis.position, styles.yAxis.mainPosition)
         const ohlcStyles = {
           ...defaultOhlcStyles,
           ...indicator.styles?.ohlc
@@ -282,7 +264,7 @@ export default class CandleBarView extends View {
         const noChangeColor = ohlcStyles.noChangeColor
         return {
           type: CandleType.Ohlc,
-          yAxisPosition,
+          yScaleId: indicator.yScaleId,
           styles: {
             upColor,
             downColor,

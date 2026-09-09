@@ -92,7 +92,7 @@ describe('TD9 timeshare built-in indicator', () => {
       visibleRange: { from: 0, to: 3 },
       bounding: { width: 100, height: 200, left: 0, top: 0 },
       xAxis: { convertToPixel: (value: number) => value * 10 },
-      yAxis: { convertToPixel: (value: number) => value * 10 }
+      yScale: { convertToPixel: (value: number) => value * 10 }
     } as never)
 
     expect(vi.mocked(drawStaticFigure).mock.calls).toHaveLength(4)
@@ -152,7 +152,7 @@ describe('TD9 timeshare built-in indicator', () => {
       visibleRange: { from: 0, to: 1 },
       bounding: { width: 100, height: 200, left: 0, top: 0 },
       xAxis: { convertToPixel: (value: number) => value * 10 },
-      yAxis: { convertToPixel: (value: number) => value * 10 }
+      yScale: { convertToPixel: (value: number) => value * 10 }
     } as never)
 
     expect(vi.mocked(drawStaticFigure).mock.calls[1][2]).toMatchObject({
@@ -210,7 +210,7 @@ describe('TD9 timeshare built-in indicator', () => {
       visibleRange: { from: 0, to: 1 },
       bounding: { width: 100, height: 200, left: 0, top: 0 },
       xAxis: { convertToPixel: (value: number) => value * 10 },
-      yAxis: { convertToPixel: () => y }
+      yScale: { convertToPixel: () => y }
     } as never)
 
     expect(vi.mocked(drawStaticFigure).mock.calls[1][2]).toMatchObject({

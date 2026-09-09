@@ -76,7 +76,7 @@
   </div>
 
   <script type="module">
-    import { DomPosition, PaneIdConstants, init } from '../../../dist/index.js'
+    import { DomPosition, PaneIdConstants, YAxisLabelDisplay, init } from '../../../dist/index.js'
 
     const timeShareTicks = createTimeShareTicks()
     const usdCnhTimeShareTicks = createCrossDayTimeShareTicks()
@@ -87,7 +87,6 @@
     const ironOreReferenceText = 'Iron ore trading day: 2026-06-05; night session starts 2026-06-04 21:00'
     const sharedStyles = {
       yAxis: {
-        position: 'both',
         inside: false
       }
     }
@@ -95,19 +94,9 @@
     const timeShareChart = init('timeShareChart', {
       isTimeShare: true,
       timeShareTicks,
-      styles: sharedStyles,
-      layout: [{
-        type: 'candle',
-        options: {
-          axisOptions: {
-            YAxis: {
-              left: { type: 'normal' },
-              right: { type: 'minute-percentage' }
-            }
-          }
-        }
-      }]
+      styles: sharedStyles
     })
+    createRightAxis(timeShareChart, 'time-share-percent-right', YAxisLabelDisplay.MinutePercentage)
     timeShareChart.setTimeShareBasisPrice(100)
     timeShareChart.applyNewData([], true, () => {
       updateMetrics(timeShareChart, 'timeShareMetrics', 'basis price: 100')
@@ -118,19 +107,9 @@
       isTimeShare: true,
       timeShareTicks: usdCnhTimeShareTicks,
       // preferXTicks: ['06:00', '12:00', '18:00', '00:00'],
-      styles: sharedStyles,
-      layout: [{
-        type: 'candle',
-        options: {
-          axisOptions: {
-            YAxis: {
-              left: { type: 'normal' },
-              right: { type: 'minute-percentage' }
-            }
-          }
-        }
-      }]
+      styles: sharedStyles
     })
+    createRightAxis(usdCnhTimeShareChart, 'usd-cnh-percent-right', YAxisLabelDisplay.MinutePercentage)
     usdCnhTimeShareChart.setTimeShareBasisPrice(usdCnhReferenceRate)
     usdCnhTimeShareChart.applyNewData(createUsdCnhCrossDayData(usdCnhTimeShareTicks, usdCnhReferenceRate), true, () => {
       updateMetrics(usdCnhTimeShareChart, 'usdCnhMetrics', usdCnhReferenceText)
@@ -140,38 +119,16 @@
       isTimeShare: true,
       timeShareTicks: ironOreTimeShareTicks,
       // preferXTicks: ['21:00', '23:00', '01:00', '09:00', '10:15', '10:30', '11:30', '13:30', '15:00'],
-      styles: sharedStyles,
-      layout: [{
-        type: 'candle',
-        options: {
-          axisOptions: {
-            YAxis: {
-              left: { type: 'normal' },
-              right: { type: 'minute-percentage' }
-            }
-          }
-        }
-      }]
+      styles: sharedStyles
     })
+    createRightAxis(ironOreTimeShareChart, 'iron-ore-percent-right', YAxisLabelDisplay.MinutePercentage)
     ironOreTimeShareChart.setTimeShareBasisPrice(ironOreReferencePrice)
     ironOreTimeShareChart.applyNewData(createIronOreTimeShareData(ironOreTimeShareTicks, ironOreReferencePrice), true, () => {
       updateMetrics(ironOreTimeShareChart, 'ironOreMetrics', ironOreReferenceText)
     })
 
-    const kLineChart = init('kLineChart', {
-      styles: sharedStyles,
-      layout: [{
-        type: 'candle',
-        options: {
-          axisOptions: {
-            YAxis: {
-              left: { type: 'normal' },
-              right: { type: 'percentage' }
-            }
-          }
-        }
-      }]
-    })
+    const kLineChart = init('kLineChart', { styles: sharedStyles })
+    createRightAxis(kLineChart, 'k-line-percent-right', YAxisLabelDisplay.Percentage)
     kLineChart.applyNewData([], true, () => {
       updateMetrics(kLineChart, 'kLineMetrics', 'basis price: none')
     })
@@ -182,6 +139,16 @@
       updateMetrics(ironOreTimeShareChart, 'ironOreMetrics', ironOreReferenceText)
       updateMetrics(kLineChart, 'kLineMetrics', 'basis price: none')
     })
+
+    function createRightAxis (chart, id, labelDisplay) {
+      chart.createYAxis({
+        id,
+        paneId: PaneIdConstants.CANDLE,
+        yScaleId: 'default',
+        position: 'right',
+        labelDisplay
+      })
+    }
 
     function updateMetrics (chart, elementId, extra) {
       const rootSize = chart.getSize(PaneIdConstants.CANDLE)

@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { getDefaultStyles, YAxisType } from '../common/Styles'
+import { getDefaultStyles } from '../common/Styles'
+import { YScaleType } from '../component/YScale'
 import { drawStaticFigure } from '../extension/figure'
+import { YAxisLabelDisplay } from '../widget/YAxisWidget'
 import CrosshairHorizontalLabelView from './CrosshairHorizontalLabelView'
 
 vi.mock('../common/utils/canvas', () => ({
@@ -18,7 +20,7 @@ describe('CrosshairHorizontalLabelView', () => {
     vi.mocked(drawStaticFigure).mockClear()
   })
 
-  function createView(crosshairY: number): { view: CrosshairHorizontalLabelView, yAxis: { convertFromPixel: ReturnType<typeof vi.fn> } } {
+  function createView(crosshairY: number, formatter?: (value: number) => string): { view: CrosshairHorizontalLabelView, yAxis: { convertFromPixel: ReturnType<typeof vi.fn> } } {
     const styles = getDefaultStyles()
     const yAxis = {
       hasValidData: () => true,
@@ -52,8 +54,11 @@ describe('CrosshairHorizontalLabelView', () => {
     const widget = {
       getPane: () => pane,
       getBounding: () => ({ width: 80, height: 120, left: 0, top: 0 }),
-      getAxisType: () => YAxisType.Normal,
-      getAxisComponent: () => yAxis,
+      getScaleType: () => YScaleType.Normal,
+      getScale: () => ({ getOptions: () => ({ formatter }) }),
+      getScaleComponent: () => yAxis,
+      getOptions: () => ({ yScaleId: 'default', labelDisplay: YAxisLabelDisplay.Value }),
+      formatLabel: (_value: number, fallback: string) => fallback,
       isAlignLeft: () => false
     }
     return {
@@ -96,8 +101,11 @@ describe('CrosshairHorizontalLabelView', () => {
     const widget = {
       getPane: () => pane,
       getBounding: () => ({ width: 80, height: 120, left: 0, top: 0 }),
-      getAxisType: () => YAxisType.Normal,
-      getAxisComponent: () => yAxis,
+      getScaleType: () => YScaleType.Normal,
+      getScale: () => ({ getOptions: () => ({ formatter: undefined }) }),
+      getScaleComponent: () => yAxis,
+      getOptions: () => ({ yScaleId: 'default', labelDisplay: YAxisLabelDisplay.Value }),
+      formatLabel: (_value: number, fallback: string) => fallback,
       isAlignLeft: () => false
     }
     const view = new CrosshairHorizontalLabelView(widget as never)
@@ -132,5 +140,15 @@ describe('CrosshairHorizontalLabelView', () => {
       y: 110,
       text: '12'
     })
+  })
+
+  it('uses the shared scale formatter for the crosshair label', () => {
+    const formatter = vi.fn((value: number) => `value=${value}`)
+    const { view } = createView(42, formatter)
+
+    view.draw({} as never)
+
+    expect(formatter).toHaveBeenCalledWith(12.345)
+    expect(vi.mocked(drawStaticFigure).mock.calls[0][2].attrs).toMatchObject({ text: 'value=12.345' })
   })
 })

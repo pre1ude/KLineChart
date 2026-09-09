@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { getDefaultStyles, YAxisType } from '../common/Styles'
+import { getDefaultStyles } from '../common/Styles'
 import { drawStaticFigure } from '../extension/figure'
 import { PaneIdConstants } from '../pane/types'
 import GridView from './GridView'
@@ -26,17 +26,12 @@ describe('GridView', () => {
         { coord: 86, value: 110, text: '110' }
       ])
     }
-    const leftPercentageWidget = {
-      getAxisType: () => YAxisType.Percentage,
-      getAxisComponent: () => leftPercentageAxis
-    }
-    const rightPriceWidget = {
-      getAxisType: () => YAxisType.Normal,
-      getAxisComponent: () => rightPriceAxis
-    }
+    const leftPercentageWidget = { getScaleComponent: () => leftPercentageAxis }
+    const rightPriceWidget = { getScaleComponent: () => rightPriceAxis }
     const pane = {
       getId: () => PaneIdConstants.CANDLE,
       getChart: () => ({ getStyles: () => styles }),
+      getDefaultYScale: () => ({ getComponent: () => leftPercentageAxis }),
       getYLeftAxisWidget: () => leftPercentageWidget,
       getYRightAxisWidget: () => rightPriceWidget,
       getMainAxisWidget: () => leftPercentageWidget

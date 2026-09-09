@@ -21,7 +21,7 @@ const simpleTag: OverlayTemplate = {
       ignoreEvent: true
     }
   },
-  createYAxisFigures: ({ overlay, coordinates, bounding, isAlignLeft = false, precision }) => {
+  createYAxisFigures: ({ overlay, coordinates, bounding, isAlignLeft = false, precision, formatLabel }) => {
     const align = isAlignLeft ? 'left' : 'right'
     let text
     if (isValid(overlay.extendData)) {
@@ -33,6 +33,7 @@ const simpleTag: OverlayTemplate = {
     }
     if (!isValid(text) && isNumber(overlay.points[0].value)) {
       text = formatPrecision(overlay.points[0].value, precision.price)
+      text = formatLabel?.(overlay.points[0].value, text) ?? text
     }
     return { type: 'text', attrs: { x: bounding.width * (1 - +isAlignLeft), y: coordinates[0].y, text: text ?? '', align, baseline: 'middle' } }
   }

@@ -1,7 +1,7 @@
 import type Bounding from '../common/Bounding'
 import { type AxisStyle, type Styles } from '../common/Styles'
 import { type AxisTick } from '../component/Axis'
-import { calcYAxisTickTextHeight } from '../component/YAxis'
+import { calcYScaleTickTextHeight } from '../component/YScale'
 import { type LineAttrs } from '../extension/figure/line'
 import { type TextAttrs } from '../extension/figure/text'
 import type YAxisWidget from '../widget/YAxisWidget'
@@ -10,22 +10,7 @@ import { clampYAxisLabelY } from './utils/labelPosition'
 
 export default class YAxisView extends AxisView {
   override getAxisStyles(styles: Styles): AxisStyle {
-    const baseStyles = styles.yAxis
-    const widget = this.getWidget() as unknown as YAxisWidget
-    const position = widget.getOptions().position
-    const paneAxisOptions = widget.getPane().getOptions().axisOptions
-    const tickTextColor = paneAxisOptions?.YAxis?.[position]?.axisStyle?.tickTextColor
-
-    if (tickTextColor) {
-      return {
-        ...baseStyles,
-        tickText: {
-          ...baseStyles.tickText,
-          color: tickTextColor
-        }
-      }
-    }
-    return baseStyles
+    return styles.yAxis
   }
 
   override createAxisLine(bounding: Bounding, styles: AxisStyle): LineAttrs {
@@ -81,7 +66,7 @@ export default class YAxisView extends AxisView {
     const isTimeShare = chartStore.getIsTimeShare()
     const isInCandle = widget.isInCandle()
     const height = widget?.getBounding().height ?? 0
-    const axisTitle = widget.getOptions().axisTitle
+    const axisTitle = widget.getScale().getOptions().axisTitle
     const isAlignLeft = widget.isAlignLeft()
     const axisLineStyles = styles.axisLine
     const tickLineStyles = styles.tickLine
@@ -131,7 +116,7 @@ function createYAxisTextAttrs(
   textHeight: number,
   isAlignLeft: boolean
 ): TextAttrs {
-  const tickTextHeight = calcYAxisTickTextHeight(textHeight)
+  const tickTextHeight = calcYScaleTickTextHeight(textHeight)
   return {
     x,
     y: clampYAxisLabelY(tick.coord, height, tickTextHeight),

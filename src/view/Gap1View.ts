@@ -30,7 +30,7 @@ export default class Gap1View extends View {
     const chartStore = chart.getChartStore()
     const bounding = widget.getBounding()
     const xAxis = (chart.getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
-    const yAxis = pane.getMainAxisWidget().getAxisComponent()
+    const yAxis = pane.getDefaultYScale().getComponent()
     const chartStyles = chartStore.getStyles()
     const styles = chartStyles.gap
     const priceTextColor = chartStyles.xAxis.tickText.color

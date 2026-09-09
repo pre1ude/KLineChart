@@ -125,6 +125,7 @@ describe('tooltip render model', () => {
     const data = createData()
     const indicator = {
       id: 'custom',
+      yScaleId: 'default',
       name: 'Custom',
       shortName: 'Custom',
       calcParams: [],
@@ -206,11 +207,14 @@ describe('tooltip render model', () => {
       getMainWidget: () => ({ getAxisComponent: () => ({}) })
     } as never)
     Object.assign(widget.getPane(), {
-      getYLeftAxisWidget: () => ({ getAxisComponent: () => ({}) })
+      resolveIndicatorYScaleId: (indicator: Indicator) => indicator.yScaleId,
+      getYScaleById: () => ({ getComponent: () => ({}) }),
+      getDefaultYScale: () => ({ getComponent: () => ({}) })
     })
     const data = createData()
     const indicator = {
       id: 'custom',
+      yScaleId: 'default',
       name: 'Custom',
       shortName: 'Custom',
       calcParams: [],
@@ -249,8 +253,7 @@ function createFixture(): { chartStore: ChartStore, widget: ConstructorParameter
   const pane = {
     getId: () => PaneIdConstants.CANDLE,
     getChart: () => chart,
-    getYLeftAxisWidget: () => ({ getBounding: () => ({ width: 20, height: 0, left: 0, top: 0 }) }),
-    getYRightAxisWidget: () => ({ getBounding: () => ({ width: 20, height: 0, left: 0, top: 0 }) })
+    getYAxisWidgetsByPosition: () => [{ getBounding: () => ({ width: 20, height: 0, left: 0, top: 0 }) }]
   }
   const widget = {
     getPane: () => pane,
@@ -266,6 +269,7 @@ function createData(): KLineData {
 function createIndicator(): never {
   return {
     id: 'vol',
+    yScaleId: 'default',
     name: 'Volume',
     shortName: 'VOL',
     calcParams: [],

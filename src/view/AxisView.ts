@@ -20,7 +20,9 @@ export default abstract class AxisView extends View {
     const pane = widget.getPane()
     const chartStore = pane.getChart().getChartStore()
     const bounding = widget.getBounding()
-    const axis = widget.getAxisComponent()
+    const axis = 'getScaleComponent' in widget
+      ? widget.getScaleComponent()
+      : widget.getAxisComponent()
     const chartStyles = pane.getChart().getStyles()
     const styles: AxisStyle = this.getAxisStyles(chartStyles)
     if (styles.show) {
@@ -32,7 +34,7 @@ export default abstract class AxisView extends View {
       }
       // todo should know if it is in indicator pane
       // todo the ticks need generate accord the axisOptions
-      const ticks = axis.getTicks()
+      const ticks = 'getScaleComponent' in widget ? widget.getTicks() : axis.getTicks()
       if (styles.tickLine.show) {
         const lines = this.createTickLines(ticks, bounding, styles)
         lines.forEach(line => {

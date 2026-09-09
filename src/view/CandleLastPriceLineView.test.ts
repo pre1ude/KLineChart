@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { getDefaultStyles, YAxisType } from '../common/Styles'
+import { getDefaultStyles } from '../common/Styles'
 import { drawStaticFigure } from '../extension/figure'
 import CandleLastPriceLineView from './CandleLastPriceLineView'
 
@@ -21,20 +21,15 @@ describe('CandleLastPriceLineView', () => {
     const rightPriceAxis = {
       convertToPixel: vi.fn(() => 86)
     }
-    const leftPercentageWidget = {
-      getAxisType: () => YAxisType.Percentage,
-      getAxisComponent: () => leftPercentageAxis
-    }
-    const rightPriceWidget = {
-      getAxisType: () => YAxisType.Normal,
-      getAxisComponent: () => rightPriceAxis
-    }
+    const leftPercentageWidget = { getScaleComponent: () => leftPercentageAxis }
+    const rightPriceWidget = { getScaleComponent: () => rightPriceAxis }
     const chartStore = {
       getStyles: () => styles,
       getDataList: () => [{ open: 105, close: 110 }]
     }
     const pane = {
       getChart: () => ({ getChartStore: () => chartStore }),
+      getDefaultYScale: () => ({ getComponent: () => leftPercentageAxis }),
       getYLeftAxisWidget: () => leftPercentageWidget,
       getYRightAxisWidget: () => rightPriceWidget,
       getMainAxisWidget: () => leftPercentageWidget

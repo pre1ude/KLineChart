@@ -1,5 +1,4 @@
 
-import { type YAxisPosition, type YAxisType } from '../common/Styles'
 import type CandlePane from './CandlePane'
 import type IndicatorPane from './IndicatorPane'
 import type XAxisPane from './XAxisPane'
@@ -14,22 +13,9 @@ export interface PaneReservedSpace {
   bottom?: number
 }
 
-export interface PaneAxisOptionItem {
-  type?: YAxisType
-  nice?: boolean
-  formatter?: (v: number) => string
-  axisStyle?: {
-    tickTextColor?: string
-  }
-  axisTitle?: string
-}
-
 export interface PaneAxisOptions {
   name?: string
   scrollZoomEnabled?: boolean
-  YAxis?: {
-    [key in Exclude<YAxisPosition, 'both'>]?: PaneAxisOptionItem
-  }
 }
 
 export const enum PanePosition {

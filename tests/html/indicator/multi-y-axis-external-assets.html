@@ -114,7 +114,7 @@
 
       const chart = init('chart', {
         styles: {
-          yAxis: { position: 'left', inside: false, size: 'auto' },
+          yAxis: { inside: false, size: 'auto' },
           indicator: {
             lastValueMark: {
               show: true,
@@ -136,6 +136,7 @@
           symbol,
           color,
           interval,
+          scaleId: `${symbol.toLowerCase()}_scale`,
           axisId: `${symbol.toLowerCase()}_axis`,
           indicatorId: `${symbol.toLowerCase()}_indicator`,
           data: initialExternalData[symbol].map(item => ({ ...item })),
@@ -193,16 +194,35 @@
         }
         assertAligned(state.data)
         state.revision += 1
+        const scaleId = chart.createYScale({
+          id: state.scaleId,
+          paneId: PANE_ID,
+          type: 'normal'
+        })
+        if (!scaleId) throw new Error(`Failed to create ${state.symbol} Y scale.`)
+        const axisId = chart.createYAxis({
+          id: state.axisId,
+          paneId: PANE_ID,
+          yScaleId: state.scaleId,
+          position: 'right'
+        })
+        if (!axisId) {
+          chart.removeYScale({ id: state.scaleId, paneId: PANE_ID })
+          throw new Error(`Failed to create ${state.symbol} Y axis.`)
+        }
         const paneId = chart.createIndicator({
           id: state.indicatorId,
           name: 'EXTERNAL_PRICE_LINE',
           shortName: state.symbol,
-          yAxisId: state.axisId,
-          yAxisPosition: 'right',
+          yScaleId: state.scaleId,
           extendData: extendDataFor(state),
           styles: { lines: [{ color: state.color, size: 2 }] }
         }, true, { id: PANE_ID })
-        if (!paneId) throw new Error(`Failed to create ${state.symbol} indicator and Y axis.`)
+        if (!paneId) {
+          chart.removeYAxis({ id: state.axisId, paneId: PANE_ID })
+          chart.removeYScale({ id: state.scaleId, paneId: PANE_ID })
+          throw new Error(`Failed to create ${state.symbol} indicator.`)
+        }
         state.added = true
         state.visible = true
         startAssetTimer(state)
@@ -239,6 +259,8 @@
         clearInterval(state.timer)
         state.timer = undefined
         chart.removeIndicator({ paneId: PANE_ID, id: state.indicatorId })
+        chart.removeYAxis({ paneId: PANE_ID, id: state.axisId })
+        chart.removeYScale({ paneId: PANE_ID, id: state.scaleId })
         state.data = []
         state.added = false
         state.visible = false
@@ -256,8 +278,8 @@
 
       function renderStatus (message) {
         const axes = chart.getYAxes({ paneId: PANE_ID })
-          .filter(axis => axis.needWidget && axis.id !== 'y_axis_right')
-          .map(axis => `${axis.id}:${axis.position}`)
+          .filter(axis => axis.needWidget)
+          .map(axis => `${axis.id}:${axis.position}->${axis.yScaleId}`)
           .join(', ')
         document.getElementById('status').textContent = `${new Date().toLocaleTimeString()} ${message} | visible axes: ${axes}`
       }

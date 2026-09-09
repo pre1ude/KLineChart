@@ -1,4 +1,3 @@
-import { YAxisType } from '../common/Styles'
 import { formatFoldDecimal, formatPrecision, formatThousands } from '../common/utils/format'
 import { isNumber, isValid } from '../common/utils/typeChecks'
 import { drawStaticFigure } from '../extension/figure'
@@ -23,9 +22,8 @@ export default class CandleLastPriceLabelView extends View {
 
       if (isValid(data) && isNumber(data.close) && isNumber(data.open)) {
         const { close, open } = data
-        const axisType = widget.getAxisType()
-        const yAxis = pane.getMainAxisWidget().getAxisComponent()
-        const y0 = yAxis.convertToPixel(close)
+        const yScale = widget.getScaleComponent()
+        const y0 = yScale.convertToPixel(close)
         if (y0 < 0 || y0 > bounding.height) {
           return
         }
@@ -40,27 +38,15 @@ export default class CandleLastPriceLabelView extends View {
           backgroundColor = lastPriceMarkStyles.noChangeColor
         }
 
+        const formatter = widget.getScale().getOptions().formatter
         let text: string
 
-        if (axisType === YAxisType.MinutePercentage) {
-          const basisPrice = chartStore.getMinutePercentageBasis()
-          if (basisPrice > 0) {
-            text = `${((close - basisPrice) / basisPrice * 100).toFixed(2)}%`
-          } else {
-            text = '0.00%'
-          }
-        } else if (axisType === YAxisType.Percentage) {
-          const fromData = chartStore.getVisibleFirstData()
-          if (isValid(fromData) && isNumber(fromData.close)) {
-            text = `${((close - fromData.close) / fromData.close * 100).toFixed(2)}%`
-          } else {
-            text = '0.00%'
-          }
-        } else {
-          text = formatPrecision(close, precision.price)
-        }
+        text = formatter?.(close) ?? formatPrecision(close, precision.price)
 
-        text = formatFoldDecimal(formatThousands(text, chartStore.getThousandsSeparator()), chartStore.getDecimalFoldThreshold())
+        if (!formatter) {
+          text = formatFoldDecimal(formatThousands(text, chartStore.getThousandsSeparator()), chartStore.getDecimalFoldThreshold())
+        }
+        text = widget.formatLabel(close, text)
 
         const isAlignLeft = widget.isAlignLeft()
         const yAxisStyles = chartStore.getStyles().yAxis

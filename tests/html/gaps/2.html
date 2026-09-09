@@ -273,13 +273,10 @@
               backgroundColor: 'rgba(0, 135, 90, 0.12)',
               borderSize: 1
             }
-          },
-          yAxis: {
-            position: 'right',
-            mainPosition: 'right'
           }
         }
       })
+      chart.overrideYAxis({ id: 'default', paneId: 'candle_pane', position: 'right' })
 
       chart.setPriceVolumePrecision(3, 0)
       chart.applyNewData(createBondYieldData(), false, () => {

@@ -41,6 +41,7 @@ import { DataZoomSlider } from './component/DataZoomSlider'
 import type XAxisWidget from './widget/XAxisWidget'
 import type DualYPane from './pane/DualYPane'
 import type { YAxisCreate, YAxisFilter, YAxisOptions, YAxisOverride } from './widget/YAxisWidget'
+import { DEFAULT_Y_SCALE_ID, type YScaleCreate, type YScaleFilter, type YScaleOptions, type YScaleOverride } from './component/YScaleHost'
 import { getTimezone } from './common/utils/dateTimeFormat'
 
 export enum DomPosition {
@@ -62,8 +63,7 @@ export type PaneScope = 'content' | 'content_main' | 'candle' | 'candle_main' | 
 export interface ConvertFinder {
   paneId?: string
   absolute?: boolean
-  yAxisId?: string
-  yAxisPosition?: 'left' | 'right'
+  yScaleId?: string
 }
 
 export type ResizeAnchor = 'domainFrom' | 'domainTo'
@@ -146,6 +146,10 @@ export interface Chart {
   updateData: (data: KLineData, callback?: () => void) => void
   replaceData: (dataList: KLineData[], more?: boolean, callback?: () => void) => void
   setLoadDataCallback: (cb: LoadDataCallback) => void
+  createYScale: (yScale: YScaleCreate) => string | undefined
+  getYScales: (filter?: YScaleFilter) => YScaleOptions[]
+  overrideYScale: (yScale: YScaleOverride) => void
+  removeYScale: (filter: YScaleFilter) => boolean
   createYAxis: (yAxis: YAxisCreate) => string | undefined
   getYAxes: (filter?: YAxisFilter) => YAxisOptions[]
   overrideYAxis: (yAxis: YAxisOverride) => void
@@ -433,11 +437,9 @@ export default class ChartImp implements Chart {
         const dualYPane = pane as DualYPane
         dualYPanes.push(dualYPane)
         ;([YAxisPosition.Left, YAxisPosition.Right] as const).forEach(position => {
-          const widgets = typeof dualYPane.getYAxisWidgetsByPosition === 'function'
-            ? dualYPane.getYAxisWidgetsByPosition(position, true)
-            : [position === YAxisPosition.Left ? dualYPane.getYLeftAxisWidget() : dualYPane.getYRightAxisWidget()]
+          const widgets = dualYPane.getYAxisWidgetsByPosition(position, true)
           widgets.forEach((widget, index) => {
-            const autoSize = widget.getAxisComponent().getAutoSize()
+            const autoSize = widget.getAutoSize()
             const currentWidth = yAxisStyles.size === 'auto' ? widget.getBounding().width : 0
             const width = allowAxisWidthShrink ? autoSize : Math.max(autoSize, currentWidth)
             axisWidths[position][index] = Math.max(axisWidths[position][index] ?? 0, width)
@@ -486,7 +488,6 @@ export default class ChartImp implements Chart {
       separatorBounding = paneBounding
     }
     dualYPanes.forEach(pane => {
-      if (typeof pane.getYAxisWidgets !== 'function' || typeof pane.setYAxesBounding !== 'function') return
       const yAxesBounding: Record<string, Partial<Bounding>> = {}
       pane.getYAxisWidgets().forEach(widget => {
         yAxesBounding[widget.getOptions().id] = { width: 1, left: -1 }
@@ -518,16 +519,7 @@ export default class ChartImp implements Chart {
 
     this._drawPanes.forEach(pane => {
       this._separatorPanes.get(pane)?.setBounding(separatorBounding)
-      if (pane.getId() !== PaneIdConstants.X_AXIS && typeof (pane as DualYPane).setYAxesBounding !== 'function') {
-        pane.setBounding(
-          paneBounding,
-          mainBounding,
-          { width: yLeftAxisWidth, left: 0 },
-          { width: yRightAxisWidth, left: mainLeft + mainWidth }
-        )
-      } else {
-        pane.setBounding(paneBounding, mainBounding)
-      }
+      pane.setBounding(paneBounding, mainBounding)
     })
     this._dataZoomSlider.setLayout(mainBounding)
     return mainWidth !== prevMainWidth
@@ -554,7 +546,7 @@ export default class ChartImp implements Chart {
           }
         }
         // 检查是否需要调整视图
-        if (isString(options.axisOptions?.name) || isValid(options.gap) || isValid(options.reservedSpace) || isValid(options.axisOptions?.YAxis)) {
+        if (isString(options.axisOptions?.name) || isValid(options.gap) || isValid(options.reservedSpace)) {
           shouldAdjust = true
         }
         pane.setOptions(options)
@@ -826,15 +818,8 @@ export default class ChartImp implements Chart {
         adjust = (pane.getMainWidget() as XAxisWidget).getAxisComponent().buildTicks(forceAdjustAxis) || adjust
       } else {
         const dualYPane = pane as DualYPane
-        const mainAxisWidget = dualYPane.getMainAxisWidget()
-        adjust = mainAxisWidget.getAxisComponent().buildTicks(forceAdjustAxis) || adjust
-        const widgets = typeof dualYPane.getVisibleYAxisWidgets === 'function'
-          ? dualYPane.getVisibleYAxisWidgets()
-          : [dualYPane.getYLeftAxisWidget(), dualYPane.getYRightAxisWidget()]
-        widgets.forEach(widget => {
-          if (widget !== mainAxisWidget) {
-            adjust = widget.getAxisComponent().buildTicks(forceAdjustAxis) || adjust
-          }
+        dualYPane.getYScales().forEach(scale => {
+          adjust = scale.getComponent().buildTicks(forceAdjustAxis) || adjust
         })
       }
     })
@@ -1007,8 +992,9 @@ export default class ChartImp implements Chart {
       return
     }
     if (resetYAxisAutoCalc) {
-      this._candlePane?.getYLeftAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
-      this._candlePane?.getYRightAxisWidget().getAxisComponent().setAutoCalcTickFlag(true)
+      this._candlePane?.getYScales().forEach(scale => {
+        scale.getComponent().setAutoCalcTickFlag(true)
+      })
     }
     this.refreshMetricLayout()
   }
@@ -1193,6 +1179,67 @@ export default class ChartImp implements Chart {
     this._chartStore.setLoadDataCallback(cb)
   }
 
+  createYScale(yScale: YScaleCreate): string | undefined {
+    const pane = this.getDrawPaneById(yScale.paneId)
+    if (!pane || pane.getId() === PaneIdConstants.X_AXIS) {
+      logWarn('createYScale', 'paneId', 'pane does not exist or does not support yScale.')
+      return undefined
+    }
+    const dualYPane = pane as DualYPane
+    if (yScale.id !== undefined && (!isString(yScale.id) || yScale.id.length === 0)) {
+      logWarn('createYScale', 'id', 'id must be a non-empty string.')
+      return undefined
+    }
+    const id = yScale.id ?? createId('y_scale_')
+    if (dualYPane.getYScaleById(id)) {
+      logWarn('createYScale', 'id', `yScale '${id}' already exists.`)
+      return undefined
+    }
+    dualYPane.createOrOverrideYScale({ ...yScale, id })
+    this._refreshExactLayout(false)
+    return id
+  }
+
+  getYScales(filter: YScaleFilter = {}): YScaleOptions[] {
+    const result: YScaleOptions[] = []
+    this._drawPanes.forEach(pane => {
+      if (pane.getId() === PaneIdConstants.X_AXIS || (filter.paneId && filter.paneId !== pane.getId())) return
+      ;(pane as DualYPane).getYScales().forEach(scale => {
+        const options = scale.getOptions()
+        if (filter.id && options.id !== filter.id) return
+        if (filter.name && options.name !== filter.name) return
+        result.push({ ...options })
+      })
+    })
+    return result
+  }
+
+  overrideYScale(yScale: YScaleOverride): void {
+    const scales = this.getYScales({ paneId: yScale.paneId, id: yScale.id })
+    scales.forEach(scale => {
+      const pane = this.getDrawPaneById(scale.paneId)
+      if (pane?.getId() !== PaneIdConstants.X_AXIS) {
+        ;(pane as DualYPane).createOrOverrideYScale({ ...yScale, paneId: scale.paneId })
+      }
+    })
+    if (scales.length > 0) this._refreshExactLayout(false)
+  }
+
+  removeYScale(filter: YScaleFilter): boolean {
+    if (!filter.id && !filter.name) {
+      logWarn('removeYScale', 'filter', 'id or name is required.')
+      return false
+    }
+    let removed = false
+    this.getYScales(filter).forEach(scale => {
+      const pane = this.getDrawPaneById(scale.paneId)
+      if (!pane || pane.getId() === PaneIdConstants.X_AXIS) return
+      removed = (pane as DualYPane).removeYScale(scale.id) || removed
+    })
+    if (removed) this._refreshExactLayout(false)
+    return removed
+  }
+
   createYAxis(yAxis: YAxisCreate): string | undefined {
     const pane = this.getDrawPaneById(yAxis.paneId)
     if (!pane || pane.getId() === PaneIdConstants.X_AXIS) {
@@ -1200,13 +1247,20 @@ export default class ChartImp implements Chart {
       return undefined
     }
     const dualYPane = pane as DualYPane
+    if (!dualYPane.getYScaleById(yAxis.yScaleId)) {
+      logWarn('createYAxis', 'yScaleId', `yScale '${yAxis.yScaleId}' does not exist.`)
+      return undefined
+    }
+    if (yAxis.id !== undefined && (!isString(yAxis.id) || yAxis.id.length === 0)) {
+      logWarn('createYAxis', 'id', 'id must be a non-empty string.')
+      return undefined
+    }
     const id = yAxis.id ?? createId('y_axis_')
     if (dualYPane.getYAxisWidgetById(id)) {
       logWarn('createYAxis', 'id', `yAxis '${id}' already exists.`)
       return undefined
     }
     dualYPane.createOrOverrideYAxis({ ...yAxis, id })
-    dualYPane.setExplicitYAxis(id, true)
     this._refreshExactLayout(false)
     return id
   }
@@ -1218,7 +1272,7 @@ export default class ChartImp implements Chart {
       ;(pane as DualYPane).getYAxisWidgets().forEach(widget => {
         const options = widget.getOptions()
         if (filter.id && options.id !== filter.id) return
-        if (filter.name && options.name !== filter.name) return
+        if (filter.yScaleId && options.yScaleId !== filter.yScaleId) return
         result.push({ ...options })
       })
     })
@@ -1230,56 +1284,29 @@ export default class ChartImp implements Chart {
     axes.forEach(axis => {
       const pane = this.getDrawPaneById(axis.paneId)
       if (pane?.getId() !== PaneIdConstants.X_AXIS) {
-        ;(pane as DualYPane).createOrOverrideYAxis({ ...yAxis, paneId: axis.paneId })
+        const dualYPane = pane as DualYPane
+        if ('yScaleId' in yAxis && (!isString(yAxis.yScaleId) || yAxis.yScaleId.length === 0 || !dualYPane.getYScaleById(yAxis.yScaleId))) {
+          logWarn('overrideYAxis', 'yScaleId', `yScale '${yAxis.yScaleId}' does not exist.`)
+          return
+        }
+        dualYPane.createOrOverrideYAxis({ ...yAxis, paneId: axis.paneId })
       }
     })
     if (axes.length > 0) this._refreshExactLayout(false)
   }
 
   removeYAxis(filter: YAxisFilter): boolean {
-    if (!filter.id && !filter.name) {
-      logWarn('removeYAxis', 'filter', 'id or name is required.')
+    if (!filter.id && !filter.yScaleId) {
+      logWarn('removeYAxis', 'filter', 'id or yScaleId is required.')
       return false
     }
     let removed = false
     this.getYAxes(filter).forEach(axis => {
       const pane = this.getDrawPaneById(axis.paneId)
       if (!pane || pane.getId() === PaneIdConstants.X_AXIS) return
-      const dualYPane = pane as DualYPane
-      if (dualYPane.isCompatibilityYAxis(axis.id)) return
-      const inUse = this._chartStore.getIndicatorStore().getInstances(axis.paneId)
-        .some(indicator => dualYPane.resolveIndicatorYAxisId(indicator) === axis.id)
-      if (!inUse) removed = dualYPane.removeYAxis(axis.id) || removed
+      removed = (pane as DualYPane).removeYAxis(axis.id) || removed
     })
     if (removed) this._refreshExactLayout(false)
-    return removed
-  }
-
-  private _ensureIndicatorYAxis(pane: DualYPane, indicator: IndicatorCreate | Indicator): boolean {
-    if (!indicator.yAxisId) return false
-    let created = false
-    if (!pane.getYAxisWidgetById(indicator.yAxisId)) {
-      pane.createOrOverrideYAxis({
-        id: indicator.yAxisId,
-        position: indicator.yAxisPosition === 'left' ? YAxisPosition.Left : YAxisPosition.Right
-      })
-      created = true
-    }
-    return created
-  }
-
-  private _removeOrphanYAxes(pane: DualYPane, candidateIds?: Iterable<string | undefined>): boolean {
-    const candidates = candidateIds === undefined
-      ? pane.getYAxisWidgets().map(widget => widget.getOptions().id)
-      : Array.from(candidateIds)
-    const indicators = this._chartStore.getIndicatorStore().getInstances(pane.getId())
-    let removed = false
-    candidates.forEach(id => {
-      if (!id || pane.isCompatibilityYAxis(id) || pane.isExplicitYAxis(id)) return
-      if (!indicators.some(indicator => pane.resolveIndicatorYAxisId(indicator) === id)) {
-        removed = pane.removeYAxis(id) || removed
-      }
-    })
     return removed
   }
 
@@ -1299,20 +1326,24 @@ export default class ChartImp implements Chart {
     if (currentPane) {
       realPaneId = currentPane.getId()
       indicator.paneId = realPaneId
-      const replacedYAxisIds = (isStack ?? false)
-        ? []
-        : this._chartStore.getIndicatorStore().getInstances(realPaneId).map(instance => instance.yAxisId)
-      this._ensureIndicatorYAxis(currentPane, indicator)
+      indicator.yScaleId ??= currentPane.getDefaultYScaleId()
+      if (!currentPane.getYScaleById(indicator.yScaleId)) {
+        logWarn('createIndicator', 'yScaleId', `yScale '${indicator.yScaleId}' does not exist in pane '${realPaneId}'.`)
+        return undefined
+      }
       this._chartStore.getIndicatorStore().addInstance(indicator, realPaneId, isStack ?? false).then(_ => {
-        this._removeOrphanYAxes(currentPane, replacedYAxisIds)
         let forceShouldAdjust = false
-        currentPane.getVisibleYAxisWidgets().forEach(widget => {
-          forceShouldAdjust = widget.getAxisComponent().buildTicks(true) || forceShouldAdjust
+        currentPane.getYScales().forEach(scale => {
+          forceShouldAdjust = scale.getComponent().buildTicks(true) || forceShouldAdjust
         })
 
         this._setPaneOptions(paneOptions ?? {}, forceShouldAdjust ?? false)
-      }).catch(_ => { this._removeOrphanYAxes(currentPane, [indicator.yAxisId]) })
+      }).catch(() => {})
     } else {
+      if ('yScaleId' in indicator && (!isString(indicator.yScaleId) || indicator.yScaleId.length === 0 || indicator.yScaleId !== DEFAULT_Y_SCALE_ID)) {
+        logWarn('createIndicator', 'yScaleId', `new panes only contain the '${DEFAULT_Y_SCALE_ID}' scale.`)
+        return undefined
+      }
       const height = paneOptions?.height ?? this._chartStore.getIndicatorPaneDefaultHeight()
       const resolvedPaneOptions = {
         ...paneOptions,
@@ -1326,7 +1357,7 @@ export default class ChartImp implements Chart {
       pane.setHeightSpec(heightSpec)
       pane.setBounding({ height: heightSpec.unit === 'pixel' ? heightSpec.value : 0 })
       indicator.paneId = realPaneId
-      this._ensureIndicatorYAxis(pane, indicator)
+      indicator.yScaleId = pane.getDefaultYScaleId()
       const indicatorCalcPromise = this._chartStore.getIndicatorStore().addInstance(indicator, realPaneId, isStack ?? false)
       this._refreshExactLayoutIfReady()
       void indicatorCalcPromise.finally(() => {
@@ -1356,23 +1387,22 @@ export default class ChartImp implements Chart {
       ? { id: override.id, paneId }
       : { name: override.name, paneId }
     const matchingIndicators = this._chartStore.getIndicatorStore().getIndicatorsByFilter(filter)
-    const previousYAxisIds = matchingIndicators.map(indicator => indicator.yAxisId)
+    if ('yScaleId' in override) {
+      const invalidPane = matchingIndicators.find(indicator => {
+        const pane = this.getDrawPaneById(indicator.paneId)
+        return pane?.getId() === PaneIdConstants.X_AXIS ||
+          !isString(override.yScaleId) ||
+          override.yScaleId.length === 0 ||
+          !(pane as DualYPane | undefined)?.getYScaleById(override.yScaleId)
+      })
+      if (invalidPane) {
+        logWarn('overrideIndicator', 'yScaleId', `yScale '${override.yScaleId}' does not exist in pane '${invalidPane.paneId}'.`)
+        return
+      }
+    }
     this._chartStore.getIndicatorStore().override(override, paneId).then(
       ([onlyUpdateFlag, resizeFlag]) => {
-        let axesChanged = false
-        matchingIndicators.forEach(indicator => {
-          const pane = this.getDrawPaneById(indicator.paneId)
-          if (pane?.getId() !== PaneIdConstants.X_AXIS) {
-            axesChanged = this._ensureIndicatorYAxis(pane as DualYPane, indicator) || axesChanged
-          }
-        })
-        previousYAxisIds.forEach((axisId, index) => {
-          const pane = this.getDrawPaneById(matchingIndicators[index]?.paneId ?? '')
-          if (pane?.getId() !== PaneIdConstants.X_AXIS) {
-            axesChanged = this._removeOrphanYAxes(pane as DualYPane, [axisId]) || axesChanged
-          }
-        })
-        if (axesChanged || 'yAxisId' in override || 'yAxisPosition' in override) {
+        if ('yScaleId' in override) {
           this._refreshExactLayout(false)
           callback?.()
         } else if (resizeFlag) {
@@ -1412,9 +1442,6 @@ export default class ChartImp implements Chart {
     const removedIndicators = indicatorStore.removeInstances(filter)
     if (removedIndicators.length > 0) {
       const pane = this.getDrawPaneById(paneId)
-      if (pane?.getId() !== PaneIdConstants.X_AXIS) {
-        this._removeOrphanYAxes(pane as DualYPane, removedIndicators.map(indicator => indicator.yAxisId))
-      }
       let shouldMeasureHeight = false
       if (paneId !== PaneIdConstants.CANDLE) {
         if (!indicatorStore.hasInstances(paneId)) {
@@ -1674,7 +1701,7 @@ export default class ChartImp implements Chart {
     points: Partial<Point> | Array<Partial<Point>>,
     finder: ConvertFinder
   ): Partial<Coordinate> | Array<Partial<Coordinate>> {
-    const { paneId = PaneIdConstants.CANDLE, absolute = false, yAxisId, yAxisPosition = 'left' } = finder
+    const { paneId = PaneIdConstants.CANDLE, absolute = false, yScaleId } = finder
     const isArrayInput = isArray(points)
     let coordinates: Array<Partial<Coordinate>> = []
 
@@ -1685,7 +1712,7 @@ export default class ChartImp implements Chart {
         const ps = isArrayInput ? points : [points]
         const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
         const xAxis = xAxisWidget.getAxisComponent()
-        const yAxis = this._getYAxis(pane as DualYPane, yAxisId, yAxisPosition)
+        const yAxis = this._getYScale(pane as DualYPane, yScaleId)
 
         coordinates = ps.map(externalPoint => {
           const coordinate: Partial<Coordinate> = {}
@@ -1706,9 +1733,8 @@ export default class ChartImp implements Chart {
     return isArrayInput ? coordinates : (coordinates[0] ?? {})
   }
 
-  private _getYAxis(pane: DualYPane, id: string | undefined, position: 'left' | 'right') {
-    const yAxisWidget = id ? pane.getYAxisWidgetById(id) : pane.getAxisWidget(position)
-    return yAxisWidget?.getAxisComponent()
+  private _getYScale(pane: DualYPane, id?: string) {
+    return pane.getYScaleById(id)?.getComponent()
   }
 
   convertFromPixel(coordinate: Partial<Coordinate>, finder: ConvertFinder): Partial<Point>
@@ -1717,7 +1743,7 @@ export default class ChartImp implements Chart {
     coordinates: Partial<Coordinate> | Array<Partial<Coordinate>>,
     finder: ConvertFinder
   ): Partial<Point> | Array<Partial<Point>> {
-    const { paneId = PaneIdConstants.CANDLE, absolute = false, yAxisId, yAxisPosition = 'left' } = finder
+    const { paneId = PaneIdConstants.CANDLE, absolute = false, yScaleId } = finder
     const isArrayInput = isArray(coordinates)
     let points: Array<Partial<Point>> = []
 
@@ -1728,7 +1754,7 @@ export default class ChartImp implements Chart {
         const cs = isArrayInput ? coordinates : [coordinates]
         const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
         const xAxis = xAxisWidget.getAxisComponent()
-        const yAxis = this._getYAxis(pane as DualYPane, yAxisId, yAxisPosition)
+        const yAxis = this._getYScale(pane as DualYPane, yScaleId)
 
         points = cs.map(coordinate => {
           const internalPoint: Partial<IPoint> = {}

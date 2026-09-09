@@ -39,6 +39,7 @@ describe('CandleTimeShareZeroLineView', () => {
     }
     const pane = {
       getChart: () => ({ getChartStore: () => chartStore }),
+      getDefaultYScale: () => ({ getComponent: () => yAxis }),
       getMainAxisWidget: () => ({ getAxisComponent: () => yAxis })
     }
     const widget = {
@@ -79,6 +80,7 @@ describe('CandleTimeShareZeroLineView', () => {
     }
     const pane = {
       getChart: () => ({ getChartStore: () => chartStore }),
+      getDefaultYScale: () => ({ getComponent: () => ({ convertToPixel: vi.fn(() => 42) }) }),
       getMainAxisWidget: () => ({ getAxisComponent: () => ({ convertToPixel: vi.fn(() => 42) }) })
     }
     const widget = {

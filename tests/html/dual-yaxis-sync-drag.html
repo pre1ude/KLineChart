@@ -91,23 +91,23 @@
   <body>
     <div class="container">
       <div class="header">
-        <h1>双Y轴同步拖拽测试</h1>
-        <p><strong>测试目标：</strong>验证左右Y轴在拖拽主绘制区域时能够同步移动</p>
-        <p><strong>预期效果：</strong>拖拽主图区域时，左侧价格轴和右侧百分比轴应该同步上下移动，看起来像整个图表在移动</p>
+        <h1>共享 YScale 的双位置交互测试</h1>
+        <p><strong>测试目标：</strong>验证左右两个视觉 YAxis 引用同一个 default YScale</p>
+        <p><strong>预期效果：</strong>拖拽任意视觉轴只修改一次 default YScale；左边显示价格，右边把同一批刻度投影为百分比</p>
       </div>
 
       <div class="test-info">
         <strong>测试说明：</strong>
         <ul>
-          <li>在主图区域按住鼠标左键并上下拖拽，观察两个Y轴是否同步移动</li>
+          <li>拖拽左轴或右轴，观察两个位置是否同时反映同一个 scale 状态</li>
           <li>双击Y轴进入手动模式，再次双击恢复自动模式</li>
-          <li>可以通过下方控制按钮切换不同的轴类型组合进行测试</li>
+          <li>左右两个视觉轴引用同一个 default scale，范围和刻度坐标相同，但标签投影可以不同</li>
         </ul>
-        <strong>轴类型说明：</strong>
+        <strong>尺度与显示说明：</strong>
         <ul>
-          <li><b>线性轴(normal)</b>：等距刻度，适合一般数据</li>
-          <li><b>百分比轴(percentage)</b>：显示相对于起始价格的涨跌幅，可能为负值</li>
-          <li><b>对数轴(log)</b>：对数刻度，适合跨越多个数量级的数据。<span style="color: #e65100;">注意：数据必须为正数，不能与百分比轴组合</span></li>
+          <li><b>Normal / Log</b> 是 scale 的坐标变换，左右轴共享</li>
+          <li><b>Value / Percentage</b> 是 visual axis 的标签投影，可以左右不同</li>
+          <li><b>对数 scale</b> 适合跨越多个数量级的正数数据；百分比标签仍基于转换后的真实价格</li>
         </ul>
       </div>
 
@@ -119,20 +119,16 @@
         <h3>测试控制</h3>
 
         <div class="control-group">
-          <label>Y轴类型组合：</label>
-          <button onclick="setAxisTypes('normal', 'percentage')">左:线性 + 右:百分比</button>
-          <button onclick="setAxisTypes('normal', 'normal')">左:线性 + 右:线性</button>
-          <button onclick="setAxisTypes('percentage', 'normal')">左:百分比 + 右:线性</button>
-          <button onclick="setAxisTypes('percentage', 'percentage')">左:百分比 + 右:百分比</button>
+          <label>右轴标签：</label>
+          <button onclick="setRightLabelDisplay('value')">价格</button>
+          <button onclick="setRightLabelDisplay('percentage')">百分比</button>
         </div>
 
         <div class="control-group">
           <label>对数轴测试：</label>
-          <button onclick="setAxisTypes('log', 'normal')">左:对数 + 右:线性</button>
-          <button onclick="setAxisTypes('normal', 'log')">左:线性 + 右:对数</button>
-          <button onclick="setAxisTypes('log', 'log')">左:对数 + 右:对数</button>
+          <button onclick="setScaleType('log')">对数</button>
           <span style="color: #999; font-size: 12px; margin-left: 10px;">
-            ⚠️ 对数轴要求数据为正数，不能与百分比轴组合（百分比可能为负）
+            ⚠️ 对数轴要求数据为正数；左右视觉轴会一起切换
           </span>
         </div>
 
@@ -150,13 +146,13 @@
         </div>
 
         <div class="status" id="status">
-          状态：图表已初始化，左轴=线性，右轴=百分比
+          状态：图表已初始化，左右轴共享 default 线性 scale
         </div>
       </div>
     </div>
 
     <script type="module">
-      import { init } from '../../../dist/index.js'
+      import { YAxisLabelDisplay, YScaleType, init } from '../../../dist/index.js'
       import { generated } from '../js/dataSource.js'
 
       let chart;
@@ -168,39 +164,35 @@
         chart = init('chart', {
           styles: {
             yAxis: {
-              position: 'both', // 显示左右两个Y轴
-              inside: false,
-              reverse: false
+              inside: false
             }
           }
+        });
+        chart.createYAxis({
+          id: 'default-right',
+          paneId: 'candle_pane',
+          yScaleId: 'default',
+          position: 'right',
+          labelDisplay: YAxisLabelDisplay.Percentage
         });
 
         // 加载初始数据
         currentData = generated();
         chart.applyNewData(currentData, true);
 
-        // 设置初始的Y轴类型：左侧线性，右侧百分比
-        setAxisTypes('normal', 'percentage');
+        setScaleType(YScaleType.Normal);
 
-        updateStatus('图表初始化完成，左轴=线性，右轴=百分比。请尝试在主图区域拖拽测试同步效果。');
+        updateStatus('图表初始化完成：左右轴共享 default 线性 scale，左轴显示价格，右轴显示百分比。');
       };
 
-      // 设置Y轴类型
-      window.setAxisTypes = function(leftType, rightType) {
-        console.log('Setting axis types:', leftType, rightType);
+      window.setScaleType = function(type) {
+        chart.overrideYScale({ id: 'default', paneId: 'candle_pane', type });
+        updateStatus(`default scale 已设置为 ${type}，左右轴同时更新`);
+      }
 
-        // 使用 setPaneOptions 来设置左右Y轴的类型
-        chart.setPaneOptions({
-          id: 'candle_pane',
-          axisOptions: {
-            YAxis: {
-              left: { type: leftType },
-              right: { type: rightType }
-            }
-          }
-        });
-
-        updateStatus(`Y轴类型已设置：左轴=${leftType}，右轴=${rightType}`);
+      window.setRightLabelDisplay = function(labelDisplay) {
+        chart.overrideYAxis({ id: 'default-right', paneId: 'candle_pane', labelDisplay });
+        updateStatus(`右轴标签投影已设置为 ${labelDisplay}，共享 scale 状态不变`);
       }
 
       // 启用手动控制（禁用自动计算）

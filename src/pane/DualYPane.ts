@@ -3,28 +3,23 @@ import { type UpdateLevel } from '../common/Updater'
 import type Bounding from '../common/Bounding'
 import { isValid, merge } from '../common/utils/typeChecks'
 import type { Indicator } from '../component/Indicator'
+import YScaleHost, { createDefaultYScaleOptions, DEFAULT_Y_AXIS_ID, DEFAULT_Y_SCALE_ID, type YScaleOptions } from '../component/YScaleHost'
 import type DrawWidget from '../widget/DrawWidget'
-import YAxisWidget, { type YAxisOptions } from '../widget/YAxisWidget'
+import YAxisWidget, { YAxisLabelDisplay, type YAxisOptions } from '../widget/YAxisWidget'
 import Pane from './Pane'
 import { type PaneOptions, PANE_MIN_HEIGHT, PaneIdConstants } from './types'
 import type Chart from '../Chart'
 import { initCanvas } from '../common/utils/canvas'
 import type PickPartial from '../common/PickPartial'
-import { YAxisPosition, YAxisType } from '../common/Styles'
+import { YAxisPosition } from '../common/Styles'
 import { setCursor } from '../common/utils/cursor'
-
-export const Y_AXIS_LEFT_ID = 'y_axis_left'
-export const Y_AXIS_RIGHT_ID = 'y_axis_right'
 
 export default abstract class DualYPane extends Pane {
   private readonly _mainWidget: DrawWidget<DualYPane>
+  private readonly _yScales = new Map<string, YScaleHost>()
   private readonly _yAxisWidgets = new Map<string, YAxisWidget>()
-  // Kept as optional projections for prototype-based integrations and tests
-  // that predate the registry.
-  private readonly _yLeftAxisWidget?: YAxisWidget
-  private readonly _yRightAxisWidget?: YAxisWidget
-  private readonly _explicitYAxisIds = new Set<string>()
   private _yAxesBounding: Record<string, Partial<Bounding>> = {}
+  private _defaultYScaleId = DEFAULT_Y_SCALE_ID
 
   private readonly _options: PickPartial<DeepRequired<Omit<PaneOptions, 'id' | 'height'>>, 'position'> = {
     minHeight: PANE_MIN_HEIGHT,
@@ -33,10 +28,7 @@ export default abstract class DualYPane extends Pane {
     reservedSpace: { top: 0, bottom: 0 },
     axisOptions: {
       name: 'default',
-      scrollZoomEnabled: true,
-      YAxis: {
-        left: { type: YAxisType.Normal, nice: true }, right: { type: YAxisType.Normal, nice: true }
-      }
+      scrollZoomEnabled: true
     }
   }
 
@@ -45,58 +37,99 @@ export default abstract class DualYPane extends Pane {
     const container = this.getContainer()
     this._mainWidget = this.createMainWidget(container)
     this.setOptions(options)
-    this.createOrOverrideYAxis({ id: Y_AXIS_LEFT_ID, position: YAxisPosition.Left })
-    this.createOrOverrideYAxis({ id: Y_AXIS_RIGHT_ID, position: YAxisPosition.Right })
+    this.createOrOverrideYScale({
+      ...createDefaultYScaleOptions(id),
+      name: this._options.axisOptions?.name ?? 'default',
+      scrollZoomEnabled: this._options.axisOptions?.scrollZoomEnabled ?? true
+    })
+    this.createOrOverrideYAxis({
+      id: DEFAULT_Y_AXIS_ID,
+      yScaleId: DEFAULT_Y_SCALE_ID,
+      position: YAxisPosition.Left
+    })
     this.setContainerCursorStyle()
   }
 
   setOptions(options: Omit<PaneOptions, 'id' | 'height'>): this {
     merge(this._options, options)
-    this._yAxisWidgets.forEach(widget => {
-      const currentOptions = widget.getOptions()
-      const sideOptions = options.axisOptions?.YAxis?.[currentOptions.position]
-      const nextOptions: Partial<YAxisOptions> = {}
+    const defaultScale = this._yScales.get(this._defaultYScaleId)
+    if (defaultScale) {
+      const nextOptions: Partial<YScaleOptions> = {}
       if (options.axisOptions?.name !== undefined) nextOptions.name = options.axisOptions.name
       if (options.axisOptions?.scrollZoomEnabled !== undefined) nextOptions.scrollZoomEnabled = options.axisOptions.scrollZoomEnabled
-      if (sideOptions?.type !== undefined) nextOptions.type = sideOptions.type
-      if (sideOptions?.nice !== undefined) nextOptions.nice = sideOptions.nice
-      if (sideOptions?.axisTitle !== undefined) nextOptions.axisTitle = sideOptions.axisTitle
-      widget.setOptions(nextOptions)
-      if (sideOptions?.type !== undefined || sideOptions?.nice !== undefined) {
-        widget.getAxisComponent().setAutoCalcTickFlag(true)
-      }
-    })
+      defaultScale.setOptions(nextOptions)
+    }
     this.setContainerCursorStyle()
     return this
   }
+
+  createOrOverrideYScale(options: Pick<YScaleOptions, 'id'> & Partial<YScaleOptions>): YScaleHost {
+    const current = this._yScales.get(options.id)
+    if (current) {
+      current.setOptions(options)
+      if (options.name !== undefined || options.type !== undefined || options.reverse !== undefined || options.nice !== undefined) {
+        current.getComponent().setAutoCalcTickFlag(true)
+      }
+      this.setContainerCursorStyle()
+      return current
+    }
+
+    const defaults = createDefaultYScaleOptions(this.getId())
+    const scale = new YScaleHost(this, { ...defaults, ...options, id: options.id, paneId: this.getId() })
+    this._yScales.set(options.id, scale)
+    this.setContainerCursorStyle()
+    return scale
+  }
+
+  removeYScale(id: string): boolean {
+    if (id === this._defaultYScaleId || !this._yScales.has(id)) return false
+    const referencedByAxis = this.getYAxisWidgets()
+      .some(widget => widget.getOptions().yScaleId === id)
+    const referencedByIndicator = this.getChart().getChartStore().getIndicatorStore().getInstances(this.getId())
+      .some(indicator => this.resolveIndicatorYScaleId(indicator) === id)
+    if (referencedByAxis || referencedByIndicator) return false
+    this._yScales.delete(id)
+    return true
+  }
+
+  getYScaleById(id?: string): YScaleHost | undefined { return this._yScales.get(id ?? this._defaultYScaleId) }
+
+  getYScales(): YScaleHost[] { return Array.from(this._yScales.values()) }
+
+  getDefaultYScaleId(): string { return this._defaultYScaleId }
+
+  getDefaultYScale(): YScaleHost { return this._yScales.get(this._defaultYScaleId)! }
+
+  isDefaultYScale(id: string): boolean { return id === this._defaultYScaleId }
 
   createOrOverrideYAxis(options: Pick<YAxisOptions, 'id'> & Partial<YAxisOptions>): YAxisWidget {
     const current = this._yAxisWidgets.get(options.id)
     if (current) {
       const previous = current.getOptions()
-      current.setOptions(options)
-      if (options.name !== undefined || options.type !== undefined || options.nice !== undefined) {
-        current.getAxisComponent().setAutoCalcTickFlag(true)
+      if (options.yScaleId && !this._yScales.has(options.yScaleId)) {
+        throw new Error(`YScale '${options.yScaleId}' does not exist in pane '${this.getId()}'.`)
       }
+      current.setOptions(options)
       if (previous.position !== current.getOptions().position) this._yAxesBounding = {}
       this.setContainerCursorStyle()
       return current
     }
 
+    const yScaleId = options.yScaleId ?? this._defaultYScaleId
+    if (!this._yScales.has(yScaleId)) {
+      throw new Error(`YScale '${yScaleId}' does not exist in pane '${this.getId()}'.`)
+    }
     const position = options.position ?? YAxisPosition.Right
-    const sideOptions = this._options.axisOptions?.YAxis?.[position]
     const yAxisOptions: YAxisOptions = {
       id: options.id,
       paneId: this.getId(),
-      name: options.name ?? this._options.axisOptions?.name ?? 'default',
-      scrollZoomEnabled: options.scrollZoomEnabled ?? this._options.axisOptions?.scrollZoomEnabled ?? true,
+      yScaleId,
       needWidget: options.needWidget ?? true,
       position,
-      type: options.type ?? sideOptions?.type ?? YAxisType.Normal,
-      nice: options.nice ?? sideOptions?.nice ?? true,
-      axisTitle: options.axisTitle ?? sideOptions?.axisTitle ?? ''
+      order: options.order ?? this._yAxisWidgets.size,
+      labelDisplay: options.labelDisplay ?? YAxisLabelDisplay.Value
     }
-    const widget = this.createYAxisWidget(this.getContainer(), this._options, yAxisOptions)
+    const widget = this.createYAxisWidget(this.getContainer(), yAxisOptions)
     this._yAxisWidgets.set(yAxisOptions.id, widget)
     const bounding = this.getBounding()
     widget.setBounding({ width: 1, height: bounding.height, top: bounding.top, left: -1 })
@@ -106,53 +139,32 @@ export default abstract class DualYPane extends Pane {
 
   removeYAxis(id: string): boolean {
     const widget = this._yAxisWidgets.get(id)
-    if (!widget || this.isCompatibilityYAxis(id)) return false
+    if (!widget) return false
     widget.destroy()
     this._yAxisWidgets.delete(id)
-    this._explicitYAxisIds.delete(id)
     delete this._yAxesBounding[id]
     return true
   }
 
-  setExplicitYAxis(id: string, explicit: boolean): void {
-    if (explicit) this._explicitYAxisIds.add(id)
-    else this._explicitYAxisIds.delete(id)
-  }
-
-  isExplicitYAxis(id: string): boolean { return this._explicitYAxisIds.has(id) }
-  isCompatibilityYAxis(id: string): boolean { return id === Y_AXIS_LEFT_ID || id === Y_AXIS_RIGHT_ID }
-  isDefaultYAxis(id: string): boolean { return this.getDefaultYAxisId() === id }
-  getDefaultYAxisId(): string { return this.getMainAxisWidget().getOptions().id }
-
   getYAxisWidgetById(id?: string): YAxisWidget | undefined {
-    return this._yAxisWidgets.get(id ?? this.getDefaultYAxisId())
+    return this._yAxisWidgets.get(id ?? DEFAULT_Y_AXIS_ID)
   }
 
   getYAxisWidgets(): YAxisWidget[] { return Array.from(this._yAxisWidgets.values()) }
 
   getVisibleYAxisWidgets(): YAxisWidget[] {
-    const globalPosition = this.getChart().getStyles().yAxis.position
-    return this.getYAxisWidgets().filter(widget => {
-      const options = widget.getOptions()
-      if (!options.needWidget) return false
-      if (!this.isCompatibilityYAxis(options.id)) return true
-      return globalPosition === YAxisPosition.Both || globalPosition === options.position
-    })
+    return this.getYAxisWidgets().filter(widget => widget.getOptions().needWidget)
   }
 
   getYAxisWidgetsByPosition(position: 'left' | 'right', visibleOnly = false): YAxisWidget[] {
     const widgets = visibleOnly ? this.getVisibleYAxisWidgets() : this.getYAxisWidgets()
-    return widgets.filter(widget => widget.getOptions().position === position)
+    return widgets
+      .filter(widget => widget.getOptions().position === position)
+      .sort((a, b) => a.getOptions().order - b.getOptions().order)
   }
 
-  getYAxisIdByPosition(position: 'left' | 'right'): string {
-    return position === YAxisPosition.Left ? Y_AXIS_LEFT_ID : Y_AXIS_RIGHT_ID
-  }
-
-  resolveIndicatorYAxisId(indicator: Pick<Indicator, 'yAxisId' | 'yAxisPosition'>): string {
-    if (indicator.yAxisId && this._yAxisWidgets.has(indicator.yAxisId)) return indicator.yAxisId
-    if (indicator.yAxisPosition) return this.getYAxisIdByPosition(indicator.yAxisPosition)
-    return this.getDefaultYAxisId()
+  resolveIndicatorYScaleId(indicator: Pick<Indicator, 'yScaleId'>): string {
+    return indicator.yScaleId
   }
 
   setYAxesBounding(bounding: Record<string, Partial<Bounding>>): void { this._yAxesBounding = bounding }
@@ -164,14 +176,14 @@ export default abstract class DualYPane extends Pane {
       return
     }
     this._yAxisWidgets.forEach(widget => {
-      const enabled = widget.getOptions().scrollZoomEnabled ?? true
+      const enabled = widget.getScale().getOptions().scrollZoomEnabled
       setCursor(widget.getContainer(), enabled ? 'ns-resize' : 'default')
     })
   }
 
   getOptions(): PickPartial<DeepRequired<Omit<PaneOptions, 'id' | 'height'>>, 'position'> { return this._options }
 
-  override setBounding(rootBounding: Partial<Bounding>, mainBounding?: Partial<Bounding>, yLeftAxisBounding?: Partial<Bounding>, yRightAxisBounding?: Partial<Bounding>): this {
+  override setBounding(rootBounding: Partial<Bounding>, mainBounding?: Partial<Bounding>): this {
     merge(this.getBounding(), rootBounding)
     const contentBounding: Partial<Bounding> = {}
     if (isValid(rootBounding.height)) contentBounding.height = rootBounding.height
@@ -183,39 +195,12 @@ export default abstract class DualYPane extends Pane {
       const options = widget.getOptions()
       const axisBounding = this._yAxesBounding[options.id]
       if (isValid(axisBounding)) widget.setBounding(axisBounding)
-      else if (options.id === Y_AXIS_LEFT_ID && isValid(yLeftAxisBounding)) widget.setBounding(yLeftAxisBounding)
-      else if (options.id === Y_AXIS_RIGHT_ID && isValid(yRightAxisBounding)) widget.setBounding(yRightAxisBounding)
       else widget.setBounding({ width: 1, left: -1 })
     })
     return this
   }
 
   getMainWidget(): DrawWidget<DualYPane> { return this._mainWidget }
-
-  getMainAxisWidget(): YAxisWidget {
-    const styles = this.getChart().getStyles().yAxis
-    if (styles.position === YAxisPosition.Right ||
-      (styles.position === YAxisPosition.Both && styles.mainPosition === YAxisPosition.Right)) {
-      return this.getYRightAxisWidget()
-    }
-    return this.getYLeftAxisWidget()
-  }
-
-  getAxisWidget(position: 'left' | 'right'): YAxisWidget {
-    return position === YAxisPosition.Left ? this.getYLeftAxisWidget() : this.getYRightAxisWidget()
-  }
-
-  getYLeftAxisWidget(): YAxisWidget {
-    const widget = this._yAxisWidgets?.get(Y_AXIS_LEFT_ID) ?? this._yLeftAxisWidget
-    if (!widget) throw new Error('Left Y axis is not initialized.')
-    return widget
-  }
-
-  getYRightAxisWidget(): YAxisWidget {
-    const widget = this._yAxisWidgets?.get(Y_AXIS_RIGHT_ID) ?? this._yRightAxisWidget
-    if (!widget) throw new Error('Right Y axis is not initialized.')
-    return widget
-  }
 
   override updateImp(level: UpdateLevel): void {
     this._mainWidget.update(level)
@@ -229,6 +214,7 @@ export default abstract class DualYPane extends Pane {
   override destroy(): void {
     this._mainWidget.destroy()
     this._yAxisWidgets.forEach(widget => widget.destroy())
+    this._yScales.clear()
     super.destroy()
   }
 
@@ -246,8 +232,8 @@ export default abstract class DualYPane extends Pane {
     return canvas
   }
 
-  protected createYAxisWidget(container: HTMLElement, options: PaneOptions, yAxisOptions: YAxisOptions): YAxisWidget {
-    return new YAxisWidget(container, this, options, yAxisOptions)
+  protected createYAxisWidget(container: HTMLElement, yAxisOptions: YAxisOptions): YAxisWidget {
+    return new YAxisWidget(container, this, yAxisOptions)
   }
 
   protected abstract createMainWidget(container: HTMLElement): DrawWidget<DualYPane>

@@ -125,7 +125,7 @@ function drawTDSTSegments(
   idKey: 'currentTDSTResistanceId' | 'currentTDSTSupportId',
   color: string,
   xAxis: { convertToPixel: (value: number) => number },
-  yAxis: { convertToPixel: (value: number) => number },
+  yScale: { convertToPixel: (value: number) => number },
   halfBar: number,
   provisionalOpacity: number,
   ctx: CanvasRenderingContext2D
@@ -137,7 +137,7 @@ function drawTDSTSegments(
 
   const flush = (end: number): void => {
     if (segmentId === undefined || segmentValue === undefined || segmentStart < 0 || end < segmentStart) return
-    const y = yAxis.convertToPixel(segmentValue)
+    const y = yScale.convertToPixel(segmentValue)
     const attrs: LineAttrs = {
       coordinates: [
         { x: xAxis.convertToPixel(segmentStart) - halfBar, y },
@@ -262,7 +262,7 @@ const tdSequential: IndicatorTemplate<TDSequentialBarOutput> = {
     visibleRange,
     barSpace,
     xAxis,
-    yAxis
+    yScale
   }) => {
     const result = indicator.result
     if (result.length === 0) return true
@@ -292,7 +292,7 @@ const tdSequential: IndicatorTemplate<TDSequentialBarOutput> = {
         'currentTDSTResistanceId',
         resistanceColor,
         xAxis,
-        yAxis,
+        yScale,
         barSpace.halfBar,
         options.provisionalOpacity,
         ctx
@@ -307,7 +307,7 @@ const tdSequential: IndicatorTemplate<TDSequentialBarOutput> = {
         'currentTDSTSupportId',
         supportColor,
         xAxis,
-        yAxis,
+        yScale,
         barSpace.halfBar,
         options.provisionalOpacity,
         ctx
@@ -324,8 +324,8 @@ const tdSequential: IndicatorTemplate<TDSequentialBarOutput> = {
         const perfected = output.perfectedSetupIds.includes(setup.setupId)
         const text = `${setup.value}${perfected ? '•' : ''}`
         const attrs: TextAttrs = setup.direction === 'BUY'
-          ? { x, y: yAxis.convertToPixel(bar.low) + 3, text, align: 'center', baseline: 'top' }
-          : { x, y: yAxis.convertToPixel(bar.high) - 3, text, align: 'center', baseline: 'bottom' }
+          ? { x, y: yScale.convertToPixel(bar.low) + 3, text, align: 'center', baseline: 'top' }
+          : { x, y: yScale.convertToPixel(bar.high) - 3, text, align: 'center', baseline: 'bottom' }
         drawTextMark(
           ctx,
           attrs,
@@ -340,14 +340,14 @@ const tdSequential: IndicatorTemplate<TDSequentialBarOutput> = {
         const attrs: TextAttrs = mark.direction === 'BUY'
           ? {
             x,
-            y: yAxis.convertToPixel(bar.low) + 3 + layer * options.layerGap,
+            y: yScale.convertToPixel(bar.low) + 3 + layer * options.layerGap,
             text: String(mark.value),
             align: 'center',
             baseline: 'top'
           }
           : {
             x,
-            y: yAxis.convertToPixel(bar.high) - 3 - layer * options.layerGap,
+            y: yScale.convertToPixel(bar.high) - 3 - layer * options.layerGap,
             text: String(mark.value),
             align: 'center',
             baseline: 'bottom'

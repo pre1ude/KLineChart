@@ -44,7 +44,6 @@ export default class Event implements EventHandler {
   private _mouseDownWidget?: Widget
 
   private _prevYAxisRange?: VisibleRange
-  private _prevOtherYAxisRange?: VisibleRange
 
   private _xAxisStartScaleCoordinate?: Coordinate
   private _xAxisStartScaleDistance = 0
@@ -67,20 +66,6 @@ export default class Event implements EventHandler {
 
   syncCursor(): void {
     this._syncCursor(this._mouseMoveTriggerWidgetInfo.widget)
-  }
-
-  private _getYAxisInteractionWidgets(widget: YAxisWidget): YAxisWidget[] {
-    const pane = widget.getPane()
-    const shouldSyncCompatibilityAxes =
-      typeof pane.getVisibleYAxisWidgets !== 'function' ||
-      (typeof pane.isCompatibilityYAxis === 'function' &&
-        typeof widget.getOptions === 'function' &&
-        pane.isCompatibilityYAxis(widget.getOptions().id))
-    if (!shouldSyncCompatibilityAxes) return [widget]
-
-    const leftWidget = pane.getYLeftAxisWidget()
-    const rightWidget = pane.getYRightAxisWidget()
-    return leftWidget === rightWidget ? [leftWidget] : [leftWidget, rightWidget]
   }
 
   pinchStartEvent(): boolean {
@@ -117,21 +102,18 @@ export default class Event implements EventHandler {
       return true
     }
     if (name === WidgetNameConstants.Y_AXIS && widget) {
-      const yAxis = (widget as YAxisWidget).getAxisComponent()
-      if (!yAxis.getScrollZoomEnabled()) return false
-      this._getYAxisInteractionWidgets(widget as YAxisWidget).forEach(axisWidget => {
-        const interactionAxis = axisWidget.getAxisComponent()
-        const { from, to } = interactionAxis.getRange()
-        const center = (from + to) / 2
-        const halfRange = Math.abs(to - from) / 2 * Math.max(0.1, 1 + normDeltaY * 0.1)
-        const nextFrom = center - halfRange
-        const nextTo = center + halfRange
-        interactionAxis.setRange({
-          from: nextFrom,
-          to: nextTo,
-          domainFrom: interactionAxis.convertToRealValue(nextFrom),
-          domainTo: interactionAxis.convertToRealValue(nextTo)
-        })
+      const yScale = (widget as YAxisWidget).getScaleComponent()
+      if (!yScale.getScrollZoomEnabled()) return false
+      const { from, to } = yScale.getRange()
+      const center = (from + to) / 2
+      const halfRange = Math.abs(to - from) / 2 * Math.max(0.1, 1 + normDeltaY * 0.1)
+      const nextFrom = center - halfRange
+      const nextTo = center + halfRange
+      yScale.setRange({
+        from: nextFrom,
+        to: nextTo,
+        domainFrom: yScale.convertToRealValue(nextFrom),
+        domainTo: yScale.convertToRealValue(nextTo)
       })
       this._chart.requestViewportLayout()
       return true
@@ -173,16 +155,9 @@ export default class Event implements EventHandler {
           if (consumed) {
             this._chart.updatePane(UpdateLevel.Overlay)
           }
-          const currentYAxis = (widget as YAxisWidget).getAxisComponent()
+          const currentYAxis = (widget as YAxisWidget).getScaleComponent()
           const range = currentYAxis.getRange()
           this._prevYAxisRange = range ? { ...range } : undefined
-          this._prevOtherYAxisRange = undefined
-          const otherAxisWidget = this._getYAxisInteractionWidgets(widget as YAxisWidget)
-            .find(axisWidget => axisWidget.getAxisComponent() !== currentYAxis)
-          if (otherAxisWidget) {
-            const otherAxis = otherAxisWidget.getAxisComponent()
-            this._prevOtherYAxisRange = { ...otherAxis.getRange() }
-          }
 
           this._yAxisStartScaleDistance = event.pageY
           this._syncCursor(widget)
@@ -260,22 +235,11 @@ export default class Event implements EventHandler {
           const consumed = widget.dispatchEvent('pressedMouseMoveEvent', event)
           if (!consumed && this._startScrollCoordinate) {
             const dualYPane = pane as DualYPane
-            const axes = typeof dualYPane.getVisibleYAxisWidgets === 'function'
-              ? dualYPane.getVisibleYAxisWidgets().map(widget => widget.getAxisComponent())
-              : [dualYPane.getYLeftAxisWidget().getAxisComponent(), dualYPane.getYRightAxisWidget().getAxisComponent()]
-
-            // 计算像素移动距离
-            let pixelDistance: number
-            const isReverse = (pane as DualYPane).getMainAxisWidget().getAxisComponent().isReverse()
-            if (isReverse) {
-              pixelDistance = this._startScrollCoordinate.y - event.y
-            } else {
-              pixelDistance = event.y - this._startScrollCoordinate.y
-            }
-
-            // 使用像素偏移量直接更新每个轴的范围
-            // 这样每个轴都会根据自己的内部范围进行等比例偏移
-            axes.forEach(axis => axis.offsetByPixel(pixelDistance, height))
+            const pixelDistance = event.y - this._startScrollCoordinate.y
+            dualYPane.getYScales().forEach(scale => {
+              const component = scale.getComponent()
+              component.offsetByPixel(component.isReverse() ? -pixelDistance : pixelDistance, height)
+            })
 
             const distance = event.x - this._startScrollCoordinate.x
             this._startScrollCoordinate = { x: event.x, y: event.y }
@@ -306,7 +270,7 @@ export default class Event implements EventHandler {
         case WidgetNameConstants.Y_AXIS: {
           const consumed = widget.dispatchEvent('pressedMouseMoveEvent', event)
           if (!consumed) {
-            const currentYAxis = (widget as YAxisWidget).getAxisComponent()
+            const currentYAxis = (widget as YAxisWidget).getScaleComponent()
             if (this._prevYAxisRange && currentYAxis.getScrollZoomEnabled()) {
               const { from, to } = this._prevYAxisRange
               const range = to - from
@@ -325,23 +289,6 @@ export default class Event implements EventHandler {
                 domainFrom: newRealFrom,
                 domainTo: newRealTo
               })
-
-              const otherAxisWidget = this._getYAxisInteractionWidgets(widget as YAxisWidget)
-                .find(axisWidget => axisWidget.getAxisComponent() !== currentYAxis)
-              if (otherAxisWidget && this._prevOtherYAxisRange) {
-                const otherAxis = otherAxisWidget.getAxisComponent()
-                const otherRangeSize = this._prevOtherYAxisRange.to - this._prevOtherYAxisRange.from
-                const otherNewRange = otherRangeSize * scale
-                const otherDifference = (otherNewRange - otherRangeSize) / 2
-                const otherFrom = this._prevOtherYAxisRange.from - otherDifference
-                const otherTo = this._prevOtherYAxisRange.to + otherDifference
-                otherAxis.setRange({
-                  from: otherFrom,
-                  to: otherTo,
-                  domainFrom: otherAxis.convertToRealValue(otherFrom),
-                  domainTo: otherAxis.convertToRealValue(otherTo)
-                })
-              }
 
               this._chart.requestViewportLayout()
             }
@@ -379,7 +326,6 @@ export default class Event implements EventHandler {
     this._mouseDownWidget = undefined
     this._startScrollCoordinate = undefined
     this._prevYAxisRange = undefined
-    this._prevOtherYAxisRange = undefined
     this._xAxisStartScaleCoordinate = undefined
     this._xAxisStartScaleDistance = 0
     this._xAxisScale = 1
@@ -500,9 +446,7 @@ export default class Event implements EventHandler {
           break
         }
         case WidgetNameConstants.Y_AXIS: {
-          this._getYAxisInteractionWidgets(widget as YAxisWidget).forEach(axisWidget => {
-            axisWidget.getAxisComponent().setAutoCalcTickFlag(true)
-          })
+          ;(widget as YAxisWidget).getScaleComponent().setAutoCalcTickFlag(true)
           this._chart.requestViewportLayout()
           consumed = true
           break

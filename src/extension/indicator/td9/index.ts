@@ -139,7 +139,7 @@ const td9: IndicatorTemplate<TD9BarOutput> = {
       values: [{ title: 'Setup: ', value: setup }]
     }
   },
-  draw: ({ ctx, kLineDataList, indicator, visibleRange, xAxis, yAxis }) => {
+  draw: ({ ctx, kLineDataList, indicator, visibleRange, xAxis, yScale }) => {
     const result = indicator.result
     if (result.length === 0) return true
     const render = resolveExtendData(indicator.extendData).render
@@ -156,8 +156,8 @@ const td9: IndicatorTemplate<TD9BarOutput> = {
       const perfected = setup.perfected === true
       const text = String(setup.value)
       const attrs: TextAttrs = setup.direction === 'BUY'
-        ? { x, y: yAxis.convertToPixel(bar.low) + 3, text, align: 'center', baseline: 'top' }
-        : { x, y: yAxis.convertToPixel(bar.high) - 3, text, align: 'center', baseline: 'bottom' }
+        ? { x, y: yScale.convertToPixel(bar.low) + 3, text, align: 'center', baseline: 'top' }
+        : { x, y: yScale.convertToPixel(bar.high) - 3, text, align: 'center', baseline: 'bottom' }
       drawTextMark(
         ctx,
         attrs,

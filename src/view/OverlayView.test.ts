@@ -5,6 +5,7 @@ import type Coordinate from '../common/Coordinate'
 import { Overlay } from '../component/Overlay'
 import { createFigure, drawStaticFigure } from '../extension/figure'
 import rect from '../extension/overlay/advanced/rect'
+import simpleTag from '../extension/overlay/simpleTag'
 import OverlayView from './OverlayView'
 
 const figureMock = vi.hoisted(() => {
@@ -109,5 +110,30 @@ describe('OverlayView control-point event binding', () => {
     expect(drawStaticFigure).toHaveBeenCalledTimes(8)
     expect(createFigure).toHaveBeenCalledTimes(4)
     expect(view.getEventChildCount()).toBe(4)
+  })
+})
+
+describe('Overlay Y-axis label projection', () => {
+  it('lets simpleTag project its fallback value through the visual axis', () => {
+    const figure = simpleTag.createYAxisFigures?.({
+      overlay: new Overlay(simpleTag, {
+        id: 'tag',
+        groupId: 'tag',
+        paneId: 'candle',
+        points: [{ dataIndex: 0, value: 110 }]
+      }),
+      coordinates: [{ x: 0, y: 20 }],
+      bounding: { width: 100, height: 100, left: 0, top: 0 },
+      barSpace: {} as never,
+      precision: { price: 2, volume: 0, max: 2, min: 0, excludePriceVolumeMax: 2, excludePriceVolumeMin: 0 },
+      thousandsSeparator: ',',
+      decimalFoldThreshold: 0,
+      dateTimeFormat: {} as never,
+      defaultStyles: getDefaultStyles().overlay,
+      isAlignLeft: false,
+      formatLabel: (_value, fallback) => `${fallback}%`
+    })
+
+    expect((figure as { attrs: { text: string } }).attrs.text).toBe('110.00%')
   })
 })

@@ -59,7 +59,7 @@ describe('TD9 rendering', () => {
       indicator: { result, extendData: undefined } as Indicator<TD9BarOutput>,
       visibleRange: { from: 0, to: 2 },
       xAxis: { convertToPixel: (value: number) => value },
-      yAxis: { convertToPixel: (value: number) => value }
+      yScale: { convertToPixel: (value: number) => value }
     } as never)
 
     expect(vi.mocked(drawStaticFigure).mock.calls).toHaveLength(3)

@@ -1,8 +1,13 @@
 import type Bounding from '../common/Bounding'
 import type { GridLineLevel } from '../common/Styles'
 import type VisibleRange from '../common/VisibleRange'
-import type XAxisWidget from '../widget/XAxisWidget'
-import type YAxisWidget from '../widget/YAxisWidget'
+import type Pane from '../pane/Pane'
+import type { PaneOptions } from '../pane/types'
+
+export interface AxisParent {
+  getPane: () => Pane
+  getBounding: () => Bounding
+}
 
 export interface AxisTick {
   coord: number
@@ -31,17 +36,17 @@ export interface AxisTemplate {
 }
 
 export default abstract class AxisImp implements Pick<AxisTemplate, 'createTicks'>, Axis {
-  private readonly _parent: XAxisWidget | YAxisWidget
+  private readonly _parent: AxisParent
 
-  // todo parent should be the axisWidget
-  constructor(parent: XAxisWidget | YAxisWidget) {
+  constructor(parent: AxisParent) {
     this._parent = parent
   }
 
-  getParent(): XAxisWidget | YAxisWidget { return this._parent }
+  getParent(): AxisParent { return this._parent }
 
   getScrollZoomEnabled(): boolean {
-    return this.getParent().getPane().getOptions().axisOptions?.scrollZoomEnabled ?? true
+    const pane = this.getParent().getPane() as Pane & { getOptions: () => PaneOptions }
+    return pane.getOptions().axisOptions?.scrollZoomEnabled ?? true
   }
 
   protected abstract calcRange(): VisibleRange

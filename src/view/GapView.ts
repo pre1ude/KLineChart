@@ -15,7 +15,7 @@ export default class GapView extends View {
 
     const bounding = widget.getBounding()
     const xAxis = (chart.getXAxisPane().getMainWidget() as XAxisWidget).getAxisComponent()
-    const yAxis = pane.getMainAxisWidget().getAxisComponent()
+    const yAxis = pane.getDefaultYScale().getComponent()
     const styles = chart.getChartStore().getStyles().gap
     const upRects: RectAttrs[] = []
     const downRects: RectAttrs[] = []

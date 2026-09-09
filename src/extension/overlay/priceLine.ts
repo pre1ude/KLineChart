@@ -7,9 +7,9 @@ const priceLine: OverlayTemplate = {
   needDefaultPointFigure: true,
   needDefaultXAxisFigure: false,
   needDefaultYAxisFigure: false,
-  createFigures: ({ coordinates, bounding, precision, overlay, thousandsSeparator, decimalFoldThreshold, yAxis }) => {
+  createFigures: ({ coordinates, bounding, precision, overlay, thousandsSeparator, decimalFoldThreshold, yScale }) => {
     const { value = 0 } = (overlay.points)[0]
-    const currentPrecision = (yAxis?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax
+    const currentPrecision = (yScale?.isInCandle() ?? true) ? precision.price : precision.excludePriceVolumeMax
     return [
       {
         key: 'line',
