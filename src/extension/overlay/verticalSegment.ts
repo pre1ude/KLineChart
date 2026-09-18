@@ -20,14 +20,17 @@ const verticalSegment: OverlayTemplate = {
   },
   onControlPointUpdate: (points, index, point) => {
     points[index] = point
-    // 垂直线：所有点共享相同的 dataIndex
-    points[0].dataIndex = point.dataIndex
-    points[1].dataIndex = point.dataIndex
+    // 垂直线：所有点共享相同的时间锚点
+    points[0].timestamp = point.timestamp
+    points[0].offset = point.offset
+    points[1].timestamp = point.timestamp
+    points[1].offset = point.offset
   },
   onDrawPointUpdate: (points, index, point) => {
     points[index] = point
     if (index === 1) {
-      points[0].dataIndex = point.dataIndex
+      points[0].timestamp = point.timestamp
+      points[0].offset = point.offset
     }
   }
 }

@@ -1,7 +1,7 @@
 import { UpdateLevel } from '../common/Updater'
 import { isValid, isString, isNumber } from '../common/utils/typeChecks'
 import { createId } from '../common/utils/id'
-import type { IPoint, Point } from '../common/Point'
+import { isValidPointOffset, type IPoint, type Point } from '../common/Point'
 import type { EventOverlayInfo, OverlayCreate, OverlayFilter, OverlayProps } from '../component/Overlay'
 import { OVERLAY_ID_PREFIX, Overlay } from '../component/Overlay'
 import { getOverlayTemplate } from '../extension/overlay'
@@ -11,10 +11,16 @@ import { logWarn } from '@/common/utils/logger'
 
 export type ProgressOverlay = Overlay
 
+interface OverlayProjectionCache {
+  dataVersion: number
+  points: Array<{ timestamp: number, offset: number, dataIndex: number | undefined }>
+}
+
 export default class OverlayStore {
   private readonly _chartStore: ChartStore
 
   private _instances = new Map<string, Overlay[]>()
+  private readonly _projectionCache = new WeakMap<Pick<Overlay, 'points'>, OverlayProjectionCache>()
 
   /**
    * Overlay in painting
@@ -32,6 +38,38 @@ export default class OverlayStore {
 
   constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
+  }
+
+  /** Shared derived geometry; the Overlay itself never retains chart services. */
+  getProjectedPoints(overlay: Pick<Overlay, 'points'>): IPoint[] | undefined {
+    const dataVersion = this._chartStore.getDataVersion()
+    let cache = this._projectionCache.get(overlay)
+    if (cache?.dataVersion !== dataVersion) {
+      cache = { dataVersion, points: [] }
+      this._projectionCache.set(overlay, cache)
+    }
+    const indices = cache.points
+    indices.length = overlay.points.length
+    const projected: IPoint[] = []
+    let resolved = true
+    overlay.points.forEach((point, index) => {
+      const offset = point.offset ?? 0
+      let cached = indices[index]
+      if (cached?.timestamp !== point.timestamp || cached?.offset !== offset) {
+        cached = {
+          timestamp: point.timestamp,
+          offset,
+          dataIndex: this._chartStore.externalToInternal(point).dataIndex
+        }
+        indices[index] = cached
+      }
+      if (isNumber(cached.dataIndex)) {
+        projected.push({ dataIndex: cached.dataIndex, value: point.value })
+      } else {
+        resolved = false
+      }
+    })
+    return resolved ? projected : undefined
   }
 
   setSelectedInfo(info?: EventOverlayInfo): void {
@@ -92,13 +130,13 @@ export default class OverlayStore {
 
   /**
    * 导出 overlay 数据为外部格式（用于持久化）
-   * 将内部 dataIndex 转换为外部 timestamp + offset
+   * 直接复制时间点，不依赖当前行情窗口或绘图缓存
    */
-  exportOverlay(id: string): { points: Array<Partial<Point>>, [key: string]: unknown } | undefined {
+  exportOverlay(id: string): { points: Point[], [key: string]: unknown } | undefined {
     const overlay = this.getInstanceById(id)
     if (!overlay) return undefined
 
-    const externalPoints = overlay.points.map(p => this._chartStore.internalToExternal(p))
+    const externalPoints = overlay.points.map(point => ({ ...point }))
 
     return {
       id: overlay.id,
@@ -119,8 +157,8 @@ export default class OverlayStore {
   /**
    * 导出所有 overlay 数据为外部格式
    */
-  exportAllOverlays(): Array<{ points: Array<Partial<Point>>, [key: string]: unknown }> {
-    const result: Array<{ points: Array<Partial<Point>>, [key: string]: unknown }> = []
+  exportAllOverlays(): Array<{ points: Point[], [key: string]: unknown }> {
+    const result: Array<{ points: Point[], [key: string]: unknown }> = []
     this._instances.forEach(overlays => {
       overlays.forEach(overlay => {
         const exported = this.exportOverlay(overlay.id)
@@ -210,6 +248,10 @@ export default class OverlayStore {
     const updatePaneIds: string[] = []
 
     const ids = overlays.map((overlay) => {
+      if (overlay.points?.some(point => !isValidPointOffset(point))) {
+        logWarn('createOverlay', 'points.offset', 'offset must be an integer.')
+        return undefined
+      }
       // 显式指定 pane 时直接使用；未显式指定时先不绑定 pane（首次点击再落位）
       const overlayPaneId = isString(overlay.paneId) && overlay.paneId.length > 0 ? overlay.paneId : undefined
       const fallbackPaneId = isString(paneId) && paneId.length > 0 ? paneId : undefined
@@ -233,30 +275,13 @@ export default class OverlayStore {
       const groupId = overlay.groupId ?? id
       const zLevel = overlay.zLevel ?? overlayTemplate.zLevel
 
-      // 尝试转换外部格式的点为内部格式
-      let internalPoints: IPoint[] | undefined
-      let skipDraw = false
-
-      if (overlay.points && overlay.points.length > 0) {
-        const converted = this._convertPoints(overlay.points)
-        if (converted) {
-          internalPoints = converted
-        } else {
-          // 转换失败，标记跳过绘制
-          skipDraw = true
-        }
-      }
-
       const overlayInstance = new Overlay(overlayTemplate, {
         ...overlay,
         id,
         groupId,
         paneId: targetPaneId,
-        zLevel,
-        points: internalPoints,
-        rawPoints: overlay.points,
+        zLevel
       })
-      overlayInstance.setSkipDraw(skipDraw)
 
       // 已完成且未指定 pane 的 overlay 仍按历史行为回退到主图
       if (overlayInstance.isCompleted() && targetPaneId.length === 0) {
@@ -293,25 +318,6 @@ export default class OverlayStore {
     }
 
     return ids
-  }
-
-  /**
-   * 将外部格式的点转换为内部格式
-   * @returns 转换成功返回内部格式点数组，失败返回 undefined
-   */
-  private _convertPoints(rawPoints: Point[]): IPoint[] | undefined {
-    const internalPoints: IPoint[] = []
-
-    for (const rawPoint of rawPoints) {
-      const internal = this._chartStore.externalToInternal(rawPoint)
-      // 检查转换是否有效（timestamp 不在数据范围内时 dataIndex 为 undefined）
-      if (!isNumber(internal.dataIndex) || !isNumber(internal.value)) {
-        return
-      }
-      internalPoints.push(internal as IPoint)
-    }
-
-    return internalPoints
   }
 
   getProgressOverlay(): ProgressOverlay | undefined {
@@ -357,25 +363,21 @@ export default class OverlayStore {
   }
 
   update(filter: OverlayFilter, props: Partial<OverlayProps>): boolean {
+    if (props.points?.some(point => !isValidPointOffset(point))) {
+      logWarn('overrideOverlay', 'points.offset', 'offset must be an integer.')
+      return false
+    }
     const updatePaneIds: string[] = []
     let shouldSort = false
 
     const instances = this.find(filter)
 
     instances.forEach(instance => {
-      // 如果更新了 points，需要转换并更新
-      let _props = props as Partial<Omit<OverlayProps, 'points'> & { points?: IPoint[] }>
-      if (props.points) {
-        instance.rawPoints = props.points
-        const converted = this._convertPoints(props.points)
-        instance.setSkipDraw(!converted)
-        _props = { ...props, points: converted }
-      }
-      const changes = instance.shouldUpdate(_props)
+      const changes = instance.shouldUpdate(props)
 
       if (changes.sort) shouldSort = true
       if (changes.draw) {
-        instance.update(_props)
+        instance.update(props)
         if (instance.paneId.length > 0 && !updatePaneIds.includes(instance.paneId)) {
           updatePaneIds.push(instance.paneId)
         }
@@ -491,112 +493,5 @@ export default class OverlayStore {
     }
 
     return false
-  }
-
-  /**
-   * 当向前加载数据时，更新 overlay 点的 dataIndex
-   */
-  updatePointPosition(offset: number): void {
-    if (offset <= 0) return
-
-    this._instances.forEach(overlays => {
-      overlays.forEach(o => {
-        if (!o.getSkipDraw()) {
-          o.points.forEach(point => {
-            point.dataIndex += offset
-          })
-        }
-      })
-    })
-
-    if (this._progressOverlay) {
-      this._progressOverlay.points.forEach(point => {
-        point.dataIndex += offset
-      })
-    }
-  }
-
-  /**
-   * 尝试恢复之前因为超出边界而 skipDraw 的 overlay
-   * @param side 'left' 表示检查左侧超出的（向前加载后），'right' 表示检查右侧超出的（向后加载后）
-   */
-  tryRecoverSkippedOverlays(side: 'left' | 'right'): void {
-    const dataList = this._chartStore.getDataList()
-    if (dataList.length === 0) return
-
-    const minTimestamp = dataList[0].timestamp
-    const maxTimestamp = dataList[dataList.length - 1].timestamp
-
-    const tryRecover = (overlay: Overlay): void => {
-      if (!overlay.getSkipDraw() || !overlay.rawPoints) return
-
-      // 检查是否是对应边界超出的情况
-      const shouldTry = overlay.rawPoints.some(p => {
-        if (!isNumber(p.timestamp)) return false
-        if (side === 'left') {
-          // 左侧超出：timestamp 小于数据源最小 timestamp
-          return p.timestamp < minTimestamp
-        }
-        // 右侧超出：timestamp 大于数据源最大 timestamp
-        return p.timestamp > maxTimestamp
-      })
-
-      if (shouldTry) {
-        const converted = this._convertPoints(overlay.rawPoints)
-        if (converted) {
-          overlay.updateInternalPoints(converted)
-        }
-      }
-    }
-
-    this._instances.forEach(overlays => {
-      overlays.forEach(tryRecover)
-    })
-  }
-
-  /**
-   * 数据替换前，将所有 overlay 的 points 转换为外部格式保存到 rawPoints
-   */
-  syncPointsToRaw(): void {
-    const convert = (point: IPoint): Point => this._chartStore.internalToExternal(point) as Point
-
-    this._instances.forEach(overlays => {
-      overlays.forEach(o => {
-        if (o.points.length > 0 && !o.getSkipDraw()) {
-          o.rawPoints = o.points.map(convert)
-        }
-      })
-    })
-
-    if (this._progressOverlay) {
-      this._progressOverlay.rawPoints = this._progressOverlay.points.map(convert)
-    }
-  }
-
-  /**
-   * 数据替换后，重新从 rawPoints 转换所有 overlay
-   */
-  reconvertAllFromRaw(): void {
-    this._instances.forEach(overlays => {
-      overlays.forEach(o => {
-        if (o.rawPoints) {
-          const converted = this._convertPoints(o.rawPoints)
-          if (converted) {
-            o.updateInternalPoints(converted)
-          } else {
-            o.setSkipDraw(true)
-          }
-        }
-      })
-    })
-
-    if (this._progressOverlay?.rawPoints) {
-      const converted = this._convertPoints(this._progressOverlay.rawPoints)
-      if (converted) {
-        this._progressOverlay.updateInternalPoints(converted)
-      } else {
-        this._progressOverlay.setSkipDraw(true)
-      }
-    }
   }
 }

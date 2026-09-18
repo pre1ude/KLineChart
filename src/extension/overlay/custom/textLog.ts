@@ -32,14 +32,8 @@ export const textLog: OverlayTemplate<ExtendDataType> = {
       style: PolygonType.StrokeFill
     }
   },
-  onBodyDrag({ point, prevPoint, prevPoints }) {
-    const difDataIndex = point.dataIndex - prevPoint.dataIndex
-    const difValue = point.value - prevPoint.value
-
-    this.points[1] = {
-      dataIndex: prevPoints[1].dataIndex + difDataIndex,
-      value: prevPoints[1].value + difValue
-    }
+  onBodyDrag({ movedPoints }) {
+    this.points[1] = movedPoints[1]
   },
   createFigures: ({ overlay, coordinates }) => {
     const text = String(overlay.extendData?.text ?? '')

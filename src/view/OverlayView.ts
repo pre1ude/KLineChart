@@ -4,7 +4,7 @@ import { type CustomApi, FormatDateType } from '../Options'
 import type BarSpace from '../common/BarSpace'
 import type Bounding from '../common/Bounding'
 import type Coordinate from '../common/Coordinate'
-import type { IPoint } from '../common/Point'
+import type { IPoint, Point } from '../common/Point'
 import { PolygonType, type OverlayStyle } from '../common/Styles'
 import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 import { isTransparent } from '../common/utils/color'
@@ -69,7 +69,7 @@ export default class OverlayView extends View {
     return name !== 'pressedMouseMoveEvent' && name !== 'mouseUpEvent'
   }
 
-  coordinateToPoint(overlay: Overlay, coordinate: Coordinate): Partial<IPoint> {
+  coordinateToPoint(overlay: Overlay, coordinate: Coordinate): Point | undefined {
     const point: Partial<IPoint> = {}
     const widget = this.getWidget()
     const pane = widget.getPane()
@@ -122,7 +122,9 @@ export default class OverlayView extends View {
       }
       point.value = value
     }
-    return point
+    if (chartStore.getDataList().length === 0) return undefined
+    const timePoint = chartStore.internalToExternal(point)
+    return isNumber(timePoint.timestamp) && isNumber(timePoint.value) ? timePoint as Point : undefined
   }
 
   override drawImp(ctx: CanvasRenderingContext2D): void {
@@ -252,9 +254,9 @@ export default class OverlayView extends View {
     drawDefaultFigures: boolean = true,
     ignoreEvents?: FigureEventType[]
   ): void {
-    if (overlay.getSkipDraw()) return
-
-    const { points } = overlay
+    const overlayStore = this.getWidget().getPane().getChart().getChartStore().getOverlayStore()
+    const points = overlayStore.getProjectedPoints(overlay)
+    if (!points) return
     const coordinates = points.map(point =>
       this.pointToCoordinate(point, xAxis, yScale)
     )
@@ -465,9 +467,10 @@ export default class OverlayView extends View {
 
     // 遍历坐标，收集文本
     const chartStore = this.getWidget().getPane().getChart().getChartStore()
+    const projectedPoints = chartStore.getOverlayStore().getProjectedPoints(overlay)
     coordinates.forEach((coordinate, index) => {
-      const point = overlay.points[index]
-      if (point && isNumber(point.dataIndex)) {
+      const point = projectedPoints?.[index]
+      if (point) {
         // 从 dataIndex 获取 timestamp
         const timestamp = chartStore.dataIndexToTimestamp(point.dataIndex)
         if (isNumber(timestamp)) {

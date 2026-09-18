@@ -2,7 +2,7 @@ import type KLineData from '../common/KLineData'
 import type Precision from '../common/Precision'
 import type VisibleData from '../common/VisibleData'
 import type { IPoint } from '../common/Point'
-import type { Point } from '../common/Point'
+import { isValidPointOffset, type Point } from '../common/Point'
 import { type DeepPartialStyles, getDefaultStyles, type Styles, type TooltipLegend } from '../common/Styles'
 import { clone, isArray, isBoolean, isNumber, isObject, isString, isValid, merge } from '../common/utils/typeChecks'
 import type LoadDataCallback from '../common/LoadDataCallback'
@@ -330,6 +330,8 @@ export default class ChartStore {
         this._decimalFoldThreshold = decimalFoldThreshold
       }
       if (isValid(options.isTimeShare)) {
+        // Time-share settings change timestamp/index mapping even without new bars.
+        this._dataVersion++
         this._isTimeShare = options.isTimeShare
         if (this._isTimeShare) {
           if ((this._timeShareTicks.length === 0) && options.timeShareTicks == null) {
@@ -585,7 +587,7 @@ export default class ChartStore {
    */
   externalToInternal(point: Partial<Point>): Partial<IPoint> {
     const result: Partial<IPoint> = {}
-    if (isNumber(point.timestamp)) {
+    if (isNumber(point.timestamp) && isValidPointOffset(point)) {
       const baseDataIndex = this.timestampToDataIndex(point.timestamp)
 
       if (baseDataIndex !== undefined) {
@@ -603,7 +605,7 @@ export default class ChartStore {
    */
   internalToExternal(point: Partial<IPoint>): Partial<Point> {
     const result: Partial<Point> = {}
-    if (isNumber(point.dataIndex)) {
+    if (isNumber(point.dataIndex) && Number.isInteger(point.dataIndex)) {
       const dataList = this._dataList
       const dataLength = dataList.length
 
@@ -619,8 +621,8 @@ export default class ChartStore {
         result.timestamp = dataList[dataLength - 1].timestamp
         result.offset = point.dataIndex - (dataLength - 1)
       } else {
-        // 在数据范围内
-        result.timestamp = this.dataIndexToTimestamp(point.dataIndex) ?? 0
+        // Anchor to the actual bar, not the virtual time-share tick label.
+        result.timestamp = dataList[point.dataIndex].timestamp
         result.offset = 0
       }
     }
@@ -672,10 +674,6 @@ export default class ChartStore {
           const offset = data.length
           if (offset > 0) {
             this._dataList = data.concat(this._dataList)
-            // 现有 overlay 的 dataIndex 偏移
-            this._overlayStore.updatePointPosition(offset)
-            // 尝试恢复之前因为超出左边界而 skipDraw 的 overlay
-            this._overlayStore.tryRecoverSkippedOverlays('left')
             adjustFlag = true
             gapContext = { kind: 'prepend', fromIndex: 0 }
           }
@@ -686,8 +684,6 @@ export default class ChartStore {
           const fromIndex = this._dataList.length
           if (data.length > 0) {
             this._dataList = this._dataList.concat(data)
-            // 尝试恢复之前因为超出右边界而 skipDraw 的 overlay
-            this._overlayStore.tryRecoverSkippedOverlays('right')
             adjustFlag = true
             gapContext = { kind: 'append', fromIndex }
           }
@@ -750,11 +746,8 @@ export default class ChartStore {
   }
 
   replaceData(dataList: KLineData[], more?: boolean, callback?: () => void): void {
-    // 数据替换：需要全量重新转换
-    this._overlayStore.syncPointsToRaw()
     this._dataList = dataList
     this._dataVersion++
-    this._overlayStore.reconvertAllFromRaw()
     this._backwardMore = more ?? false
     this._gapStore.recalculate(this._dataList, { kind: 'replace', fromIndex: 0 })
 

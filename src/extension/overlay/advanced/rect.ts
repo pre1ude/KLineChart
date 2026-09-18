@@ -29,19 +29,23 @@ const rect: OverlayTemplate = {
     const key = controlPointKey ?? controlPointKeys[index]
     switch (key) {
       case 'corner_00':
-        points[0].dataIndex = point.dataIndex
+        points[0].timestamp = point.timestamp
+        points[0].offset = point.offset
         points[0].value = point.value
         break
       case 'corner_10':
-        points[1].dataIndex = point.dataIndex
+        points[1].timestamp = point.timestamp
+        points[1].offset = point.offset
         points[0].value = point.value
         break
       case 'corner_11':
-        points[1].dataIndex = point.dataIndex
+        points[1].timestamp = point.timestamp
+        points[1].offset = point.offset
         points[1].value = point.value
         break
       case 'corner_01':
-        points[0].dataIndex = point.dataIndex
+        points[0].timestamp = point.timestamp
+        points[0].offset = point.offset
         points[1].value = point.value
         break
     }

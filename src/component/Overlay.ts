@@ -3,12 +3,13 @@ import type Bounding from '../common/Bounding'
 import type Coordinate from '../common/Coordinate'
 import type DeepPartial from '../common/DeepPartial'
 import type PartialExcept from '../common/PartialExcept'
-import type { IPoint, Point } from '../common/Point'
+import { isValidPointOffset, type IPoint, type Point } from '../common/Point'
 import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
 import type { DateTimeFormat } from '../common/utils/dateTimeFormat'
-import { clone, isNumber, isValid, merge } from '../common/utils/typeChecks'
+import { clone, isValid, merge } from '../common/utils/typeChecks'
+import { logWarn } from '../common/utils/logger'
 import { type XAxis } from './XAxis'
 import { type YScale } from './YScale'
 
@@ -153,6 +154,14 @@ export interface OverlayEventHandlers<E = DefaultExtendData> {
   onDeselected?: OverlayEventCallback<E>
 }
 
+export interface OverlayBodyDragParams {
+  point: Point
+  prevPoint: Point
+  prevPoints: Point[]
+  /** Proposed time points after translating the press-time geometry. */
+  movedPoints: Point[]
+}
+
 export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers<E> {
   id: string
   groupId: string
@@ -170,7 +179,7 @@ export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers<
   mode: OverlayMode
   modeSensitivity: number
   controlPointVisibility: OverlayControlPointVisibility
-  points: IPoint[]
+  points: Point[]
   extendData: E
   styles?: DeepPartial<OverlayStyle>
   createFigures?: OverlayCreateFiguresCallback<E>
@@ -178,15 +187,11 @@ export interface OverlayApi<E = DefaultExtendData> extends OverlayEventHandlers<
   createYAxisFigures?: OverlayCreateFiguresCallback<E>
   createControlPoints?: OverlayCreateControlPointsCallback<E>
   /** 绘制点更新回调，可通过 this 访问 overlay 实例 */
-  onDrawPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint) => void
+  onDrawPointUpdate?: (this: Overlay<E>, points: Point[], updateIndex: number, point: Point) => void
   /** 控制点更新回调，可通过 this 访问 overlay 实例 */
-  onControlPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint, controlPointKey?: string) => void
+  onControlPointUpdate?: (this: Overlay<E>, points: Point[], updateIndex: number, point: Point, controlPointKey?: string) => void
   /** 拖动 overlay 主体时的回调，可通过 this 访问 overlay 实例 */
-  onBodyDrag?: (this: Overlay<E>, params: {
-    point: IPoint
-    prevPoint: IPoint
-    prevPoints: IPoint[]
-  }) => void
+  onBodyDrag?: (this: Overlay<E>, params: OverlayBodyDragParams) => void
 }
 
 export type OverlayTemplate<E = DefaultExtendData> = PartialExcept<Omit<OverlayApi<E>, 'id' | 'groupId' | 'paneId' | 'points' | 'currentStep' | 'state'>, 'name'>
@@ -209,8 +214,23 @@ export interface OverlayFilter {
 
 export type OverlayProps = Omit<OverlayCreate, keyof OverlayFilter>
 
-/** 内部使用的 Props 类型，points 使用内部格式 (dataIndex + value) */
-export type InternalOverlayProps = Omit<OverlayProps, 'points'> & { points?: IPoint[] }
+// Runtime allowlist: spreading an instance must not update template methods or
+// import private/cache/service fields into the time-point model.
+const EDITABLE_OVERLAY_FIELDS = [
+  'zLevel', 'lock', 'visible', 'mode', 'modeSensitivity', 'controlPointVisibility',
+  'needDefaultPointFigure', 'needDefaultXAxisFigure', 'needDefaultYAxisFigure', 'extendData',
+  'onCreated', 'onRemoved', 'onDrawStart', 'onDrawing', 'onDrawEnd', 'onClick',
+  'onDoubleClick', 'onRightClick', 'onPressedMoveStart', 'onPressedMoving', 'onPressedMoveEnd',
+  'onMouseEnter', 'onMouseLeave', 'onSelected', 'onDeselected'
+] as const satisfies ReadonlyArray<keyof OverlayProps>
+
+function pickEditableProperties(overlay: Partial<Record<typeof EDITABLE_OVERLAY_FIELDS[number], unknown>>): Record<string, unknown> {
+  const properties: Record<string, unknown> = {}
+  for (const key of EDITABLE_OVERLAY_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(overlay, key)) properties[key] = overlay[key]
+  }
+  return properties
+}
 
 export interface ChangeInfo {
   sort: boolean
@@ -223,8 +243,7 @@ interface OverlayInitOption {
   groupId: string
   paneId: string
   zLevel?: number
-  points?: IPoint[]
-  rawPoints?: Point[]
+  points?: Point[]
   [key: string]: unknown
 }
 
@@ -237,8 +256,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   paneId: string
   state: OverlayState = OverlayState.CREATED
   currentStep: number = 0
-  points: IPoint[] = []
-  rawPoints?: Point[]
+  points: Point[] = []
 
   name: string = ''
   totalStep: number = 999 // 默认无限制步骤数(适用于anywave)
@@ -260,13 +278,9 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   createYAxisFigures?: OverlayCreateFiguresCallback<E>
   createControlPoints?: OverlayCreateControlPointsCallback<E>
 
-  onDrawPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint) => void
-  onControlPointUpdate?: (this: Overlay<E>, points: IPoint[], updateIndex: number, point: IPoint, controlPointKey?: string) => void
-  onBodyDrag?: (this: Overlay<E>, params: {
-    point: IPoint
-    prevPoint: IPoint
-    prevPoints: IPoint[]
-  }) => void
+  onDrawPointUpdate?: (this: Overlay<E>, points: Point[], updateIndex: number, point: Point) => void
+  onControlPointUpdate?: (this: Overlay<E>, points: Point[], updateIndex: number, point: Point, controlPointKey?: string) => void
+  onBodyDrag?: (this: Overlay<E>, params: OverlayBodyDragParams) => void
 
   // Event callbacks
   onCreated?: (this: Overlay<E>) => void
@@ -287,11 +301,13 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   onSelected?: OverlayEventCallback<E>
   onDeselected?: OverlayEventCallback<E>
 
-  private _skipDraw: boolean = false
-  private _prevPressedPoint?: IPoint
-  private _prevPressedPoints: IPoint[] = []
-
-  constructor(template: OverlayTemplate<E>, { id, groupId, paneId, zLevel, points, rawPoints, ...rest }: OverlayInitOption) {
+  constructor(
+    template: OverlayTemplate<E>,
+    { id, groupId, paneId, zLevel, points, ...rest }: OverlayInitOption
+  ) {
+    if (points?.some(point => !isValidPointOffset(point))) {
+      throw new RangeError('Overlay point offset must be an integer.')
+    }
     Object.assign(this, template)
     this.styles = clone(this.styles)
 
@@ -302,40 +318,18 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
       this.zLevel = zLevel
     }
 
-    // 保存原始点数据
-    if (rawPoints && rawPoints.length > 0) {
-      this.rawPoints = rawPoints
-    }
-
-    // 应用内部格式的点
     if (points && points.length > 0) {
       this._applyPoints(points)
-    } else if (rawPoints && rawPoints.length > 0) {
-      // 有 rawPoints 但没有 points（转换失败），根据 rawPoints 设置状态
-      this._applyStateFromRawPoints(rawPoints.length)
     }
 
     const { styles, ...otherRest } = rest
-    Object.assign(this, otherRest)
+    Object.assign(this, pickEditableProperties(otherRest))
     if (isValid(styles)) {
       this.styles ??= {}
       merge(this.styles, styles)
     }
 
     this.onCreated?.()
-  }
-
-  getSkipDraw(): boolean {
-    return this._skipDraw
-  }
-
-  setSkipDraw(skip: boolean): void {
-    this._skipDraw = skip
-  }
-
-  updateInternalPoints(points: IPoint[]): void {
-    this.points = points
-    this._skipDraw = false
   }
 
   getControlPoints(coordinates: Coordinate[]): OverlayControlPoint[] {
@@ -345,21 +339,13 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     }))
   }
 
-  update(overlay: Partial<Overlay<E>>): void {
-    const {
-      id,           // 不可修改 - 唯一标识符
-      paneId,       // 不可修改 - 会导致数据不一致
-      name,         // 不可修改 - overlay 类型
-      state,        // 不可修改 - 由内部状态机管理
-      currentStep,  // 不可修改 - 由 nextStep 管理
-      groupId,      // 可修改 - 允许重新分组
-      points,       // 特殊处理
-      styles,       // 特殊处理
-      ...others     // 其他属性可修改
-    } = overlay
-
-    // 合并其他可修改的属性
-    merge(this, others)
+  update(overlay: Partial<OverlayCreate<E>>): void {
+    if (overlay.points?.some(point => !isValidPointOffset(point))) {
+      logWarn('Overlay.update', 'points.offset', 'offset must be an integer.')
+      return
+    }
+    const { groupId, points, styles } = overlay
+    merge(this, pickEditableProperties(overlay))
 
     // groupId 可以修改（用于重新分组）
     if (isValid(groupId)) {
@@ -388,11 +374,11 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     }
   }
 
-  private _applyCommittedPoints(points: IPoint[]) {
+  private _applyCommittedPoints(points: Point[]) {
     const committedCount = this.currentStep
     const drawingPoint = this.points[committedCount]
 
-    const committedPoints = points.slice(0, committedCount)
+    const committedPoints = points.slice(0, committedCount).map(point => ({ ...point }))
     this.points = [...committedPoints]
 
     if (isValid(drawingPoint)) {
@@ -404,8 +390,8 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     }
   }
 
-  private _applyPoints(points: IPoint[]) {
-    const _points = points.length > this.totalStep ? points.slice(0, this.totalStep) : points
+  private _applyPoints(points: Point[]) {
+    const _points = points.slice(0, this.totalStep).map(point => ({ ...point }))
 
     this.currentStep = _points.length
 
@@ -427,55 +413,11 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     }
   }
 
-  /**
-   * 根据 rawPoints 数量设置状态（用于转换失败时）
-   * 不设置 points，只设置 state 和 currentStep
-   */
-  private _applyStateFromRawPoints(rawPointsCount: number) {
-    const count = Math.min(rawPointsCount, this.totalStep)
-    this.currentStep = count
-
-    if (count === 0) {
-      this.state = OverlayState.CREATED
-    } else if (count >= this.totalStep || this.totalStep >= 999) {
-      this.state = OverlayState.COMPLETED
-    } else {
-      this.state = OverlayState.DRAWING
-    }
-  }
-
-  shouldUpdate(nextProps: Partial<InternalOverlayProps>): ChangeInfo {
+  shouldUpdate(nextProps: Partial<OverlayProps>): ChangeInfo {
     const changes: string[] = []
-
-    // 检测每个属性的变化
-    if (nextProps.zLevel !== undefined && nextProps.zLevel !== this.zLevel) {
-      changes.push('zLevel')
+    for (const key of [...EDITABLE_OVERLAY_FIELDS, 'points', 'styles'] as const) {
+      if (isValid(nextProps[key]) && nextProps[key] !== this[key]) changes.push(key)
     }
-
-    if (nextProps.visible !== undefined && nextProps.visible !== this.visible) {
-      changes.push('visible')
-    }
-
-    if (nextProps.points !== undefined && nextProps.points !== this.points) {
-      changes.push('points')
-    }
-
-    if (nextProps.extendData !== undefined && nextProps.extendData !== this.extendData) {
-      changes.push('extendData')
-    }
-
-    if (nextProps.mode !== undefined && nextProps.mode !== this.mode) {
-      changes.push('mode')
-    }
-
-    if (nextProps.controlPointVisibility !== undefined && nextProps.controlPointVisibility !== this.controlPointVisibility) {
-      changes.push('controlPointVisibility')
-    }
-
-    if (nextProps.styles !== this.styles) {
-      changes.push('styles')
-    }
-
     return {
       sort: changes.includes('zLevel'),
       draw: changes.length > 0,
@@ -544,59 +486,48 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     return false
   }
 
-  updateDrawPoint(point: IPoint): void {
+  updateDrawPoint(point: Point): void {
+    if (!isValidPointOffset(point)) {
+      logWarn('Overlay.updateDrawPoint', 'point.offset', 'offset must be an integer.')
+      return
+    }
+    const nextPoint = { ...point }
     if (this.onDrawPointUpdate) {
-      this.onDrawPointUpdate(this.points, this.currentStep, point)
+      this.onDrawPointUpdate(this.points, this.currentStep, nextPoint)
       return
     }
-    this._updatePoint(this.points[this.currentStep] ??= ({} as unknown as IPoint), point)
+    this.points[this.currentStep] = nextPoint
   }
 
-  onDragMoveControlPoint(point: IPoint, pointIndex: number, controlPointKey?: string): void {
+  onDragMoveControlPoint(point: Point, pointIndex: number, controlPointKey?: string): void {
+    if (!isValidPointOffset(point)) {
+      logWarn('Overlay.onDragMoveControlPoint', 'point.offset', 'offset must be an integer.')
+      return
+    }
+    const nextPoint = { ...point }
     if (this.onControlPointUpdate) {
-      this.onControlPointUpdate(this.points, pointIndex, point, controlPointKey)
+      this.onControlPointUpdate(this.points, pointIndex, nextPoint, controlPointKey)
+    } else if (this.points[pointIndex]) {
+      this.points[pointIndex] = nextPoint
+    }
+  }
+
+  /** Apply an interaction's proposed time points without querying chart data. */
+  onDragMoveBody(params: OverlayBodyDragParams): void {
+    if (params.movedPoints.some(point => !isValidPointOffset(point))) {
+      logWarn('Overlay.onDragMoveBody', 'movedPoints.offset', 'offset must be an integer.')
       return
     }
-    const targetPoint = this.points[pointIndex]
-    if (targetPoint) {
-      this._updatePoint(targetPoint, point)
-    }
-  }
-
-  private _updatePoint(p: IPoint, np: IPoint) {
-    p.dataIndex = np.dataIndex
-    p.value = np.value
-  }
-
-  startPressedMove(point: IPoint): void {
-    this._prevPressedPoint = { ...point }
-    this._prevPressedPoints = this.points.map(p => ({ ...p }))
-  }
-
-  onDragMoveBody(point: IPoint): void {
-    if (!this._prevPressedPoint) return
-
+    const movedPoints = params.movedPoints.map(point => ({ ...point }))
     if (this.onBodyDrag) {
       this.onBodyDrag({
-        point,
-        prevPoint: this._prevPressedPoint,
-        prevPoints: this._prevPressedPoints
+        point: { ...params.point },
+        prevPoint: { ...params.prevPoint },
+        prevPoints: params.prevPoints.map(point => ({ ...point })),
+        movedPoints
       })
-      return
+    } else {
+      this.points = movedPoints
     }
-
-    // 内部使用 dataIndex，计算简单直接
-    const difDataIndex = isNumber(point.dataIndex) && isNumber(this._prevPressedPoint.dataIndex)
-      ? point.dataIndex - this._prevPressedPoint.dataIndex
-      : 0
-
-    const difValue = isNumber(point.value) && isNumber(this._prevPressedPoint.value)
-      ? point.value - this._prevPressedPoint.value
-      : 0
-
-    this.points = this._prevPressedPoints.map((p) => ({
-      dataIndex: p.dataIndex + difDataIndex,
-      value: p.value + difValue
-    }))
   }
 }

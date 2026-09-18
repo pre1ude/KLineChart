@@ -73,8 +73,8 @@ function createRectOverlay(): Overlay {
     groupId: 'overlay_rect',
     paneId: 'candle',
     points: [
-      { dataIndex: 10, value: 100 },
-      { dataIndex: 20, value: 200 }
+      { timestamp: 10, value: 100 },
+      { timestamp: 20, value: 200 }
     ],
     controlPointVisibility: 'always'
   })
@@ -120,7 +120,7 @@ describe('Overlay Y-axis label projection', () => {
         id: 'tag',
         groupId: 'tag',
         paneId: 'candle',
-        points: [{ dataIndex: 0, value: 110 }]
+        points: [{ timestamp: 0, value: 110 }]
       }),
       coordinates: [{ x: 0, y: 20 }],
       bounding: { width: 100, height: 100, left: 0, top: 0 },

@@ -1,6 +1,6 @@
 /**
- * 内部点表示 - 用于所有内部计算和渲染
- * 简化内部逻辑，只需要 dataIndex 和 value
+ * 派生几何点 - 用于坐标转换和临时绘图计算
+ * 不作为 Overlay 的业务状态或持久化数据
  */
 export interface IPoint {
   /**
@@ -15,7 +15,7 @@ export interface IPoint {
 }
 
 /**
- * 外部点表示 - 用于 API 输入输出和持久化
+ * 画线时间点 - Overlay 内部状态、API 输入输出和持久化统一使用
  * 使用 timestamp + offset 可以在数据变化时保持位置稳定
  */
 export interface Point {
@@ -33,10 +33,15 @@ export interface Point {
   value: number
 
   /**
-   * 相对于 timestamp 对应数据点的偏移量（以 bar 为单位）
+   * 相对于 timestamp 对应数据点的整数偏移量（以 bar 为单位）
+   * 仅接受整数，拒绝小数、NaN 和 Infinity，不进行取整
    * - 0: 无偏移，在数据范围内, 与 undefined 等价
    * - 正数: 向右偏移，超出最后一个数据点
    * - 负数: 向左偏移，超出第一个数据点
    */
   offset?: number
+}
+
+export function isValidPointOffset(point: Pick<Point, 'offset'>): boolean {
+  return point.offset === undefined || Number.isInteger(point.offset)
 }

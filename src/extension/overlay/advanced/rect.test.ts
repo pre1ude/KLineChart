@@ -9,8 +9,8 @@ function createRect(): Overlay {
     groupId: 'overlay_rect',
     paneId: 'candle',
     points: [
-      { dataIndex: 10, value: 100 },
-      { dataIndex: 20, value: 200 }
+      { timestamp: 10, value: 100 },
+      { timestamp: 20, value: 200 }
     ]
   })
 }
@@ -33,14 +33,14 @@ describe('rect control points', () => {
   })
 
   it.each([
-    ['corner_00', 0, [{ dataIndex: 30, value: 300 }, { dataIndex: 20, value: 200 }]],
-    ['corner_10', 1, [{ dataIndex: 10, value: 300 }, { dataIndex: 30, value: 200 }]],
-    ['corner_11', 2, [{ dataIndex: 10, value: 100 }, { dataIndex: 30, value: 300 }]],
-    ['corner_01', 3, [{ dataIndex: 30, value: 100 }, { dataIndex: 20, value: 300 }]]
+    ['corner_00', 0, [{ timestamp: 30, value: 300 }, { timestamp: 20, value: 200 }]],
+    ['corner_10', 1, [{ timestamp: 10, value: 300 }, { timestamp: 30, value: 200 }]],
+    ['corner_11', 2, [{ timestamp: 10, value: 100 }, { timestamp: 30, value: 300 }]],
+    ['corner_01', 3, [{ timestamp: 30, value: 100 }, { timestamp: 20, value: 300 }]]
   ] as const)('maps %s drag updates back to the two stored anchors', (key, index, expectedPoints) => {
     const overlay = createRect()
 
-    overlay.onDragMoveControlPoint({ dataIndex: 30, value: 300 }, index, key)
+    overlay.onDragMoveControlPoint({ timestamp: 30, value: 300 }, index, key)
 
     expect(overlay.points).toEqual(expectedPoints)
   })

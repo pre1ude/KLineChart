@@ -341,6 +341,7 @@ export type {
   OverlayMode,
   OverlayControlPoint,
   OverlayControlPointVisibility,
+  OverlayBodyDragParams,
   EventOverlayInfo,
   OverlayEventCallback,
   OverlayMouseTouchEvent

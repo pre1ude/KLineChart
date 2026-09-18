@@ -1,36 +1,44 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type Chart from '../../Chart'
+import type { Point } from '../../common/Point'
+import { LoadDataType } from '../../common/LoadDataCallback'
 import type { MouseTouchEvent } from '../../common/SyntheticEvent'
 import { EventPhase } from '../../common/SyntheticEvent'
 import { Overlay } from '../../component/Overlay'
 import horizontalStraightLine from '../../extension/overlay/horizontalStraightLine'
 import segment from '../../extension/overlay/segment'
+import ChartStore from '../../store/ChartStore'
 import { OverlayLayer } from './OverlayLayer'
 
 const overlayViewMock = vi.hoisted(() => ({
-  handlers: new Map<string, (event: MouseTouchEvent) => void>()
+  handlers: new Map<string, (event: MouseTouchEvent) => void>(),
+  convert: undefined as ((event: MouseTouchEvent) => Point | undefined) | undefined
 }))
 
 vi.mock('../../view/OverlayView', () => ({
   default: class OverlayViewMock {
+    private readonly _convert = overlayViewMock.convert
     addEventListener(name: string, callback: (event: MouseTouchEvent) => void): this {
       overlayViewMock.handlers.set(name, callback)
       return this
     }
 
-    coordinateToPoint(_overlay: unknown, event: MouseTouchEvent): { dataIndex: number, value: number } {
-      return { dataIndex: event.x, value: event.y }
+    coordinateToPoint(_overlay: unknown, event: MouseTouchEvent): Point | undefined {
+      if (this._convert) return this._convert(event)
+      return { timestamp: event.x, value: event.y }
     }
 
     draw = vi.fn()
   }
 }))
 
-describe('OverlayLayer progress drawing interaction', () => {
-  beforeEach(() => {
-    overlayViewMock.handlers.clear()
-  })
+beforeEach(() => {
+  overlayViewMock.handlers.clear()
+  overlayViewMock.convert = undefined
+})
 
+describe('OverlayLayer progress drawing interaction', () => {
   it('previews the next point while the first point is held and moved', () => {
     const onDrawStart = vi.fn()
     const onDrawing = vi.fn()
@@ -45,8 +53,8 @@ describe('OverlayLayer progress drawing interaction', () => {
     fixture.handler('pressedMouseMoveEvent')?.(createEvent(20, 20))
 
     expect(overlay.points).toEqual([
-      { dataIndex: 10, value: 10 },
-      { dataIndex: 20, value: 20 }
+      { timestamp: 10, value: 10 },
+      { timestamp: 20, value: 20 }
     ])
     expect(overlay.currentStep).toBe(1)
     expect(overlay.isDrawing()).toBe(true)
@@ -56,8 +64,8 @@ describe('OverlayLayer progress drawing interaction', () => {
     fixture.handler('mouseUpEvent')?.(createEvent(20, 20))
 
     expect(overlay.points).toEqual([
-      { dataIndex: 10, value: 10 },
-      { dataIndex: 20, value: 20 }
+      { timestamp: 10, value: 10 },
+      { timestamp: 20, value: 20 }
     ])
   })
 
@@ -74,7 +82,7 @@ describe('OverlayLayer progress drawing interaction', () => {
     fixture.handler('mouseUpEvent')?.(event)
     fixture.handler('mouseClickEvent')?.(event)
 
-    expect(overlay.points).toEqual([{ dataIndex: 10, value: 10 }])
+    expect(overlay.points).toEqual([{ timestamp: 10, value: 10 }])
     expect(overlay.currentStep).toBe(1)
     expect(overlay.isDrawing()).toBe(true)
   })
@@ -91,13 +99,127 @@ describe('OverlayLayer progress drawing interaction', () => {
     fixture.handler('mouseDownEvent')?.(createEvent(10, 10))
     fixture.handler('pressedMouseMoveEvent')?.(createEvent(20, 20))
 
-    expect(overlay.points).toEqual([{ dataIndex: 10, value: 10 }])
+    expect(overlay.points).toEqual([{ timestamp: 10, value: 10 }])
     expect(overlay.currentStep).toBe(1)
     expect(overlay.isCompleted()).toBe(true)
     expect(fixture.progressOverlayComplete).toHaveBeenCalledTimes(1)
     expect(onDrawEnd).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('OverlayLayer time-point editing', () => {
+  const anchors = [{ timestamp: 100, offset: -1, value: 10 }, { timestamp: 200, offset: 2, value: 20 }]
+
+  it('keeps both time expressions during a pure vertical body drag', () => {
+    const { overlay, startDrag, move } = createStoredFixture(anchors, [100, 200, 300, 400])
+    startDrag(1, 10)
+    move(1, 15)
+    expect(overlay.points).toEqual(anchors.map(point => ({ ...point, value: point.value + 5 })))
+  })
+
+  it('reprojects the press-time anchors when history is loaded during a drag', () => {
+    const { store, overlay, startDrag, move } = createStoredFixture(anchors, [100, 200, 300, 400])
+    startDrag(1, 10)
+    store.addData(data([50]), LoadDataType.Backward)
+    move(2, 15)
+    expect(overlay.points).toEqual(anchors.map(point => ({ ...point, value: point.value + 5 })))
+    move(3, 20)
+    expect(overlay.points).toEqual([{ timestamp: 100, offset: 0, value: 20 }, { timestamp: 400, offset: 1, value: 30 }])
+  })
+
+  it('translates by bar positions across unequal timestamp intervals', () => {
+    const { overlay, startDrag, move } = createStoredFixture([{ timestamp: 100, value: 10 }, { timestamp: 200, offset: 1, value: 20 }], [100, 200, 500, 900])
+    startDrag(1, 10)
+    move(2, 15)
+    expect(overlay.points).toEqual([{ timestamp: 200, offset: 0, value: 15 }, { timestamp: 900, offset: 0, value: 25 }])
+  })
+
+  it('preserves the original offset when a control point only changes price', () => {
+    const { overlay, startDrag, move } = createStoredFixture(anchors, [100, 200, 300, 400])
+    startDrag(3, 20, 1)
+    move(3, 25)
+    expect(overlay.points).toEqual([anchors[0], { ...anchors[1], value: 25 }])
+  })
+
+  it('moves both vertical anchors horizontally and preserves them on a later price edit', () => {
+    const { store, overlay, startDrag, move, release } = createStoredFixture([{ timestamp: 100, value: 10 }, { timestamp: 100, value: 20 }], [100, 200], 'verticalSegment')
+    startDrag(0, 10, 0)
+    move(3, 30)
+    release()
+    expect(overlay.points).toEqual([{ timestamp: 200, offset: 2, value: 30 }, { timestamp: 200, offset: 2, value: 20 }])
+    store.addData(data([300, 400]), LoadDataType.Forward)
+    startDrag(3, 30, 0)
+    move(3, 35)
+    expect(overlay.points).toEqual([{ timestamp: 200, offset: 2, value: 35 }, { timestamp: 200, offset: 2, value: 20 }])
+  })
+
+  it('preserves a rectangle anchor when its virtual corner only changes price', () => {
+    const { overlay, startDrag, move } = createStoredFixture(anchors, [100, 200, 300, 400], 'rect')
+    startDrag(3, 10, 1, 'corner_10')
+    move(3, 50)
+    expect(overlay.points).toEqual([{ ...anchors[0], value: 50 }, anchors[1]])
+  })
+
+  it('lets a custom body drag use translated time points for just one anchor', () => {
+    const { overlay, startDrag, move } = createStoredFixture([{ timestamp: 100, value: 10 }, { timestamp: 200, offset: 1, value: 20 }], [100, 200, 500, 900], 'textLog')
+    startDrag(1, 10)
+    move(2, 15)
+    expect(overlay.points).toEqual([{ timestamp: 100, value: 10 }, { timestamp: 900, offset: 0, value: 25 }])
+  })
+
+  it('discards a released gesture and takes a new time-point snapshot on the next press', () => {
+    const { overlay, startDrag, move, release } = createStoredFixture([{ timestamp: 100, value: 10 }, { timestamp: 200, value: 20 }], [100, 200, 300, 400])
+    startDrag(0, 10)
+    move(1, 15)
+    release()
+    const afterRelease = overlay.points.map(point => ({ ...point }))
+    move(2, 20)
+    expect(overlay.points).toEqual(afterRelease)
+    startDrag(1, 15)
+    move(2, 20)
+    expect(overlay.points).toEqual([{ timestamp: 300, offset: 0, value: 20 }, { timestamp: 400, offset: 0, value: 30 }])
+    expect(() => JSON.stringify(overlay)).not.toThrow()
+  })
+
+  it('does not let template mutations change the layer gesture snapshot', () => {
+    const { overlay, startDrag, move } = createStoredFixture([{ timestamp: 100, value: 10 }, { timestamp: 200, value: 20 }], [100, 200, 300, 400])
+    overlay.onBodyDrag = function ({ prevPoint, prevPoints, movedPoints }) {
+      this.points = movedPoints
+      prevPoint.timestamp = 999
+      prevPoints[0].timestamp = 999
+    }
+    startDrag(0, 10)
+    move(1, 15)
+    move(2, 20)
+    expect(overlay.points).toEqual([{ timestamp: 300, offset: 0, value: 20 }, { timestamp: 400, offset: 0, value: 30 }])
+  })
+})
+
+function data(timestamps: number[]) {
+  return timestamps.map(timestamp => ({ timestamp, open: 10, high: 20, low: 5, close: 15 }))
+}
+
+function createStoredFixture(points: Point[], timestamps: number[], name = 'segment') {
+  const chart = { refreshViewportLayout: vi.fn(), updatePane: vi.fn(), getChartStore: () => store }
+  const store = new ChartStore(chart as unknown as Chart)
+  store.addData(data(timestamps), LoadDataType.Init)
+  const [id] = store.getOverlayStore().addInstances([{ name, paneId: 'candle', points }])
+  const overlay = store.getOverlayStore().getInstanceById(id!)!
+  overlayViewMock.convert = event => store.internalToExternal({ dataIndex: event.x, value: event.y }) as Point
+  new OverlayLayer({ getPane: () => ({ getId: () => 'candle', getChart: () => chart }), addChild: vi.fn() } as never)
+  const handlers = new Map(overlayViewMock.handlers)
+  return {
+    store,
+    overlay,
+    startDrag(x: number, value: number, controlIndex?: number, controlKey = '') {
+      const event = createEvent(x, value)
+      event.target = { data: { overlayId: id, interactType: controlIndex === undefined ? 'body' : 'control-point', figureIndex: controlIndex ?? 0, figureKey: controlKey, attrsIndex: 0 } } as never
+      handlers.get('mouseDownEvent')?.(event)
+    },
+    move(x: number, value: number) { handlers.get('pressedMouseMoveEvent')?.(createEvent(x, value)) },
+    release() { handlers.get('mouseUpEvent')?.(createEvent(0, 0)) }
+  }
+}
 
 function createFixture(overlay: Overlay): {
   handler: (name: string) => ((event: MouseTouchEvent) => void) | undefined
@@ -121,7 +243,7 @@ function createFixture(overlay: Overlay): {
   }
   const chartStore = {
     getOverlayStore: () => overlayStore,
-    internalToExternal: (point: { dataIndex?: number, value?: number }) => point
+    internalToExternal: (point: { dataIndex?: number, value?: number }) => ({ timestamp: point.dataIndex, value: point.value })
   }
   const chart = {
     getChartStore: () => chartStore,
