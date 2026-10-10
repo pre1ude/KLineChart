@@ -102,7 +102,7 @@ export default defineConfig(({ mode }) => {
     test: {
       globals: true,
       environment: 'node',
-      include: ['src/**/*.test.ts'],
+      include: ['src/**/*.test.ts', 'tests/html/overlay/period-points/**/*.test.ts'],
       coverage: {
         provider: 'v8',
         reporter: ['text', 'html'],

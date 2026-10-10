@@ -172,6 +172,7 @@ export interface Chart {
   }
   resetOverlay: (id: string) => void
   getOverlayById: (id: string) => Overlay | undefined
+  getOverlays: (filter?: OverlayFilter) => Overlay[]
   overrideOverlay: (override: Partial<OverlayCreate>) => void
   removeOverlay: (remove?: string | OverlayFilter) => void
   deselectOverlay: () => void
@@ -569,6 +570,8 @@ export default class ChartImp implements Chart {
   }
 
   getContainer(): HTMLElement { return this._container }
+
+  syncOverlayCursor(): void { this._chartEvent?.syncCursor() }
 
   getChartStore(): ChartStore { return this._chartStore }
 
@@ -1156,7 +1159,7 @@ export default class ChartImp implements Chart {
   }
 
   applyNewData(data: KLineData[], more?: boolean, callback?: () => void): void {
-    this._chartStore.addData(data, LoadDataType.Init, more, callback)
+    this._chartStore.applyDataSnapshot(data, more, callback)
   }
 
   prependData(data: KLineData[], more?: boolean, callback?: () => void): void {
@@ -1311,6 +1314,10 @@ export default class ChartImp implements Chart {
   }
 
   createIndicator(value: string | IndicatorCreate, isStack?: boolean, paneOptions?: PaneOptions, callback?: () => void): string | undefined {
+    const epoch = this._chartStore.getDatasetEpoch()
+    let createdInstance: Indicator | undefined
+    const isCurrent = (): boolean => !this._chartStore.isDestroyed() && epoch === this._chartStore.getDatasetEpoch() &&
+      createdInstance !== undefined && this._chartStore.getIndicatorStore().getInstances(createdInstance.paneId).includes(createdInstance)
     const indicator = isString(value) ? { name: value } : value
     if (getIndicatorTemplate(indicator.name) == null) {
       logWarn('createIndicator', indicator.name, 'indicator not supported, you may need to use registerIndicator to add one!!!')
@@ -1331,7 +1338,10 @@ export default class ChartImp implements Chart {
         logWarn('createIndicator', 'yScaleId', `yScale '${indicator.yScaleId}' does not exist in pane '${realPaneId}'.`)
         return undefined
       }
-      this._chartStore.getIndicatorStore().addInstance(indicator, realPaneId, isStack ?? false).then(_ => {
+      const creation = this._chartStore.getIndicatorStore().addInstance(indicator, realPaneId, isStack ?? false)
+      createdInstance = this._chartStore.getIndicatorStore().getInstances(realPaneId).find(instance => instance.id === indicator.id)
+      void creation.then(committed => {
+        if (!committed || !isCurrent()) return
         let forceShouldAdjust = false
         currentPane.getYScales().forEach(scale => {
           forceShouldAdjust = scale.getComponent().buildTicks(true) || forceShouldAdjust
@@ -1359,11 +1369,13 @@ export default class ChartImp implements Chart {
       indicator.paneId = realPaneId
       indicator.yScaleId = pane.getDefaultYScaleId()
       const indicatorCalcPromise = this._chartStore.getIndicatorStore().addInstance(indicator, realPaneId, isStack ?? false)
+      createdInstance = this._chartStore.getIndicatorStore().getInstances(realPaneId).find(instance => instance.id === indicator.id)
       this._refreshExactLayoutIfReady()
-      void indicatorCalcPromise.finally(() => {
+      void indicatorCalcPromise.then(committed => {
+        if (!committed || !isCurrent()) return
         this.refreshPaneLayout()
-        callback?.()
-      })
+        if (isCurrent()) callback?.()
+      }).catch(() => {})
     }
     return realPaneId
   }
@@ -1401,16 +1413,17 @@ export default class ChartImp implements Chart {
       }
     }
     this._chartStore.getIndicatorStore().override(override, paneId).then(
-      ([onlyUpdateFlag, resizeFlag]) => {
+      ([onlyUpdateFlag, resizeFlag, isCurrent]) => {
+        if (!isCurrent()) return
         if ('yScaleId' in override) {
           this._refreshExactLayout(false)
-          callback?.()
+          if (isCurrent()) callback?.()
         } else if (resizeFlag) {
           this.refreshViewportLayout()
-          callback?.()
+          if (isCurrent()) callback?.()
         } else if (onlyUpdateFlag) {
           this._refreshPaneViews()
-          callback?.()
+          if (isCurrent()) callback?.()
         }
       }
     ).catch(() => {})
@@ -1482,6 +1495,7 @@ export default class ChartImp implements Chart {
   createOverlay(value: OverlayCreate, paneId?: string): string | undefined
   createOverlay(value: Array<string | OverlayCreate>, paneId?: string): Array<string | undefined>
   createOverlay(value: string | OverlayCreate | Array<string | OverlayCreate>, paneId?: string): string | undefined | Array<string | undefined> {
+    if (this._chartStore.isDestroyed()) throw new Error('Chart is destroyed.')
     let overlays: OverlayCreate[] = []
     if (isString(value)) {
       overlays = [{ name: value }]
@@ -1497,7 +1511,7 @@ export default class ChartImp implements Chart {
     }
 
     const ids = this._chartStore.getOverlayStore().addInstances(overlays, paneId)
-    this._chartEvent.syncCursor()
+    this.syncOverlayCursor()
     if (isArray(value)) {
       return ids
     }
@@ -1505,11 +1519,8 @@ export default class ChartImp implements Chart {
   }
 
   resetOverlay(id: string): void {
-    const overlay = this.getOverlayById(id)
-    if (overlay) {
-      overlay.reset()
-      this.updatePane(UpdateLevel.Overlay)
-    }
+    this._chartStore.getOverlayStore().resetInstance(id)
+    this.updatePane(UpdateLevel.Overlay)
   }
 
   getOverlayById(id: string): Overlay | undefined {
@@ -1534,52 +1545,11 @@ export default class ChartImp implements Chart {
       }
     }
     this._chartStore.getOverlayStore().removeInstance(OverlayFilter)
-    this._chartEvent.syncCursor()
+    this.syncOverlayCursor()
   }
 
   deselectOverlay(): void {
-    const overlayStore = this._chartStore.getOverlayStore()
-    const selectedInfo = overlayStore.getSelectedInfo()
-
-    if (selectedInfo) {
-      // 触发取消选中回调
-      const overlay = overlayStore.getInstanceById(selectedInfo.overlay.id)
-      if (overlay) {
-        // 创建一个模拟的鼠标事件用于回调
-        const mockEvent = {
-          x: 0,
-          y: 0,
-          pageX: 0,
-          pageY: 0,
-          isTouch: false,
-          preventDefault: () => {},
-          stopPropagation: () => {}
-        } as any
-
-        // 使用现有的事件创建函数
-        const overlayEvent = {
-          ...mockEvent,
-          overlayData: {
-            overlay,
-            paneId: selectedInfo.paneId,
-            interactType: selectedInfo.interactType,
-            figureKey: selectedInfo.figureKey,
-            figureIndex: selectedInfo.figureIndex,
-            attrsIndex: selectedInfo.attrsIndex
-          }
-        }
-
-        overlay.onDeselected?.(overlayEvent)
-      }
-
-      // 清除选中状态
-      overlayStore.clearSelectedInfo()
-
-      // TODO: check
-      // 更新相关pane的显示
-      this.updatePane(UpdateLevel.Overlay, selectedInfo.paneId)
-      // this.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
-    }
+    this._chartStore.getOverlayStore().deselectOverlay()
   }
 
   setPaneOptions(options: PaneOptions): void {

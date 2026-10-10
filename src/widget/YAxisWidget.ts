@@ -62,6 +62,11 @@ export default class YAxisWidget extends DrawWidget<DualYPane> {
     this.setOptions(yAxisOptions)
   }
 
+  override destroy(): void {
+    this._overlayYAxisView.clear()
+    super.destroy()
+  }
+
   getOptions(): YAxisOptions {
     return this._axisOptions
   }

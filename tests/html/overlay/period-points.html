@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>业务层跨周期画线 · 多资产 示例</title>
+  <style>
+    body { margin: 24px; font: 14px/1.5 system-ui, sans-serif; color: #233047; background: #f6f8fb; }
+    h1 { font-size: 22px; }
+    .controls { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+    button, select { padding: 6px 12px; }
+    #chart { height: 440px; background: white; border: 1px solid #dce2ea; }
+    textarea { box-sizing: border-box; width: 100%; height: 220px; padding: 12px; font: 13px/1.5 monospace; }
+    #status { min-height: 24px; }
+    #chart[inert] { opacity: 0.55; }
+    button:disabled, select:disabled { cursor: not-allowed; opacity: 0.5; }
+    #market { color: #526078; }
+  </style>
+</head>
+<body>
+  <h1>业务层跨周期画线 · 多资产</h1>
+  <p id="asset-description">真实行情本地快照，非实时推送。<a id="source" href="https://github.com/binance/binance-public-data/" target="_blank" rel="noopener noreferrer">数据来源</a></p>
+  <p id="snapshot-time"></p>
+  <p>初始三角形使用已知 bar 作参考，演示界外点。绘制中先完成或取消画线，再切换周期或资产。股票使用不复权价格；股票日内时间已统一为 bar 开始。</p>
+  <p id="market" aria-live="polite">正在加载 BTC/USDT 行情…</p>
+  <div class="controls">
+    <label>资产 <select id="asset" disabled><option value="BTCUSDT">BTC/USDT</option><option value="sh600519">贵州茅台 · 600519.SH</option><option value="hk09992">泡泡玛特 · 09992.HK</option></select></label>
+    <label>当前周期 <select id="period" disabled><option>5m</option><option>15m</option><option selected>30m</option><option>1h</option><option value="1d">一日</option><option value="1w">一周</option><option value="1M">一月</option></select></label>
+    <label><input id="enabled" type="checkbox" checked disabled>启用业务层周期映射</label>
+    <label>画线类型 <select id="drawing-type" disabled><option value="triangle">三角形</option><option value="segment">线段</option><option value="rayLine">射线</option><option value="straightLine">直线</option><option value="horizontalStraightLine">水平线</option><option value="verticalStraightLine">竖线</option><option value="rect">矩形</option><option value="fibonacciLine">斐波那契回撤</option></select></label>
+    <button id="new" disabled>新建画线</button>
+    <button id="cancel" disabled>取消绘制</button>
+    <button id="retry" hidden>重试加载</button>
+    <button id="style" disabled>切换颜色（仅样式）</button>
+    <button id="reset" disabled>恢复初始示例</button>
+    <button id="restore" disabled>恢复下方记录</button>
+    <button id="clear-saved" disabled>清除本地记录</button>
+  </div>
+  <p id="storage-status" aria-live="polite">绘制完成、拖动结束和切换周期后自动保存。当前示例一次编辑一条画线，新建会替换当前画线。</p>
+  <div id="chart" inert></div>
+  <p id="status"></p>
+  <p>库只接收 <code>{ timestamp, offset, value }</code>。源记录中的周期、市场日历、切换和持久化都由本示例管理。切周期仅重算显示点位；水平编辑才改写相应源锚点，纵向编辑只改价格。</p>
+  <p>本快照使用 bar 开始时间；未来位置按示例交易日历估算。不具备映射规则时应隐藏画线并保留源记录。接入其他数据源需先确认其时间语义。</p>
+  <details><summary>当前传给图表的显示 points（不保存）</summary><pre id="projection"></pre></details>
+  <label for="record">业务源记录（用于保存与恢复）</label>
+  <textarea id="record" aria-label="保存的 points 与 period"></textarea>
+  <script type="module">
+    import { init, dispose } from '../../../src/index.ts'
+    import { createTradingRuleOverlayResolver } from './period-points/createTradingRuleOverlayResolver.ts'
+    import { copyRecord, editRecord, projectPoints, readRecord, steps } from './period-points/drawing.ts'
+
+    const id = 'period-triangle'
+    const assets = {
+      BTCUSDT: { label: 'BTC/USDT', currency: 'USDT', timezone: 'UTC', file: 'btcusdt-periods.json', defaultPeriod: '30m', note: 'Binance 真实行情，分钟和小时线为最近一周；日、周、月为更长历史。' },
+      sh600519: { label: '贵州茅台 · 600519.SH', currency: 'CNY', timezone: 'Asia/Shanghai', file: 'sh600519-periods.json', defaultPeriod: '30m', note: '腾讯财经不复权日线与 5 分钟快照；其他周期按真实数据聚合。股票成交量保留数据源单位。' },
+      hk09992: { label: '泡泡玛特 · 09992.HK', currency: 'HKD', timezone: 'Asia/Hong_Kong', file: 'hk09992-periods.json', defaultPeriod: '1d', note: '腾讯财经不复权日线快照；周、月线由日线聚合。当前快照无分钟行情，已禁用相关周期；界外画线仅按常规交易时段估计。' }
+    }
+    const assetInput = document.querySelector('#asset')
+    const selectionKey = 'klinechart:demo:period-points:asset'
+    let currentAsset = 'BTCUSDT'
+    try {
+      const storedAsset = localStorage.getItem(selectionKey)
+      if (Object.hasOwn(assets, storedAsset)) currentAsset = storedAsset
+    } catch { /* Storage failures are reported when reading the drawing below. */ }
+    let requestedAsset = currentAsset
+    let storageKey = `klinechart:demo:period-points:${currentAsset}:v1`
+    const storageStatus = document.querySelector('#storage-status')
+    const drawingType = document.querySelector('#drawing-type')
+    const periodInput = document.querySelector('#period')
+    const enabledInput = document.querySelector('#enabled')
+    const output = document.querySelector('#record')
+    const status = document.querySelector('#status')
+    const market = document.querySelector('#market')
+    const chartElement = document.querySelector('#chart')
+    let currentPeriod = '30m'
+    let pressing = false
+    let snapshot
+    let initial
+    let ready = false
+    let loading = true
+    let source = null
+    let editBaseline
+    let requestGeneration = 0
+    let disposed = false
+    const nextFrame = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+    function createMapping(data) { return createTradingRuleOverlayResolver({
+      calendar: data.calendar ?? {
+        timezone: 'UTC',
+        weekly: Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(day => [day, [{ start: { time: '00:00' }, end: { time: '24:00' } }]]))
+      },
+      periods: {
+        '5m': { unit: 'minute', count: 5 }, '15m': { unit: 'minute', count: 15 },
+        '30m': { unit: 'minute', count: 30 }, '1h': { unit: 'minute', count: 60 },
+        '1d': { unit: 'day' }, '1w': { unit: 'week' }, '1M': { unit: 'month' }
+      },
+      sourceData: period => data.periods[period]
+    }) }
+    let mapping
+    const chart = init(chartElement, { timezone: 'UTC', locale: 'zh-CN' })
+    const selectedMapping = () => enabledInput.checked ? mapping : undefined
+
+    function drawing() {
+      const overlay = chart.getOverlayById(id)
+      return Boolean(overlay && !overlay.isCompleted())
+    }
+    function interactionBlocked() { return loading || !ready || drawing() || pressing }
+    function updateControls() {
+      const busy = loading || !ready
+      assetInput.disabled = interactionBlocked()
+      periodInput.disabled = interactionBlocked()
+      enabledInput.disabled = interactionBlocked()
+      chartElement.inert = busy
+      for (const name of ['new', 'reset', 'restore', 'clear-saved', 'style']) document.querySelector(`#${name}`).disabled = interactionBlocked()
+      drawingType.disabled = interactionBlocked()
+      document.querySelector('#cancel').disabled = busy || !drawing()
+    }
+    // Also exclude dataset switches while panning or pressing an empty chart area.
+    chartElement.addEventListener('mousedown', () => { pressing = true; updateControls() }, true)
+    chartElement.addEventListener('touchstart', () => { pressing = true; updateControls() }, { capture: true, passive: true })
+    function release() { pressing = false; updateControls() }
+    document.addEventListener('mouseup', release)
+    document.addEventListener('touchend', release)
+    document.addEventListener('touchcancel', release)
+
+    function record() { return source ?? { name: drawingType.value, period: currentPeriod, points: [] } }
+    function displayedPoints() {
+      const overlay = chart.getOverlayById(id)
+      return overlay?.visible ? overlay.points : undefined
+    }
+    function indices() { return displayedPoints()?.map(point => chart.externalToInternal(point).dataIndex) }
+    function show() {
+      output.value = JSON.stringify(record(), null, 2)
+      document.querySelector('#projection').textContent = JSON.stringify(displayedPoints() ?? null, null, 2)
+      status.textContent = `源记录周期：${record().period}；当前查看：${currentPeriod}；临时 index：${indices()?.join(', ') ?? '暂不可定位'}`
+      const bars = chart.getDataList()
+      if (bars.length) market.textContent = ` ${assets[currentAsset].label} · ${currentPeriod} · ${bars.length} 根真实 K 线 · 最后收盘 ${bars[bars.length - 1].close.toFixed(2)} ${assets[currentAsset].currency} · ${new Date(bars[0].timestamp).toISOString().slice(0, 10)} 至 ${new Date(bars[bars.length - 1].timestamp).toISOString().slice(0, 10)} · 时间轴 ${assets[currentAsset].timezone}`
+      if (snapshot) document.querySelector('#source').href = snapshot.sources[currentPeriod].url
+    }
+    function fit() {
+      const max = Math.max(chart.getDataList().length, ...(indices() ?? []).filter(Number.isFinite))
+      chart.setBarSpaceLimit({ min: 0.2 })
+      chart.setBarSpace(Math.max(0.2, Math.min(16, (chartElement.clientWidth - 150) / (max + 8))))
+      chart.alignLeft()
+    }
+    function attachHandlers() {
+      chart.overrideOverlay({ id,
+        onPressedMoveStart() {
+          editBaseline = source ? { source: copyRecord(source), displayed: chart.getOverlayById(id).points.map(point => ({ ...point })) } : undefined
+          pressing = true
+          updateControls()
+        },
+        onPointsChange(event) {
+          if (!source || event.source === 'api') return
+          source = editRecord(source, event, currentPeriod, editBaseline)
+          show()
+        },
+        onPressedMoveEnd() { editBaseline = undefined; pressing = false; show(); autoSave(); updateControls() },
+        onDrawEnd() { show(); autoSave(); queueMicrotask(updateControls) }
+      })
+    }
+    function drawingStyles() {
+      const color = source?.color ?? '#2962ff'
+      return { line: { color }, polygon: { borderColor: color, color: `${color}20` }, text: { color } }
+    }
+    function render(points, replace = false) {
+      if (replace || !source) chart.removeOverlay(id)
+      if (!source) return
+      const existing = chart.getOverlayById(id)
+      const options = { id, name: source.name,
+        // Keep unresolved sources out of hit testing and rendering; never discard them.
+        points: points ?? source.points.map(({ period, ...point }) => point), visible: points !== undefined,
+        styles: drawingStyles()
+      }
+      if (existing) chart.overrideOverlay(options)
+      else chart.createOverlay(options)
+      attachHandlers()
+    }
+    function load(saved) {
+      // Parse and project before touching the current source or overlay.
+      const next = readRecord(saved)
+      const points = projectPoints(next, currentPeriod, chart.getDataList(), selectedMapping())
+      source = next
+      editBaseline = undefined
+      pressing = false
+      drawingType.value = source.name
+      render(points, true)
+      fit()
+      show()
+      updateControls()
+      autoSave()
+    }
+    async function switchPeriod(nextPeriod) {
+      if (!Object.hasOwn(snapshot.periods, nextPeriod) || interactionBlocked()) { periodInput.value = currentPeriod; return }
+      try {
+        const data = snapshot.periods[nextPeriod].map(bar => ({ ...bar }))
+        const points = source ? projectPoints(source, nextPeriod, data, selectedMapping()) : undefined
+        loading = true
+        updateControls()
+        // No await between these operations. The business owns the switch ordering.
+        chart.overrideOverlay({ id, visible: false })
+        currentPeriod = nextPeriod
+        chart.applyNewData(data, false)
+        render(points)
+        fit()
+        show()
+        await nextFrame()
+      } catch (error) { status.textContent = `切换失败：${error.message}` }
+      finally {
+        periodInput.value = currentPeriod
+        loading = false
+        if (!disposed) { updateControls(); autoSave() }
+      }
+    }
+    assetInput.addEventListener('change', () => {
+      if (interactionBlocked()) { assetInput.value = currentAsset; return }
+      autoSave()
+      initialize(assetInput.value)
+    })
+    periodInput.addEventListener('change', () => switchPeriod(periodInput.value))
+    enabledInput.addEventListener('change', () => {
+      if (interactionBlocked()) { enabledInput.checked = !enabledInput.checked; return }
+      try {
+        const points = source ? projectPoints(source, currentPeriod, chart.getDataList(), selectedMapping()) : undefined
+        render(points)
+        fit()
+        show()
+      } catch (error) { enabledInput.checked = !enabledInput.checked; status.textContent = `映射失败：${error.message}` }
+    })
+    document.querySelector('#new').addEventListener('click', () => load({ name: drawingType.value, period: currentPeriod, points: [] }))
+    document.querySelector('#cancel').addEventListener('click', () => {
+      source = null
+      editBaseline = undefined
+      chart.removeOverlay(id)
+      pressing = false
+      show()
+      updateControls()
+      autoSave()
+    })
+    document.querySelector('#reset').addEventListener('click', () => load(initial))
+    document.querySelector('#style').addEventListener('click', () => {
+      if (!source) return
+      source = { ...source, color: source.color === '#7c3aed' ? '#2962ff' : '#7c3aed' }
+      chart.overrideOverlay({ id, styles: drawingStyles() })
+      show()
+      autoSave()
+    })
+    function autoSave() {
+      if (!ready || loading || drawing()) return
+      try {
+        localStorage.setItem(storageKey, JSON.stringify({ version: 2, currentPeriod, drawing: source }))
+        storageStatus.textContent = '已自动保存业务源记录；刷新会恢复类型、样式、源点位和查看周期。'
+      } catch (error) { storageStatus.textContent = `自动保存失败：${error.message}。当前画线仍保留在页面中。` }
+    }
+    document.querySelector('#clear-saved').addEventListener('click', () => {
+      try {
+        localStorage.removeItem(storageKey)
+        storageStatus.textContent = '本地记录已清除；当前画线不变。继续编辑会重新自动保存，直接刷新则显示初始示例。'
+      } catch (error) { storageStatus.textContent = `清除失败：${error.message}` }
+    })
+    document.querySelector('#restore').addEventListener('click', () => {
+      try { load(JSON.parse(output.value)) } catch (error) { status.textContent = error.message }
+    })
+    document.querySelector('#retry').addEventListener('click', () => initialize(requestedAsset))
+    window.addEventListener('pagehide', () => { disposed = true; requestGeneration++; dispose(chart) })
+
+    async function initialize(nextAsset = currentAsset) {
+      if (!Object.hasOwn(assets, nextAsset) || disposed) return
+      const generation = ++requestGeneration
+      requestedAsset = nextAsset
+      loading = true
+      updateControls()
+      document.querySelector('#retry').hidden = true
+      market.textContent = `正在加载 ${assets[nextAsset].label} 行情…`
+      try {
+        const asset = assets[nextAsset]
+        const response = await fetch(`../../data/${asset.file}`)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        const nextSnapshot = await response.json()
+        if (generation !== requestGeneration || disposed) return
+        const nextMapping = createMapping(nextSnapshot)
+        const bars = nextSnapshot.periods[asset.defaultPeriod]
+        const reference = bars[bars.length - 1].timestamp
+        const low = Math.min(...bars.map(bar => bar.low))
+        const high = Math.max(...bars.map(bar => bar.high))
+        const nextInitial = {
+          name: 'triangle', period: asset.defaultPeriod,
+          points: (asset.defaultPeriod === '30m' ? [6, 14, 31] : [1, 5, 10]).map((offset, i) => ({
+            timestamp: reference, offset, period: asset.defaultPeriod === '30m' ? ['5m', '15m', '30m'][i] : '1d',
+            value: Number((low + (high - low) * [0.55, 0.85, 0.25][i]).toFixed(2))
+          }))
+        }
+        const nextStorageKey = `klinechart:demo:period-points:${nextAsset}:v1`
+        let storageMessage = '绘制、编辑和切换周期后自动保存；画线源记录按资产隔离。'
+        let saved
+        try {
+          const raw = localStorage.getItem(nextStorageKey)
+          if (raw !== null) {
+            const candidate = JSON.parse(raw)
+            if (!candidate || ![1, 2].includes(candidate.version) || !Object.hasOwn(nextSnapshot.periods, candidate.currentPeriod)) throw new Error('记录版本或查看周期无效')
+            if (candidate.drawing !== null) {
+              candidate.drawing = readRecord(candidate.drawing)
+              if (candidate.drawing.points.length !== steps[candidate.drawing.name]) throw new Error('本地记录不是已完成的画线')
+            }
+            saved = candidate
+          }
+        } catch (error) { storageMessage = `未能恢复本地记录：${error.message}。已显示初始示例，原记录未覆盖。` }
+        const nextPeriod = saved?.currentPeriod ?? asset.defaultPeriod
+        const nextSource = saved?.drawing === null ? null : saved?.drawing ?? nextInitial
+        const data = nextSnapshot.periods[nextPeriod].map(bar => ({ ...bar }))
+        const points = nextSource ? projectPoints(nextSource, nextPeriod, data, enabledInput.checked ? nextMapping : undefined) : undefined
+        // Prepared business state is applied synchronously; stale requests cannot reach here.
+        chart.removeOverlay(id)
+        source = nextSource
+        editBaseline = undefined
+        currentAsset = nextAsset
+        assetInput.value = currentAsset
+        snapshot = nextSnapshot
+        mapping = nextMapping
+        initial = nextInitial
+        storageKey = nextStorageKey
+        currentPeriod = nextPeriod
+        for (const option of periodInput.options) option.disabled = !Object.hasOwn(snapshot.periods, option.value)
+        periodInput.value = currentPeriod
+        chart.applyNewData(data, false)
+        render(points)
+        chart.setOptions({ timezone: asset.timezone })
+        document.querySelector('#asset-description').firstChild.textContent = `${asset.note} `
+        document.querySelector('#snapshot-time').textContent = currentAsset === 'BTCUSDT'
+          ? `快照截止：${new Date(snapshot.asOf).toISOString()}；各周期最后一根为当时未收盘 K 线，价格及成交量会继续变化。`
+          : `抓取时间：${snapshot.retrievedAt}；最新交易日 2026-09-18。周、月末根可能尚未结束。日历未来推算基于本地配置，并非交易所实时公告服务。`
+        storageStatus.textContent = saved ? '已恢复上次保存的本地记录；后续编辑将自动保存。' : storageMessage
+        drawingType.value = source?.name ?? 'triangle'
+        fit()
+        show()
+        await nextFrame()
+        if (generation !== requestGeneration || disposed) return
+        ready = true
+        try { localStorage.setItem(selectionKey, currentAsset) } catch { /* Drawing storage displays its own failures. */ }
+      } catch (error) {
+        if (generation !== requestGeneration || disposed) return
+        assetInput.value = currentAsset
+        market.textContent = `${assets[nextAsset].label} 数据加载失败：${error.message}`
+        document.querySelector('#retry').hidden = false
+      } finally {
+        if (generation === requestGeneration && !disposed) { loading = false; updateControls() }
+      }
+    }
+    initialize()
+  </script>
+</body>
+</html>

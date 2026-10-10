@@ -35,6 +35,8 @@ export default class Canvas {
   private _nextPixelWidth = 0
   private _nextPixelHeight = 0
 
+  private _destroyed = false
+
   private _requestAnimationId = DEFAULT_REQUEST_ID
 
   private readonly _mediaQueryListener: () => void = () => {
@@ -49,6 +51,7 @@ export default class Canvas {
     this._element = createDom('canvas', style)
     this._ctx = this._element.getContext('2d', { willReadFrequently: true })!
     isSupportedDevicePixelContentBox().then(result => {
+      if (this._destroyed) return
       this._supportedDevicePixelContentBox = result
       if (result) {
         this._resizeObserver = new ResizeObserver((entries: ResizeObserverEntry[]) => {
@@ -101,6 +104,7 @@ export default class Canvas {
   }
 
   update(w: number, h: number): void {
+    if (this._destroyed) return
     if (this._width !== w || this._height !== h) {
       this._element.style.width = `${w}px`
       this._element.style.height = `${h}px`
@@ -124,6 +128,11 @@ export default class Canvas {
   }
 
   destroy(): void {
+    this._destroyed = true
+    if (this._requestAnimationId !== DEFAULT_REQUEST_ID) {
+      cancelAnimationFrame(this._requestAnimationId)
+      this._requestAnimationId = DEFAULT_REQUEST_ID
+    }
     if (isValid(this._resizeObserver)) {
       this._resizeObserver.unobserve(this._element)
     }

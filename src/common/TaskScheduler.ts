@@ -2,8 +2,9 @@ type TaskFinishedCallback = () => void
 type TaskErrorCallback = (errorInfo: { key: string, error: unknown }) => void
 
 export default class TaskScheduler {
-  private _pending: Record<string, Promise<unknown>> = {}
-  private _running = false
+  private readonly _pending = new Map<string, Promise<unknown>>()
+  private _generation = 0
+  private _finishNotification?: object
   private readonly _onFinish?: TaskFinishedCallback
   private readonly _onError?: TaskErrorCallback
 
@@ -13,35 +14,50 @@ export default class TaskScheduler {
   }
 
   add(tasks: Record<string, Promise<unknown>>): void {
-    Object.assign(this._pending, tasks) // same key => latest wins
-    void this._drain()
+    const generation = this._generation
+    Object.entries(tasks).forEach(([key, task]) => {
+      this._finishNotification = undefined
+      this._pending.set(key, task)
+      void task.then(
+        () => this._settle(key, task, generation),
+        error => this._settle(key, task, generation, error)
+      )
+    })
   }
 
-  private async _drain(): Promise<void> {
-    if (this._running) return
-    this._running = true
-    try {
-      while (Object.keys(this._pending).length > 0) {
-        const batch = this._pending
-        this._pending = {}
-
-        const results = await Promise.allSettled(Object.values(batch))
-        const keys = Object.keys(batch)
-        for (let i = 0; i < results.length; i++) {
-          const r = results[i]
-          if (r.status === 'rejected') {
-            // 传递任务 key 以便调试
-            this._onError?.({ key: keys[i], error: r.reason })
-          }
-        }
-        this._onFinish?.()
-      }
-    } finally {
-      this._running = false
-    }
+  private _settle(key: string, task: Promise<unknown>, generation: number, error?: unknown): void {
+    if (generation !== this._generation || this._pending.get(key) !== task) return
+    this._pending.delete(key)
+    if (error !== undefined) this._onError?.({ key, error })
+    this._scheduleFinish()
   }
+
+  remove(keys: readonly string[]): void {
+    let removed = false
+    keys.forEach(key => { removed = this._pending.delete(key) || removed })
+    if (!removed || this._pending.size > 0) return
+    this._scheduleFinish()
+  }
+
+  private _scheduleFinish(): void {
+    if (this._pending.size > 0 || this._finishNotification) return
+    // Settling and removal share one stable, post-call completion boundary.
+    const finish = {}
+    this._finishNotification = finish
+    queueMicrotask(() => {
+      if (this._finishNotification !== finish) return
+      this._finishNotification = undefined
+      this._onFinish?.()
+    })
+  }
+
+  isCurrent(key: string, task: Promise<unknown>): boolean { return this._pending.get(key) === task }
+
+  hasPending(): boolean { return this._pending.size > 0 }
 
   clear(): void {
-    this._pending = {}
+    this._generation++
+    this._finishNotification = undefined
+    this._pending.clear()
   }
 }

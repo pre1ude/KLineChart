@@ -44,6 +44,7 @@ import {
 } from './common/utils/format'
 import { calcTextWidth } from './common/utils/canvas'
 import { setCursor } from './common/utils/cursor'
+import { lowerBound } from './common/utils/number'
 
 // Figure Utils
 import { checkCoordinateOnArc, drawArc } from './extension/figure/arc'
@@ -96,7 +97,8 @@ function init(ds: HTMLElement | string, options?: Options): Chart {
   if (!dom) {
     throw new Error('The chart cannot be initialized correctly. Please check the parameters. The chart container cannot be null and child elements need to be added!!!')
   }
-  let chart = instances.get(dom.id)
+  const previousId = dom.getAttribute('k-line-chart-id')
+  let chart = previousId ? instances.get(previousId) : undefined
   if (isValid(chart)) {
     logWarn('', '', 'The chart has been initialized on the dom！！！')
     return chart
@@ -115,21 +117,25 @@ function init(ds: HTMLElement | string, options?: Options): Chart {
  */
 function dispose(dcs: HTMLElement | Chart | string): void {
   let id: string | null
+  let dom: HTMLElement | null = null
   if (isString(dcs)) {
-    const dom = document.getElementById(dcs)
+    dom = document.getElementById(dcs)
     id = dom?.getAttribute('k-line-chart-id') ?? null
   } else if (isFunction((dcs as HTMLElement).getAttribute)) {
-    id = (dcs as HTMLElement).getAttribute('k-line-chart-id') ?? null
+    dom = dcs as HTMLElement
+    id = dom.getAttribute('k-line-chart-id') ?? null
   } else {
     id = dcs.id
   }
   if (id !== null) {
     instances.get(id)?.destroy()
     instances.delete(id)
+    dom?.removeAttribute('k-line-chart-id')
   }
 }
 
 const utils = {
+  lowerBound,
   clone,
   merge,
   isString,
@@ -342,6 +348,7 @@ export type {
   OverlayControlPoint,
   OverlayControlPointVisibility,
   OverlayBodyDragParams,
+  OverlayPointsChangeEvent,
   EventOverlayInfo,
   OverlayEventCallback,
   OverlayMouseTouchEvent

@@ -22,6 +22,9 @@ export function clone<T>(target: T): T {
   if (!isObject(target)) {
     return target
   }
+  if (target instanceof Date) {
+    return new Date(target.getTime()) as T
+  }
 
   let copy: any
   if (isArray(target)) {

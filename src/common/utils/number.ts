@@ -12,27 +12,24 @@ export function binarySearchNearest<T>(arr: T[], key: keyof T, value: number): n
   return lDiff <= rDiff ? lb - 1 : lb
 }
 
-// 参考 std::lower_bound
-// element >= value
-export function lowerBound<T>(arr: T[], cmp: (v: T) => number): number {
-  let low = 0
-  let high = arr.length
-
-  while (low < high) {
-    const mid = (low + high) >> 1
-
-    if (cmp(arr[mid]) < 0) {
-      low = mid + 1
-    } else {
-      high = mid
-    }
+/**
+ * 在已排序数组中查找第一个 compare(value) >= 0 的元素索引。
+ * 未找到时返回数组长度，空数组返回 0。
+ */
+export function lowerBound<T>(data: readonly T[], compare: (value: T) => number): number {
+  let lo = 0
+  let hi = data.length
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1
+    if (compare(data[mid]) < 0) lo = mid + 1
+    else hi = mid
   }
-  return low
+  return lo
 }
 
 // 参考 std::upper_bound
 // element > value
-export function upperBound<T>(arr: T[], cmp: (v: T) => number): number {
+export function upperBound<T>(arr: readonly T[], cmp: (v: T) => number): number {
   let low = 0
   let high = arr.length
 

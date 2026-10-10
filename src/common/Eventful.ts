@@ -116,6 +116,12 @@ export default abstract class Eventful {
     return this
   }
 
+  removeChild(eventful: Eventful): this {
+    const index = this._children.indexOf(eventful)
+    if (index >= 0) this._children.splice(index, 1)
+    return this
+  }
+
   clear(): void {
     this._children.length = 0
   }

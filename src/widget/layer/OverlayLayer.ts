@@ -1,8 +1,8 @@
 import type { Layer } from './Layer'
 import type DrawWidget from '../DrawWidget'
 import type DualYPane from '../../pane/DualYPane'
-import type { MouseTouchEvent } from '../../common/SyntheticEvent'
-import type { EventOverlayInfo, Overlay, OverlayFigureData } from '../../component/Overlay'
+import type { EventName, MouseTouchEvent } from '../../common/SyntheticEvent'
+import type { EventOverlayInfo, Overlay, OverlayFigureData, OverlayEventCallback, OverlayMouseTouchEvent } from '../../component/Overlay'
 import { OVERLAY_FIGURE_KEY_PREFIX } from '../../component/Overlay'
 import type { Figure } from '../../component/Figure'
 import { UpdateLevel } from '../../common/Updater'
@@ -14,9 +14,10 @@ import { isNumber } from '../../common/utils/typeChecks'
 
 interface OverlayDragState {
   overlayId: string
+  epoch: number
   point: Point
   points: Point[]
-  dataVersion: number
+  timeIndexVersion: number
   pointerIndex?: number
   projectedPoints?: IPoint[]
 }
@@ -36,6 +37,26 @@ export class OverlayLayer implements Layer {
     this._overlayView = new OverlayView(widget)
     this._initEvent(widget)
     widget.addChild(this._overlayView)
+  }
+
+  destroy(): void {
+    const paneId = this._widget.getPane().getId()
+    const overlayStore = this._widget.getPane().getChart().getChartStore().getOverlayStore()
+    this._widget.removeChild(this._overlayView)
+    this._overlayView.clear()
+    this._dragState = undefined
+    if (overlayStore.getProgressOverlayPaneId() === paneId) {
+      const progress = overlayStore.getProgressOverlay()
+      if (progress) overlayStore.removeInstance({ id: progress.id })
+      overlayStore.setPressed(false)
+      overlayStore.setDragging(false)
+    }
+    if (overlayStore.getSelectedInfo()?.paneId === paneId) {
+      overlayStore.clearSelectedInfo()
+      overlayStore.setPressed(false)
+      overlayStore.setDragging(false)
+    }
+    if (overlayStore.getHoverInfo()?.paneId === paneId) overlayStore.clearHoverInfo()
   }
 
   /** 从 event.target 提取 overlay 信息 */
@@ -72,13 +93,16 @@ export class OverlayLayer implements Layer {
 
   private _startDrag(overlay: Overlay, point: Point): void {
     const chartStore = this._widget.getPane().getChart().getChartStore()
+    const overlayStore = chartStore.getOverlayStore()
+    const projectedPoints = overlayStore.getProjectedPoints(overlay)
     this._dragState = {
       overlayId: overlay.id,
+      epoch: chartStore.getDatasetEpoch(),
       point: { ...point },
       points: overlay.points.map(p => ({ ...p })),
-      dataVersion: chartStore.getDataVersion(),
+      timeIndexVersion: chartStore.getTimeIndexVersion(),
       pointerIndex: chartStore.externalToInternal(point).dataIndex,
-      projectedPoints: chartStore.getOverlayStore().getProjectedPoints(overlay)
+      projectedPoints
     }
   }
 
@@ -86,12 +110,12 @@ export class OverlayLayer implements Layer {
     const drag = this._dragState
     if (drag?.overlayId !== overlay.id) return
     const chartStore = this._widget.getPane().getChart().getChartStore()
-    const version = chartStore.getDataVersion()
-    if (version !== drag.dataVersion) {
+    const version = chartStore.getTimeIndexVersion()
+    if (version !== drag.timeIndexVersion) {
       // Reproject the original time points if loading moves the index origin.
       drag.pointerIndex = chartStore.externalToInternal(drag.point).dataIndex
       drag.projectedPoints = chartStore.getOverlayStore().getProjectedPoints(drag)
-      drag.dataVersion = version
+      drag.timeIndexVersion = version
     }
     const dataIndex = chartStore.externalToInternal(point).dataIndex
     if (!drag.projectedPoints || !isNumber(dataIndex) || !isNumber(drag.pointerIndex)) return
@@ -112,7 +136,9 @@ export class OverlayLayer implements Layer {
         movedPoints.push(moved as Point)
       }
     }
+    const previous = overlay.points.map(p => ({ ...p }))
     overlay.onDragMoveBody({ point, prevPoint: drag.point, prevPoints: drag.points, movedPoints })
+    chartStore.getOverlayStore().notifyPointsChange(overlay, 'body', previous)
   }
 
   private _moveControlPoint(overlay: Overlay, point: Point, pointIndex: number, controlPointKey: string): void {
@@ -134,6 +160,13 @@ export class OverlayLayer implements Layer {
         }
       })
     }
+    chartStore.getOverlayStore().notifyPointsChange(overlay, 'control-point', previous)
+  }
+
+  private _updateDrawPoint(overlay: Overlay, point: Point): void {
+    const previous = overlay.points.map(p => ({ ...p }))
+    overlay.updateDrawPoint(point)
+    this._widget.getPane().getChart().getChartStore().getOverlayStore().notifyPointsChange(overlay, 'draw', previous)
   }
 
   private _initEvent(widget: DrawWidget<DualYPane>): void {
@@ -142,6 +175,16 @@ export class OverlayLayer implements Layer {
     const chart = pane.getChart()
     const chartStore = chart.getChartStore()
     const overlayStore = chartStore.getOverlayStore()
+    // Point notifications observe the entire input commit, including selection and steps.
+    const listen = (name: EventName, handler: (event: MouseTouchEvent) => void): void => {
+      this._overlayView.addEventListener(name, event => chartStore.batchEffects(() => handler(event)))
+    }
+    const notify = (overlay: Overlay, callback: OverlayEventCallback | undefined, event: OverlayMouseTouchEvent): void => {
+      if (!callback) return
+      chartStore.dispatchEffect(() => {
+        if (overlayStore.getInstanceById(overlay.id) === overlay) callback.call(overlay, event)
+      })
+    }
     const selectOverlay = (nextSelectedInfo: EventOverlayInfo, event: MouseTouchEvent): void => {
       const lastSelectedInfo = overlayStore.getSelectedInfo()
 
@@ -180,7 +223,7 @@ export class OverlayLayer implements Layer {
     }
 
     // 鼠标移动事件 - 处理 onMouseEnter 和 onMouseLeave
-    this._overlayView.addEventListener('mouseMoveEvent', (event: MouseTouchEvent) => {
+    listen('mouseMoveEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
 
       // 处理绘制中的 overlay
@@ -192,8 +235,8 @@ export class OverlayLayer implements Layer {
           const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
           const point = this._overlayView.coordinateToPoint(progressOverlay, event)
           if (!point) return
-          progressOverlay.updateDrawPoint(point)
-          progressOverlay.onDrawing?.(createOverlayEvent(event, progressOverlay, paneId, chartStore, { figureKey, pointIndex }))
+          this._updateDrawPoint(progressOverlay, point)
+          notify(progressOverlay, progressOverlay.onDrawing, createOverlayEvent(event, progressOverlay, paneId, chartStore, { figureKey, pointIndex }))
         }
         return
       }
@@ -224,14 +267,14 @@ export class OverlayLayer implements Layer {
       }
     })
 
-    this._overlayView.addEventListener('mouseLeaveEvent', (event: MouseTouchEvent) => {
+    listen('mouseLeaveEvent', (event: MouseTouchEvent) => {
       if (overlayStore.getHoverInfo()?.paneId === paneId) {
         clearHover(event)
       }
     })
 
     // 鼠标点击事件 - 处理 onClick
-    this._overlayView.addEventListener('mouseClickEvent', (event: MouseTouchEvent) => {
+    listen('mouseClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay) {
         overlayStore.updateProgressOverlayPane(paneId)
@@ -242,11 +285,11 @@ export class OverlayLayer implements Layer {
           const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
           const point = this._overlayView.coordinateToPoint(progressOverlay, event)
           if (!point) return
-          progressOverlay.updateDrawPoint(point)
+          this._updateDrawPoint(progressOverlay, point)
           const overlayEvent = createOverlayEvent(event, progressOverlay, paneId, chartStore, { figureKey, pointIndex })
 
           if (progressOverlay.isCreated()) {
-            progressOverlay.onDrawStart?.(overlayEvent)
+            notify(progressOverlay, progressOverlay.onDrawStart, overlayEvent)
             const overlayInfo: EventOverlayInfo = {
               overlay: progressOverlay,
               interactType: 'body',
@@ -258,11 +301,11 @@ export class OverlayLayer implements Layer {
             overlayStore.setSelectedInfo(overlayInfo)
           }
           progressOverlay.nextStep()
-          progressOverlay.onDrawing?.(overlayEvent)
+          notify(progressOverlay, progressOverlay.onDrawing, overlayEvent)
 
           if (progressOverlay.isCompleted()) {
             overlayStore.progressOverlayComplete()
-            progressOverlay.onDrawEnd?.(overlayEvent)
+            notify(progressOverlay, progressOverlay.onDrawEnd, overlayEvent)
           }
         }
         return
@@ -281,7 +324,7 @@ export class OverlayLayer implements Layer {
     let progressPressedOverlayId: string | undefined
     let progressPressedPoint: Point | undefined
     let progressPressedEvent: MouseTouchEvent | undefined
-    this._overlayView.addEventListener('mouseDownEvent', (event: MouseTouchEvent) => {
+    listen('mouseDownEvent', (event: MouseTouchEvent) => {
       this._dragState = undefined
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay) {
@@ -319,7 +362,7 @@ export class OverlayLayer implements Layer {
     })
 
     // 鼠标双击事件 - 处理 onDoubleClick
-    this._overlayView.addEventListener('mouseDoubleClickEvent', (event: MouseTouchEvent) => {
+    listen('mouseDoubleClickEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay) {
         const progressPaneId = overlayStore.getProgressOverlayPaneId()
@@ -330,7 +373,7 @@ export class OverlayLayer implements Layer {
             overlayStore.progressOverlayComplete()
             const pointIndex = progressOverlay.points.length - 1
             const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
-            progressOverlay.onDrawEnd?.(createOverlayEvent(event, progressOverlay, paneId, chartStore, { figureKey, pointIndex }))
+            notify(progressOverlay, progressOverlay.onDrawEnd, createOverlayEvent(event, progressOverlay, paneId, chartStore, { figureKey, pointIndex }))
             const completedInfo: EventOverlayInfo = {
               overlay: progressOverlay,
               interactType: 'body',
@@ -352,7 +395,7 @@ export class OverlayLayer implements Layer {
     })
 
     // 鼠标右键事件 - 处理 onRightClick
-    this._overlayView.addEventListener('contextMenuEvent', (event: MouseTouchEvent) => {
+    listen('contextMenuEvent', (event: MouseTouchEvent) => {
       const rightClickInfo = this._extractEventOverlayInfo(event.target, paneId)
 
       // 直接在事件对象上设置 overlay 信息，这样冒泡到上层时可以直接读取
@@ -375,7 +418,7 @@ export class OverlayLayer implements Layer {
     })
 
     // 鼠标抬起事件
-    this._overlayView.addEventListener('mouseUpEvent', (event: MouseTouchEvent) => {
+    listen('mouseUpEvent', (event: MouseTouchEvent) => {
       this._dragState = undefined
       if (progressPressedOverlayId != null) {
         progressPressedOverlayId = undefined
@@ -387,7 +430,7 @@ export class OverlayLayer implements Layer {
       }
 
       if (pressedInfo?.overlay != null && hasMoved) {
-        pressedInfo.overlay.onPressedMoveEnd?.(createOverlayEventFromInfo(event, pressedInfo, chartStore))
+        notify(pressedInfo.overlay, pressedInfo.overlay.onPressedMoveEnd, createOverlayEventFromInfo(event, pressedInfo, chartStore))
       }
       pressedInfo = undefined
       overlayStore.setPressed(false)
@@ -396,7 +439,7 @@ export class OverlayLayer implements Layer {
     })
 
     // 按住拖动事件 - 处理 onPressedMoving
-    this._overlayView.addEventListener('pressedMouseMoveEvent', (event: MouseTouchEvent) => {
+    listen('pressedMouseMoveEvent', (event: MouseTouchEvent) => {
       const progressOverlay = overlayStore.getProgressOverlay()
       if (progressOverlay && progressOverlay.id === progressPressedOverlayId) {
         const progressPaneId = overlayStore.getProgressOverlayPaneId()
@@ -404,14 +447,14 @@ export class OverlayLayer implements Layer {
         if (!progressOverlay.isCompleted() && isProgressPaneMatched) {
           // 鼠标按住时 SyntheticEvent 不会派发普通 mouseMoveEvent，第一次拖动到阈值后才在这里提交起点并更新预览终点。
           if (progressOverlay.isCreated() && progressPressedPoint != null) {
-            progressOverlay.updateDrawPoint(progressPressedPoint)
+            this._updateDrawPoint(progressOverlay, progressPressedPoint)
             const startEvent = progressPressedEvent ?? event
             const startPointIndex = progressOverlay.currentStep
             const startOverlayEvent = createOverlayEvent(startEvent, progressOverlay, paneId, chartStore, {
               figureKey: `${OVERLAY_FIGURE_KEY_PREFIX}point_${startPointIndex}`,
               pointIndex: startPointIndex
             })
-            progressOverlay.onDrawStart?.(startOverlayEvent)
+            notify(progressOverlay, progressOverlay.onDrawStart, startOverlayEvent)
             const overlayInfo: EventOverlayInfo = {
               overlay: progressOverlay,
               interactType: 'body',
@@ -425,7 +468,7 @@ export class OverlayLayer implements Layer {
 
             if (progressOverlay.isCompleted()) {
               overlayStore.progressOverlayComplete()
-              progressOverlay.onDrawEnd?.(startOverlayEvent)
+              notify(progressOverlay, progressOverlay.onDrawEnd, startOverlayEvent)
               chart.updatePane(UpdateLevel.Overlay, paneId)
               return
             }
@@ -434,8 +477,8 @@ export class OverlayLayer implements Layer {
           const pointIndex = progressOverlay.currentStep
           const point = this._overlayView.coordinateToPoint(progressOverlay, event)
           if (!point) return
-          progressOverlay.updateDrawPoint(point)
-          progressOverlay.onDrawing?.(createOverlayEvent(event, progressOverlay, paneId, chartStore, {
+          this._updateDrawPoint(progressOverlay, point)
+          notify(progressOverlay, progressOverlay.onDrawing, createOverlayEvent(event, progressOverlay, paneId, chartStore, {
             figureKey: `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`,
             pointIndex
           }))
@@ -446,15 +489,29 @@ export class OverlayLayer implements Layer {
       }
 
       if (pressedInfo?.overlay != null) {
+        if (overlayStore.getInstanceById(pressedInfo.overlay.id) !== pressedInfo.overlay || this._dragState?.epoch !== chartStore.getDatasetEpoch()) {
+          // Dataset changes invalidate the edit session's coordinate snapshot.
+          if (hasMoved) notify(pressedInfo.overlay, pressedInfo.overlay.onPressedMoveEnd, createOverlayEventFromInfo(event, pressedInfo, chartStore))
+          this._dragState = undefined
+          pressedInfo = undefined
+          hasMoved = false
+          overlayStore.setPressed(false)
+          overlayStore.setDragging(false)
+          return
+        }
         const overlay = pressedInfo.overlay
+        const isCurrentEdit = (): boolean => overlayStore.getInstanceById(overlay.id) === overlay &&
+          this._dragState?.epoch === chartStore.getDatasetEpoch()
         const overlayEvent = createOverlayEventFromInfo(event, pressedInfo, chartStore)
 
         if (!hasMoved) {
           hasMoved = true
           overlayStore.setDragging(true)
           overlay.onPressedMoveStart?.(overlayEvent)
+          if (!isCurrentEdit()) return
         }
         overlay.onPressedMoving?.(overlayEvent)
+        if (!isCurrentEdit()) return
 
         if (!overlayEvent.defaultPrevented) {
           const point = this._overlayView.coordinateToPoint(overlay, event)

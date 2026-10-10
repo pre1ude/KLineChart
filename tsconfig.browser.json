@@ -5,6 +5,7 @@
   },
   "include": [
     "tests/browser/**/*.test.ts",
+    "tests/html/overlay/period-points/**/*.ts",
     "vitest.browser.config.ts"
   ],
   "exclude": [

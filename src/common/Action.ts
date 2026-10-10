@@ -96,10 +96,11 @@ export default class Action<T = unknown> {
     }
   }
 
-  execute(data: T): void {
-    this._callbacks.forEach(callback => {
-      callback(data)
-    })
+  execute(data: T, isCurrent: () => boolean = () => true): void {
+    for (const callback of [...this._callbacks]) {
+      if (!isCurrent()) break
+      try { callback(data) } catch (error) { console.error('Chart action callback error:', error) }
+    }
   }
 
   isEmpty(): boolean {

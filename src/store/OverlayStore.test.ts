@@ -10,6 +10,9 @@ function createStore(): OverlayStore {
     updatePane: vi.fn()
   } as unknown as Chart
   const chartStore = {
+    batchEffects: (effect: () => unknown) => effect(),
+    dispatchEffect: (effect: () => void) => effect(),
+    dispatchLifecycleEffect: (effect: () => void) => effect(),
     getChart: () => chart,
     externalToInternal: (point: { timestamp?: number, value?: number }) => ({
       dataIndex: point.timestamp,
@@ -41,6 +44,37 @@ function createInteractionInfo(overlay: Overlay): EventOverlayInfo {
     attrsIndex: 0
   }
 }
+
+describe('OverlayStore ID index', () => {
+  it('tracks progress replacement, completion, reset and removal across panes', () => {
+    const store = createStore()
+    store.addInstances([{ id: 'old-progress', name: 'segment' }])
+    store.addInstances([{ id: 'progress', name: 'segment' }])
+    expect(store.getInstanceById('old-progress')).toBeUndefined()
+    const progress = store.getInstanceById('progress')!
+    progress.update({ points: [{ timestamp: 1, value: 1 }, { timestamp: 2, value: 2 }] })
+    store.progressOverlayComplete()
+    expect(store.getInstanceById('progress')).toBe(progress)
+    expect(store.find({ id: 'progress', paneId: PaneIdConstants.CANDLE })).toEqual([progress])
+    expect(store.find({ id: 'progress', paneId: 'other' })).toEqual([])
+    store.resetInstance('progress')
+    store.removeInstance({ id: 'progress' })
+    expect(store.getInstanceById('progress')).toBeUndefined()
+    expect(store.getInstances()).toEqual([])
+    store.addInstances([{ id: 'progress', name: 'segment' }])
+    store.removeInstance()
+    expect(store.getInstanceById('progress')).toBeUndefined()
+  })
+
+  it('looks up and exports drawings without repeatedly searching pane arrays', () => {
+    const store = createStore()
+    const overlays = Array.from({ length: 100 }, () => addOverlay(store))
+    const search = vi.spyOn(store.getInstances(PaneIdConstants.CANDLE), 'find')
+    for (const overlay of overlays) expect(store.getInstanceById(overlay.id)).toBe(overlay)
+    expect(store.exportAllOverlays()).toHaveLength(100)
+    expect(search).not.toHaveBeenCalled()
+  })
+})
 
 describe('OverlayStore.removeInstance', () => {
   it('clears interaction state that references a removed overlay', () => {

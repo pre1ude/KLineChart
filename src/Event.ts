@@ -13,7 +13,6 @@ import type XAxisWidget from './widget/XAxisWidget'
 import type MainWidget from './widget/MainWidget'
 import { isPointInBounding } from './common/Bounding'
 import type VisibleRange from './common/VisibleRange'
-import { createOverlayEventFromInfo } from './common/utils/overlayEvent'
 import { ActionType } from './common/Action'
 
 interface EventTriggerWidgetInfo {
@@ -359,30 +358,7 @@ export default class Event implements EventHandler {
    * 当点击空白区域时，取消当前选中的overlay
    */
   private _handleOverlayDeselection(e: MouseTouchEvent): void {
-    const overlayStore = this._chart.getChartStore().getOverlayStore()
-    const currentSelected = overlayStore.getSelectedInfo() // EventOverlayInfo | undefined
-
-    if (!currentSelected) {
-      return // 没有选中的overlay，无需处理
-    }
-
-    // 检查是否点击在overlay figure上
-    if (e.overlayData != null) {
-      return // 点击在overlay上，不取消选中
-    }
-
-    // 触发取消选中事件
-    const chartStore = this._chart.getChartStore()
-    const overlayEvent = createOverlayEventFromInfo(e, currentSelected, chartStore)
-    currentSelected.overlay.onDeselected?.(overlayEvent)
-
-    // 清除选中状态
-    overlayStore.clearSelectedInfo()
-
-    // TODO: check
-    // 更新相关的pane
-    this._chart.updatePane(UpdateLevel.Overlay, currentSelected.paneId)
-    // this._chart.updatePane(UpdateLevel.Overlay, PaneIdConstants.X_AXIS)
+    if (!e.overlayData) this._chart.getChartStore().getOverlayStore().deselectOverlay(e)
   }
 
   mouseRightClickEvent(e: MouseTouchEvent): boolean {

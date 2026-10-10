@@ -73,7 +73,8 @@ export default class TooltipStore {
       prevCrosshair.x !== cr.x || prevCrosshair.y !== cr.y || prevCrosshair.paneId !== cr.paneId
     ) {
       if (kLineData !== undefined && !(notExecuteAction ?? false)) {
-        this._chartStore.getChart().onCrosshairChange(this._crosshair)
+        const current = this._crosshair
+        this._chartStore.dispatchDataEffect(() => this._chartStore.getChart().onCrosshairChange(current), 'crosshair')
       }
       if (!(notInvalidate ?? false)) {
         this._chartStore.getChart().updatePane(UpdateLevel.Overlay)

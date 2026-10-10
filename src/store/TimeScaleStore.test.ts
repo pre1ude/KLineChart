@@ -3,6 +3,7 @@ import type KLineData from '../common/KLineData'
 import { CandleType, getDefaultStyles } from '../common/Styles'
 import TimeScaleStore, { calcTimeScaleHorizontalInset } from './TimeScaleStore'
 import { TimeScaleModeKind } from './time-scale'
+import TimeIndex from '../component/TimeIndex'
 
 describe('calcTimeScaleHorizontalInset', () => {
   it('keeps the time scale range unchanged outside area symbol and point drawing', () => {
@@ -149,9 +150,12 @@ function createTimeScaleHarness(mainWidth: number, dataCount: number = 100): {
   chartStore: { mainWidth: number }
   timeScaleStore: TimeScaleStore
 } {
+  const timeIndex = new TimeIndex(() => createDataList(dataCount))
   const chartStore = {
+    batchEffects: (effect: () => unknown) => effect(),
     mainWidth,
     getDataList: () => createDataList(dataCount),
+    getTimeIndex: () => timeIndex,
     getMinRemainWidth: () => ({ left: 0, right: 0 }),
     getTimeShareTicks: () => [],
     getTimeShareDays: () => 1,

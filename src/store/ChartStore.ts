@@ -28,9 +28,10 @@ import Gap1Store from './Gap1Store'
 import { getStyles } from '../extension/styles/index'
 import type Chart from '../Chart'
 import { setTimezone } from '../common/utils/dateTimeFormat'
-import { binarySearchNearest, lowerBound } from '../common/utils/number'
+import { clamp } from '../common/utils/number'
 import TaskScheduler from '@/common/TaskScheduler'
 import type { GapDataChangeContext } from '../component/Gap'
+import TimeIndex from '../component/TimeIndex'
 
 export enum StyleInvalidation {
   None,
@@ -92,6 +93,7 @@ export default class ChartStore {
    * Internal chart
    */
   private readonly _chart: Chart
+  private readonly _overlayStore: OverlayStore
 
   // Add mainWidth property
   public mainWidth: number = 0
@@ -160,6 +162,21 @@ export default class ChartStore {
   private _dataList: KLineData[] = []
 
   private _dataVersion = 0
+  private _timeIndexVersion = 0
+  // Independent values detect submitted bars whose timestamp was edited in place.
+  private _dataTimestamps: number[] = []
+  private _destroyed = false
+
+  isDestroyed(): boolean { return this._destroyed }
+
+  private readonly _timeIndex = new TimeIndex(() => this._dataList)
+
+  private _datasetEpoch = 0
+  private _loaderGeneration = 0
+  private _effectDepth = 0
+  private _flushingEffects = false
+  private readonly _postCommitCalculations: Array<() => void> = []
+  private readonly _effects = new Map<unknown, () => void>()
 
   /**
    * Load data callback
@@ -193,11 +210,6 @@ export default class ChartStore {
   private readonly _indicatorStore = new IndicatorStore(this)
 
   /**
-   * Overlay store
-   */
-  private readonly _overlayStore = new OverlayStore(this)
-
-  /**
    * Tooltip store
    */
   private readonly _tooltipStore: TooltipStore
@@ -205,7 +217,7 @@ export default class ChartStore {
   /**
    * Chart action store
    */
-  private readonly _actionStore = new ActionStore()
+  private readonly _actionStore = new ActionStore((effect, key) => this.dispatchDataEffect(effect, key), () => this._dataVersion)
 
   /**
    * Candlestick gap store
@@ -231,6 +243,7 @@ export default class ChartStore {
    * Data ready callbacks
    */
   private _dataReadyCallbacks: Array<() => void> = []
+  private _dataUpdatePending = false
 
   private _afterNextDataLayout?: () => void
 
@@ -240,28 +253,49 @@ export default class ChartStore {
     this.setOptions(options)
 
     this._taskScheduler = new TaskScheduler(() => {
-      this._refreshViewportLayoutAfterDataChange()
-      // 执行待处理的回调
-      this._executeDataReadyCallbacks()
+      this.dispatchEffect(() => this._finishDataUpdate(), 'data-completion')
     }, ({ key, error }) => { console.error(`Task ${key} error:`, error) })
+    this._overlayStore = new OverlayStore(this)
+  }
+
+  private _completeDataUpdate(callback?: () => void): void {
+    this._dataUpdatePending = true
+    if (callback) this._dataReadyCallbacks.push(callback)
+    this._indicatorStore.calcInstance(this._indicatorStore.getIndicatorsByFilter({}))
+    this.dispatchEffect(() => this._finishDataUpdate(), 'data-completion')
+    this._actionStore.execute(ActionType.OnDataReady, undefined)
+  }
+
+  private _finishDataUpdate(): void {
+    if (this._taskScheduler.hasPending() || this._destroyed) return
+    const epoch = this._datasetEpoch
+    const version = this._dataVersion
+    if (this._dataUpdatePending) {
+      this._dataUpdatePending = false
+      this._refreshViewportLayoutAfterDataChange()
+    }
+    if (epoch === this._datasetEpoch && version === this._dataVersion) this._executeDataReadyCallbacks()
   }
 
   private _executeDataReadyCallbacks(): void {
-    const callbacks = this._dataReadyCallbacks.slice()
-    this._dataReadyCallbacks = []
-    callbacks.forEach(cb => {
+    const epoch = this._datasetEpoch
+    while (this._dataReadyCallbacks.length > 0 && epoch === this._datasetEpoch && !this._dataUpdatePending && !this._taskScheduler.hasPending()) {
+      const callback = this._dataReadyCallbacks.shift()
       try {
-        cb()
+        callback?.()
       } catch (error) {
         console.error('Data ready callback error:', error)
       }
-    })
+    }
   }
 
   private _refreshViewportLayoutAfterDataChange(): void {
     const afterNextDataLayout = this._afterNextDataLayout
     this._afterNextDataLayout = undefined
-    this._chart.refreshViewportLayout(afterNextDataLayout)
+    const epoch = this._datasetEpoch
+    this._chart.refreshViewportLayout(afterNextDataLayout ? () => {
+      if (epoch === this._datasetEpoch) afterNextDataLayout()
+    } : undefined)
   }
 
   setOptions(options?: Options): this {
@@ -331,7 +365,7 @@ export default class ChartStore {
       }
       if (isValid(options.isTimeShare)) {
         // Time-share settings change timestamp/index mapping even without new bars.
-        this._dataVersion++
+        this._timeIndexVersion++
         this._isTimeShare = options.isTimeShare
         if (this._isTimeShare) {
           if ((this._timeShareTicks.length === 0) && options.timeShareTicks == null) {
@@ -484,8 +518,81 @@ export default class ChartStore {
     return this._dataList
   }
 
+  getDatasetEpoch(): number { return this._datasetEpoch }
+
+  /** Internal side-effect barrier shared by data and drawing commits. */
+  dispatchEffect(effect: () => void, key: unknown = Symbol()): void {
+    const epoch = this._datasetEpoch
+    const guarded = (): void => { if (epoch === this._datasetEpoch) effect() }
+    this._effects.delete(key)
+    this._effects.set(key, guarded)
+    this._flushEffects()
+  }
+
+  /** Committed instance lifecycle notifications survive data resets. */
+  dispatchLifecycleEffect(effect: () => void): void {
+    this._effects.set(Symbol(), effect)
+    this._flushEffects()
+  }
+
+  /** Notifications derived from data stop when a newer data revision commits. */
+  dispatchDataEffect(effect: () => void, key?: unknown): void {
+    const version = this._dataVersion
+    this.dispatchEffect(() => { if (version === this._dataVersion) effect() }, key)
+  }
+
+  /** Register task ownership first; run user calculations only after structural commit. */
+  deferCalculation(start: () => void): void {
+    this._postCommitCalculations.push(start)
+    this._flushEffects()
+  }
+
+  private _flushEffects(): void {
+    if (this._effectDepth > 0 || this._flushingEffects) return
+    this._flushingEffects = true
+    try {
+      while (this._postCommitCalculations.length > 0 || this._effects.size > 0) {
+        if (this._postCommitCalculations.length > 0) {
+          const calculations = this._postCommitCalculations.splice(0)
+          calculations.forEach(start => start())
+          continue
+        }
+        const next = this._effects.entries().next()
+        if (!next.done) {
+          const [key, effect] = next.value
+          this._effects.delete(key)
+          try { effect() } catch (error) { console.error('Chart notification error:', error) }
+        }
+      }
+    } finally { this._flushingEffects = false }
+  }
+
+  batchEffects<T>(commit: () => T): T {
+    this._effectDepth++
+    try { return commit() } finally {
+      this._effectDepth--
+      this._flushEffects()
+    }
+  }
+
+  applyDataSnapshot(data: KLineData[], more?: boolean, callback?: () => void): void {
+    if (data.some((bar, i) => !Number.isFinite(bar.timestamp) || (i > 0 && bar.timestamp <= data[i - 1].timestamp))) {
+      throw new RangeError('Dataset timestamps must be finite and strictly increasing.')
+    }
+    this.batchEffects(() => this._addData(data, LoadDataType.Init, more, callback))
+  }
+
   getDataVersion(): number {
     return this._dataVersion
+  }
+
+  /** Timestamp/index mapping revision, independent of ordinary price updates. */
+  getTimeIndexVersion(): number {
+    return this._timeIndexVersion
+  }
+
+  getTimeIndex(): TimeIndex {
+    return this._timeIndex
   }
 
   getTaskScheduler(): TaskScheduler {
@@ -501,8 +608,7 @@ export default class ChartStore {
       return timeShareDataIndexToTimestamp(this._dataList, index, this._timeShareTicks, this._getTimeShareTimestamp)
     }
 
-    const data = this.getDataByDataIndex(index)
-    return data?.timestamp
+    return this._timeIndex.dataIndexToTime(index)
   }
 
   timestampToDataIndex(timestamp: number): number | undefined {
@@ -513,19 +619,7 @@ export default class ChartStore {
       return timestampToTimeShareDataIndex(this._dataList, timestamp, this._timeShareTicks, this._getTimeShareTimestamp)
     }
 
-    const lb = lowerBound(this._dataList, d => d.timestamp - timestamp)
-
-    // 精确匹配
-    if (lb < this._dataList.length && this._dataList[lb].timestamp === timestamp) {
-      return lb
-    }
-
-    // K线模式：超出数据范围返回 undefined
-    if (lb === this._dataList.length || (lb === 0 && this._dataList[0].timestamp > timestamp)) {
-      return undefined
-    }
-
-    return lb
+    return this._timeIndex.timeToDataIndex(timestamp, 'ceil')
   }
 
   /**
@@ -533,8 +627,9 @@ export default class ChartStore {
    * 超出范围时返回边界索引，而不是 undefined
    */
   timestampToNearestDataIndex(timestamp: number): number | undefined {
-    const index = binarySearchNearest(this._dataList, 'timestamp', timestamp)
-    return index === -1 ? undefined : index
+    if (this._dataList.length === 0) return undefined
+    const boundedTime = clamp(timestamp, this._dataList[0].timestamp, this._dataList[this._dataList.length - 1].timestamp)
+    return this._timeIndex.timeToDataIndex(boundedTime, 'nearest')
   }
 
   /**
@@ -652,13 +747,19 @@ export default class ChartStore {
   }
 
   addData(data: KLineData | KLineData[], type?: LoadDataType, more?: boolean, callback?: () => void): void {
+    this.batchEffects(() => this._addData(data, type, more, callback))
+  }
+
+  private _addData(data: KLineData | KLineData[], type?: LoadDataType, more?: boolean, callback?: () => void): void {
     let adjustFlag = false
+    let timestampChanged = false
     let gapContext: GapDataChangeContext | undefined
     if (isArray<KLineData>(data)) {
       switch (type) {
         case LoadDataType.Init: {
           this.clear()
           this._dataList = data
+          this._dataTimestamps = data.map(bar => bar.timestamp)
           this._forwardMore = more ?? true
           this._timeScaleStore.resetOffsetRightDistance()
           this._timeScaleStore.resetDataZoomRange()
@@ -674,6 +775,8 @@ export default class ChartStore {
           const offset = data.length
           if (offset > 0) {
             this._dataList = data.concat(this._dataList)
+            this._dataTimestamps = data.map(bar => bar.timestamp).concat(this._dataTimestamps)
+            this._timeIndex.prepend(offset)
             adjustFlag = true
             gapContext = { kind: 'prepend', fromIndex: 0 }
           }
@@ -684,6 +787,7 @@ export default class ChartStore {
           const fromIndex = this._dataList.length
           if (data.length > 0) {
             this._dataList = this._dataList.concat(data)
+            this._dataTimestamps = this._dataTimestamps.concat(data.map(bar => bar.timestamp))
             adjustFlag = true
             gapContext = { kind: 'append', fromIndex }
           }
@@ -698,11 +802,14 @@ export default class ChartStore {
       if (timestamp > lastDataTimestamp) {
         // 追加新数据
         this._dataList.push(data)
+        this._dataTimestamps.push(timestamp)
         this._timeScaleStore.onAppendData()
         adjustFlag = true
         gapContext = { kind: 'append', fromIndex: dataCount }
       } else if (timestamp === lastDataTimestamp) {
         // 更新最后一条
+        timestampChanged = this._dataTimestamps[dataCount - 1] !== timestamp
+        this._dataTimestamps[dataCount - 1] = timestamp
         this._dataList[dataCount - 1] = data
         adjustFlag = true
         gapContext = { kind: 'update-latest', fromIndex: Math.max(0, dataCount - 1) }
@@ -710,6 +817,8 @@ export default class ChartStore {
         // 更新历史数据：二分查找匹配的 timestamp
         const index = this.timestampToDataIndex(timestamp)
         if (index !== undefined && this._dataList[index].timestamp === timestamp) {
+          timestampChanged = this._dataTimestamps[index] !== timestamp
+          this._dataTimestamps[index] = timestamp
           this._dataList[index] = data
           adjustFlag = true
           gapContext = { kind: 'update-history', fromIndex: index }
@@ -718,57 +827,48 @@ export default class ChartStore {
     }
     if (adjustFlag) {
       this._dataVersion++
-      try {
-        if (gapContext) {
-          this._gapStore.recalculate(this._dataList, gapContext)
-        }
-        this._timeScaleStore.adjustVisibleRange()
-        this._tooltipStore.recalculateCrosshair(true)
-        const filterIndicators = this._indicatorStore.getIndicatorsByFilter({})
-
-        if (filterIndicators.length > 0) {
-          // 有指标需要计算：先计算指标，TaskScheduler 完成后会自动刷新数据视口
-          // 这样确保 calcRange() 使用的是最新的 indicator.result
-          this._indicatorStore.calcInstance(filterIndicators)
-          // 将回调加入队列，等待指标计算完成
-          if (callback) {
-            this._dataReadyCallbacks.push(callback)
-          }
-        } else {
-          // 没有指标：直接调整视口
-          this._refreshViewportLayoutAfterDataChange()
-          // 立即执行回调
-          callback?.()
-        }
-        this._actionStore.execute(ActionType.OnDataReady, undefined)
-      } catch { }
+      if (timestampChanged || this._isTimeShare || (gapContext?.kind !== 'update-latest' && gapContext?.kind !== 'update-history')) this._timeIndexVersion++
+      if (timestampChanged || gapContext?.kind === 'prepend') this._indicatorStore.clearResults()
+      if (gapContext) this._gapStore.recalculate(this._dataList, gapContext)
+      this._timeScaleStore.adjustVisibleRange()
+      this._tooltipStore.recalculateCrosshair(true)
+      this._completeDataUpdate(callback)
     }
   }
 
   replaceData(dataList: KLineData[], more?: boolean, callback?: () => void): void {
+    this.batchEffects(() => this._replaceData(dataList, more, callback))
+  }
+
+  private _replaceData(dataList: KLineData[], more?: boolean, callback?: () => void): void {
+    const anchor = this._timeScaleStore.captureDataAnchor()
+    const timestamps = dataList.map(bar => bar.timestamp)
+    if (timestamps.length !== this._dataTimestamps.length || timestamps.some((timestamp, index) => timestamp !== this._dataTimestamps[index])) this._indicatorStore.clearResults()
+    this._dataTimestamps = timestamps
     this._dataList = dataList
+    this._timeIndex.reset()
     this._dataVersion++
+    this._timeIndexVersion++
     this._backwardMore = more ?? false
     this._gapStore.recalculate(this._dataList, { kind: 'replace', fromIndex: 0 })
 
+    this._timeScaleStore.restoreDataAnchor(anchor)
     this._timeScaleStore.adjustVisibleRange()
     this._tooltipStore.recalculateCrosshair(true)
-    const filterIndicators = this._indicatorStore.getIndicatorsByFilter({})
-
-    if (filterIndicators.length > 0) {
-      this._indicatorStore.calcInstance(filterIndicators)
-      if (callback) {
-        this._dataReadyCallbacks.push(callback)
-      }
-    } else {
-      this._refreshViewportLayoutAfterDataChange()
-      callback?.()
-    }
-    this._actionStore.execute(ActionType.OnDataReady, undefined)
+    this._completeDataUpdate(callback)
   }
 
   setLoadDataCallback(callback: LoadDataCallback): void {
+    if (callback !== this._loadDataCallback) {
+      this._loaderGeneration++
+      this._resetLoading()
+    }
     this._loadDataCallback = callback
+  }
+
+  private _resetLoading(): void {
+    this._loadingForward = false
+    this._loadingBackward = false
   }
 
   private canLoadForward(): boolean {
@@ -781,11 +881,20 @@ export default class ChartStore {
 
   executeLoadDataCallback(params: Omit<LoadDataParams, 'callback' | 'addData'>): void {
     if (params.type === LoadDataType.Init) return
+    if (this._effectDepth > 0) {
+      this.dispatchDataEffect(() => this.executeLoadDataCallback(params), `load:${params.type}`)
+      return
+    }
 
     const isForward = params.type === LoadDataType.Forward
     const canLoad = isForward ? this.canLoadForward() : this.canLoadBackward()
 
     if (!canLoad) return
+
+    const epoch = this._datasetEpoch
+    const generation = this._loaderGeneration
+    const isCurrent = (): boolean => epoch === this._datasetEpoch && generation === this._loaderGeneration
+    let completed = false
 
     if (isForward) {
       this._loadingForward = true
@@ -794,6 +903,8 @@ export default class ChartStore {
     }
 
     const cb = (): void => {
+      if (completed || !isCurrent()) return
+      completed = true
       if (isForward) {
         this._loadingForward = false
       } else {
@@ -801,7 +912,10 @@ export default class ChartStore {
       }
     }
 
+    let added = false
     const addData = (data: KLineData[], more?: boolean): void => {
+      if (!isCurrent() || added) return
+      added = true
       this.addData(data, params.type, more)
     }
 
@@ -809,12 +923,23 @@ export default class ChartStore {
   }
 
   clear(): void {
+    this.batchEffects(() => this._clear())
+  }
+
+  private _clear(): void {
+    this._datasetEpoch++
+    this._indicatorStore.cancelPendingCalculations()
+    // Data-dependent effects check their captured epoch; lifecycle effects must finish.
+    this._afterNextDataLayout = undefined
+    this._indicatorStore.clearResults()
     this._forwardMore = true
     this._backwardMore = true
-    this._loadingForward = false
-    this._loadingBackward = false
+    this._resetLoading()
     this._dataList = []
+    this._dataTimestamps = []
+    this._timeIndex.reset()
     this._dataVersion++
+    this._timeIndexVersion++
     this._visibleDataList = []
     this._timeScaleStore.clear()
     this._tooltipStore.clear()
@@ -822,12 +947,16 @@ export default class ChartStore {
     this._gap1Store.clear()
     this._taskScheduler.clear()
     this._dataReadyCallbacks = []
+    this._dataUpdatePending = false
   }
 
   /**
    * 销毁 ChartStore，清理所有引用防止内存泄漏
    */
   destroy(): void {
+    if (this._destroyed) return
+    this._destroyed = true
+    this._overlayStore.removeInstance()
     this.clear()
     this._loadDataCallback = undefined
   }
@@ -836,12 +965,10 @@ export default class ChartStore {
     return this._timeScaleStore
   }
 
+  getOverlayStore(): OverlayStore { return this._overlayStore }
+
   getIndicatorStore(): IndicatorStore {
     return this._indicatorStore
-  }
-
-  getOverlayStore(): OverlayStore {
-    return this._overlayStore
   }
 
   getTooltipStore(): TooltipStore {

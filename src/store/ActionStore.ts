@@ -3,9 +3,17 @@ import { isValid } from '../common/utils/typeChecks'
 
 export default class ActionStore {
   private readonly _actions = new Map<ActionType, Action<unknown>>()
+  private readonly _notifications = new Map<ActionType, object>()
+
+  constructor(private readonly _dispatch?: (effect: () => void, key: unknown) => void, private readonly _getRevision?: () => number) {}
 
   execute<T extends ActionType>(type: T, data: ActionCallbackParams[T]): void {
-    this._actions.get(type)?.execute(data)
+    const revision = this._getRevision?.()
+    const notification = {}
+    this._notifications.set(type, notification)
+    const effect = (): void => { this._actions.get(type)?.execute(data, () => revision === this._getRevision?.() && this._notifications.get(type) === notification) }
+    if (this._dispatch) this._dispatch(effect, type)
+    else effect()
   }
 
   subscribe<T extends ActionType>(type: T, callback: ActionCallback<ActionCallbackParams[T]>): void {
@@ -21,6 +29,7 @@ export default class ActionStore {
       action.unsubscribe(callback)
       if (action.isEmpty()) {
         this._actions.delete(type)
+        this._notifications.delete(type)
       }
     }
   }

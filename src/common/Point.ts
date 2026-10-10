@@ -45,3 +45,10 @@ export interface Point {
 export function isValidPointOffset(point: Pick<Point, 'offset'>): boolean {
   return point.offset === undefined || Number.isInteger(point.offset)
 }
+
+/** Copy only the generic point contract, excluding extension-specific input fields. */
+export function copyPoint(point: Point): Point {
+  const result: Point = { timestamp: point.timestamp, value: point.value }
+  if (point.offset !== undefined) result.offset = point.offset
+  return result
+}

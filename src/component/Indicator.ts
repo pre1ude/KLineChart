@@ -257,6 +257,7 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
 
   private _lockSeriesPrecision: boolean = false
   private _prevIndicator?: Indicator<D>
+  private _calculationVersion = 0
 
   onClick?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
   onMouseEnter?: (event: MouseTouchEvent, context: InteractionContext<D>) => void
@@ -363,9 +364,13 @@ export class Indicator<D = unknown> implements IndicatorApi<D> {
     }
   }
 
-  async calcIndicator(dataList: KLineData[]): Promise<boolean> {
+  async calcIndicator(dataList: KLineData[], shouldCommit?: () => boolean): Promise<boolean> {
+    const calculationVersion = ++this._calculationVersion
     try {
       const result = await this.calc(dataList, this)
+      if (calculationVersion !== this._calculationVersion || !(shouldCommit?.() ?? true)) {
+        return false
+      }
       this.result = result
       return true
     } catch (_e) {

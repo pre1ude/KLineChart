@@ -80,9 +80,11 @@ function createPendingIndicatorChart(ready = true): {
   const createPane = vi.fn(() => pane)
 
   Reflect.set(chart, '_chartStore', {
+    getDatasetEpoch: () => 0,
+    getDataVersion: () => 0,
     getIndicatorPaneDefaultHeight: () => 0.25,
     getMinIndicatorPaneHeight: () => 80,
-    getIndicatorStore: () => ({ addInstance })
+    getIndicatorStore: () => ({ addInstance, getInstances: () => [] })
   })
   Reflect.set(chart, '_createPane', createPane)
   Reflect.set(chart, 'getDrawPaneById', vi.fn(() => undefined))
@@ -310,6 +312,8 @@ describe('ChartImp Y-scale and visual-axis lifecycle', () => {
     const pane = { getId: () => PaneIdConstants.CANDLE, getYScaleById: () => ({}) }
     Reflect.set(chart, 'getDrawPaneById', vi.fn(() => pane))
     Reflect.set(chart, '_chartStore', {
+      getDatasetEpoch: () => 0,
+      getDataVersion: () => 0,
       getIndicatorStore: () => ({
         getIndicatorsByFilter: () => [indicator],
         override

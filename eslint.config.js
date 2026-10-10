@@ -255,7 +255,7 @@ export default tseslint.config(
 
   // 浏览器测试配置
   {
-    files: ['tests/browser/**/*.test.ts', 'vitest.browser.config.ts'],
+    files: ['tests/browser/**/*.test.ts', 'tests/html/overlay/period-points/**/*.ts', 'vitest.browser.config.ts'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',

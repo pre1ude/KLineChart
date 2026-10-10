@@ -38,6 +38,62 @@ beforeEach(() => {
   overlayViewMock.convert = undefined
 })
 
+describe('point notification commit boundary', () => {
+  it.each(['click', 'drag'] as const)('finishes %s state before an observer removes the drawing', input => {
+    const f = createStoredFixture([], [100, 200], 'horizontalStraightLine')
+    const overlay = f.overlay
+    const late = vi.fn()
+    const states: Array<{ complete: boolean, selected?: string }> = []
+    overlay.onDrawStart = late
+    overlay.onDrawing = late
+    overlay.onDrawEnd = late
+    overlay.onPointsChange = () => {
+      states.push({ complete: overlay.isCompleted(), selected: f.store.getOverlayStore().getSelectedInfo()?.overlay.id })
+      f.store.getOverlayStore().removeInstance({ id: overlay.id })
+    }
+    if (input === 'click') overlayViewMock.handlers.get('mouseClickEvent')!(createEvent(0, 10))
+    else {
+      overlayViewMock.handlers.get('mouseDownEvent')!(createEvent(0, 10))
+      overlayViewMock.handlers.get('pressedMouseMoveEvent')!(createEvent(1, 15))
+    }
+    expect(states).toEqual([{ complete: true, selected: overlay.id }])
+    expect(f.store.getOverlayStore().getInstanceById(overlay.id)).toBeUndefined()
+    expect(f.store.getOverlayStore().getSelectedInfo()).toBeUndefined()
+    expect(f.store.getOverlayStore().isPressed()).toBe(false)
+    expect(f.store.getOverlayStore().isDragging()).toBe(false)
+    expect(late).not.toHaveBeenCalled()
+    f.store.destroy()
+  })
+
+  it('does not continue notifications for an instance replaced under the same ID', () => {
+    const f = createStoredFixture([], [100, 200], 'horizontalStraightLine')
+    const overlay = f.overlay
+    const late = vi.fn()
+    overlay.onDrawEnd = late
+    overlay.onPointsChange = () => {
+      f.store.getOverlayStore().removeInstance({ id: overlay.id })
+      f.store.getOverlayStore().addInstances([{ id: overlay.id, name: 'horizontalStraightLine', points: [{ timestamp: 200, value: 20 }] }])
+    }
+    overlayViewMock.handlers.get('mouseClickEvent')!(createEvent(0, 10))
+    expect(f.store.getOverlayStore().getInstanceById(overlay.id)?.points).toEqual([{ timestamp: 200, value: 20 }])
+    expect(f.store.getOverlayStore().getSelectedInfo()).toBeUndefined()
+    expect(late).not.toHaveBeenCalled()
+    f.store.destroy()
+  })
+
+  it('preserves synchronous drag cancellation', () => {
+    const points = [{ timestamp: 100, value: 10 }, { timestamp: 200, value: 20 }]
+    const f = createStoredFixture(points, [100, 200, 300])
+    const before = f.overlay.points.map(point => ({ ...point }))
+    f.overlay.onPressedMoving = event => { event.defaultPrevented = true }
+    f.startDrag(0, 10)
+    f.move(1, 15)
+    expect(f.overlay.points).toEqual(before)
+    f.release()
+    f.store.destroy()
+  })
+})
+
 describe('OverlayLayer progress drawing interaction', () => {
   it('previews the next point while the first point is held and moved', () => {
     const onDrawStart = vi.fn()
@@ -127,6 +183,20 @@ describe('OverlayLayer time-point editing', () => {
     expect(overlay.points).toEqual([{ timestamp: 100, offset: 0, value: 20 }, { timestamp: 400, offset: 1, value: 30 }])
   })
 
+  it('reuses press-time indices on price updates and reprojects on coordinate configuration changes', () => {
+    const { store, overlay, startDrag, move } = createStoredFixture(anchors, [100, 200, 300, 400])
+    const project = vi.spyOn(store.getOverlayStore(), 'getProjectedPoints')
+    startDrag(1, 10)
+    project.mockClear()
+    store.addData({ ...store.getDataList()[3], close: 25 })
+    move(1, 15)
+    expect(project).not.toHaveBeenCalled()
+    store.setOptions({ isTimeShare: false })
+    move(1, 20)
+    expect(project).toHaveBeenCalledOnce()
+    expect(overlay.points).toEqual(anchors.map(point => ({ ...point, value: point.value + 10 })))
+  })
+
   it('translates by bar positions across unequal timestamp intervals', () => {
     const { overlay, startDrag, move } = createStoredFixture([{ timestamp: 100, value: 10 }, { timestamp: 200, offset: 1, value: 20 }], [100, 200, 500, 900])
     startDrag(1, 10)
@@ -167,7 +237,7 @@ describe('OverlayLayer time-point editing', () => {
     expect(overlay.points).toEqual([{ timestamp: 100, value: 10 }, { timestamp: 900, offset: 0, value: 25 }])
   })
 
-  it('discards a released gesture and takes a new time-point snapshot on the next press', () => {
+  it('discards a finished drag and takes a new time-point snapshot on the next press', () => {
     const { overlay, startDrag, move, release } = createStoredFixture([{ timestamp: 100, value: 10 }, { timestamp: 200, value: 20 }], [100, 200, 300, 400])
     startDrag(0, 10)
     move(1, 15)
@@ -181,7 +251,7 @@ describe('OverlayLayer time-point editing', () => {
     expect(() => JSON.stringify(overlay)).not.toThrow()
   })
 
-  it('does not let template mutations change the layer gesture snapshot', () => {
+  it('does not let template mutations change the layer drag snapshot', () => {
     const { overlay, startDrag, move } = createStoredFixture([{ timestamp: 100, value: 10 }, { timestamp: 200, value: 20 }], [100, 200, 300, 400])
     overlay.onBodyDrag = function ({ prevPoint, prevPoints, movedPoints }) {
       this.points = movedPoints
@@ -200,7 +270,7 @@ function data(timestamps: number[]) {
 }
 
 function createStoredFixture(points: Point[], timestamps: number[], name = 'segment') {
-  const chart = { refreshViewportLayout: vi.fn(), updatePane: vi.fn(), getChartStore: () => store }
+  const chart = { refreshViewportLayout: vi.fn(), updatePane: vi.fn(), syncOverlayCursor: vi.fn(), getChartStore: () => store }
   const store = new ChartStore(chart as unknown as Chart)
   store.addData(data(timestamps), LoadDataType.Init)
   const [id] = store.getOverlayStore().addInstances([{ name, paneId: 'candle', points }])
@@ -210,7 +280,7 @@ function createStoredFixture(points: Point[], timestamps: number[], name = 'segm
   const handlers = new Map(overlayViewMock.handlers)
   return {
     store,
-    overlay,
+    get overlay() { return overlay },
     startDrag(x: number, value: number, controlIndex?: number, controlKey = '') {
       const event = createEvent(x, value)
       event.target = { data: { overlayId: id, interactType: controlIndex === undefined ? 'body' : 'control-point', figureIndex: controlIndex ?? 0, figureKey: controlKey, attrsIndex: 0 } } as never
@@ -232,6 +302,7 @@ function createFixture(overlay: Overlay): {
   })
   const overlayStore = {
     getProgressOverlay: () => progressOverlay,
+    getInstanceById: (id: string) => id === overlay.id ? overlay : undefined,
     getProgressOverlayPaneId: () => 'candle',
     updateProgressOverlayPane: vi.fn(),
     progressOverlayComplete,
@@ -239,25 +310,20 @@ function createFixture(overlay: Overlay): {
     setDragging: vi.fn(),
     getSelectedInfo: vi.fn(),
     setSelectedInfo: vi.fn(),
-    clearHoverInfo: vi.fn()
+    clearHoverInfo: vi.fn(),
+    notifyPointsChange: vi.fn()
   }
   const chartStore = {
+    batchEffects: (commit: () => void) => commit(),
+    dispatchEffect: (effect: () => void) => effect(),
     getOverlayStore: () => overlayStore,
     internalToExternal: (point: { dataIndex?: number, value?: number }) => ({ timestamp: point.dataIndex, value: point.value })
   }
-  const chart = {
-    getChartStore: () => chartStore,
-    updatePane
-  }
-  const pane = {
-    getId: () => 'candle',
-    getChart: () => chart
-  }
+  const chart = { getChartStore: () => chartStore, updatePane }
   const widget = {
-    getPane: () => pane,
+    getPane: () => ({ getId: () => 'candle', getChart: () => chart }),
     addChild: vi.fn()
   }
-
   new OverlayLayer(widget as never)
 
   return {

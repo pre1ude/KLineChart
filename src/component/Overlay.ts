@@ -3,7 +3,7 @@ import type Bounding from '../common/Bounding'
 import type Coordinate from '../common/Coordinate'
 import type DeepPartial from '../common/DeepPartial'
 import type PartialExcept from '../common/PartialExcept'
-import { isValidPointOffset, type IPoint, type Point } from '../common/Point'
+import { copyPoint, isValidPointOffset, type IPoint, type Point } from '../common/Point'
 import type Precision from '../common/Precision'
 import { type OverlayStyle } from '../common/Styles'
 import { type MouseTouchEvent } from '../common/SyntheticEvent'
@@ -130,7 +130,16 @@ export type OverlayCreateFiguresCallback<E = DefaultExtendData> = (params: Overl
 
 export type OverlayCreateControlPointsCallback<E = DefaultExtendData> = (params: OverlayCreateControlPointsCallbackParams<E>) => OverlayControlPoint[]
 
+export interface OverlayPointsChangeEvent<E = DefaultExtendData> {
+  overlay: Overlay<E>
+  source: 'draw' | 'body' | 'control-point' | 'api'
+  previousPoints: Point[]
+  points: Point[]
+}
+
 export interface OverlayEventHandlers<E = DefaultExtendData> {
+  /** Optional observation of an already committed points state. */
+  onPointsChange?: (event: OverlayPointsChangeEvent<E>) => void
   /** 当 overlay 实例被创建完毕时触发，不论是否已经绘制完成 */
   onCreated?: (this: Overlay<E>) => void
   onRemoved?: () => void
@@ -221,7 +230,7 @@ const EDITABLE_OVERLAY_FIELDS = [
   'needDefaultPointFigure', 'needDefaultXAxisFigure', 'needDefaultYAxisFigure', 'extendData',
   'onCreated', 'onRemoved', 'onDrawStart', 'onDrawing', 'onDrawEnd', 'onClick',
   'onDoubleClick', 'onRightClick', 'onPressedMoveStart', 'onPressedMoving', 'onPressedMoveEnd',
-  'onMouseEnter', 'onMouseLeave', 'onSelected', 'onDeselected'
+  'onMouseEnter', 'onMouseLeave', 'onSelected', 'onDeselected', 'onPointsChange'
 ] as const satisfies ReadonlyArray<keyof OverlayProps>
 
 function pickEditableProperties(overlay: Partial<Record<typeof EDITABLE_OVERLAY_FIELDS[number], unknown>>): Record<string, unknown> {
@@ -283,6 +292,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   onBodyDrag?: (this: Overlay<E>, params: OverlayBodyDragParams) => void
 
   // Event callbacks
+  onPointsChange?: (event: OverlayPointsChangeEvent<E>) => void
   onCreated?: (this: Overlay<E>) => void
   onRemoved?: () => void
 
@@ -329,7 +339,6 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
       merge(this.styles, styles)
     }
 
-    this.onCreated?.()
   }
 
   getControlPoints(coordinates: Coordinate[]): OverlayControlPoint[] {
@@ -378,7 +387,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
     const committedCount = this.currentStep
     const drawingPoint = this.points[committedCount]
 
-    const committedPoints = points.slice(0, committedCount).map(point => ({ ...point }))
+    const committedPoints = points.slice(0, committedCount).map(copyPoint)
     this.points = [...committedPoints]
 
     if (isValid(drawingPoint)) {
@@ -391,7 +400,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
   }
 
   private _applyPoints(points: Point[]) {
-    const _points = points.slice(0, this.totalStep).map(point => ({ ...point }))
+    const _points = points.slice(0, this.totalStep).map(copyPoint)
 
     this.currentStep = _points.length
 
@@ -491,7 +500,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
       logWarn('Overlay.updateDrawPoint', 'point.offset', 'offset must be an integer.')
       return
     }
-    const nextPoint = { ...point }
+    const nextPoint = copyPoint(point)
     if (this.onDrawPointUpdate) {
       this.onDrawPointUpdate(this.points, this.currentStep, nextPoint)
       return
@@ -504,7 +513,7 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
       logWarn('Overlay.onDragMoveControlPoint', 'point.offset', 'offset must be an integer.')
       return
     }
-    const nextPoint = { ...point }
+    const nextPoint = copyPoint(point)
     if (this.onControlPointUpdate) {
       this.onControlPointUpdate(this.points, pointIndex, nextPoint, controlPointKey)
     } else if (this.points[pointIndex]) {
@@ -518,12 +527,12 @@ export class Overlay<E = DefaultExtendData> implements OverlayApi<E> {
       logWarn('Overlay.onDragMoveBody', 'movedPoints.offset', 'offset must be an integer.')
       return
     }
-    const movedPoints = params.movedPoints.map(point => ({ ...point }))
+    const movedPoints = params.movedPoints.map(copyPoint)
     if (this.onBodyDrag) {
       this.onBodyDrag({
         point: { ...params.point },
         prevPoint: { ...params.prevPoint },
-        prevPoints: params.prevPoints.map(point => ({ ...point })),
+        prevPoints: params.prevPoints.map(copyPoint),
         movedPoints
       })
     } else {

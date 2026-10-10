@@ -19,7 +19,6 @@ import type DualYPane from '../pane/DualYPane'
 import { PaneIdConstants } from '../pane/types'
 import type XAxisWidget from '../widget/XAxisWidget'
 import type YAxisWidget from '../widget/YAxisWidget'
-import { WidgetNameConstants } from '../widget/types'
 import View from './View'
 
 type OverlayViewType = 'main' | 'xAxis' | 'yAxis'
@@ -85,7 +84,8 @@ export default class OverlayView extends View {
     }
 
     if (this._type !== 'xAxis') {
-      const yScale = (pane as DualYPane).getDefaultYScale().getComponent()
+      const yScale = this._type === 'yAxis' ? (widget as YAxisWidget).getScaleComponent() : (pane as DualYPane).getDefaultYScale()?.getComponent()
+      if (!yScale) return undefined
       let value = yScale.convertFromPixel(coordinate.y)
       const dataList = chartStore.getDataList()
       const dataIndex = point.dataIndex ?? -1
@@ -132,11 +132,10 @@ export default class OverlayView extends View {
     const pane = widget.getPane()
     const paneId = pane.getId()
     const chart = pane.getChart()
-    const widgetName = widget.getName()
     let yScale: YScale | undefined
-    if (widgetName === WidgetNameConstants.MAIN) {
-      yScale = pane.getDefaultYScale().getComponent()
-    } else if (widgetName === WidgetNameConstants.Y_AXIS) {
+    if (this._type === 'main') {
+      yScale = pane.getDefaultYScale()?.getComponent()
+    } else if (this._type === 'yAxis') {
       yScale = widget.getScaleComponent()
     }
     const xAxisWidget = chart.getXAxisPane().getMainWidget() as XAxisWidget
@@ -497,14 +496,8 @@ export default class OverlayView extends View {
     if (overlay.id !== clickInfo?.overlay?.id) return
     if (coordinates.length === 0) return
 
-    const widget = this.getWidget()
-    if (widget.getName() !== WidgetNameConstants.Y_AXIS &&
-      widget.getName() !== WidgetNameConstants.MAIN) {
-      return
-    }
-
-    const yAxisWidget = widget as YAxisWidget
-    if (clickInfo.paneId !== yAxisWidget.getPane().getId()) return
+    if (this._type !== 'yAxis' && this._type !== 'main') return
+    if (clickInfo.paneId !== this.getWidget().getPane().getId()) return
 
     const figures: OverlayFigure[] = []
 
@@ -518,7 +511,8 @@ export default class OverlayView extends View {
     })
 
     // 计算对齐方式
-    const isAlignLeft = yAxisWidget.isAlignLeft() ?? false
+    const yAxisWidget = this._type === 'yAxis' ? this.getWidget() as YAxisWidget : undefined
+    const isAlignLeft = yAxisWidget?.isAlignLeft() ?? false
     const align = isAlignLeft ? 'left' : 'right'
     const x = isAlignLeft ? 0 : bounding.width
 
@@ -537,7 +531,7 @@ export default class OverlayView extends View {
         let text = formatPrecision(point.value, precision.price)
         text = formatThousands(text, thousandsSeparator)
         text = formatFoldDecimal(text, decimalFoldThreshold)
-        text = yAxisWidget.formatLabel(point.value, text)
+        text = yAxisWidget?.formatLabel(point.value, text) ?? text
 
         figures.push({
           type: 'text',

@@ -29,6 +29,11 @@ export default class XAxisWidget extends DrawWidget<SingleWidgetPane> {
     this.setOptions(options.axisOptions ?? { name: 'default', scrollZoomEnabled: true })
   }
 
+  override destroy(): void {
+    this._overlayXAxisView.clear()
+    super.destroy()
+  }
+
   getOptions(): PaneAxisOptions {
     return this._axisOptions
   }

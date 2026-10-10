@@ -6,6 +6,8 @@ import { getIndicatorTemplate } from '../extension/indicator/index'
 export default class IndicatorStore {
   private readonly _chartStore: ChartStore
   private readonly _instances = new Map<string, Indicator[]>()
+  private readonly _pendingCalculations = new Map<Indicator, { result: Promise<boolean>, finish: (committed: boolean) => void }>()
+  private readonly _overrides = new WeakMap<Indicator, object>()
 
   constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
@@ -22,6 +24,10 @@ export default class IndicatorStore {
   }
 
   addInstance(indicator: IndicatorCreate, paneId: string, isStack: boolean): Promise<boolean> {
+    return this._chartStore.batchEffects(() => this._addInstance(indicator, paneId, isStack))
+  }
+
+  private _addInstance(indicator: IndicatorCreate, paneId: string, isStack: boolean): Promise<boolean> {
     const { name, id } = indicator
     let paneInstances = this._instances.get(paneId)
     if (isValid(paneInstances) && isValid(id)) {
@@ -45,13 +51,19 @@ export default class IndicatorStore {
 
     this.synchronizeSeriesPrecision(indicatorInstance)
     indicatorInstance.override(indicator)
+    const replaced = isStack ? [] : paneInstances
     if (!isStack) {
       paneInstances = []
     }
     paneInstances.push(indicatorInstance)
     this._instances.set(paneId, paneInstances)
     this._sort(paneId)
-    return indicatorInstance.calcIndicator(this._chartStore.getDataList())
+    const creation = this._calcIndicator(indicatorInstance, true)
+    if (replaced.length > 0) {
+      replaced.forEach(instance => this._finishCalculation(instance, false))
+      this._chartStore.getTaskScheduler().remove(replaced.map(instance => this._taskKey(instance)))
+    }
+    return creation
   }
 
   getInstances(paneId: string): Indicator[] {
@@ -59,24 +71,25 @@ export default class IndicatorStore {
   }
 
   removeInstance(paneId: string, name?: string): boolean {
-    let removed = false
+    let removed: Indicator[] = []
     const paneInstances = this._instances.get(paneId)
     if (isValid(paneInstances)) {
       if (isString(name)) {
         const index = paneInstances.findIndex((ins) => ins.name === name)
         if (index > -1) {
-          paneInstances.splice(index, 1)
-          removed = true
+          removed = paneInstances.splice(index, 1)
         }
       } else {
         this._instances.set(paneId, [])
-        removed = true
+        removed = paneInstances
       }
       if (this._instances.get(paneId)?.length === 0) {
         this._instances.delete(paneId)
       }
     }
-    return removed
+    removed.forEach(instance => this._finishCalculation(instance, false))
+    this._chartStore.getTaskScheduler().remove(removed.map(instance => this._taskKey(instance)))
+    return removed.length > 0
   }
 
   removeInstances(filter: IndicatorFilter): Indicator[] {
@@ -95,6 +108,8 @@ export default class IndicatorStore {
       }
       if (instances.length === 0) this._instances.delete(paneId)
     })
+    removed.forEach(instance => this._finishCalculation(instance, false))
+    this._chartStore.getTaskScheduler().remove(removed.map(instance => this._taskKey(instance)))
     return removed
   }
 
@@ -102,14 +117,64 @@ export default class IndicatorStore {
     return this._instances.has(paneId)
   }
 
-  calcInstance(indicators: Indicator[]): void {
-    if (indicators.length > 0) {
-      const tasks: Record<string, Promise<unknown>> = {}
-      indicators.forEach(indicator => {
-        tasks[indicator.id] = indicator.calcIndicator(this._chartStore.getDataList())
-      })
-      this._chartStore.getTaskScheduler().add(tasks)
+  private _finishCalculation(indicator: Indicator, committed: boolean): void {
+    const completion = this._pendingCalculations.get(indicator)
+    this._pendingCalculations.delete(indicator)
+    completion?.finish(committed)
+  }
+
+  cancelPendingCalculations(): void {
+    this._pendingCalculations.forEach(completion => completion.finish(false))
+    this._pendingCalculations.clear()
+  }
+
+  private _calcIndicator(indicator: Indicator, followUpdates = false): Promise<boolean> {
+    // API completion belongs to the instance; a tick replaces only the calculation task.
+    let completion = this._pendingCalculations.get(indicator)
+    if (followUpdates && !completion) {
+      let finish!: (committed: boolean) => void
+      const result = new Promise<boolean>(resolve => { finish = resolve })
+      completion = { result, finish }
+      this._pendingCalculations.set(indicator, completion)
     }
+    const scheduler = this._chartStore.getTaskScheduler()
+    const key = this._taskKey(indicator)
+    const dataVersion = this._chartStore.getDataVersion()
+    const epoch = this._chartStore.getDatasetEpoch()
+    const data = this._chartStore.getDataList()
+    const isCurrent = (): boolean => (
+      scheduler.isCurrent(key, task) &&
+      !this._chartStore.isDestroyed() &&
+      dataVersion === this._chartStore.getDataVersion() &&
+      epoch === this._chartStore.getDatasetEpoch() &&
+      (this._instances.get(indicator.paneId)?.includes(indicator) ?? false)
+    )
+    let finish!: (committed: boolean) => void
+    const task = new Promise<boolean>(resolve => { finish = resolve })
+    const complete = (committed: boolean): void => {
+      const ownsTask = scheduler.isCurrent(key, task)
+      const ready = committed && isCurrent()
+      finish(committed)
+      if (ownsTask) this._finishCalculation(indicator, ready)
+    }
+    scheduler.add({ [key]: task })
+    this._chartStore.deferCalculation(() => {
+      if (!isCurrent()) { complete(false); return }
+      void indicator.calcIndicator(data, isCurrent).then(complete)
+    })
+    return completion?.result ?? task
+  }
+
+  clearResults(): void {
+    this._instances.forEach(indicators => indicators.forEach(indicator => { indicator.result = [] }))
+  }
+
+  private _taskKey(indicator: Indicator): string {
+    return JSON.stringify([indicator.paneId, indicator.id])
+  }
+
+  calcInstance(indicators: Indicator[]): void {
+    this._chartStore.batchEffects(() => indicators.forEach(indicator => { void this._calcIndicator(indicator) }))
   }
 
   /**
@@ -188,7 +253,11 @@ export default class IndicatorStore {
     }
   }
 
-  async override(indicator: IndicatorOverride, paneId?: string): Promise<[boolean, boolean]> {
+  override(indicator: IndicatorOverride, paneId?: string): Promise<[boolean, boolean, () => boolean]> {
+    return this._chartStore.batchEffects(() => this._override(indicator, paneId))
+  }
+
+  private async _override(indicator: IndicatorOverride, paneId?: string): Promise<[boolean, boolean, () => boolean]> {
     const name = 'name' in indicator ? indicator.name : undefined
     const id = 'id' in indicator ? indicator.id : undefined
 
@@ -203,13 +272,18 @@ export default class IndicatorStore {
     let onlyUpdateFlag = false
     const tasks: Array<Promise<boolean>> = []
     let sortFlag = false
+    const operation = {}
+    const epoch = this._chartStore.getDatasetEpoch()
+    const isCurrent = (): boolean => !this._chartStore.isDestroyed() && epoch === this._chartStore.getDatasetEpoch() &&
+      matchingIndicators.every(instance => this._overrides.get(instance) === operation && (this._instances.get(instance.paneId)?.includes(instance) ?? false))
 
     matchingIndicators.forEach((instance) => {
+      this._overrides.set(instance, operation)
       instance.override(indicator)
       const { draw, calc, sort } = instance.shouldUpdate()
       sortFlag = sortFlag || sort
       if (calc) {
-        tasks.push(instance.calcIndicator(this._chartStore.getDataList()))
+        tasks.push(this._calcIndicator(instance, true))
       } else if (draw) {
         onlyUpdateFlag = true
       }
@@ -219,6 +293,6 @@ export default class IndicatorStore {
       this._sort()
     }
     const result = await Promise.all(tasks)
-    return [onlyUpdateFlag, result.includes(true)]
+    return [onlyUpdateFlag, result.includes(true), isCurrent]
   }
 }

@@ -145,6 +145,32 @@ describe('Overlay time-point persistence', () => {
 })
 
 describe('Overlay projection cache', () => {
+  it.each(['latest', 'history'] as const)('invalidates time lookups when a submitted %s bar was modified in place', position => {
+    const target = position === 'latest' ? 350 : 150
+    const { store, overlays, overlay } = fixture([{ timestamp: target, value: 10 }], [100, 200, 300], 'horizontalStraightLine')
+    overlays.getProjectedPoints(overlay)
+    const bar = store.getDataList()[position === 'latest' ? 2 : 0]
+    bar.timestamp = position === 'latest' ? 400 : 175
+    store.addData(bar)
+    expect(overlays.getProjectedPoints(overlay)?.[0].dataIndex).toBe(position === 'latest' ? 2 : undefined)
+    const version = store.getTimeIndexVersion()
+    bar.close++
+    store.addData(bar)
+    expect(store.getTimeIndexVersion()).toBe(version)
+    expect(overlays.getProjectedPoints(overlay)?.[0].dataIndex).toBe(store.externalToInternal(overlay.points[0]).dataIndex)
+  })
+
+  it('retains ordinary time lookups across latest and historical price updates', () => {
+    const { store, overlays, overlay } = fixture([{ timestamp: 100, value: 10 }, { timestamp: 200, value: 20 }])
+    const lookup = vi.spyOn(store, 'externalToInternal')
+    overlays.getProjectedPoints(overlay)
+    lookup.mockClear()
+    store.addData({ ...store.getDataList()[1], close: 25 })
+    store.addData({ ...store.getDataList()[0], close: 15 })
+    expect(overlays.getProjectedPoints(overlay)?.map(point => point.dataIndex)).toEqual([0, 1])
+    expect(lookup).not.toHaveBeenCalled()
+  })
+
   it('does not retain chart services in an overlay instance', () => {
     const { overlays, overlay } = fixture([{ timestamp: 100, value: 10 }, { timestamp: 200, value: 20 }])
     expect(() => JSON.stringify(overlay)).not.toThrow()

@@ -1,5 +1,27 @@
 import { describe, it, expect } from 'vitest'
-import { binarySearchNearest, nice, round, getPrecision, clamp } from './number'
+import { binarySearchNearest, lowerBound, nice, round, getPrecision, clamp } from './number'
+
+describe('lowerBound', () => {
+  it.each([
+    { values: [], target: 2, expected: 0 },
+    { values: [1, 3, 3, 5], target: 0, expected: 0 },
+    { values: [1, 3, 3, 5], target: 3, expected: 1 },
+    { values: [1, 3, 3, 5], target: 4, expected: 3 },
+    { values: [1, 3, 3, 5], target: 6, expected: 4 }
+  ])('returns insertion index $expected for $target in $values', ({ values, target, expected }) => {
+    expect(lowerBound(values, value => value - target)).toBe(expected)
+  })
+
+  it('accepts readonly objects without modifying the data', () => {
+    const data = Object.freeze([{ timestamp: 10 }, { timestamp: 20 }].map(bar => Object.freeze(bar)))
+    expect(lowerBound(data, bar => bar.timestamp - 15)).toBe(1)
+  })
+
+  it('is available through the public utils export', async () => {
+    const { utils } = await import('../../index')
+    expect(utils.lowerBound([10, 20, 20, 30], value => value - 20)).toBe(1)
+  })
+})
 
 describe('binarySearchNearest', () => {
   type Item = { value: number }

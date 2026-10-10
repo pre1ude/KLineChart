@@ -25,6 +25,11 @@ interface InitialTimeScaleView {
   dataZoomRange?: { start: number, end: number }
 }
 
+interface TimeScaleDataAnchor {
+  timestamp: number
+  distanceFromRight: number
+}
+
 export default class TimeScaleStore {
   private readonly _chartStore: ChartStore
   private _zoomEnabled: boolean = true
@@ -186,11 +191,15 @@ export default class TimeScaleStore {
   }
 
   adjustVisibleRange(): void {
+    this._chartStore.batchEffects(() => this._adjustVisibleRange())
+  }
+
+  private _adjustVisibleRange(): void {
     this._mode.prepareVisibleRange()
     const visibleRange = this.calcVisibleRange()
 
     this._visibleRange = visibleRange
-    this._xScale = createScale(visibleRange, this._chartStore.mainWidth, this.getHorizontalInset())
+    this._xScale = createScale(visibleRange, this._chartStore.mainWidth, this.getHorizontalInset(), this._chartStore.getTimeIndex().getFirstLogicalIndex())
 
     this._chartStore.getActionStore().execute(ActionType.OnVisibleRangeChange, visibleRange)
     this._chartStore.adjustVisibleDataList()
@@ -347,8 +356,36 @@ export default class TimeScaleStore {
     return this._visibleRange
   }
 
+  captureDataAnchor(): TimeScaleDataAnchor | undefined {
+    if (!(this._mode instanceof KLineTimeScaleMode) || this._chartStore.mainWidth <= 0) {
+      return undefined
+    }
+    const { from, to, domainFrom, domainTo } = this._visibleRange
+    const data = this._chartStore.getDataList()
+    if (data.length === 0 || from >= to) return undefined
+    const dataIndex = clamp(Math.floor((domainFrom + domainTo) / 2), from, Math.min(to, data.length) - 1)
+    return { timestamp: data[dataIndex].timestamp, distanceFromRight: domainTo - dataIndex }
+  }
+
+  restoreDataAnchor(anchor: TimeScaleDataAnchor | undefined): void {
+    if (anchor === undefined || !(this._mode instanceof KLineTimeScaleMode)) return
+    const dataIndex = this._chartStore.getTimeIndex().timeToDataIndex(anchor.timestamp, 'exact')
+    if (dataIndex !== undefined) {
+      this._offsetRight = (dataIndex + anchor.distanceFromRight - this._chartStore.getDataList().length) * this._barWidth
+    }
+  }
+
   getXScale(): LinearScale {
-    return this._xScale
+    // Compatibility: this accessor, like VisibleRange, uses data-array offsets.
+    return createScale(this._visibleRange, this._chartStore.mainWidth, this.getHorizontalInset())
+  }
+
+  getLogicalVisibleRange(): { from: number, to: number } {
+    const index = this._chartStore.getTimeIndex()
+    return {
+      from: index.dataIndexToLogical(this._visibleRange.domainFrom),
+      to: index.dataIndexToLogical(this._visibleRange.domainTo)
+    }
   }
 
   private getHorizontalInset(): number {
@@ -370,13 +407,22 @@ export default class TimeScaleStore {
     }
   }
 
-  // map from [domainFrom, domainTo] to the drawable x range
+  logicalToCoordinate(logicalIndex: number): number {
+    return this._xScale(logicalIndex)
+  }
+
+  /** Continuous inverse; bar picking is performed by coordinateToDataIndex. */
+  coordinateToLogical(x: number): number {
+    return this._xScale.invert(x)
+  }
+
   dataIndexToCoordinate(dataIndex: number): number {
-    return this._xScale(dataIndex)
+    return this.logicalToCoordinate(this._chartStore.getTimeIndex().dataIndexToLogical(dataIndex))
   }
 
   coordinateToDataIndex(x: number): number {
-    return Math.floor(this._xScale.invert(x) + 0.5)
+    const dataIndex = this._chartStore.getTimeIndex().logicalToDataIndex(this.coordinateToLogical(x))
+    return Math.floor(dataIndex + 0.5)
   }
 
   zoom(scaleDelta: number, xCoord?: number, requestLayout: boolean = false): void {
@@ -404,6 +450,7 @@ export default class TimeScaleStore {
 
   clear(): void {
     this._visibleRange = getDefaultVisibleRange()
+    this._xScale = createScale(this._visibleRange, this._chartStore.mainWidth, this.getHorizontalInset())
     this._initialView = undefined
   }
 
@@ -501,10 +548,10 @@ export function calcTimeScaleHorizontalInset(styles: Styles): number {
   return Math.ceil(Math.max(symbolInset, pointInset, areaStyles.lineSize / 2))
 }
 
-function createScale({ domainFrom, domainTo }: VisibleRange, mainWidth: number, horizontalInset: number = 0): LinearScale {
+function createScale({ domainFrom, domainTo }: VisibleRange, mainWidth: number, horizontalInset: number = 0, firstLogicalIndex: number = 0): LinearScale {
   const inset = Math.max(0, Math.min(horizontalInset, mainWidth / 2))
   return createLinear({
-    domain: [domainFrom - 0.5, domainTo - 0.5],
+    domain: [firstLogicalIndex + domainFrom - 0.5, firstLogicalIndex + domainTo - 0.5],
     range: [inset, mainWidth - inset]
   })
 }
