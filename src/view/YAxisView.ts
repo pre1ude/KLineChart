@@ -10,7 +10,14 @@ import { clampYAxisLabelY } from './utils/labelPosition'
 
 export default class YAxisView extends AxisView {
   override getAxisStyles(styles: Styles): AxisStyle {
-    return styles.yAxis
+    const tickTextColor = (this.getWidget() as YAxisWidget).getOptions().tickTextColor
+    if (tickTextColor === undefined) return styles.yAxis
+    // Color belongs to the visual axis, not its shared scale or the global theme.
+    // Derive styles on each draw so clearing the override resumes theme updates.
+    return {
+      ...styles.yAxis,
+      tickText: { ...styles.yAxis.tickText, color: tickTextColor }
+    }
   }
 
   override createAxisLine(bounding: Bounding, styles: AxisStyle): LineAttrs {

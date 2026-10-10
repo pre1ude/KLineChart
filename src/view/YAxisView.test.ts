@@ -57,3 +57,30 @@ describe('YAxisView axisLine visibility', () => {
     ])
   })
 })
+
+
+describe('YAxisView per-axis tick text color', () => {
+  it('overrides one visual axis without changing the theme or another axis', () => {
+    const styles = getDefaultStyles()
+    const originalColor = styles.yAxis.tickText.color
+    const colored = new YAxisView({ getOptions: () => ({ tickTextColor: '#f0d5b6' }) } as never)
+    const themed = new YAxisView({ getOptions: () => ({}) } as never)
+
+    expect(colored.getAxisStyles(styles).tickText.color).toBe('#f0d5b6')
+    expect(colored.getAxisStyles(styles).tickText.size).toBe(styles.yAxis.tickText.size)
+    expect(themed.getAxisStyles(styles).tickText.color).toBe(originalColor)
+    expect(styles.yAxis.tickText.color).toBe(originalColor)
+  })
+
+  it('follows later theme changes after the axis color is cleared', () => {
+    const styles = getDefaultStyles()
+    const options = { tickTextColor: '#f0d5b6' as string | undefined }
+    const view = new YAxisView({ getOptions: () => options } as never)
+    styles.yAxis.tickText.color = '#112233'
+    expect(view.getAxisStyles(styles).tickText.color).toBe('#f0d5b6')
+    options.tickTextColor = undefined
+    expect(view.getAxisStyles(styles).tickText.color).toBe('#112233')
+    styles.yAxis.tickText.color = '#445566'
+    expect(view.getAxisStyles(styles).tickText.color).toBe('#445566')
+  })
+})

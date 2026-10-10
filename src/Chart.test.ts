@@ -170,6 +170,84 @@ describe('ChartImp.createIndicator', () => {
 })
 
 describe('ChartImp Y-scale and visual-axis lifecycle', () => {
+
+  it('does not mutate scales or recalculate layout for identical overrides', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const formatter = (value: number) => String(value)
+    const options = { id: 'default', paneId: PaneIdConstants.CANDLE, reverse: false, formatter }
+    const createOrOverrideYScale = vi.fn(patch => Object.assign(options, patch))
+    Reflect.set(chart, 'getYScales', vi.fn(() => [{ ...options }]))
+    Reflect.set(chart, 'getDrawPaneById', vi.fn(() => ({ getId: () => options.paneId, createOrOverrideYScale })))
+    const refresh = vi.fn()
+    Reflect.set(chart, '_refreshExactLayout', refresh)
+
+    chart.overrideYScale({ id: 'default', reverse: false, formatter })
+    expect(createOrOverrideYScale).not.toHaveBeenCalled()
+    expect(refresh).not.toHaveBeenCalled()
+
+    chart.overrideYScale({ id: 'default', reverse: true })
+    expect(createOrOverrideYScale).toHaveBeenCalledTimes(1)
+    expect(refresh).toHaveBeenCalledTimes(1)
+    chart.overrideYScale({ id: 'default', reverse: true })
+    expect(refresh).toHaveBeenCalledTimes(1)
+
+    // Explicit undefined must still clear an existing optional formatter.
+    chart.overrideYScale({ id: 'default', formatter: undefined })
+    expect(options.formatter).toBeUndefined()
+    expect(refresh).toHaveBeenCalledTimes(2)
+    chart.overrideYScale({ id: 'default', formatter: undefined })
+    expect(refresh).toHaveBeenCalledTimes(2)
+  })
+
+  it('skips unchanged axes while preserving visual color updates and reset', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const options = {
+      id: 'default', paneId: PaneIdConstants.CANDLE, yScaleId: 'default',
+      position: 'left', tickTextColor: undefined as string | undefined
+    }
+    const createOrOverrideYAxis = vi.fn(patch => Object.assign(options, patch))
+    Reflect.set(chart, 'getYAxes', vi.fn(() => [{ ...options }]))
+    Reflect.set(chart, 'getDrawPaneById', vi.fn(() => ({
+      getId: () => options.paneId,
+      getYScaleById: () => ({}),
+      createOrOverrideYAxis
+    })))
+    const refresh = vi.fn()
+    Reflect.set(chart, '_refreshExactLayout', refresh)
+
+    chart.overrideYAxis({ id: 'default', position: 'left', yScaleId: 'default' })
+    expect(createOrOverrideYAxis).not.toHaveBeenCalled()
+    expect(refresh).not.toHaveBeenCalled()
+    chart.overrideYAxis({ id: 'default', tickTextColor: '#f0d5b6' })
+    expect(options.tickTextColor).toBe('#f0d5b6')
+    expect(refresh).toHaveBeenCalledTimes(1)
+    chart.overrideYAxis({ id: 'default', tickTextColor: '#f0d5b6' })
+    expect(refresh).toHaveBeenCalledTimes(1)
+    chart.overrideYAxis({ id: 'default', tickTextColor: undefined })
+    expect(options.tickTextColor).toBeUndefined()
+    expect(refresh).toHaveBeenCalledTimes(2)
+  })
+
+  it('only changes matching panes that differ and refreshes once for a multi-pane override', () => {
+    const chart = Object.create(ChartImp.prototype) as ChartImp
+    const candleScale = { id: 'default', paneId: PaneIdConstants.CANDLE, reverse: true }
+    const volumeScale = { id: 'default', paneId: 'volume', reverse: false }
+    const updateCandle = vi.fn()
+    const updateVolume = vi.fn()
+    Reflect.set(chart, 'getYScales', vi.fn(() => [candleScale, volumeScale]))
+    Reflect.set(chart, 'getDrawPaneById', vi.fn((paneId: string) => ({
+      getId: () => paneId,
+      createOrOverrideYScale: paneId === PaneIdConstants.CANDLE ? updateCandle : updateVolume
+    })))
+    const refresh = vi.fn()
+    Reflect.set(chart, '_refreshExactLayout', refresh)
+
+    chart.overrideYScale({ id: 'default', reverse: true })
+    expect(updateCandle).not.toHaveBeenCalled()
+    expect(updateVolume).toHaveBeenCalledWith({ id: 'default', paneId: 'volume', reverse: true })
+    expect(refresh).toHaveBeenCalledTimes(1)
+  })
+
   it('creates a pane-scoped scale before any visual axis references it', () => {
     const chart = Object.create(ChartImp.prototype) as ChartImp
     const createOrOverrideYScale = vi.fn()

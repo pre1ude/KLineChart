@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import DualYPane from './DualYPane'
 import YAxisWidget, { YAxisLabelDisplay } from '../widget/YAxisWidget'
@@ -25,6 +25,30 @@ function createPane(): DualYPane {
 }
 
 describe('DualYPane scale and axis lookup', () => {
+
+  it('carries a visual-axis color through creation and allows clearing it', () => {
+    const pane = createPane()
+    Reflect.set(pane, '_id', 'candle_pane')
+    Reflect.set(pane, '_yScales', new Map([['default', {}]]))
+    Reflect.set(pane, 'getContainer', () => ({}))
+    Reflect.set(pane, 'getBounding', () => ({ height: 100, top: 0 }))
+    Reflect.set(pane, 'setContainerCursorStyle', vi.fn())
+    Reflect.set(pane, 'createYAxisWidget', vi.fn((_container, options) => {
+      let current = options
+      return {
+        getOptions: () => current,
+        setOptions: (patch: object) => { current = { ...current, ...patch } },
+        setBounding: vi.fn()
+      }
+    }))
+
+    const axis = pane.createOrOverrideYAxis({ id: 'colored', yScaleId: 'default', position: 'right', tickTextColor: '#f0d5b6' })
+    expect(axis.getOptions().tickTextColor).toBe('#f0d5b6')
+    pane.createOrOverrideYAxis({ id: 'colored', tickTextColor: undefined })
+    expect(axis.getOptions().tickTextColor).toBeUndefined()
+    expect(axis.getOptions().yScaleId).toBe('default')
+  })
+
   it('uses axis identity independently from visual position', () => {
     const pane = createPane()
 

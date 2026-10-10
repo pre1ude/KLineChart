@@ -28,6 +28,8 @@ export interface YAxisOptions {
   position: 'left' | 'right'
   order: number
   labelDisplay: YAxisLabelDisplay
+  /** Tick/title text color for this visual axis. Undefined follows the chart theme. */
+  tickTextColor?: string
 }
 
 export type YAxisCreate = Partial<Omit<YAxisOptions, 'id' | 'paneId' | 'yScaleId'>> & { id?: string, paneId: string, yScaleId: string }

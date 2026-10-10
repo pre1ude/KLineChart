@@ -1219,13 +1219,18 @@ export default class ChartImp implements Chart {
 
   overrideYScale(yScale: YScaleOverride): void {
     const scales = this.getYScales({ paneId: yScale.paneId, id: yScale.id })
+    let changed = false
     scales.forEach(scale => {
       const pane = this.getDrawPaneById(scale.paneId)
-      if (pane?.getId() !== PaneIdConstants.X_AXIS) {
-        ;(pane as DualYPane).createOrOverrideYScale({ ...yScale, paneId: scale.paneId })
-      }
+      if (!pane || pane.getId() === PaneIdConstants.X_AXIS) return
+      const options = { ...yScale, paneId: scale.paneId }
+      // Reapplying a scale must not reset manual ticks/ranges or request layout.
+      // Compare supplied fields only; explicit undefined still clears formatter.
+      if ((Object.keys(options) as Array<keyof YScaleOptions>).every(key => Object.is(options[key], scale[key]))) return
+      ;(pane as DualYPane).createOrOverrideYScale(options)
+      changed = true
     })
-    if (scales.length > 0) this._refreshExactLayout(false)
+    if (changed) this._refreshExactLayout(false)
   }
 
   removeYScale(filter: YScaleFilter): boolean {
@@ -1284,18 +1289,21 @@ export default class ChartImp implements Chart {
 
   overrideYAxis(yAxis: YAxisOverride): void {
     const axes = this.getYAxes({ paneId: yAxis.paneId, id: yAxis.id })
+    let changed = false
     axes.forEach(axis => {
       const pane = this.getDrawPaneById(axis.paneId)
-      if (pane?.getId() !== PaneIdConstants.X_AXIS) {
-        const dualYPane = pane as DualYPane
-        if ('yScaleId' in yAxis && (!isString(yAxis.yScaleId) || yAxis.yScaleId.length === 0 || !dualYPane.getYScaleById(yAxis.yScaleId))) {
-          logWarn('overrideYAxis', 'yScaleId', `yScale '${yAxis.yScaleId}' does not exist.`)
-          return
-        }
-        dualYPane.createOrOverrideYAxis({ ...yAxis, paneId: axis.paneId })
+      if (!pane || pane.getId() === PaneIdConstants.X_AXIS) return
+      const dualYPane = pane as DualYPane
+      if ('yScaleId' in yAxis && (!isString(yAxis.yScaleId) || yAxis.yScaleId.length === 0 || !dualYPane.getYScaleById(yAxis.yScaleId))) {
+        logWarn('overrideYAxis', 'yScaleId', `yScale '${yAxis.yScaleId}' does not exist.`)
+        return
       }
+      const options = { ...yAxis, paneId: axis.paneId }
+      if ((Object.keys(options) as Array<keyof YAxisOptions>).every(key => Object.is(options[key], axis[key]))) return
+      dualYPane.createOrOverrideYAxis(options)
+      changed = true
     })
-    if (axes.length > 0) this._refreshExactLayout(false)
+    if (changed) this._refreshExactLayout(false)
   }
 
   removeYAxis(filter: YAxisFilter): boolean {

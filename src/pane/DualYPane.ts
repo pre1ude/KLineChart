@@ -127,7 +127,8 @@ export default abstract class DualYPane extends Pane {
       needWidget: options.needWidget ?? true,
       position,
       order: options.order ?? this._yAxisWidgets.size,
-      labelDisplay: options.labelDisplay ?? YAxisLabelDisplay.Value
+      labelDisplay: options.labelDisplay ?? YAxisLabelDisplay.Value,
+      tickTextColor: options.tickTextColor
     }
     const widget = this.createYAxisWidget(this.getContainer(), yAxisOptions)
     this._yAxisWidgets.set(yAxisOptions.id, widget)
