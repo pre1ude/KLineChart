@@ -84,3 +84,33 @@ describe('YAxisView per-axis tick text color', () => {
     expect(view.getAxisStyles(styles).tickText.color).toBe('#445566')
   })
 })
+
+
+describe('YAxisView per-axis title visibility', () => {
+  it('hides a mirror title without changing the shared ticks or the other axis', () => {
+    const bounding = { width: 80, height: 100, left: 0, top: 0 }
+    const scaleOptions = { axisTitle: '成交量' }
+    const options = { showTitle: false as boolean | undefined }
+    const widget = {
+      getOptions: () => options,
+      getScale: () => ({ getOptions: () => scaleOptions }),
+      getPane: () => ({ getChart: () => ({ getChartStore: () => ({ getIsTimeShare: () => true }) }) }),
+      isInCandle: () => false,
+      getBounding: () => bounding,
+      isAlignLeft: () => false
+    }
+    const view = new YAxisView(widget as never)
+    const left = new YAxisView({ ...widget, getOptions: () => ({}) } as never)
+    const ticks = [{ coord: 50, value: 10, text: '10' }]
+    const styles = getDefaultStyles().yAxis
+    const visible = left.createTickTexts(ticks, bounding, styles)
+    expect(visible.map(item => item.attrs.text)).toEqual(['成交量', '10'])
+    expect(view.createTickTexts(ticks, bounding, styles)).toEqual(visible.slice(1))
+    expect(ticks).toEqual([{ coord: 50, value: 10, text: '10' }])
+    expect(scaleOptions.axisTitle).toBe('成交量')
+    options.showTitle = undefined
+    expect(view.createTickTexts(ticks, bounding, styles)).toEqual(visible)
+    options.showTitle = true
+    expect(view.createTickTexts(ticks, bounding, styles)).toEqual(visible)
+  })
+})

@@ -272,6 +272,8 @@ chart.createYAxis({
 - `order`
 - `needWidget`
 - `labelDisplay`
+- `tickTextColor`（该视觉轴的刻度和标题文字颜色；设为 `undefined` 恢复跟随主题）
+- `showTitle`（设为 `false` 仅隐藏该视觉轴的尺度标题；省略、`true` 或 `undefined` 保持显示。共用的刻度及标题避让不变，适合只在左侧显示成交量标题的镜像轴）
 
 ### 5.3 将单尺度显示在左右两侧
 
@@ -563,3 +565,23 @@ chart.removeYAxis(filter: YAxisFilter): boolean
 ```sh
 rg -n "YAxisType|registerYAxis|yAxisId|yAxisPosition|mainPosition|YAxisPosition\\.Both|axisOptions.*YAxis|component/YAxis|extension/y-axis"
 ```
+
+
+## 10. 视觉轴颜色与重复配置
+
+旧的 `axisOptions.YAxis.left/right.axisStyle.tickTextColor` 应迁移到对应视觉轴的 `tickTextColor`，不要写入 YScale：
+
+```ts
+chart.overrideYAxis({
+  id: 'volume-right',
+  paneId: 'volume-pane',
+  tickTextColor: '#f0d5b6'
+})
+
+// 清除局部颜色后，继续跟随当前和后续主题。
+chart.overrideYAxis({ id: 'volume-right', paneId: 'volume-pane', tickTextColor: undefined })
+```
+
+该配置仅覆盖刻度及轴标题文字，不改变尺度的 range、ticks、格式化或坐标换算；分时主图的涨跌颜色规则保持不变。
+
+`overrideYScale` / `overrideYAxis` 对同值字段不再重复提交状态或触发布局。省略 `paneId` 时逐 pane 比较，只更新实际有变化的资源。调用方无需缓存旧配置或自行比较字段；显式传入 `formatter: undefined`、`tickTextColor: undefined` 仍可清除已有设置。

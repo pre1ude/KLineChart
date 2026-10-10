@@ -101,7 +101,8 @@ export default class YAxisView extends AxisView {
 
     let newTicks: AxisTickText[] = ticks.map(tick => ({ tick, attrs: createYAxisTextAttrs(tick, x, bounding.height, textHeight, isAlignLeft) }))
     if (isTimeShare && !isInCandle) {
-      if (axisTitle?.length) {
+      // Mirror axes keep the shared tick layout; only their title visibility differs.
+      if (widget.getOptions().showTitle !== false && axisTitle?.length) {
         newTicks = [{
           attrs: createYAxisTextAttrs({
             coord: height - textHeight / 2,

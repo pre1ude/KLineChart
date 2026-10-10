@@ -26,7 +26,7 @@ function createPane(): DualYPane {
 
 describe('DualYPane scale and axis lookup', () => {
 
-  it('carries a visual-axis color through creation and allows clearing it', () => {
+  it('carries visual-axis color and title visibility through creation and allows clearing them', () => {
     const pane = createPane()
     Reflect.set(pane, '_id', 'candle_pane')
     Reflect.set(pane, '_yScales', new Map([['default', {}]]))
@@ -42,10 +42,12 @@ describe('DualYPane scale and axis lookup', () => {
       }
     }))
 
-    const axis = pane.createOrOverrideYAxis({ id: 'colored', yScaleId: 'default', position: 'right', tickTextColor: '#f0d5b6' })
+    const axis = pane.createOrOverrideYAxis({ id: 'colored', yScaleId: 'default', position: 'right', tickTextColor: '#f0d5b6', showTitle: false })
     expect(axis.getOptions().tickTextColor).toBe('#f0d5b6')
-    pane.createOrOverrideYAxis({ id: 'colored', tickTextColor: undefined })
+    expect(axis.getOptions().showTitle).toBe(false)
+    pane.createOrOverrideYAxis({ id: 'colored', tickTextColor: undefined, showTitle: undefined })
     expect(axis.getOptions().tickTextColor).toBeUndefined()
+    expect(axis.getOptions().showTitle).toBeUndefined()
     expect(axis.getOptions().yScaleId).toBe('default')
   })
 
