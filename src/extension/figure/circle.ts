@@ -3,13 +3,18 @@ import { LineType, type PolygonStyle, PolygonType } from '../../common/Styles'
 import { isTransparent } from '../../common/utils/color'
 import { isString } from '../../common/utils/typeChecks'
 import { type FigureTemplate } from '../../component/Figure'
+import { checkCoordinateOnDegeneratePolygon, drawDegeneratePolygon } from './degenerate'
 
-export function checkCoordinateOnCircle(coordinate: Coordinate, attrs: CircleAttrs | CircleAttrs[]): boolean {
+export function checkCoordinateOnCircle(coordinate: Coordinate, attrs: CircleAttrs | CircleAttrs[], styles: Partial<PolygonStyle> = {}): boolean {
   let circles: CircleAttrs[] = []
   circles = circles.concat(attrs)
 
   for (let i = 0; i < circles.length; i++) {
     const { x, y, r } = circles[i]
+    if (r === 0) {
+      if (checkCoordinateOnDegeneratePolygon(coordinate, [circles[i], circles[i]], styles)) return true
+      continue
+    }
     const dx = (coordinate.x - x) / r
     const dy = (coordinate.y - y) / r
     if (dx * dx + dy * dy <= 1) {
@@ -21,7 +26,12 @@ export function checkCoordinateOnCircle(coordinate: Coordinate, attrs: CircleAtt
 
 export function drawCircle(ctx: CanvasRenderingContext2D, attrs: CircleAttrs | CircleAttrs[], styles: Partial<PolygonStyle>): void {
   let circles: CircleAttrs[] = []
-  circles = circles.concat(attrs)
+  circles = circles.concat(attrs).filter(circle => {
+    if (circle.r !== 0) return true
+    drawDegeneratePolygon(ctx, [circle, circle], styles)
+    return false
+  })
+  if (circles.length === 0) return
 
   const {
     style = PolygonType.Fill,

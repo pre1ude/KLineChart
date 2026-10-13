@@ -3,13 +3,19 @@ import { LineType, type PolygonStyle, PolygonType } from '../../common/Styles'
 import { isTransparent } from '../../common/utils/color'
 import { isString } from '../../common/utils/typeChecks'
 import { type FigureTemplate } from '../../component/Figure'
+import { checkCoordinateOnDegeneratePolygon, drawDegeneratePolygon, getCollinearSegment } from './degenerate'
 
-export function checkCoordinateOnPolygon(coordinate: Coordinate, attrs: PolygonAttrs | PolygonAttrs[]): boolean {
+export function checkCoordinateOnPolygon(coordinate: Coordinate, attrs: PolygonAttrs | PolygonAttrs[], styles: Partial<PolygonStyle> = {}): boolean {
   let polygons: PolygonAttrs[] = []
   polygons = polygons.concat(attrs)
   for (let i = 0; i < polygons.length; i++) {
     let on = false
     const { coordinates } = polygons[i]
+    const segment = getCollinearSegment(coordinates)
+    if (segment !== undefined) {
+      if (checkCoordinateOnDegeneratePolygon(coordinate, segment, styles)) return true
+      continue
+    }
     for (let i = 0, j = coordinates.length - 1; i < coordinates.length; j = i++) {
       if (
         (coordinates[i].y > coordinate.y) !== (coordinates[j].y > coordinate.y) &&
@@ -27,7 +33,14 @@ export function checkCoordinateOnPolygon(coordinate: Coordinate, attrs: PolygonA
 
 export function drawPolygon(ctx: CanvasRenderingContext2D, attrs: PolygonAttrs | PolygonAttrs[], styles: Partial<PolygonStyle>): void {
   let polygons: PolygonAttrs[] = []
-  polygons = polygons.concat(attrs)
+  polygons = polygons.concat(attrs).filter(({ coordinates }) => {
+    if (coordinates.length === 0) return false
+    const segment = getCollinearSegment(coordinates)
+    if (segment === undefined) return true
+    drawDegeneratePolygon(ctx, segment, styles)
+    return false
+  })
+  if (polygons.length === 0) return
   const {
     style = PolygonType.Fill,
     color = 'currentColor',

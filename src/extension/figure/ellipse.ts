@@ -3,57 +3,26 @@ import { type PolygonStyle, LineType, PolygonType } from '../../common/Styles'
 import { isTransparent } from '../../common/utils/color'
 import { isString } from '../../common/utils/typeChecks'
 import { type FigureTemplate, DEVIATION } from '../../component/Figure'
+import { checkCoordinateOnDegeneratePolygon, drawDegeneratePolygon } from './degenerate'
 
-function pointToSegmentDistance2(point: Coordinate, start: Coordinate, end: Coordinate): number {
-  const dx = end.x - start.x
-  const dy = end.y - start.y
-  const lengthSquared = dx * dx + dy * dy
-
-  if (lengthSquared === 0) {
-    const distX = point.x - start.x
-    const distY = point.y - start.y
-    return distX * distX + distY * distY
-  }
-
-  let t = ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared
-  t = Math.max(0, Math.min(1, t))
-
-  const nearestX = start.x + t * dx
-  const nearestY = start.y + t * dy
-  const distX = point.x - nearestX
-  const distY = point.y - nearestY
-  return distX * distX + distY * distY
-}
-
-function checkCoordinateOnDegenerateEllipse(coordinate: Coordinate, attrs: EllipseAttrs): boolean {
+function getDegenerateSegment(attrs: EllipseAttrs): [Coordinate, Coordinate] {
   const { x, y, rx, ry } = attrs
-
-  let start: Coordinate
-  let end: Coordinate
-
   if (rx <= DEVIATION && ry <= DEVIATION) {
-    start = { x: x - DEVIATION, y }
-    end = { x: x + DEVIATION, y }
-  } else if (rx <= DEVIATION) {
-    const halfLength = Math.max(ry, DEVIATION)
-    start = { x, y: y - halfLength }
-    end = { x, y: y + halfLength }
-  } else {
-    const halfLength = Math.max(rx, DEVIATION)
-    start = { x: x - halfLength, y }
-    end = { x: x + halfLength, y }
+    return [{ x, y }, { x, y }]
   }
-
-  return pointToSegmentDistance2(coordinate, start, end) <= DEVIATION * DEVIATION
+  if (rx <= DEVIATION) {
+    return [{ x, y: y - ry }, { x, y: y + ry }]
+  }
+  return [{ x: x - rx, y }, { x: x + rx, y }]
 }
 
-export function checkCoordinateOnEllipse(coordinate: Coordinate, attrs: EllipseAttrs | EllipseAttrs[]): boolean {
+export function checkCoordinateOnEllipse(coordinate: Coordinate, attrs: EllipseAttrs | EllipseAttrs[], styles: Partial<PolygonStyle> = {}): boolean {
   const ellipses = Array.isArray(attrs) ? attrs : [attrs]
 
   for (let i = 0; i < ellipses.length; i++) {
     const { x, y, rx, ry } = ellipses[i]
     if (rx <= DEVIATION || ry <= DEVIATION) {
-      if (checkCoordinateOnDegenerateEllipse(coordinate, ellipses[i])) {
+      if (checkCoordinateOnDegeneratePolygon(coordinate, getDegenerateSegment(ellipses[i]), styles)) {
         return true
       }
       continue
@@ -84,37 +53,10 @@ export function drawEllipse(ctx: CanvasRenderingContext2D, attrs: EllipseAttrs |
   const degenerates = ellipses.filter(({ rx, ry }) => rx <= DEVIATION || ry <= DEVIATION)
   const normals = ellipses.filter(({ rx, ry }) => rx > DEVIATION && ry > DEVIATION)
 
-  if (degenerates.length > 0 && borderSize > 0 && !isTransparent(borderColor)) {
-    ctx.strokeStyle = borderColor
-    ctx.lineWidth = borderSize
-    ctx.setLineDash(borderDashedValue)
-    degenerates.forEach(({ x, y, rx, ry }) => {
-      if (rx <= DEVIATION && ry <= DEVIATION) {
-        const halfLength = DEVIATION
-        ctx.beginPath()
-        ctx.moveTo(x - halfLength, y)
-        ctx.lineTo(x + halfLength, y)
-        ctx.stroke()
-        ctx.closePath()
-        return
-      }
-      if (rx <= DEVIATION) {
-        const halfLength = Math.max(ry, DEVIATION)
-        ctx.beginPath()
-        ctx.moveTo(x, y - halfLength)
-        ctx.lineTo(x, y + halfLength)
-        ctx.stroke()
-        ctx.closePath()
-        return
-      }
-      const halfLength = Math.max(rx, DEVIATION)
-      ctx.beginPath()
-      ctx.moveTo(x - halfLength, y)
-      ctx.lineTo(x + halfLength, y)
-      ctx.stroke()
-      ctx.closePath()
-    })
-  }
+  degenerates.forEach(attrs => {
+    drawDegeneratePolygon(ctx, getDegenerateSegment(attrs), styles)
+  })
+  if (normals.length === 0) return
   if (solid) {
     ctx.fillStyle = color
     normals.forEach(({ x, y, rx, ry }) => {
