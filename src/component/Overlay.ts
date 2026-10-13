@@ -36,7 +36,7 @@ export interface OverlayEventData<E = DefaultExtendData> {
   /** 绘制点索引（仅绘制事件） */
   pointIndex?: number
   /**
-   * 将内部 dataIndex 转换为外部 timestamp + offset
+   * 将内部 logicalIndex 转换为外部 timestamp + offset
    */
   internalToExternal: (point: IPoint) => Partial<Point>
 }

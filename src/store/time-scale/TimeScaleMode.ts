@@ -1,5 +1,4 @@
-import type VisibleRange from '../../common/VisibleRange'
-import { getDefaultVisibleRange } from '../../common/VisibleRange'
+import type { LogicalRange } from '../../common/VisibleRange'
 import { clamp } from '../../common/utils/number'
 import type { ResizeAnchor } from '../../Chart'
 import type BarSpace from '../../common/BarSpace'
@@ -12,12 +11,14 @@ export const enum TimeScaleModeKind {
 }
 
 export interface TimeScaleModeContext {
-  getBarSpace: () => BarSpace
   getBarWidth: () => number
   setBarWidth: (barWidth: number) => void
   getBarSpaceLimit: () => { min: number, max: number }
   getMainWidth: () => number
   getDataList: () => KLineData[]
+  getFirstLogicalIndex: () => number
+  getRightLogicalIndex: () => number
+  setRightLogicalIndex: (logicalIndex: number) => void
   getMinRemainWidth: () => { left: number, right: number }
   getTimeShareTicks: () => string[]
   getTimeShareDays: () => number
@@ -50,11 +51,7 @@ export abstract class TimeScaleMode {
   }
 
   applyBarSpaceLimitChange(nextBarWidth: number): boolean {
-    if (nextBarWidth === this.context.getBarWidth()) {
-      return false
-    }
-    this.context.setBarWidth(nextBarWidth)
-    return true
+    return this.setBarSpace(nextBarWidth)
   }
 
   setBarSpace(barWidth: number): boolean {
@@ -62,14 +59,16 @@ export abstract class TimeScaleMode {
     if (this.context.getBarWidth() === nextBarWidth) {
       return false
     }
+    const offset = this.context.getOffsetRightDistance()
     this.context.setBarWidth(nextBarWidth)
+    this.context.setOffsetRightDistance(offset)
     return true
   }
 
   prepareVisibleRange(): void {}
 
-  calcVisibleRange(): VisibleRange {
-    return this.calcVisibleRangeByCurrentState(getDefaultVisibleRange())
+  calcLogicalRange(): LogicalRange {
+    return this.calcLogicalRangeByCurrentState({ from: 0, to: 0 })
   }
 
   scroll(_distance: number): boolean {
@@ -102,31 +101,20 @@ export abstract class TimeScaleMode {
     return false
   }
 
-  onAppendData(): void {}
-
-  protected calcVisibleRangeByCurrentState(emptyVisibleRange: VisibleRange): VisibleRange {
+  protected calcLogicalRangeByCurrentState(emptyRange: LogicalRange): LogicalRange {
     const totalBarCount = this.context.getDataList().length
-    if (!totalBarCount) {
-      return emptyVisibleRange
-    }
+    if (!totalBarCount) return emptyRange
 
     const barWidth = this.context.getBarWidth()
-    const totalBarWidth = totalBarCount * barWidth
     const mainWidth = this.context.getMainWidth()
     const minRemainWidth = this.context.getMinRemainWidth()
-    const lmin = Math.min(minRemainWidth.left, totalBarWidth)
-    const rmin = Math.min(minRemainWidth.right, totalBarWidth)
-    const offsetRight = clamp(this.context.getOffsetRightDistance(), -totalBarWidth + rmin, mainWidth - lmin)
-
-    this.context.setOffsetRightDistance(offsetRight)
-
-    const to = offsetRight > 0 ? totalBarCount : Math.ceil(totalBarCount + offsetRight / barWidth)
-    const diff = offsetRight + totalBarCount * barWidth - mainWidth
-    const from = diff < 0 ? 0 : Math.floor(diff / barWidth)
-    const domainTo = totalBarCount + offsetRight / barWidth
-    const domainFrom = domainTo - mainWidth / barWidth
-
-    return { from, to, domainFrom, domainTo }
+    const first = this.context.getFirstLogicalIndex()
+    const end = first + totalBarCount
+    const leftMin = Math.min(minRemainWidth.left / barWidth, totalBarCount)
+    const rightMin = Math.min(minRemainWidth.right / barWidth, totalBarCount)
+    const to = clamp(this.context.getRightLogicalIndex(), first + rightMin, end + mainWidth / barWidth - leftMin)
+    this.context.setRightLogicalIndex(to)
+    return { from: to - mainWidth / barWidth, to }
   }
 }
 

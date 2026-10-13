@@ -147,8 +147,8 @@ it('refreshes drawing coordinates when updateData submits a timestamp modified i
     latest.timestamp = 500
     chart.updateData(latest)
     await nextFrame()
-    expect(overlays.getProjectedPoints(overlay)?.[0].dataIndex).toBe(3)
-    expect(chart.externalToInternal(overlay.points[0]).dataIndex).toBe(3)
+    expect(overlays.getProjectedPoints(overlay)?.[0].logicalIndex).toBe(3)
+    expect(chart.externalToInternal(overlay.points[0]).logicalIndex).toBe(3)
   } finally { dispose(chart); element.remove() }
   await nextFrame()
 })

@@ -37,7 +37,7 @@ describe('Overlay time points on a real chart', () => {
       const picked = chart.convertFromPixel(coordinate, {})
       expect(picked.timestamp).toBe(timestamps[2])
       expect(picked.offset).toBe(0)
-      expect(chart.externalToInternal(picked).dataIndex).toBe(2)
+      expect(chart.externalToInternal(picked).logicalIndex).toBe(2)
 
       const points: Point[] = [{ timestamp: timestamps[0], value: 10 }, { timestamp: picked.timestamp!, value: 15 }]
       const id = chart.createOverlay({ name: 'segment', points })!
@@ -82,7 +82,7 @@ describe('Overlay time points on a real chart', () => {
       const overlays = chart.getChartStore().getOverlayStore()
       const overlay = overlays.getInstanceById(id)!
       await vi.waitFor(() => expect(drawn).toHaveLength(2))
-      expect(overlays.getProjectedPoints(overlay)?.map(point => point.dataIndex)).toEqual([10, 41])
+      expect(overlays.getProjectedPoints(overlay)?.map(point => point.logicalIndex)).toEqual([10, 41])
       expect(JSON.parse(JSON.stringify(overlay)).points).toEqual(points)
       chart.overrideOverlay({ ...overlay, visible: false })
       expect(overlay.visible).toBe(false)
@@ -99,7 +99,7 @@ describe('Overlay time points on a real chart', () => {
         expect(drawn[0].x).toBeCloseTo(expected[0].x!, 5)
         expect(drawn[1].x).toBeCloseTo(expected[1].x!, 5)
       })
-      expect(overlays.getProjectedPoints(overlay)?.map(point => point.dataIndex)).toEqual([12, 43])
+      expect(overlays.getProjectedPoints(overlay)?.map(point => point.logicalIndex)).toEqual([10, 41])
 
       chart.replaceData(data(5, 100), false)
       expect(overlays.getProjectedPoints(overlay)).toBeUndefined()

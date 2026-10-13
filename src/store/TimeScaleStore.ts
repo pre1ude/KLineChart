@@ -1,8 +1,8 @@
 import type BarSpace from '../common/BarSpace'
 import type VisibleRange from '../common/VisibleRange'
+import type { LogicalRange } from '../common/VisibleRange'
 import type { ResizeAnchor } from '../Chart'
 import type { DataZoomOptions } from '../Options'
-import { getDefaultVisibleRange } from '../common/VisibleRange'
 import { ActionType } from '../common/Action'
 import type ChartStore from './ChartStore'
 import { LoadDataType } from '../common/LoadDataCallback'
@@ -35,7 +35,7 @@ export default class TimeScaleStore {
   private _zoomEnabled: boolean = true
   private _scrollEnabled: boolean = true
   private _barWidth: number = DEFAULT_BAR_WIDTH
-  private _offsetRight = DEFAULT_OFFSET_RIGHT
+  private _rightLogicalIndex: number
   private _barSpaceLimit = { min: 1, max: 50 }
 
   private _maxOffsetLeftDistance?: number
@@ -50,7 +50,7 @@ export default class TimeScaleStore {
 
   private _autoInitialAlignment: boolean = true
 
-  private _visibleRange: VisibleRange = getDefaultVisibleRange()
+  private _logicalRange: LogicalRange = { from: 0, to: 0 }
 
   private _initialView?: InitialTimeScaleView
 
@@ -61,9 +61,9 @@ export default class TimeScaleStore {
 
   constructor(chartStore: ChartStore) {
     this._chartStore = chartStore
-    this._xScale = createScale(this._visibleRange, this._chartStore.mainWidth, this.getHorizontalInset())
+    this._rightLogicalIndex = chartStore.getTimeIndex().dataIndexToLogical(chartStore.getDataList().length) + DEFAULT_OFFSET_RIGHT / this._barWidth
+    this._xScale = createScale(this._logicalRange, this._chartStore.mainWidth, this.getHorizontalInset())
     this._modeContext = {
-      getBarSpace: () => this.getBarSpace(),
       getBarWidth: () => this._barWidth,
       setBarWidth: barWidth => {
         this._barWidth = barWidth
@@ -71,6 +71,9 @@ export default class TimeScaleStore {
       getBarSpaceLimit: () => this._barSpaceLimit,
       getMainWidth: () => this._chartStore.mainWidth,
       getDataList: () => this._chartStore.getDataList(),
+      getFirstLogicalIndex: () => this._chartStore.getTimeIndex().getFirstLogicalIndex(),
+      getRightLogicalIndex: () => this._rightLogicalIndex,
+      setRightLogicalIndex: logicalIndex => { this._rightLogicalIndex = logicalIndex },
       getMinRemainWidth: () => this._minRemainWidth,
       getTimeShareTicks: () => this._chartStore.getTimeShareTicks(),
       getTimeShareDays: () => this._chartStore.getTimeShareDays(),
@@ -79,10 +82,8 @@ export default class TimeScaleStore {
         return xCoord ?? crosshair?.x ?? this._chartStore.mainWidth / 2
       },
       getInitialOffsetRightDistance: () => DEFAULT_OFFSET_RIGHT,
-      getOffsetRightDistance: () => this._offsetRight,
-      setOffsetRightDistance: distance => {
-        this._offsetRight = distance
-      }
+      getOffsetRightDistance: () => this.getOffsetRightDistance(),
+      setOffsetRightDistance: distance => { this.setOffsetRightDistance(distance) }
     }
     this._mode = this.createMode(TimeScaleModeKind.KLine)
   }
@@ -185,9 +186,9 @@ export default class TimeScaleStore {
     }
   }
 
-  private calcVisibleRange(): VisibleRange {
+  private calcLogicalRange(): LogicalRange {
     this.calcMinRemainWidth()
-    return this._mode.calcVisibleRange()
+    return this._mode.calcLogicalRange()
   }
 
   adjustVisibleRange(): void {
@@ -196,10 +197,9 @@ export default class TimeScaleStore {
 
   private _adjustVisibleRange(): void {
     this._mode.prepareVisibleRange()
-    const visibleRange = this.calcVisibleRange()
-
-    this._visibleRange = visibleRange
-    this._xScale = createScale(visibleRange, this._chartStore.mainWidth, this.getHorizontalInset(), this._chartStore.getTimeIndex().getFirstLogicalIndex())
+    this._logicalRange = this.calcLogicalRange()
+    this._xScale = createScale(this._logicalRange, this._chartStore.mainWidth, this.getHorizontalInset())
+    const visibleRange = this.getVisibleRange()
 
     this._chartStore.getActionStore().execute(ActionType.OnVisibleRangeChange, visibleRange)
     this._chartStore.adjustVisibleDataList()
@@ -258,7 +258,7 @@ export default class TimeScaleStore {
   }
 
   setOffsetRightDistance(distance: number, update?: boolean): this {
-    this._offsetRight = distance
+    this._rightLogicalIndex = this._chartStore.getTimeIndex().dataIndexToLogical(this._chartStore.getDataList().length) + distance / this._barWidth
     if (update ?? false) {
       this._refreshTimeScale()
     }
@@ -269,8 +269,9 @@ export default class TimeScaleStore {
     this.setOffsetRightDistance(DEFAULT_OFFSET_RIGHT)
   }
 
-  onAppendData(): void {
-    this._mode.onAppendData()
+  /** Batch appends retain the public offset policy; streaming bars keep the logical viewport. */
+  onBatchDataAppended(count: number): void {
+    this._rightLogicalIndex += count
   }
 
   getInitialOffsetRightDistance(): number {
@@ -278,7 +279,7 @@ export default class TimeScaleStore {
   }
 
   getOffsetRightDistance(): number {
-    return this._offsetRight
+    return (this._rightLogicalIndex - this._chartStore.getTimeIndex().dataIndexToLogical(this._chartStore.getDataList().length)) * this._barWidth
   }
 
   setMaxOffsetLeftDistance(distance: number): void {
@@ -316,18 +317,19 @@ export default class TimeScaleStore {
     let changed = false
     if (this._mode instanceof DataZoomTimeScaleMode && initialView.dataZoomRange != null) {
       changed = this._mode.setRange(initialView.dataZoomRange.start, initialView.dataZoomRange.end)
-    } else if (this._mode instanceof KLineTimeScaleMode) {
-      const nextBarWidth = clamp(initialView.barWidth, this._barSpaceLimit.min, this._barSpaceLimit.max)
-      const nextOffsetRight = initialView.kLineAlignment === 'left'
-        ? this._chartStore.mainWidth - this._chartStore.getDataList().length * nextBarWidth
-        : initialView.offsetRight
-      changed = this._barWidth !== nextBarWidth || this._offsetRight !== nextOffsetRight
-      this._barWidth = nextBarWidth
-      this._offsetRight = nextOffsetRight
     } else {
-      changed = this._barWidth !== initialView.barWidth || this._offsetRight !== initialView.offsetRight
-      this._barWidth = initialView.barWidth
-      this._offsetRight = initialView.offsetRight
+      const nextBarWidth = this._mode instanceof KLineTimeScaleMode
+        ? clamp(initialView.barWidth, this._barSpaceLimit.min, this._barSpaceLimit.max)
+        : initialView.barWidth
+      const index = this._chartStore.getTimeIndex()
+      const nextRightLogicalIndex = initialView.kLineAlignment === 'left'
+        ? index.getFirstLogicalIndex() + this._chartStore.mainWidth / nextBarWidth
+        : index.dataIndexToLogical(this._chartStore.getDataList().length) + initialView.offsetRight / nextBarWidth
+      changed = this._barWidth !== nextBarWidth || Math.abs(this._rightLogicalIndex - nextRightLogicalIndex) > this.getLogicalTolerance()
+      if (changed) {
+        this._barWidth = nextBarWidth
+        this._rightLogicalIndex = nextRightLogicalIndex
+      }
     }
     if (changed) {
       this._refreshTimeScale()
@@ -339,11 +341,11 @@ export default class TimeScaleStore {
     const initialView: InitialTimeScaleView = {
       mode,
       barWidth: this._barWidth,
-      offsetRight: this._offsetRight
+      offsetRight: this.getOffsetRightDistance()
     }
     if (this._mode instanceof KLineTimeScaleMode) {
-      const leftOffsetRight = this._chartStore.mainWidth - this._barWidth * this._chartStore.getDataList().length
-      initialView.kLineAlignment = this._offsetRight === leftOffsetRight
+      const leftAlignedRight = this._chartStore.getTimeIndex().getFirstLogicalIndex() + this._chartStore.mainWidth / this._barWidth
+      initialView.kLineAlignment = Math.abs(this._rightLogicalIndex - leftAlignedRight) <= this.getLogicalTolerance()
         ? 'left'
         : 'right'
     } else if (this._mode instanceof DataZoomTimeScaleMode) {
@@ -353,39 +355,51 @@ export default class TimeScaleStore {
   }
 
   getVisibleRange(): VisibleRange {
-    return this._visibleRange
+    const index = this._chartStore.getTimeIndex()
+    const count = this._chartStore.getDataList().length
+    const domainFrom = index.logicalToDataIndex(this._logicalRange.from)
+    const domainTo = index.logicalToDataIndex(this._logicalRange.to)
+    // Correct round-off only when rounding iteration bounds; retain continuous geometry.
+    const tolerance = Math.max(this.getLogicalTolerance(), Number.EPSILON * Math.max(count, Math.abs(domainFrom), Math.abs(domainTo)) * 4)
+    return {
+      from: count === 0 ? 0 : Math.max(0, Math.floor(domainFrom + tolerance)),
+      to: count === 0 ? 0 : clamp(Math.ceil(domainTo - tolerance), 0, count),
+      domainFrom,
+      domainTo
+    }
   }
 
   captureDataAnchor(): TimeScaleDataAnchor | undefined {
     if (!(this._mode instanceof KLineTimeScaleMode) || this._chartStore.mainWidth <= 0) {
       return undefined
     }
-    const { from, to, domainFrom, domainTo } = this._visibleRange
+    const { from, to } = this.getVisibleRange()
+    const range = this._logicalRange
+    const index = this._chartStore.getTimeIndex()
     const data = this._chartStore.getDataList()
     if (data.length === 0 || from >= to) return undefined
-    const dataIndex = clamp(Math.floor((domainFrom + domainTo) / 2), from, Math.min(to, data.length) - 1)
-    return { timestamp: data[dataIndex].timestamp, distanceFromRight: domainTo - dataIndex }
+    const dataIndex = clamp(index.logicalToDataIndex(Math.floor((range.from + range.to) / 2)), from, Math.min(to, data.length) - 1)
+    const logicalIndex = index.dataIndexToLogical(dataIndex)
+    return { timestamp: data[dataIndex].timestamp, distanceFromRight: range.to - logicalIndex }
   }
 
-  restoreDataAnchor(anchor: TimeScaleDataAnchor | undefined): void {
-    if (anchor === undefined || !(this._mode instanceof KLineTimeScaleMode)) return
-    const dataIndex = this._chartStore.getTimeIndex().timeToDataIndex(anchor.timestamp, 'exact')
-    if (dataIndex !== undefined) {
-      this._offsetRight = (dataIndex + anchor.distanceFromRight - this._chartStore.getDataList().length) * this._barWidth
+  restoreDataAnchor(anchor: TimeScaleDataAnchor | undefined, fallbackOffset: number): void {
+    const logicalIndex = anchor === undefined ? undefined : this._chartStore.getTimeIndex().timeToLogical(anchor.timestamp)
+    if (logicalIndex !== undefined && anchor !== undefined) {
+      this._rightLogicalIndex = logicalIndex + anchor.distanceFromRight
+    } else {
+      this.setOffsetRightDistance(fallbackOffset)
     }
   }
 
   getXScale(): LinearScale {
     // Compatibility: this accessor, like VisibleRange, uses data-array offsets.
-    return createScale(this._visibleRange, this._chartStore.mainWidth, this.getHorizontalInset())
+    const { domainFrom: from, domainTo: to } = this.getVisibleRange()
+    return createScale({ from, to }, this._chartStore.mainWidth, this.getHorizontalInset())
   }
 
-  getLogicalVisibleRange(): { from: number, to: number } {
-    const index = this._chartStore.getTimeIndex()
-    return {
-      from: index.dataIndexToLogical(this._visibleRange.domainFrom),
-      to: index.dataIndexToLogical(this._visibleRange.domainTo)
-    }
+  getLogicalVisibleRange(): LogicalRange {
+    return { ...this._logicalRange }
   }
 
   private getHorizontalInset(): number {
@@ -396,12 +410,12 @@ export default class TimeScaleStore {
     if (!this._scrollEnabled) {
       return
     }
-    const prevOffsetRight = this._offsetRight
+    const prevOffsetRight = this.getOffsetRightDistance()
     if (!this._mode.scroll(distance)) {
       return
     }
     this._refreshTimeScale(requestLayout)
-    const realDistance = Math.round(prevOffsetRight - this._offsetRight)
+    const realDistance = Math.round(prevOffsetRight - this.getOffsetRightDistance())
     if (realDistance !== 0) {
       this._chartStore.getActionStore().execute(ActionType.OnScroll, { distance: realDistance })
     }
@@ -411,9 +425,19 @@ export default class TimeScaleStore {
     return this._xScale(logicalIndex)
   }
 
-  /** Continuous inverse; bar picking is performed by coordinateToDataIndex. */
+  /** Continuous inverse; discrete bar picking uses coordinateToLogicalIndex. */
   coordinateToLogical(x: number): number {
     return this._xScale.invert(x)
+  }
+
+  /** Nearest bar, with midpoint ties going right despite interpolation round-off. */
+  coordinateToLogicalIndex(x: number): number {
+    return Math.floor(this.coordinateToLogical(x) + 0.5 + this.getLogicalTolerance())
+  }
+
+  private getLogicalTolerance(): number {
+    // Allow a few ULPs from the affine viewport conversion.
+    return Number.EPSILON * Math.max(1, Math.abs(this._logicalRange.from), Math.abs(this._logicalRange.to), Math.abs(this._rightLogicalIndex)) * 4
   }
 
   dataIndexToCoordinate(dataIndex: number): number {
@@ -421,8 +445,7 @@ export default class TimeScaleStore {
   }
 
   coordinateToDataIndex(x: number): number {
-    const dataIndex = this._chartStore.getTimeIndex().logicalToDataIndex(this.coordinateToLogical(x))
-    return Math.floor(dataIndex + 0.5)
+    return this._chartStore.getTimeIndex().logicalToDataIndex(this.coordinateToLogicalIndex(x))
   }
 
   zoom(scaleDelta: number, xCoord?: number, requestLayout: boolean = false): void {
@@ -448,9 +471,10 @@ export default class TimeScaleStore {
 
   set scrollEnabled(enabled: boolean) { this._scrollEnabled = enabled }
 
-  clear(): void {
-    this._visibleRange = getDefaultVisibleRange()
-    this._xScale = createScale(this._visibleRange, this._chartStore.mainWidth, this.getHorizontalInset())
+  clear(offsetRight: number = this.getOffsetRightDistance()): void {
+    this._logicalRange = { from: 0, to: 0 }
+    this.setOffsetRightDistance(offsetRight)
+    this._xScale = createScale(this._logicalRange, this._chartStore.mainWidth, this.getHorizontalInset())
     this._initialView = undefined
   }
 
@@ -548,10 +572,10 @@ export function calcTimeScaleHorizontalInset(styles: Styles): number {
   return Math.ceil(Math.max(symbolInset, pointInset, areaStyles.lineSize / 2))
 }
 
-function createScale({ domainFrom, domainTo }: VisibleRange, mainWidth: number, horizontalInset: number = 0, firstLogicalIndex: number = 0): LinearScale {
+function createScale({ from, to }: LogicalRange, mainWidth: number, horizontalInset: number = 0): LinearScale {
   const inset = Math.max(0, Math.min(horizontalInset, mainWidth / 2))
   return createLinear({
-    domain: [firstLogicalIndex + domainFrom - 0.5, firstLogicalIndex + domainTo - 0.5],
+    domain: [from - 0.5, to - 0.5],
     range: [inset, mainWidth - inset]
   })
 }

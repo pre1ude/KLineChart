@@ -4,9 +4,9 @@
  */
 export interface IPoint {
   /**
-   * 数据索引 - 可以是负数（左边界外）或超出数据长度（右边界外）
+   * 逻辑坐标 - 前置加载时保持稳定，可超出当前已加载数据范围
    */
-  dataIndex: number
+  logicalIndex: number
 
   /**
    * Y轴坐标值

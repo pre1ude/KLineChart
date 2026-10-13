@@ -4,7 +4,7 @@ import { type CustomApi, FormatDateType } from '../Options'
 import type BarSpace from '../common/BarSpace'
 import type Bounding from '../common/Bounding'
 import type Coordinate from '../common/Coordinate'
-import type { IPoint, Point } from '../common/Point'
+import type { IPoint } from '../common/Point'
 import { PolygonType, type OverlayStyle } from '../common/Styles'
 import { type EventName, type MouseTouchEvent } from '../common/SyntheticEvent'
 import { isTransparent } from '../common/utils/color'
@@ -68,7 +68,7 @@ export default class OverlayView extends View {
     return name !== 'pressedMouseMoveEvent' && name !== 'mouseUpEvent'
   }
 
-  coordinateToPoint(overlay: Overlay, coordinate: Coordinate): Point | undefined {
+  coordinateToPoint(overlay: Overlay, coordinate: Coordinate): IPoint | undefined {
     const point: Partial<IPoint> = {}
     const widget = this.getWidget()
     const pane = widget.getPane()
@@ -77,10 +77,7 @@ export default class OverlayView extends View {
     const chartStore = chart.getChartStore()
 
     if (this._type !== 'yAxis') {
-      const xAxisWidget = chart.getXAxisPane().getMainWidget() as XAxisWidget
-      const xAxis = xAxisWidget.getAxisComponent()
-      // 内部直接使用 dataIndex
-      point.dataIndex = xAxis.convertFromPixel(coordinate.x)
+      point.logicalIndex = chartStore.getTimeScaleStore().coordinateToLogicalIndex(coordinate.x)
     }
 
     if (this._type !== 'xAxis') {
@@ -88,7 +85,7 @@ export default class OverlayView extends View {
       if (!yScale) return undefined
       let value = yScale.convertFromPixel(coordinate.y)
       const dataList = chartStore.getDataList()
-      const dataIndex = point.dataIndex ?? -1
+      const dataIndex = point.logicalIndex === undefined ? -1 : chartStore.getTimeIndex().logicalToDataIndex(point.logicalIndex)
       if (overlay.mode !== 'normal' && paneId === PaneIdConstants.CANDLE && dataIndex >= 0 && dataIndex < dataList.length) {
         const kLineData = chartStore.getDataByDataIndex(dataIndex)
         if (kLineData) {
@@ -123,8 +120,7 @@ export default class OverlayView extends View {
       point.value = value
     }
     if (chartStore.getDataList().length === 0) return undefined
-    const timePoint = chartStore.internalToExternal(point)
-    return isNumber(timePoint.timestamp) && isNumber(timePoint.value) ? timePoint as Point : undefined
+    return Number.isInteger(point.logicalIndex) && isNumber(point.value) ? point as IPoint : undefined
   }
 
   override drawImp(ctx: CanvasRenderingContext2D): void {
@@ -229,7 +225,7 @@ export default class OverlayView extends View {
     yScale?: YScale
   ): Coordinate {
     return {
-      x: xAxis?.convertToPixel(point.dataIndex) ?? 0,
+      x: xAxis ? this.getWidget().getPane().getChart().getChartStore().getTimeScaleStore().logicalToCoordinate(point.logicalIndex) : 0,
       y: yScale?.convertToPixel(point.value) ?? 0
     }
   }
@@ -470,8 +466,8 @@ export default class OverlayView extends View {
     coordinates.forEach((coordinate, index) => {
       const point = projectedPoints?.[index]
       if (point) {
-        // 从 dataIndex 获取 timestamp
-        const timestamp = chartStore.dataIndexToTimestamp(point.dataIndex)
+        // Calendar labels remain an array-index boundary, including virtual time-share slots.
+        const timestamp = chartStore.dataIndexToTimestamp(chartStore.getTimeIndex().logicalToDataIndex(point.logicalIndex))
         if (isNumber(timestamp)) {
           const text = customApi.formatDate(
             dateTimeFormat,

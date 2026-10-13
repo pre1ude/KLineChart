@@ -1,3 +1,10 @@
+/** Continuous viewport boundaries in the current logical timeline. */
+export interface LogicalRange {
+  readonly from: number
+  readonly to: number
+}
+
+/** Public range and array iteration bounds, expressed in data indices. */
 export default interface VisibleRange {
   readonly from: number
   readonly to: number

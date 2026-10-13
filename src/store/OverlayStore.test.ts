@@ -15,7 +15,7 @@ function createStore(): OverlayStore {
     dispatchLifecycleEffect: (effect: () => void) => effect(),
     getChart: () => chart,
     externalToInternal: (point: { timestamp?: number, value?: number }) => ({
-      dataIndex: point.timestamp,
+      logicalIndex: point.timestamp,
       value: point.value
     })
   } as unknown as ChartStore

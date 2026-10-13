@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import type BarSpace from '../../common/BarSpace'
 import type KLineData from '../../common/KLineData'
 import { DataZoomTimeScaleMode } from './DataZoomTimeScaleMode'
 import type { TimeScaleModeContext } from './TimeScaleMode'
@@ -9,9 +8,9 @@ describe('DataZoomTimeScaleMode', () => {
     const harness = createHarness(100, 600)
     harness.mode.setRange(80, 100)
 
-    const range = harness.mode.calcVisibleRange()
+    const range = harness.mode.calcLogicalRange()
 
-    expect(range).toEqual({ from: 80, to: 100, domainFrom: 80, domainTo: 100 })
+    expect(range).toEqual({ from: 80, to: 100 })
     expect(harness.getBarWidth()).toBe(30)
     expect(harness.getOffsetRight()).toBe(0)
   })
@@ -19,13 +18,13 @@ describe('DataZoomTimeScaleMode', () => {
   it('keeps percent range when appended data increases visible count', () => {
     const harness = createHarness(100, 600)
     harness.mode.setRange(80, 100)
-    harness.mode.calcVisibleRange()
+    harness.mode.calcLogicalRange()
     const initialBarWidth = harness.getBarWidth()
 
     harness.setDataCount(120)
-    const range = harness.mode.calcVisibleRange()
+    const range = harness.mode.calcLogicalRange()
 
-    expect(range).toEqual({ from: 96, to: 120, domainFrom: 96, domainTo: 120 })
+    expect(range).toEqual({ from: 96, to: 120 })
     expect(harness.getBarWidth()).toBeLessThan(initialBarWidth)
     expect(harness.getBarWidth()).toBe(25)
     expect(harness.getOffsetRight()).toBe(0)
@@ -34,7 +33,7 @@ describe('DataZoomTimeScaleMode', () => {
   it('caps candlestick entity width without changing band width', () => {
     const harness = createHarness(1, 600)
 
-    harness.mode.calcVisibleRange()
+    harness.mode.calcLogicalRange()
     const barSpace = harness.mode.createBarSpace()
 
     expect(barSpace.bar).toBe(600)
@@ -47,8 +46,8 @@ describe('DataZoomTimeScaleMode', () => {
     expect(harness.mode.scroll(100)).toBe(false)
     expect(harness.mode.zoom(0.5, 300)).toBeUndefined()
 
-    const range = harness.mode.calcVisibleRange()
-    expect(range).toEqual({ from: 0, to: 3, domainFrom: 0, domainTo: 3 })
+    const range = harness.mode.calcLogicalRange()
+    expect(range).toEqual({ from: 0, to: 3 })
   })
 
   it('clamps zoom to at least three visible data points', () => {
@@ -56,19 +55,19 @@ describe('DataZoomTimeScaleMode', () => {
     harness.mode.setRange(80, 100)
 
     harness.mode.zoom(100, 300)
-    const range = harness.mode.calcVisibleRange()
+    const range = harness.mode.calcLogicalRange()
 
-    expect(range.domainTo - range.domainFrom).toBeCloseTo(3)
+    expect(range.to - range.from).toBeCloseTo(3)
   })
 
   it('keeps the raw range after min visible count is applied to the visible range', () => {
     const harness = createHarness(100, 600)
 
     harness.mode.setRange(99, 100)
-    const range = harness.mode.calcVisibleRange()
+    const range = harness.mode.calcLogicalRange()
 
-    expect(range.domainFrom).toBe(97)
-    expect(range.domainTo).toBe(100)
+    expect(range.from).toBe(97)
+    expect(range.to).toBe(100)
     expect(harness.mode.getRange()).toEqual({ start: 99, end: 100 })
     expect(harness.mode.getMinSpan()).toBe(3)
   })
@@ -77,10 +76,10 @@ describe('DataZoomTimeScaleMode', () => {
     const harness = createHarness(100, 600)
 
     harness.mode.setRange(50, 50)
-    const range = harness.mode.calcVisibleRange()
+    const range = harness.mode.calcLogicalRange()
 
     expect(harness.mode.getRange()).toEqual({ start: 50, end: 50 })
-    expect(range.domainTo - range.domainFrom).toBe(3)
+    expect(range.to - range.from).toBe(3)
   })
 
   it('reports full span as the minimum when data cannot be zoomed', () => {
@@ -169,15 +168,9 @@ function createHarness(dataCount: number, mainWidth: number): {
   setDataCount: (count: number) => void
 } {
   let barWidth = 8
-  let offsetRight = 10
+  let rightLogicalIndex = dataCount + 10 / barWidth
   let dataList = createDataList(dataCount)
   const context: TimeScaleModeContext = {
-    getBarSpace: (): BarSpace => ({
-      bar: barWidth,
-      halfBar: barWidth / 2,
-      gapBar: Math.max(1, Math.floor(barWidth)),
-      halfGapBar: Math.floor(Math.max(1, Math.floor(barWidth)) / 2)
-    }),
     getBarWidth: () => barWidth,
     setBarWidth: value => {
       barWidth = value
@@ -185,21 +178,24 @@ function createHarness(dataCount: number, mainWidth: number): {
     getBarSpaceLimit: () => ({ min: 1, max: 50 }),
     getMainWidth: () => mainWidth,
     getDataList: () => dataList,
+    getFirstLogicalIndex: () => 0,
+    getRightLogicalIndex: () => rightLogicalIndex,
+    setRightLogicalIndex: value => { rightLogicalIndex = value },
     getMinRemainWidth: () => ({ left: 0, right: 0 }),
     getTimeShareTicks: () => [],
     getTimeShareDays: () => 1,
     getZoomCoordinate: xCoord => xCoord ?? mainWidth / 2,
     getInitialOffsetRightDistance: () => 10,
-    getOffsetRightDistance: () => offsetRight,
+    getOffsetRightDistance: () => (rightLogicalIndex - dataList.length) * barWidth,
     setOffsetRightDistance: value => {
-      offsetRight = value
+      rightLogicalIndex = dataList.length + value / barWidth
     }
   }
 
   return {
     mode: new DataZoomTimeScaleMode(context),
     getBarWidth: () => barWidth,
-    getOffsetRight: () => offsetRight,
+    getOffsetRight: () => (rightLogicalIndex - dataList.length) * barWidth,
     setDataCount: count => {
       dataList = createDataList(count)
     }

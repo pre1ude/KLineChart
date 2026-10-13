@@ -18,7 +18,7 @@ export default class OverlayStore {
   private readonly _chartStore: ChartStore
   private readonly _instances = new Map<string, Overlay[]>()
   private readonly _byId = new Map<string, Overlay>()
-  private readonly _indexCache = new WeakMap<Pick<Overlay, 'points'>, { version: number, points: Array<{ timestamp: number, offset: number, dataIndex: number | undefined }> }>()
+  private readonly _logicalCache = new WeakMap<Pick<Overlay, 'points'>, { revision: number, version: number, points: Array<{ timestamp: number, offset: number, logicalIndex: number | undefined }> }>()
   private _progressOverlay?: ProgressOverlay
   private _progressPaneId = ''
   private _selectedInfo?: EventOverlayInfo
@@ -34,22 +34,25 @@ export default class OverlayStore {
   getProjectedPoints(overlay: Pick<Overlay, 'points'>): IPoint[] | undefined {
     const points = overlay.points
     const version = this._chartStore.getTimeIndexVersion()
-    let cache = this._indexCache.get(overlay)
-    if (cache?.version !== version) {
-      cache = { version, points: [] }
-      this._indexCache.set(overlay, cache)
+    const revision = this._chartStore.getTimeIndex().getRevision()
+    let cache = this._logicalCache.get(overlay)
+    if (cache?.revision !== revision) {
+      cache = { revision, version, points: [] }
+      this._logicalCache.set(overlay, cache)
     }
+    const retryUnresolved = cache.version !== version
+    cache.version = version
     cache.points.length = points.length
     const projected = points.map((point, index) => {
       let cached = cache.points[index]
       const offset = point.offset ?? 0
-      if (cached?.timestamp !== point.timestamp || cached.offset !== offset) {
-        cached = { timestamp: point.timestamp, offset, dataIndex: this._chartStore.externalToInternal(point).dataIndex }
+      if (cached?.timestamp !== point.timestamp || cached.offset !== offset || (retryUnresolved && cached.logicalIndex === undefined)) {
+        cached = { timestamp: point.timestamp, offset, logicalIndex: this._chartStore.externalToInternal(point).logicalIndex }
         cache.points[index] = cached
       }
-      return { dataIndex: cached.dataIndex, value: point.value }
+      return { logicalIndex: cached.logicalIndex, value: point.value }
     })
-    return projected.every(point => isNumber(point.dataIndex) && isNumber(point.value)) ? projected as IPoint[] : undefined
+    return projected.every(point => isNumber(point.logicalIndex) && isNumber(point.value)) ? projected as IPoint[] : undefined
   }
 
   notifyPointsChange(overlay: Overlay, source: OverlayPointsChangeEvent['source'], previous: Point[]): void {

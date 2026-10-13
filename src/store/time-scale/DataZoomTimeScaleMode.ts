@@ -1,5 +1,4 @@
-import type VisibleRange from '../../common/VisibleRange'
-import { getDefaultVisibleRange } from '../../common/VisibleRange'
+import type { LogicalRange } from '../../common/VisibleRange'
 import { clamp } from '../../common/utils/number'
 import type BarSpace from '../../common/BarSpace'
 import { createKLineEntityWidth, TimeScaleMode } from './TimeScaleMode'
@@ -80,31 +79,26 @@ export class DataZoomTimeScaleMode extends TimeScaleMode {
     return false
   }
 
-  override calcVisibleRange(): VisibleRange {
+  override calcLogicalRange(): LogicalRange {
     const dataCount = this.context.getDataList().length
     const mainWidth = this.context.getMainWidth()
+    const first = this.context.getFirstLogicalIndex()
 
     if (dataCount === 0 || mainWidth <= 0) {
-      return getDefaultVisibleRange()
+      return { from: first, to: first }
     }
 
     const range = dataCount <= MIN_VISIBLE_DATA_COUNT ? { start: 0, end: 100 } : getEffectiveRange(this._start, this._end, this.getMinSpan())
 
-    const domainFrom = dataCount * range.start / 100
-    const domainTo = dataCount * range.end / 100
+    const domainFrom = first + dataCount * range.start / 100
+    const domainTo = first + dataCount * range.end / 100
     const domainSpan = Math.max(domainTo - domainFrom, MIN_PERCENT_SPAN)
     const barWidth = mainWidth / domainSpan
-    const offsetRight = (domainTo - dataCount) * barWidth
 
     this.context.setBarWidth(barWidth)
-    this.context.setOffsetRightDistance(offsetRight)
+    this.context.setRightLogicalIndex(domainTo)
 
-    return {
-      from: Math.max(0, Math.floor(domainFrom)),
-      to: Math.min(dataCount, Math.ceil(domainTo)),
-      domainFrom,
-      domainTo
-    }
+    return { from: domainFrom, to: domainTo }
   }
 
   override scroll(distance: number): boolean {

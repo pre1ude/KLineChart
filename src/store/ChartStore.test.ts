@@ -292,12 +292,11 @@ describe('ChartStore', () => {
     ], LoadDataType.Init)
 
     const timeScaleStore = store.getTimeScaleStore()
-    Reflect.set(timeScaleStore, '_visibleRange', { from: 0, to: 3, domainFrom: 0, domainTo: 3 })
-    store.adjustVisibleDataList()
+    store.mainWidth = 24
+    timeScaleStore.setOffsetRightDistance(-8, true)
     expect(store.getGap1Store().getGaps()).toMatchObject([{ bottom: 100, top: 106 }])
 
-    Reflect.set(timeScaleStore, '_visibleRange', { from: 1, to: 4, domainFrom: 1, domainTo: 4 })
-    store.adjustVisibleDataList()
+    timeScaleStore.setOffsetRightDistance(0, true)
     expect(store.getGap1Store().getGaps()).toEqual([])
 
     store.setOptions({ gap1Show: false })

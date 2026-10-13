@@ -127,7 +127,13 @@
       const overlay = chart.getOverlayById(id)
       return overlay?.visible ? overlay.points : undefined
     }
-    function indices() { return displayedPoints()?.map(point => chart.externalToInternal(point).dataIndex) }
+    function indices() {
+      const first = chart.externalToInternal(chart.getDataList()[0] ?? {}).logicalIndex
+      return displayedPoints()?.map(point => {
+        const { logicalIndex } = chart.externalToInternal(point)
+        return logicalIndex === undefined || first === undefined ? undefined : logicalIndex - first
+      })
+    }
     function show() {
       output.value = JSON.stringify(record(), null, 2)
       document.querySelector('#projection').textContent = JSON.stringify(displayedPoints() ?? null, null, 2)

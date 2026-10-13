@@ -17,9 +17,9 @@ interface OverlayDragState {
   epoch: number
   point: Point
   points: Point[]
-  timeIndexVersion: number
-  pointerIndex?: number
-  projectedPoints?: IPoint[]
+  logicalRevision: number
+  pointerLogicalIndex: number
+  projectedPoints: IPoint[]
 }
 
 /**
@@ -91,36 +91,38 @@ export class OverlayLayer implements Layer {
     return a.overlay.id === b.overlay.id && a.interactType === b.interactType && a.figureIndex === b.figureIndex
   }
 
-  private _startDrag(overlay: Overlay, point: Point): void {
+  private _startDrag(overlay: Overlay, point: IPoint): boolean {
     const chartStore = this._widget.getPane().getChart().getChartStore()
     const overlayStore = chartStore.getOverlayStore()
     const projectedPoints = overlayStore.getProjectedPoints(overlay)
+    if (!projectedPoints) return false
     this._dragState = {
       overlayId: overlay.id,
       epoch: chartStore.getDatasetEpoch(),
-      point: { ...point },
+      point: chartStore.internalToExternal(point) as Point,
       points: overlay.points.map(p => ({ ...p })),
-      timeIndexVersion: chartStore.getTimeIndexVersion(),
-      pointerIndex: chartStore.externalToInternal(point).dataIndex,
+      logicalRevision: chartStore.getTimeIndex().getRevision(),
+      pointerLogicalIndex: point.logicalIndex,
       projectedPoints
     }
+    return true
   }
 
-  private _moveBody(overlay: Overlay, point: Point): void {
+  private _moveBody(overlay: Overlay, point: IPoint): void {
     const drag = this._dragState
     if (drag?.overlayId !== overlay.id) return
     const chartStore = this._widget.getPane().getChart().getChartStore()
-    const version = chartStore.getTimeIndexVersion()
-    if (version !== drag.timeIndexVersion) {
-      // Reproject the original time points if loading moves the index origin.
-      drag.pointerIndex = chartStore.externalToInternal(drag.point).dataIndex
-      drag.projectedPoints = chartStore.getOverlayStore().getProjectedPoints(drag)
-      drag.timeIndexVersion = version
+    const revision = chartStore.getTimeIndex().getRevision()
+    if (revision !== drag.logicalRevision) {
+      // Only a timeline correction or coordinate-policy change invalidates logical anchors.
+      const pointerLogicalIndex = chartStore.externalToInternal(drag.point).logicalIndex
+      const projectedPoints = chartStore.getOverlayStore().getProjectedPoints(drag)
+      if (!isNumber(pointerLogicalIndex) || !projectedPoints) return
+      drag.pointerLogicalIndex = pointerLogicalIndex
+      drag.projectedPoints = projectedPoints
+      drag.logicalRevision = revision
     }
-    const dataIndex = chartStore.externalToInternal(point).dataIndex
-    if (!drag.projectedPoints || !isNumber(dataIndex) || !isNumber(drag.pointerIndex)) return
-
-    const deltaIndex = dataIndex - drag.pointerIndex
+    const deltaIndex = point.logicalIndex - drag.pointerLogicalIndex
     const deltaValue = point.value - drag.point.value
     const movedPoints: Point[] = []
     for (let i = 0; i < drag.points.length; i++) {
@@ -129,7 +131,7 @@ export class OverlayLayer implements Layer {
         movedPoints.push({ ...original, value: original.value + deltaValue })
       } else {
         const moved = chartStore.internalToExternal({
-          dataIndex: drag.projectedPoints[i].dataIndex + deltaIndex,
+          logicalIndex: drag.projectedPoints[i].logicalIndex + deltaIndex,
           value: original.value + deltaValue
         })
         if (!isNumber(moved.timestamp) || !isNumber(moved.value)) return
@@ -137,7 +139,7 @@ export class OverlayLayer implements Layer {
       }
     }
     const previous = overlay.points.map(p => ({ ...p }))
-    overlay.onDragMoveBody({ point, prevPoint: drag.point, prevPoints: drag.points, movedPoints })
+    overlay.onDragMoveBody({ point: chartStore.internalToExternal(point) as Point, prevPoint: drag.point, prevPoints: drag.points, movedPoints })
     chartStore.getOverlayStore().notifyPointsChange(overlay, 'body', previous)
   }
 
@@ -154,8 +156,8 @@ export class OverlayLayer implements Layer {
         const original = previous[index]
         if (!original || !projected[index]) return
         if (current.timestamp === original.timestamp && current.offset === original.offset) return
-        const dataIndex = chartStore.externalToInternal(current).dataIndex
-        if (isNumber(dataIndex) && dataIndex === projected[index].dataIndex) {
+        const logicalIndex = chartStore.externalToInternal(current).logicalIndex
+        if (isNumber(logicalIndex) && logicalIndex === projected[index].logicalIndex) {
           overlay.points[index] = { ...original, value: current.value }
         }
       })
@@ -235,7 +237,7 @@ export class OverlayLayer implements Layer {
           const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
           const point = this._overlayView.coordinateToPoint(progressOverlay, event)
           if (!point) return
-          this._updateDrawPoint(progressOverlay, point)
+          this._updateDrawPoint(progressOverlay, chartStore.internalToExternal(point) as Point)
           notify(progressOverlay, progressOverlay.onDrawing, createOverlayEvent(event, progressOverlay, paneId, chartStore, { figureKey, pointIndex }))
         }
         return
@@ -285,7 +287,7 @@ export class OverlayLayer implements Layer {
           const figureKey = `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`
           const point = this._overlayView.coordinateToPoint(progressOverlay, event)
           if (!point) return
-          this._updateDrawPoint(progressOverlay, point)
+          this._updateDrawPoint(progressOverlay, chartStore.internalToExternal(point) as Point)
           const overlayEvent = createOverlayEvent(event, progressOverlay, paneId, chartStore, { figureKey, pointIndex })
 
           if (progressOverlay.isCreated()) {
@@ -334,9 +336,8 @@ export class OverlayLayer implements Layer {
         if (!progressOverlay.isCompleted() && isProgressPaneMatched) {
           progressPressedOverlayId = progressOverlay.id
           progressPressedEvent = event
-          progressPressedPoint = progressOverlay.isCreated()
-            ? this._overlayView.coordinateToPoint(progressOverlay, event)
-            : undefined
+          const point = progressOverlay.isCreated() ? this._overlayView.coordinateToPoint(progressOverlay, event) : undefined
+          progressPressedPoint = point ? chartStore.internalToExternal(point) as Point : undefined
           overlayStore.setPressed(true)
           overlayStore.setDragging(false)
         }
@@ -352,8 +353,7 @@ export class OverlayLayer implements Layer {
         }
         if (overlay.lock) return
         const point = this._overlayView.coordinateToPoint(overlay, event)
-        if (!point) return
-        this._startDrag(overlay, point)
+        if (!point || !this._startDrag(overlay, point)) return
         pressedInfo = nextPressedInfo
         overlayStore.setPressed(true)
         overlayStore.setDragging(false)
@@ -477,7 +477,7 @@ export class OverlayLayer implements Layer {
           const pointIndex = progressOverlay.currentStep
           const point = this._overlayView.coordinateToPoint(progressOverlay, event)
           if (!point) return
-          this._updateDrawPoint(progressOverlay, point)
+          this._updateDrawPoint(progressOverlay, chartStore.internalToExternal(point) as Point)
           notify(progressOverlay, progressOverlay.onDrawing, createOverlayEvent(event, progressOverlay, paneId, chartStore, {
             figureKey: `${OVERLAY_FIGURE_KEY_PREFIX}point_${pointIndex}`,
             pointIndex
@@ -517,7 +517,7 @@ export class OverlayLayer implements Layer {
           const point = this._overlayView.coordinateToPoint(overlay, event)
           if (!point) return
           if (pressedInfo.interactType === 'control-point') {
-            this._moveControlPoint(overlay, point, pressedInfo.figureIndex, pressedInfo.figureKey)
+            this._moveControlPoint(overlay, chartStore.internalToExternal(point) as Point, pressedInfo.figureIndex, pressedInfo.figureKey)
           } else {
             this._moveBody(overlay, point)
           }

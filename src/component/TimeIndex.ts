@@ -5,6 +5,7 @@ export type TimeLookupMode = 'exact' | 'floor' | 'ceil' | 'nearest'
 /** Real bars only. Calendar projection and display labels are separate concerns. */
 export default class TimeIndex {
   private _firstLogicalIndex = 0
+  private _revision = 0
   private readonly _getData: () => readonly { timestamp: number }[]
 
   constructor(getData: () => readonly { timestamp: number }[]) {
@@ -13,12 +14,18 @@ export default class TimeIndex {
 
   getFirstLogicalIndex(): number { return this._firstLogicalIndex }
 
+  /** Changes only when saved logical anchors need timestamp reprojection. */
+  getRevision(): number { return this._revision }
+
+  invalidate(): void { this._revision++ }
+
   prepend(count: number): void {
     this._firstLogicalIndex -= count
   }
 
   reset(): void {
     this._firstLogicalIndex = 0
+    this.invalidate()
   }
 
   dataIndexToLogical(dataIndex: number): number {

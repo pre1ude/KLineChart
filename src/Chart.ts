@@ -1688,16 +1688,15 @@ export default class ChartImp implements Chart {
       if (pane && pane.getId() !== PaneIdConstants.X_AXIS) {
         const bounding = pane.getBounding()
         const ps = isArrayInput ? points : [points]
-        const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
-        const xAxis = xAxisWidget.getAxisComponent()
+        const timeScale = this._chartStore.getTimeScaleStore()
         const yAxis = this._getYScale(pane as DualYPane, yScaleId)
 
         coordinates = ps.map(externalPoint => {
           const coordinate: Partial<Coordinate> = {}
           // 外部 -> 内部转换
           const internalPoint = this._chartStore.externalToInternal(externalPoint)
-          if (isNumber(internalPoint.dataIndex)) {
-            coordinate.x = xAxis?.convertToPixel(internalPoint.dataIndex)
+          if (isNumber(internalPoint.logicalIndex)) {
+            coordinate.x = timeScale.logicalToCoordinate(internalPoint.logicalIndex)
           }
           if (isNumber(internalPoint.value) && yAxis) {
             const y = yAxis.convertToPixel(internalPoint.value)
@@ -1730,14 +1729,13 @@ export default class ChartImp implements Chart {
       if (pane && pane.getId() !== PaneIdConstants.X_AXIS) {
         const bounding = pane.getBounding()
         const cs = isArrayInput ? coordinates : [coordinates]
-        const xAxisWidget = this._xAxisPane.getMainWidget() as XAxisWidget
-        const xAxis = xAxisWidget.getAxisComponent()
+        const timeScale = this._chartStore.getTimeScaleStore()
         const yAxis = this._getYScale(pane as DualYPane, yScaleId)
 
         points = cs.map(coordinate => {
           const internalPoint: Partial<IPoint> = {}
           if (isNumber(coordinate.x)) {
-            internalPoint.dataIndex = xAxis?.convertFromPixel(coordinate.x) ?? 0
+            internalPoint.logicalIndex = timeScale.coordinateToLogicalIndex(coordinate.x)
           }
           if (isNumber(coordinate.y) && yAxis) {
             const y = absolute ? coordinate.y - bounding.top : coordinate.y

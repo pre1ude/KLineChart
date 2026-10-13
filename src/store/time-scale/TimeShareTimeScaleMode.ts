@@ -1,5 +1,4 @@
-import type VisibleRange from '../../common/VisibleRange'
-import { createDefaultTimeShareVisibleRange } from '../../common/VisibleRange'
+import type { LogicalRange } from '../../common/VisibleRange'
 import { clamp } from '../../common/utils/number'
 import { TimeScaleMode } from './TimeScaleMode'
 
@@ -38,9 +37,9 @@ export class TimeShareTimeScaleMode extends TimeScaleMode {
     this.context.setOffsetRightDistance(offsetRight)
   }
 
-  override calcVisibleRange(): VisibleRange {
-    return this.calcVisibleRangeByCurrentState(
-      createDefaultTimeShareVisibleRange(this.context.getTimeShareTicks().length * this.context.getTimeShareDays())
-    )
+  override calcLogicalRange(): LogicalRange {
+    return this.calcLogicalRangeByCurrentState({
+      from: 0, to: this.context.getTimeShareTicks().length * this.context.getTimeShareDays()
+    })
   }
 }

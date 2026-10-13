@@ -1,5 +1,7 @@
 # Overlay 时间点模型迁移
 
+`IPoint.dataIndex` 改为 `logicalIndex` 的接口清单、迁移前后示例和缓存生命周期说明见 [逻辑坐标迁移指南](./logical-index-migration.md)。数组下标与逻辑坐标需要换算，不能仅重命名字段。
+
 Overlay 内部点和模板回调现在统一使用 `Point`：
 
 ```ts
@@ -29,15 +31,21 @@ onDrawEnd(event) {
 
 不再对 `overlay.points` 调用 `internalToExternal`。图表的 `externalToInternal`、`internalToExternal` 仍是显式坐标转换工具，输入类型分别为 Point 与 IPoint。
 
-已有行情位置转换为时间点时，使用实际 `dataList[dataIndex].timestamp`，不借用分时网格的刻度时间；转回 index 后保持原位置。界外位置仍使用边界 bar 的实际 timestamp 加整数 offset。非法 offset 不生成横向 index，小数 dataIndex 不生成时间锚点；转换结果中的独立 value 仍可保留。
+`IPoint` 统一为 `{ logicalIndex: number, value: number }`，不再包含 `dataIndex`。`externalToInternal` 的返回值和 `internalToExternal` 的输入都使用这个表示，直接调用这两个接口的代码需要把内部横坐标迁移为 `logicalIndex`。K 线数组、指标结果，以及明确以 `dataIndex` 命名的图表接口仍使用数组下标。
 
-特殊几何逻辑通过 Store 取得当前 `{ dataIndex, value }[]`：
+已有行情位置转换为时间点时，在读取数组的边界把逻辑坐标换算为 `dataIndex`，使用实际 `dataList[dataIndex].timestamp`，不借用分时网格的刻度时间。界外位置仍使用边界 bar 的实际 timestamp 加整数 offset。非法 offset 不生成横向坐标，小数 logicalIndex 不生成时间锚点；转换结果中的独立 value 仍可保留。
+
+特殊几何逻辑通过 Store 取得当前 `IPoint[]`：
 
 ```ts
 const projected = chart.getChartStore().getOverlayStore().getProjectedPoints(overlay)
 ```
 
 当前行情无法定位任一点时返回 undefined；返回值是临时结果，修改它不会改变画线。缓存由 OverlayStore 的 WeakMap 持有，主图与轴视图共享，像素坐标仍随视口重算。Overlay 本身不持有 ChartStore、转换服务、投影缓存或手势快照，不再提供 getProjectedPoints 方法。
+
+内部视口、画线投影和拖动快照统一使用 `logicalIndex`，需要读取数组时通过 `TimeIndex.logicalToDataIndex` 换算。前置加载只改变逻辑起点，已有画线的逻辑位置和已解析投影缓存保持有效；尚未解析的时间点在新数据到达后重新尝试定位。
+
+例如，10 根 K 线中最后一根的逻辑位置为 9，前面加载 8 根后仍为 9，访问数组时才换算为下标 17。DataZoom 仍按百分比选择范围，分时模式仍按时间槽确定范围，然后转换为逻辑坐标参与绘制。
 
 ## 更新字段
 
@@ -73,7 +81,9 @@ onBodyDrag({ movedPoints }) {
 }
 ```
 
-OverlayLayer 持有按下时的快照并处理 bar 位置平移、数据边界的 reference/offset 选择，以及纯 Y 拖动时保留原锚点。Overlay 只接收并提交时间点，不查询行情；鼠标抬起后交互层清除手势快照。不要把原来的 dataIndex 差替换为 timestamp 毫秒差；不连续交易时间下两者并不等价。
+OverlayLayer 持有按下时的逻辑坐标快照，以逻辑坐标差计算 bar 位移，并处理数据边界的 reference/offset 选择，以及纯 Y 拖动时保留原锚点。前置加载和扩展快照复用拖动起点；时间序列中间发生插入、删除或坐标配置变化时，根据按下时的时间点重新投影；切换数据集后结束旧手势。Overlay 只接收并提交时间点，不查询行情；鼠标抬起后交互层清除手势快照。不要把 bar 位移替换为 timestamp 毫秒差；不连续交易时间下两者并不等价。
+
+鼠标拾取直接返回完整 `IPoint`，主体拖动直接使用该逻辑坐标计算位移，只在提交画线、调用模板或保存恢复锚点时转换为 `Point`。全部锚点可投影时才建立拖动状态；时间轴修正后的重新投影必须全部成功才替换快照，失败时暂不应用位移，数据恢复后继续原手势。
 
 如需计算价格位移，仍可使用 `point.value - prevPoint.value`。prevPoints 是按下时的时间点快照；回调收到的快照可以修改，不会影响组件下一次计算所用的基准。
 

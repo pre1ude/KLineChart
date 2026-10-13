@@ -366,6 +366,7 @@ export default class ChartStore {
       if (isValid(options.isTimeShare)) {
         // Time-share settings change timestamp/index mapping even without new bars.
         this._timeIndexVersion++
+        this._timeIndex.invalidate()
         this._isTimeShare = options.isTimeShare
         if (this._isTimeShare) {
           if ((this._timeShareTicks.length === 0) && options.timeShareTicks == null) {
@@ -677,53 +678,29 @@ export default class ChartStore {
     return resolveMinutePercentageBasis(this.getIsTimeShare(), this.getTimeShareBasisPrice(), this.getVisibleFirstData()?.close)
   }
 
-  /**
-   * 将外部点（timestamp + offset）转换为内部点（dataIndex + value）
-   */
+  /** Resolve persisted time anchors into the current logical geometry. */
   externalToInternal(point: Partial<Point>): Partial<IPoint> {
     const result: Partial<IPoint> = {}
     if (isNumber(point.timestamp) && isValidPointOffset(point)) {
       const baseDataIndex = this.timestampToDataIndex(point.timestamp)
-
       if (baseDataIndex !== undefined) {
-        result.dataIndex = baseDataIndex + (point.offset ?? 0)
+        result.logicalIndex = this._timeIndex.dataIndexToLogical(baseDataIndex) + (point.offset ?? 0)
       }
     }
-    if (isNumber(point.value)) {
-      result.value = point.value
-    }
+    if (isNumber(point.value)) result.value = point.value
     return result
   }
 
-  /**
-   * 将内部点（dataIndex + value）转换为外部点（timestamp + offset）
-   */
+  /** Convert logical geometry to a persisted anchor at the data-access boundary. */
   internalToExternal(point: Partial<IPoint>): Partial<Point> {
     const result: Partial<Point> = {}
-    if (isNumber(point.dataIndex) && Number.isInteger(point.dataIndex)) {
-      const dataList = this._dataList
-      const dataLength = dataList.length
-
-      if (dataLength === 0) {
-        result.timestamp = 0
-        result.offset = point.dataIndex
-      } else if (point.dataIndex < 0) {
-        // 超出左边界
-        result.timestamp = dataList[0].timestamp
-        result.offset = point.dataIndex
-      } else if (point.dataIndex >= dataLength) {
-        // 超出右边界
-        result.timestamp = dataList[dataLength - 1].timestamp
-        result.offset = point.dataIndex - (dataLength - 1)
-      } else {
-        // Anchor to the actual bar, not the virtual time-share tick label.
-        result.timestamp = dataList[point.dataIndex].timestamp
-        result.offset = 0
-      }
+    if (isNumber(point.logicalIndex) && Number.isInteger(point.logicalIndex)) {
+      const dataIndex = this._timeIndex.logicalToDataIndex(point.logicalIndex)
+      const anchorIndex = clamp(dataIndex, 0, Math.max(0, this._dataList.length - 1))
+      result.timestamp = this._dataList[anchorIndex]?.timestamp ?? 0
+      result.offset = dataIndex - anchorIndex
     }
-    if (isNumber(point.value)) {
-      result.value = point.value
-    }
+    if (isNumber(point.value)) result.value = point.value
     return result
   }
 
@@ -751,7 +728,6 @@ export default class ChartStore {
   }
 
   private _addData(data: KLineData | KLineData[], type?: LoadDataType, more?: boolean, callback?: () => void): void {
-    let adjustFlag = false
     let timestampChanged = false
     let gapContext: GapDataChangeContext | undefined
     if (isArray<KLineData>(data)) {
@@ -767,7 +743,6 @@ export default class ChartStore {
             this._timeScaleStore.autoInitialAlignment()
             this._timeScaleStore.captureInitialView()
           }
-          adjustFlag = true
           gapContext = { kind: 'init', fromIndex: 0 }
           break
         }
@@ -777,7 +752,6 @@ export default class ChartStore {
             this._dataList = data.concat(this._dataList)
             this._dataTimestamps = data.map(bar => bar.timestamp).concat(this._dataTimestamps)
             this._timeIndex.prepend(offset)
-            adjustFlag = true
             gapContext = { kind: 'prepend', fromIndex: 0 }
           }
           this._backwardMore = more ?? false
@@ -788,7 +762,7 @@ export default class ChartStore {
           if (data.length > 0) {
             this._dataList = this._dataList.concat(data)
             this._dataTimestamps = this._dataTimestamps.concat(data.map(bar => bar.timestamp))
-            adjustFlag = true
+            this._timeScaleStore.onBatchDataAppended(data.length)
             gapContext = { kind: 'append', fromIndex }
           }
           this._forwardMore = more ?? false
@@ -803,15 +777,12 @@ export default class ChartStore {
         // 追加新数据
         this._dataList.push(data)
         this._dataTimestamps.push(timestamp)
-        this._timeScaleStore.onAppendData()
-        adjustFlag = true
         gapContext = { kind: 'append', fromIndex: dataCount }
       } else if (timestamp === lastDataTimestamp) {
         // 更新最后一条
         timestampChanged = this._dataTimestamps[dataCount - 1] !== timestamp
         this._dataTimestamps[dataCount - 1] = timestamp
         this._dataList[dataCount - 1] = data
-        adjustFlag = true
         gapContext = { kind: 'update-latest', fromIndex: Math.max(0, dataCount - 1) }
       } else {
         // 更新历史数据：二分查找匹配的 timestamp
@@ -820,20 +791,19 @@ export default class ChartStore {
           timestampChanged = this._dataTimestamps[index] !== timestamp
           this._dataTimestamps[index] = timestamp
           this._dataList[index] = data
-          adjustFlag = true
           gapContext = { kind: 'update-history', fromIndex: index }
         }
       }
     }
-    if (adjustFlag) {
-      this._dataVersion++
-      if (timestampChanged || this._isTimeShare || (gapContext?.kind !== 'update-latest' && gapContext?.kind !== 'update-history')) this._timeIndexVersion++
-      if (timestampChanged || gapContext?.kind === 'prepend') this._indicatorStore.clearResults()
-      if (gapContext) this._gapStore.recalculate(this._dataList, gapContext)
-      this._timeScaleStore.adjustVisibleRange()
-      this._tooltipStore.recalculateCrosshair(true)
-      this._completeDataUpdate(callback)
-    }
+    if (gapContext === undefined) return
+    this._dataVersion++
+    if (timestampChanged || this._isTimeShare) this._timeIndex.invalidate()
+    if (timestampChanged || this._isTimeShare || (gapContext.kind !== 'update-latest' && gapContext.kind !== 'update-history')) this._timeIndexVersion++
+    if (timestampChanged || gapContext.kind === 'prepend') this._indicatorStore.clearResults()
+    this._gapStore.recalculate(this._dataList, gapContext)
+    this._timeScaleStore.adjustVisibleRange()
+    this._tooltipStore.recalculateCrosshair(true)
+    this._completeDataUpdate(callback)
   }
 
   replaceData(dataList: KLineData[], more?: boolean, callback?: () => void): void {
@@ -842,17 +812,31 @@ export default class ChartStore {
 
   private _replaceData(dataList: KLineData[], more?: boolean, callback?: () => void): void {
     const anchor = this._timeScaleStore.captureDataAnchor()
+    const offsetRight = this._timeScaleStore.getOffsetRightDistance()
     const timestamps = dataList.map(bar => bar.timestamp)
-    if (timestamps.length !== this._dataTimestamps.length || timestamps.some((timestamp, index) => timestamp !== this._dataTimestamps[index])) this._indicatorStore.clearResults()
+    const sameTimeline = timestamps.length === this._dataTimestamps.length &&
+      timestamps.every((timestamp, index) => timestamp === this._dataTimestamps[index])
+    if (!sameTimeline) this._indicatorStore.clearResults()
+    // A polling snapshot can prepend history and append new bars without replacing
+    // the existing timeline. Preserve its logical origin just like prependData;
+    // corrections inside the sequence or unrelated datasets still start a new origin.
+    const prefixLength = sameTimeline ? 0 : timestamps.indexOf(this._dataTimestamps[0])
+    const extendsTimeline = this._dataTimestamps.length > 0 && (sameTimeline || (prefixLength >= 0 &&
+      this._dataTimestamps.every((timestamp, index) => timestamps[prefixLength + index] === timestamp)))
+    if (extendsTimeline) {
+      this._timeIndex.prepend(prefixLength)
+      if (this._isTimeShare) this._timeIndex.invalidate()
+    } else {
+      this._timeIndex.reset()
+    }
     this._dataTimestamps = timestamps
     this._dataList = dataList
-    this._timeIndex.reset()
     this._dataVersion++
     this._timeIndexVersion++
     this._backwardMore = more ?? false
     this._gapStore.recalculate(this._dataList, { kind: 'replace', fromIndex: 0 })
 
-    this._timeScaleStore.restoreDataAnchor(anchor)
+    this._timeScaleStore.restoreDataAnchor(anchor, offsetRight)
     this._timeScaleStore.adjustVisibleRange()
     this._tooltipStore.recalculateCrosshair(true)
     this._completeDataUpdate(callback)
@@ -927,6 +911,7 @@ export default class ChartStore {
   }
 
   private _clear(): void {
+    const offsetRight = this._timeScaleStore.getOffsetRightDistance()
     this._datasetEpoch++
     this._indicatorStore.cancelPendingCalculations()
     // Data-dependent effects check their captured epoch; lifecycle effects must finish.
@@ -941,7 +926,7 @@ export default class ChartStore {
     this._dataVersion++
     this._timeIndexVersion++
     this._visibleDataList = []
-    this._timeScaleStore.clear()
+    this._timeScaleStore.clear(offsetRight)
     this._tooltipStore.clear()
     this._gapStore.clear()
     this._gap1Store.clear()
